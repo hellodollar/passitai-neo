@@ -14,6 +14,7 @@ import { computed, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 
 import TrendChart from '@/components/charts/TrendChart.vue'
+import logoPassitai from '@/assets/icons/icon-passitai.svg'
 import { useLearningStore } from '@/stores/learning'
 
 const learning = useLearningStore()
@@ -29,7 +30,7 @@ onMounted(() => {
 <template>
   <section class="space-y-5">
     <header class="flex items-center gap-3">
-      <h1 class="text-2xl font-bold leading-tight text-primary">Banana Neo</h1>
+      <img :src="logoPassitai" alt="Passitai" class="h-8 w-auto" />
     </header>
 
     <section class="rounded-2xl border border-base-200 bg-base-100 p-4">

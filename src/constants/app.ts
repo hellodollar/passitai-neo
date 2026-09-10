@@ -1,11 +1,11 @@
-export const APP_NAME = 'Banana Neo'
+export const APP_NAME = 'PassIt AI'
 
 export const APP_TAGLINE = '刷题更稳，复习更清楚。'
 
 export const STORAGE_KEYS = {
-  authSession: 'banana-neo:auth-session',
-  appPreferences: 'banana-neo:app-preferences',
-  subjectSelection: 'banana-neo:subject-selection',
+  authSession: 'passitai:auth-session',
+  appPreferences: 'passitai:app-preferences',
+  subjectSelection: 'passitai:subject-selection',
 } as const
 
 export const ROUTE_NAMES = {

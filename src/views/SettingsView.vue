@@ -35,10 +35,10 @@ type SettingsAction = 'account' | 'plan' | 'practice' | 'notification'
 const displayName = computed(() => {
   if (me.value?.profile.displayName) return me.value.profile.displayName
   const name = auth.user?.email.split('@')[0]
-  return name ? name.replace(/[._-]+/g, ' ') : 'Banana Neo'
+  return name ? name.replace(/[._-]+/g, ' ') : 'PassIt AI'
 })
 
-const profileEmail = computed(() => me.value?.profile.email ?? auth.user?.email ?? 'banana@neo')
+const profileEmail = computed(() => me.value?.profile.email ?? auth.user?.email ?? 'you@passitai.ai')
 
 const menuItems = [
   {
