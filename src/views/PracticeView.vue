@@ -22,13 +22,11 @@ import { useRouter } from 'vue-router'
 
 import BaseModal from '@/components/common/BaseModal.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
-import PracticePlanModal from '@/components/common/PracticePlanModal.vue'
 import PracticeSettingsContent from '@/components/common/PracticeSettingsContent.vue'
-import { fetchSubjects } from '@/api/catalog'
-import { updateUserPreferences } from '@/api/me'
-import { fetchPapers } from '@/api/papers'
+import { fetchMajorOptions, fetchSubjectOptions } from '@/api/catalog'
+import { fetchPracticePlan, updatePracticePlan } from '@/api/practice'
 import { useAppStore } from '@/stores/app'
-import type { PaperListItem, Subject, SubjectSelection } from '@/types/domain'
+import type { OptionItem, PracticePlan } from '@/types/domain'
 
 const router = useRouter()
 const app = useAppStore()
@@ -38,16 +36,20 @@ type SubjectProjectKey = 'practice' | 'pastExam' | 'mock' | 'ai'
 
 const settingsModalOpen = ref(false)
 const subjectPanelOpen = ref(false)
-const selectorModalOpen = ref(false)
-const papers = ref<PaperListItem[]>([])
-const subjects = ref<Subject[]>([])
-const allSubjects = ref<Subject[]>([])
+const planModalOpen = ref(false)
+const plan = ref<PracticePlan | null>(null)
+const planLoading = ref(false)
 
-const practiceMajorId = ref(app.subjectSelection.majorId)
-const practiceSubjectIds = ref<Set<string>>(new Set(app.subjectSelection.subjectIds))
+const majorOptions = ref<OptionItem[]>([])
+const subjectOptions = ref<OptionItem[]>([])
+const draftMajorId = ref('')
+const draftSubjectIds = ref<Set<string>>(new Set())
+const planSaving = ref(false)
+const subjectOptionsLoading = ref(false)
+
 const subjectOrder = ref<string[]>([])
 const hiddenSubjectIds = ref<Set<string>>(new Set())
-const activeSubjectId = ref('')
+const activeSubjectCode = ref('')
 const expandedProjectKey = ref<SubjectProjectKey | ''>('')
 
 type CategoryPaper = {
@@ -60,7 +62,7 @@ type CategoryPaper = {
 const subjectCategories: Array<{
   key: SubjectProjectKey
   label: string
-  category: PaperListItem['paperCategory'] | null
+  category: string | null
   color: 'primary' | 'secondary' | 'accent' | 'info'
   icon: typeof FileStack
 }> = [
@@ -69,15 +71,6 @@ const subjectCategories: Array<{
   { key: 'mock', label: '考前模拟', category: 'mock', color: 'accent', icon: ClipboardList },
   { key: 'ai', label: 'AI强化训练', category: null, color: 'info', icon: Sparkles },
 ]
-
-function realPapersOfCategory(
-  groupPapers: PaperListItem[],
-  category: PaperListItem['paperCategory'],
-): CategoryPaper[] {
-  return groupPapers
-    .filter((paper) => paper.paperCategory === category)
-    .map((paper) => ({ id: paper.id, name: paper.name, subtitle: '' }))
-}
 
 function mockPapersForCategory(subjectName: string, catLabel: string): CategoryPaper[] {
   if (catLabel === '专项练习') {
@@ -108,84 +101,43 @@ function mockPapersForCategory(subjectName: string, catLabel: string): CategoryP
 }
 
 function categoryPapers(
-  group: { subject: Subject | undefined; papers: PaperListItem[] },
+  subjectName: string,
   cat: (typeof subjectCategories)[number],
 ): CategoryPaper[] {
-  const subjectName = group.subject?.name ?? '科目'
-  if (cat.category === null) {
-    return mockPapersForCategory(subjectName, cat.label)
-  }
-  const real = realPapersOfCategory(group.papers, cat.category)
-  if (real.length > 0) return real
   return mockPapersForCategory(subjectName, cat.label)
 }
 
-const selectedMajorName = computed(() => {
-  if (!practiceMajorId.value) return ''
-  const subject = allSubjects.value.find((s) => s.majorId === practiceMajorId.value)
-  return subject?.majorName ?? ''
-})
+const planMajorName = computed(() => plan.value?.majorName ?? '')
+const planMajorCode = computed(() => plan.value?.majorCode ?? '')
+const planSubjects = computed(() => plan.value?.subjects ?? [])
 
-const hasPracticePlan = computed(() => practiceMajorId.value !== '' && practiceSubjectIds.value.size > 0)
+const hasPracticePlan = computed(() => planSubjects.value.length > 0)
 const daysUntilExam = computed(() => Math.max(0, differenceInCalendarDays(examDate, new Date())))
 const examCountdownText = computed(() => `2026年10月20日 · 还剩 ${daysUntilExam.value} 天`)
 
-const filteredPapers = computed(() => {
-  const ids = [...practiceSubjectIds.value]
-  if (ids.length === 0) return []
-  return papers.value.filter((paper) => ids.includes(paper.subjectId))
-})
-
-const papersBySubject = computed(() => {
-  const map = new Map<string, { subject: Subject | undefined; papers: PaperListItem[] }>()
-  for (const paper of filteredPapers.value) {
-    if (!map.has(paper.subjectId)) {
-      const subject = subjects.value.find((item) => item.id === paper.subjectId)
-      map.set(paper.subjectId, { subject, papers: [] })
-    }
-    map.get(paper.subjectId)!.papers.push(paper)
-  }
-  return [...map.values()]
-})
-
-const subjectsForDisplay = computed(() =>
-  allSubjects.value.filter((s) => practiceSubjectIds.value.has(s.id)),
-)
-
-const displayGroups = computed(() => {
-  return subjectsForDisplay.value.map((subject) => {
-    const group = papersBySubject.value.find((g) => g.subject?.id === subject.id)
-    return {
-      subject,
-      papers: group?.papers ?? [],
-    }
-  })
-})
-
-const orderedSubjectGroups = computed(() => {
-  const orderMap = new Map(subjectOrder.value.map((id, index) => [id, index]))
-  return [...displayGroups.value].sort((a, b) => {
-    const aIndex = orderMap.get(a.subject.id) ?? Number.MAX_SAFE_INTEGER
-    const bIndex = orderMap.get(b.subject.id) ?? Number.MAX_SAFE_INTEGER
+const orderedSubjects = computed(() => {
+  const orderMap = new Map(subjectOrder.value.map((code, index) => [code, index]))
+  return [...planSubjects.value].sort((a, b) => {
+    const aIndex = orderMap.get(a.code) ?? Number.MAX_SAFE_INTEGER
+    const bIndex = orderMap.get(b.code) ?? Number.MAX_SAFE_INTEGER
     return aIndex - bIndex
   })
 })
 
-const visibleSubjectGroups = computed(() =>
-  orderedSubjectGroups.value.filter((group) => !hiddenSubjectIds.value.has(group.subject.id)),
+const visibleSubjects = computed(() =>
+  orderedSubjects.value.filter((subject) => !hiddenSubjectIds.value.has(subject.code)),
 )
 
-const activeSubjectGroup = computed(() => {
-  if (visibleSubjectGroups.value.length === 0) return undefined
-  return visibleSubjectGroups.value.find((group) => group.subject.id === activeSubjectId.value)
-    ?? visibleSubjectGroups.value[0]
-})
+const activeSubject = computed(
+  () => visibleSubjects.value.find((subject) => subject.code === activeSubjectCode.value)
+    ?? visibleSubjects.value[0],
+)
 
 const activeProjectRows = computed(() => {
-  const group = activeSubjectGroup.value
-  if (!group) return []
+  const subject = activeSubject.value
+  if (!subject) return []
   return subjectCategories.map((cat) => {
-    const papers = categoryPapers(group, cat)
+    const papers = categoryPapers(subject.name, cat)
     return {
       ...cat,
       papers,
@@ -195,9 +147,9 @@ const activeProjectRows = computed(() => {
   })
 })
 
-function groupPaperCount(group: { subject: Subject | undefined; papers: PaperListItem[] }) {
+function groupPaperCount(subject: { name: string; code: string }) {
   return subjectCategories.reduce(
-    (sum, cat) => sum + categoryPapers(group, cat).length,
+    (sum, cat) => sum + categoryPapers(subject.name, cat).length,
     0,
   )
 }
@@ -212,8 +164,8 @@ function categoryToneClasses(color: (typeof subjectCategories)[number]['color'])
   return map[color]
 }
 
-function selectSubject(subjectId: string) {
-  activeSubjectId.value = subjectId
+function selectSubject(code: string) {
+  activeSubjectCode.value = code
   expandedProjectKey.value = ''
 }
 
@@ -222,68 +174,38 @@ function toggleProjectExpand(projectKey: SubjectProjectKey) {
 }
 
 function syncSubjectOrder() {
-  const ids = subjectsForDisplay.value.map((subject) => subject.id)
+  const codes = planSubjects.value.map((subject) => subject.code)
   subjectOrder.value = [
-    ...subjectOrder.value.filter((id) => ids.includes(id)),
-    ...ids.filter((id) => !subjectOrder.value.includes(id)),
+    ...subjectOrder.value.filter((code) => codes.includes(code)),
+    ...codes.filter((code) => !subjectOrder.value.includes(code)),
   ]
 
-  hiddenSubjectIds.value = new Set([...hiddenSubjectIds.value].filter((id) => ids.includes(id)))
+  hiddenSubjectIds.value = new Set([...hiddenSubjectIds.value].filter((code) => codes.includes(code)))
 
-  const visibleIds = subjectOrder.value.filter((id) => !hiddenSubjectIds.value.has(id))
-  if (!activeSubjectId.value || !visibleIds.includes(activeSubjectId.value)) {
-    activeSubjectId.value = visibleIds[0] ?? ''
+  const visibleIds = subjectOrder.value.filter((code) => !hiddenSubjectIds.value.has(code))
+  if (!activeSubjectCode.value || !visibleIds.includes(activeSubjectCode.value)) {
+    activeSubjectCode.value = visibleIds[0] ?? ''
   }
 }
 
-async function loadPapers() {
-  const subjectIds = [...practiceSubjectIds.value]
-  if (subjectIds.length === 0) {
-    papers.value = []
-    return
-  }
-  const allPapers: PaperListItem[] = []
-  try {
-    for (const subjectId of subjectIds) {
-      const result = await fetchPapers({ subjectId, limit: 100 })
-      allPapers.push(...result.items)
-    }
-  } catch {
-    papers.value = []
-    return
-  }
-  papers.value = allPapers
-}
-
-async function loadAllSubjects() {
-  try {
-    const loadedSubjects = await fetchSubjects()
-    subjects.value = loadedSubjects
-    allSubjects.value = loadedSubjects
-  } catch {
-    subjects.value = []
-    allSubjects.value = []
-  }
-}
-
-function moveSubject(subjectId: string, direction: -1 | 1) {
-  const ids = [...subjectOrder.value]
-  const index = ids.indexOf(subjectId)
+function moveSubject(code: string, direction: -1 | 1) {
+  const codes = [...subjectOrder.value]
+  const index = codes.indexOf(code)
   const nextIndex = index + direction
-  if (index < 0 || nextIndex < 0 || nextIndex >= ids.length) return
+  if (index < 0 || nextIndex < 0 || nextIndex >= codes.length) return
 
-  const [current] = ids.splice(index, 1)
+  const [current] = codes.splice(index, 1)
   if (!current) return
-  ids.splice(nextIndex, 0, current)
-  subjectOrder.value = ids
+  codes.splice(nextIndex, 0, current)
+  subjectOrder.value = codes
 }
 
-function toggleSubjectVisibility(subjectId: string) {
+function toggleSubjectVisibility(code: string) {
   const nextIds = new Set(hiddenSubjectIds.value)
-  if (nextIds.has(subjectId)) {
-    nextIds.delete(subjectId)
+  if (nextIds.has(code)) {
+    nextIds.delete(code)
   } else {
-    nextIds.add(subjectId)
+    nextIds.add(code)
   }
   hiddenSubjectIds.value = nextIds
   syncSubjectOrder()
@@ -296,47 +218,107 @@ function startPaper(paper: CategoryPaper) {
   }
 }
 
-function openSelector() {
-  selectorModalOpen.value = true
+async function loadPlan() {
+  planLoading.value = true
+  try {
+    plan.value = await fetchPracticePlan()
+  } catch {
+    plan.value = null
+  } finally {
+    planLoading.value = false
+  }
 }
 
-function applyPracticePlan(selection: SubjectSelection) {
-  app.setSubjectSelection(selection)
-  practiceMajorId.value = selection.majorId
-  const newIds = selection.subjectIds
-  practiceSubjectIds.value = new Set(newIds)
+let majorOptionsLoaded = false
 
-  // 同步排序：保留已有顺序，追加新增
-  subjectOrder.value = [
-    ...subjectOrder.value.filter((id) => newIds.includes(id)),
-    ...newIds.filter((id) => !subjectOrder.value.includes(id)),
-  ]
-  // 清理已移除的隐藏状态
-  hiddenSubjectIds.value = new Set(
-    [...hiddenSubjectIds.value].filter((id) => newIds.includes(id)),
+async function loadMajorOptions() {
+  if (majorOptionsLoaded) return
+  try {
+    majorOptions.value = await fetchMajorOptions()
+    majorOptionsLoaded = true
+  } catch {
+    majorOptions.value = []
+  }
+}
+
+async function loadSubjectOptions(majorId: string) {
+  if (!majorId) {
+    subjectOptions.value = []
+    return
+  }
+  subjectOptionsLoading.value = true
+  try {
+    subjectOptions.value = await fetchSubjectOptions({ majorId })
+  } catch {
+    subjectOptions.value = []
+  } finally {
+    subjectOptionsLoading.value = false
+  }
+}
+
+async function openPlanModal() {
+  planModalOpen.value = true
+  draftSubjectIds.value = new Set()
+  draftMajorId.value = ''
+  subjectOptions.value = []
+
+  await loadMajorOptions()
+
+  const matchedMajor = majorOptions.value.find(
+    (major) => major.code === plan.value?.majorCode,
   )
-  // 重置活跃科目
-  const visibleIds = subjectOrder.value.filter((id) => !hiddenSubjectIds.value.has(id))
-  activeSubjectId.value = visibleIds[0] ?? ''
+  draftMajorId.value = matchedMajor?.id ?? ''
 
-  loadPapers()
-  void updateUserPreferences({
-    study: {
-      majorId: selection.majorId,
-      subjectIds: selection.subjectIds,
-      subjectOrder: selection.subjectIds,
-      hiddenSubjectIds: [...hiddenSubjectIds.value],
-    },
-  }).catch(() => {})
+  if (!draftMajorId.value) return
+
+  await loadSubjectOptions(draftMajorId.value)
+
+  const planCodes = new Set(plan.value?.subjects.map((subject) => subject.code) ?? [])
+  draftSubjectIds.value = new Set(
+    subjectOptions.value.filter((option) => planCodes.has(option.code)).map((option) => option.id),
+  )
+}
+
+async function onMajorChange() {
+  draftSubjectIds.value = new Set()
+  await loadSubjectOptions(draftMajorId.value)
+}
+
+function toggleDraftSubject(id: string) {
+  const next = new Set(draftSubjectIds.value)
+  if (next.has(id)) {
+    next.delete(id)
+  } else {
+    next.add(id)
+  }
+  draftSubjectIds.value = next
+}
+
+async function savePlan() {
+  if (!draftMajorId.value || planSaving.value) return
+  planSaving.value = true
+  try {
+    const major = majorOptions.value.find((item) => item.id === draftMajorId.value)
+    const updated = await updatePracticePlan({
+      majorId: draftMajorId.value,
+      majorCode: major?.code,
+      subjectIds: [...draftSubjectIds.value],
+    })
+    plan.value = updated
+    planModalOpen.value = false
+  } catch {
+    // keep modal open on failure
+  } finally {
+    planSaving.value = false
+  }
 }
 
 onMounted(() => {
-  loadAllSubjects()
-  loadPapers()
+  void loadPlan()
 })
 
 watch(
-  () => subjectsForDisplay.value.map((subject) => subject.id).join('|'),
+  () => planSubjects.value.map((subject) => subject.code).join('|'),
   () => {
     syncSubjectOrder()
   },
@@ -347,32 +329,32 @@ watch(
 <template>
   <section class="flex min-h-[calc(100vh-8rem)] w-full min-w-0 max-w-full flex-col gap-4 overflow-x-hidden">
     <section class="w-full min-w-0 max-w-full overflow-hidden rounded-2xl border border-base-200 bg-base-100 p-4">
-      <button
-        class="flex w-full min-w-0 items-start gap-3 text-left"
-        type="button"
-        @click="openSelector"
-      >
+      <div class="flex w-full min-w-0 items-start gap-3 text-left">
         <span class="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
           <GraduationCap :size="22" />
         </span>
         <span class="min-w-0 flex-1">
           <span class="block truncate text-lg font-semibold leading-tight text-base-content">
-            {{ hasPracticePlan ? selectedMajorName || '当前计划' : '配置刷题计划' }}
+            {{ hasPracticePlan ? planMajorName || '当前计划' : '暂无练习计划' }}
           </span>
-          <span class="mt-1 block truncate text-sm font-medium text-base-content/50">{{ examCountdownText }}</span>
+          <span class="mt-1 block truncate text-sm font-medium text-base-content/50">
+            {{ hasPracticePlan && planMajorCode ? `${planMajorCode} · ` : '' }}{{ examCountdownText }}
+          </span>
         </span>
-      </button>
+      </div>
 
       <div class="mt-4 grid grid-cols-2 gap-2">
         <button
           class="flex h-14 min-w-0 items-center gap-2 rounded-xl bg-base-200/70 px-3 text-left transition-colors active:bg-base-300"
           type="button"
-          @click="openSelector"
+          @click="openPlanModal"
         >
           <SlidersHorizontal :size="18" class="shrink-0 text-primary" />
           <span class="min-w-0">
-            <span class="block truncate text-sm font-semibold leading-tight">计划设置</span>
-            <span class="mt-0.5 block truncate text-xs font-medium text-base-content/45">专业和科目</span>
+            <span class="block truncate text-sm font-semibold leading-tight">练习计划</span>
+            <span class="mt-0.5 block truncate text-xs font-medium text-base-content/45">
+              {{ planSubjects.length }} 个科目
+            </span>
           </span>
         </button>
 
@@ -393,7 +375,7 @@ watch(
     <section class="min-w-0 max-w-full overflow-hidden">
       <div class="mb-3 flex items-center justify-between">
         <h2 class="text-lg font-semibold">刷题科目</h2>
-        <span class="text-sm text-base-content/45">{{ practiceSubjectIds.size }} 个科目</span>
+        <span class="text-sm text-base-content/45">{{ planSubjects.length }} 个科目</span>
       </div>
 
       <div class="w-full min-w-0 max-w-full overflow-hidden rounded-2xl border border-base-200 bg-base-100">
@@ -403,17 +385,17 @@ watch(
         >
           <div class="-ml-1 flex min-w-0 flex-1 gap-5 overflow-x-auto pr-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <button
-              v-for="group in visibleSubjectGroups"
-              :key="group.subject.id"
+              v-for="subject in visibleSubjects"
+              :key="subject.code"
               class="flex max-w-[7.25rem] shrink-0 flex-col items-center pt-2 text-sm transition"
-              :class="activeSubjectGroup?.subject.id === group.subject.id ? 'font-semibold text-base-content' : 'font-medium text-base-content/45'"
+              :class="activeSubject?.code === subject.code ? 'font-semibold text-base-content' : 'font-medium text-base-content/45'"
               type="button"
-              @click="selectSubject(group.subject.id)"
+              @click="selectSubject(subject.code)"
             >
-              <span class="block max-w-full truncate">{{ group.subject.name }}</span>
+              <span class="block max-w-full truncate">{{ subject.name }}</span>
               <span
                 class="mt-1 h-0.5 w-5 rounded-full transition"
-                :class="activeSubjectGroup?.subject.id === group.subject.id ? 'bg-primary' : 'bg-transparent'"
+                :class="activeSubject?.code === subject.code ? 'bg-primary' : 'bg-transparent'"
               ></span>
             </button>
           </div>
@@ -428,29 +410,29 @@ watch(
         </div>
 
         <EmptyState
-          v-if="!hasPracticePlan"
+          v-if="planLoading"
           :icon="Target"
-          title="暂无刷题科目"
-          description="先设置刷题计划。"
-          action-label="设置计划"
-          @action="openSelector"
+          title="加载中"
+          description="正在获取练习计划…"
         />
 
         <EmptyState
-          v-else-if="orderedSubjectGroups.length === 0"
+          v-else-if="!hasPracticePlan"
           :icon="Target"
-          title="暂无刷题科目"
-          description="选择专业和科目后，会在这里展示本次要刷的科目。"
+          title="暂无练习计划"
+          description="还没有配置练习计划。"
+          action-label="重新加载"
+          @action="loadPlan"
         />
 
         <EmptyState
-          v-else-if="!activeSubjectGroup"
+          v-else-if="!activeSubject"
           :icon="EyeOff"
           title="所有科目已隐藏"
           description="打开右上角科目管理，恢复需要展示的科目。"
         />
 
-        <template v-else-if="activeSubjectGroup">
+        <template v-else-if="activeSubject">
           <div class="divide-y divide-base-200">
             <div
               v-for="row in activeProjectRows"
@@ -472,7 +454,7 @@ watch(
                   <span class="min-w-0">
                     <span class="block truncate text-base font-semibold leading-tight">{{ row.label }}</span>
                     <span class="mt-1 block truncate text-xs text-base-content/45">
-                      {{ row.preview || `${activeSubjectGroup.subject.name}${row.label}` }}
+                      {{ row.preview || `${activeSubject.name}${row.label}` }}
                     </span>
                   </span>
                 </span>
@@ -518,32 +500,32 @@ watch(
       </div>
     </section>
 
-    <BaseModal v-model="subjectPanelOpen">
+    <BaseModal v-model="subjectPanelOpen" title="科目管理">
       <div class="-m-1 grid gap-1.5">
         <div
-          v-for="(group, index) in orderedSubjectGroups"
-          :key="group.subject.id"
+          v-for="(subject, index) in orderedSubjects"
+          :key="subject.code"
           class="flex min-w-0 items-center gap-2 rounded-2xl border border-base-200 bg-base-100 px-2.5 py-2"
         >
           <button
             class="flex min-w-0 flex-1 items-center gap-2.5 text-left"
             type="button"
-            @click="selectSubject(group.subject.id)"
+            @click="selectSubject(subject.code)"
           >
             <span class="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
-              {{ group.subject.name.slice(0, 1) }}
+              {{ subject.name.slice(0, 1) }}
             </span>
             <span class="min-w-0 flex-1">
               <span class="flex min-w-0 items-center gap-1.5">
-                <span class="truncate text-sm font-semibold">{{ group.subject.name }}</span>
+                <span class="truncate text-sm font-semibold">{{ subject.name }}</span>
                 <Check
-                  v-if="activeSubjectGroup?.subject.id === group.subject.id"
+                  v-if="activeSubject?.code === subject.code"
                   :size="15"
                   class="shrink-0 text-primary"
                 />
               </span>
               <span class="mt-0.5 block truncate text-xs text-base-content/45">
-                {{ group.subject.majorName }} · {{ groupPaperCount(group) }} 个题包
+                {{ subject.code }} · {{ groupPaperCount(subject) }} 个题包
               </span>
             </span>
           </button>
@@ -554,7 +536,7 @@ watch(
               type="button"
               aria-label="上移科目"
               :disabled="index === 0"
-              @click="moveSubject(group.subject.id, -1)"
+              @click="moveSubject(subject.code, -1)"
             >
               <ArrowUp :size="14" />
             </button>
@@ -562,29 +544,29 @@ watch(
               class="btn btn-square btn-ghost btn-xs text-base-content/55"
               type="button"
               aria-label="下移科目"
-              :disabled="index === orderedSubjectGroups.length - 1"
-              @click="moveSubject(group.subject.id, 1)"
+              :disabled="index === orderedSubjects.length - 1"
+              @click="moveSubject(subject.code, 1)"
             >
               <ArrowDown :size="14" />
             </button>
             <button
               class="btn btn-square btn-ghost btn-xs"
-              :class="hiddenSubjectIds.has(group.subject.id) ? 'text-base-content/35' : 'text-primary'"
+              :class="hiddenSubjectIds.has(subject.code) ? 'text-base-content/35' : 'text-primary'"
               type="button"
-              :aria-label="hiddenSubjectIds.has(group.subject.id) ? '显示科目' : '隐藏科目'"
-              @click="toggleSubjectVisibility(group.subject.id)"
+              :aria-label="hiddenSubjectIds.has(subject.code) ? '显示科目' : '隐藏科目'"
+              @click="toggleSubjectVisibility(subject.code)"
             >
-              <EyeOff v-if="hiddenSubjectIds.has(group.subject.id)" :size="15" />
+              <EyeOff v-if="hiddenSubjectIds.has(subject.code)" :size="15" />
               <Eye v-else :size="15" />
             </button>
           </div>
         </div>
 
         <EmptyState
-          v-if="orderedSubjectGroups.length === 0"
+          v-if="orderedSubjects.length === 0"
           :icon="Target"
           title="暂无可管理科目"
-          description="先在上方选择本次考试要刷的科目。"
+          description="暂无练习计划科目。"
         />
       </div>
     </BaseModal>
@@ -593,11 +575,72 @@ watch(
       <PracticeSettingsContent />
     </BaseModal>
 
-    <PracticePlanModal
-      v-model="selectorModalOpen"
-      :major-id="practiceMajorId"
-      :subject-ids="[...practiceSubjectIds]"
-      @apply="applyPracticePlan"
-    />
+    <BaseModal v-model="planModalOpen" title="练习计划">
+      <div>
+        <p class="mb-1.5 text-xs font-medium text-base-content/50">专业</p>
+        <select
+          class="select select-bordered h-10 w-full rounded-2xl text-sm"
+          :value="draftMajorId"
+          @change="draftMajorId = ($event.target as HTMLSelectElement).value; onMajorChange()"
+        >
+          <option value="">请选择专业</option>
+          <option v-for="major in majorOptions" :key="major.id" :value="major.id">
+            {{ major.name }}
+          </option>
+        </select>
+      </div>
+
+      <div class="mt-4">
+        <p class="mb-1.5 text-xs font-medium text-base-content/50">刷题科目</p>
+        <div class="max-h-72 overflow-y-auto rounded-2xl bg-base-200/70">
+          <div v-if="subjectOptionsLoading" class="flex items-center justify-center p-6">
+            <span class="loading loading-spinner loading-sm"></span>
+          </div>
+          <template v-else>
+            <label
+              v-for="subject in subjectOptions"
+              :key="subject.id"
+              class="flex cursor-pointer items-center gap-3 border-b border-base-200 p-3 last:border-b-0 hover:bg-base-200"
+              :class="{ 'bg-primary/5': draftSubjectIds.has(subject.id) }"
+            >
+              <input
+                type="checkbox"
+                class="checkbox checkbox-sm checkbox-primary"
+                :checked="draftSubjectIds.has(subject.id)"
+                @change="toggleDraftSubject(subject.id)"
+              />
+              <span class="flex-1 text-sm">{{ subject.name }}</span>
+              <span class="text-xs text-base-content/40">{{ subject.code }}</span>
+              <Check v-if="draftSubjectIds.has(subject.id)" :size="16" class="text-primary" />
+            </label>
+            <div v-if="!draftMajorId" class="p-4 text-center text-sm text-base-content/50">
+              请先选择专业
+            </div>
+            <div v-else-if="subjectOptions.length === 0" class="p-4 text-center text-sm text-base-content/50">
+              该专业暂无科目
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <template #footer>
+        <button
+          class="btn btn-ghost btn-sm flex-1 rounded-full"
+          type="button"
+          @click="planModalOpen = false"
+        >
+          取消
+        </button>
+        <button
+          class="btn btn-primary btn-sm flex-1 rounded-full"
+          type="button"
+          :disabled="planSaving || !draftMajorId"
+          @click="savePlan"
+        >
+          <span v-if="planSaving" class="loading loading-spinner loading-xs"></span>
+          保存
+        </button>
+      </template>
+    </BaseModal>
   </section>
 </template>

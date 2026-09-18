@@ -248,6 +248,12 @@ export type Major = {
   name: string
 }
 
+export type OptionItem = {
+  id: string
+  code: string
+  name: string
+}
+
 // ---- Dashboard (mock) ----
 
 export type DashboardTodayStats = {
@@ -282,6 +288,23 @@ export type DashboardSummary = {
 }
 
 // ---- Practice placeholders ----
+
+export type PracticePlanSubject = {
+  name: string
+  code: string
+}
+
+export type PracticePlan = {
+  majorName: string
+  majorCode: string
+  subjects: PracticePlanSubject[]
+}
+
+export type UpdatePracticePlanBody = {
+  majorId: string
+  majorCode?: string
+  subjectIds?: string[]
+}
 
 export type PracticeMode = 'paper' | 'multi-paper' | 'subject'
 

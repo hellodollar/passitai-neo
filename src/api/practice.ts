@@ -1,5 +1,22 @@
 import { request } from '@/api/http'
-import type { CreatePracticeSessionBody, PracticeOverview, PracticeSession } from '@/types/domain'
+import type {
+  CreatePracticeSessionBody,
+  PracticeOverview,
+  PracticePlan,
+  PracticeSession,
+  UpdatePracticePlanBody,
+} from '@/types/domain'
+
+export function fetchPracticePlan() {
+  return request<PracticePlan>('/practice/plan')
+}
+
+export function updatePracticePlan(payload: UpdatePracticePlanBody) {
+  return request<PracticePlan>('/practice/plan', {
+    method: 'PUT',
+    body: payload,
+  })
+}
 
 export function fetchPracticeOverview() {
   return request<PracticeOverview>('/practice')
