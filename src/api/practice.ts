@@ -1,6 +1,7 @@
 import { request } from '@/api/http'
 import type {
   CreatePracticeSessionBody,
+  PracticeEntry,
   PracticeOverview,
   PracticePlan,
   PracticeSession,
@@ -15,6 +16,12 @@ export function updatePracticePlan(payload: UpdatePracticePlanBody) {
   return request<PracticePlan>('/practice/plan', {
     method: 'PUT',
     body: payload,
+  })
+}
+
+export function fetchPracticeEntries(subjectCode: string) {
+  return request<PracticeEntry[]>('/practice/entries', {
+    query: { code: subjectCode },
   })
 }
 

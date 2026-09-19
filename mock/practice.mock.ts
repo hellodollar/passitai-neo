@@ -63,6 +63,73 @@ export default defineMock([
     },
   },
   {
+    url: '/api/practice/entries',
+    method: 'GET',
+    delay: 100,
+    body: ({ query = {} } = {}) => {
+      const code = (query.code as string) || '00000'
+      return ok([
+        {
+          type: 'practice',
+          name: '专项训练',
+          description: '速通核心考点，建立能力基准',
+          questionCount: 120,
+          answeredCount: 30,
+          children: [
+            { paperId: `paper_${code}_p1`, name: '考点通练', questionCount: 40, answeredCount: 12 },
+            { paperId: `paper_${code}_p2`, name: '高频考点', questionCount: 40, answeredCount: 10 },
+            { paperId: `paper_${code}_p3`, name: '易错强化', questionCount: 40, answeredCount: 8 },
+          ],
+        },
+        {
+          type: 'pastExam',
+          name: '历年真题',
+          description: '直刷历年真题，熟悉真实考情',
+          questionCount: 90,
+          answeredCount: 20,
+          children: [
+            {
+              paperId: `paper_${code}_e1`,
+              name: '2024年真题',
+              questionCount: 30,
+              answeredCount: 10,
+            },
+            {
+              paperId: `paper_${code}_e2`,
+              name: '2023年真题',
+              questionCount: 30,
+              answeredCount: 6,
+            },
+            {
+              paperId: `paper_${code}_e3`,
+              name: '2022年真题',
+              questionCount: 30,
+              answeredCount: 4,
+            },
+          ],
+        },
+        {
+          type: 'mock',
+          name: '考前模拟',
+          description: '模拟考场，检验水平',
+          questionCount: 60,
+          answeredCount: 0,
+          children: [
+            { paperId: `paper_${code}_m1`, name: '模拟卷一', questionCount: 30, answeredCount: 0 },
+            { paperId: `paper_${code}_m2`, name: '模拟卷二', questionCount: 30, answeredCount: 0 },
+          ],
+        },
+        {
+          type: 'ai',
+          name: 'AI训练',
+          description: '边刷边懂你，动态调整训练',
+          questionCount: 0,
+          answeredCount: 0,
+        },
+      ])
+    },
+  },
+  {
     url: '/api/wrong-questions',
     method: 'GET',
     delay: 100,

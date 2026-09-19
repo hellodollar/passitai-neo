@@ -24,15 +24,13 @@ import BaseModal from '@/components/common/BaseModal.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import PracticeSettingsContent from '@/components/common/PracticeSettingsContent.vue'
 import { fetchMajorOptions, fetchSubjectOptions } from '@/api/catalog'
-import { fetchPracticePlan, updatePracticePlan } from '@/api/practice'
+import { fetchPracticeEntries, fetchPracticePlan, updatePracticePlan } from '@/api/practice'
 import { useAppStore } from '@/stores/app'
-import type { OptionItem, PracticePlan } from '@/types/domain'
+import type { OptionItem, PracticeEntry, PracticeEntryChild, PracticePlan } from '@/types/domain'
 
 const router = useRouter()
 const app = useAppStore()
 const examDate = new Date('2026-10-20T00:00:00+08:00')
-
-type SubjectProjectKey = 'practice' | 'pastExam' | 'mock' | 'ai'
 
 const settingsModalOpen = ref(false)
 const subjectPanelOpen = ref(false)
@@ -50,61 +48,22 @@ const subjectOptionsLoading = ref(false)
 const subjectOrder = ref<string[]>([])
 const hiddenSubjectIds = ref<Set<string>>(new Set())
 const activeSubjectCode = ref('')
-const expandedProjectKey = ref<SubjectProjectKey | ''>('')
+const expandedEntryKey = ref('')
 
-type CategoryPaper = {
-  id: string
-  name: string
-  subtitle: string
-  isMock?: boolean
+const entries = ref<PracticeEntry[]>([])
+const entriesLoading = ref(false)
+
+type EntryTone = 'primary' | 'secondary' | 'accent' | 'info'
+
+const entryStyles: Record<string, { tone: EntryTone; icon: typeof FileStack }> = {
+  practice: { tone: 'primary', icon: FileStack },
+  pastExam: { tone: 'secondary', icon: BookOpenCheck },
+  mock: { tone: 'accent', icon: ClipboardList },
+  ai: { tone: 'info', icon: Sparkles },
 }
 
-const subjectCategories: Array<{
-  key: SubjectProjectKey
-  label: string
-  category: string | null
-  color: 'primary' | 'secondary' | 'accent' | 'info'
-  icon: typeof FileStack
-}> = [
-  { key: 'practice', label: '专项练习', category: 'practice', color: 'primary', icon: FileStack },
-  { key: 'pastExam', label: '历年真题', category: 'pastExam', color: 'secondary', icon: BookOpenCheck },
-  { key: 'mock', label: '考前模拟', category: 'mock', color: 'accent', icon: ClipboardList },
-  { key: 'ai', label: 'AI强化训练', category: null, color: 'info', icon: Sparkles },
-]
-
-function mockPapersForCategory(subjectName: string, catLabel: string): CategoryPaper[] {
-  if (catLabel === '专项练习') {
-    return [
-      { id: '', name: `${subjectName}-基础概念`, subtitle: '专项', isMock: true },
-      { id: '', name: `${subjectName}-核心考点`, subtitle: '专项', isMock: true },
-      { id: '', name: `${subjectName}-易错题集`, subtitle: '专项', isMock: true },
-    ]
-  }
-  if (catLabel === '历年真题') {
-    return [
-      { id: '', name: `${subjectName}2024年真题`, subtitle: '真题', isMock: true },
-      { id: '', name: `${subjectName}2023年真题`, subtitle: '真题', isMock: true },
-      { id: '', name: `${subjectName}2022年真题`, subtitle: '真题', isMock: true },
-    ]
-  }
-  if (catLabel === '考前模拟') {
-    return [
-      { id: '', name: `${subjectName}模拟卷一`, subtitle: '模拟', isMock: true },
-      { id: '', name: `${subjectName}模拟卷二`, subtitle: '模拟', isMock: true },
-    ]
-  }
-  return [
-    { id: '', name: `${subjectName}强化卷202510`, subtitle: 'AI 智能组卷', isMock: true },
-    { id: '', name: `${subjectName}强化卷202509`, subtitle: 'AI 智能组卷', isMock: true },
-    { id: '', name: `${subjectName}强化卷202508`, subtitle: 'AI 智能组卷', isMock: true },
-  ]
-}
-
-function categoryPapers(
-  subjectName: string,
-  cat: (typeof subjectCategories)[number],
-): CategoryPaper[] {
-  return mockPapersForCategory(subjectName, cat.label)
+function entryStyle(type: string) {
+  return entryStyles[type] ?? { tone: 'primary' as EntryTone, icon: FileStack }
 }
 
 const planMajorName = computed(() => plan.value?.majorName ?? '')
@@ -129,48 +88,35 @@ const visibleSubjects = computed(() =>
 )
 
 const activeSubject = computed(
-  () => visibleSubjects.value.find((subject) => subject.code === activeSubjectCode.value)
-    ?? visibleSubjects.value[0],
+  () =>
+    visibleSubjects.value.find((subject) => subject.code === activeSubjectCode.value) ??
+    visibleSubjects.value[0],
 )
 
-const activeProjectRows = computed(() => {
-  const subject = activeSubject.value
-  if (!subject) return []
-  return subjectCategories.map((cat) => {
-    const papers = categoryPapers(subject.name, cat)
-    return {
-      ...cat,
-      papers,
-      count: papers.length,
-      preview: papers.slice(0, 2).map((paper) => paper.name).join('、'),
-    }
-  })
-})
+const entryRows = computed(() =>
+  entries.value.map((entry) => ({
+    ...entry,
+    ...entryStyle(entry.type),
+  })),
+)
 
-function groupPaperCount(subject: { name: string; code: string }) {
-  return subjectCategories.reduce(
-    (sum, cat) => sum + categoryPapers(subject.name, cat).length,
-    0,
-  )
-}
-
-function categoryToneClasses(color: (typeof subjectCategories)[number]['color']) {
+function entryToneClasses(tone: EntryTone) {
   const map = {
     accent: 'bg-accent/15 text-accent',
     info: 'bg-info/10 text-info',
     primary: 'bg-primary/10 text-primary',
     secondary: 'bg-secondary/10 text-secondary',
   }
-  return map[color]
+  return map[tone]
 }
 
 function selectSubject(code: string) {
   activeSubjectCode.value = code
-  expandedProjectKey.value = ''
+  expandedEntryKey.value = ''
 }
 
-function toggleProjectExpand(projectKey: SubjectProjectKey) {
-  expandedProjectKey.value = expandedProjectKey.value === projectKey ? '' : projectKey
+function toggleEntryExpand(key: string) {
+  expandedEntryKey.value = expandedEntryKey.value === key ? '' : key
 }
 
 function syncSubjectOrder() {
@@ -180,7 +126,9 @@ function syncSubjectOrder() {
     ...codes.filter((code) => !subjectOrder.value.includes(code)),
   ]
 
-  hiddenSubjectIds.value = new Set([...hiddenSubjectIds.value].filter((code) => codes.includes(code)))
+  hiddenSubjectIds.value = new Set(
+    [...hiddenSubjectIds.value].filter((code) => codes.includes(code)),
+  )
 
   const visibleIds = subjectOrder.value.filter((code) => !hiddenSubjectIds.value.has(code))
   if (!activeSubjectCode.value || !visibleIds.includes(activeSubjectCode.value)) {
@@ -211,10 +159,25 @@ function toggleSubjectVisibility(code: string) {
   syncSubjectOrder()
 }
 
-function startPaper(paper: CategoryPaper) {
-  if (paper.id) {
-    app.startPracticeSession([paper.id])
-    router.push({ name: 'session' })
+function startEntryPaper(child: PracticeEntryChild) {
+  if (!child.paperId) return
+  app.startPracticeSession([child.paperId])
+  router.push({ name: 'session' })
+}
+
+async function loadEntries() {
+  const subject = activeSubject.value
+  if (!subject) {
+    entries.value = []
+    return
+  }
+  entriesLoading.value = true
+  try {
+    entries.value = await fetchPracticeEntries(subject.code)
+  } catch {
+    entries.value = []
+  } finally {
+    entriesLoading.value = false
   }
 }
 
@@ -264,9 +227,7 @@ async function openPlanModal() {
 
   await loadMajorOptions()
 
-  const matchedMajor = majorOptions.value.find(
-    (major) => major.code === plan.value?.majorCode,
-  )
+  const matchedMajor = majorOptions.value.find((major) => major.code === plan.value?.majorCode)
   draftMajorId.value = matchedMajor?.id ?? ''
 
   if (!draftMajorId.value) return
@@ -282,6 +243,11 @@ async function openPlanModal() {
 async function onMajorChange() {
   draftSubjectIds.value = new Set()
   await loadSubjectOptions(draftMajorId.value)
+}
+
+function onMajorSelect(event: Event) {
+  draftMajorId.value = (event.target as HTMLSelectElement).value
+  void onMajorChange()
 }
 
 function toggleDraftSubject(id: string) {
@@ -324,13 +290,28 @@ watch(
   },
   { immediate: true },
 )
+
+watch(
+  () => activeSubject.value?.code ?? '',
+  () => {
+    expandedEntryKey.value = ''
+    void loadEntries()
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
-  <section class="flex min-h-[calc(100vh-8rem)] w-full min-w-0 max-w-full flex-col gap-4 overflow-x-hidden">
-    <section class="w-full min-w-0 max-w-full overflow-hidden rounded-2xl border border-base-200 bg-base-100 p-4">
+  <section
+    class="flex min-h-[calc(100vh-8rem)] w-full min-w-0 max-w-full flex-col gap-4 overflow-x-hidden"
+  >
+    <section
+      class="w-full min-w-0 max-w-full overflow-hidden rounded-2xl border border-base-200 bg-base-100 p-4"
+    >
       <div class="flex w-full min-w-0 items-start gap-3 text-left">
-        <span class="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+        <span
+          class="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"
+        >
           <GraduationCap :size="22" />
         </span>
         <span class="min-w-0 flex-1">
@@ -338,7 +319,8 @@ watch(
             {{ hasPracticePlan ? planMajorName || '当前计划' : '暂无练习计划' }}
           </span>
           <span class="mt-1 block truncate text-sm font-medium text-base-content/50">
-            {{ hasPracticePlan && planMajorCode ? `${planMajorCode} · ` : '' }}{{ examCountdownText }}
+            {{ hasPracticePlan && planMajorCode ? `${planMajorCode} · ` : ''
+            }}{{ examCountdownText }}
           </span>
         </span>
       </div>
@@ -366,7 +348,9 @@ watch(
           <Settings2 :size="18" class="shrink-0 text-primary" />
           <span class="min-w-0">
             <span class="block truncate text-sm font-semibold leading-tight">练习设置</span>
-            <span class="mt-0.5 block truncate text-xs font-medium text-base-content/45">答题与解析</span>
+            <span class="mt-0.5 block truncate text-xs font-medium text-base-content/45"
+              >答题与解析</span
+            >
           </span>
         </button>
       </div>
@@ -378,17 +362,25 @@ watch(
         <span class="text-sm text-base-content/45">{{ planSubjects.length }} 个科目</span>
       </div>
 
-      <div class="w-full min-w-0 max-w-full overflow-hidden rounded-2xl border border-base-200 bg-base-100">
+      <div
+        class="w-full min-w-0 max-w-full overflow-hidden rounded-2xl border border-base-200 bg-base-100"
+      >
         <div
           v-if="hasPracticePlan"
           class="flex items-center gap-2 border-b border-base-200/70 px-4 py-1.5"
         >
-          <div class="-ml-1 flex min-w-0 flex-1 gap-5 overflow-x-auto pr-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div
+            class="-ml-1 flex min-w-0 flex-1 gap-5 overflow-x-auto pr-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
             <button
               v-for="subject in visibleSubjects"
               :key="subject.code"
               class="flex max-w-[7.25rem] shrink-0 flex-col items-center pt-2 text-sm transition"
-              :class="activeSubject?.code === subject.code ? 'font-semibold text-base-content' : 'font-medium text-base-content/45'"
+              :class="
+                activeSubject?.code === subject.code
+                  ? 'font-semibold text-base-content'
+                  : 'font-medium text-base-content/45'
+              "
               type="button"
               @click="selectSubject(subject.code)"
             >
@@ -433,64 +425,88 @@ watch(
         />
 
         <template v-else-if="activeSubject">
-          <div class="divide-y divide-base-200">
-            <div
-              v-for="row in activeProjectRows"
-              :key="row.key"
-              class="min-w-0"
-            >
+          <div v-if="entriesLoading" class="flex items-center justify-center p-6">
+            <span class="loading loading-spinner loading-sm"></span>
+          </div>
+
+          <EmptyState
+            v-else-if="entryRows.length === 0"
+            :icon="Target"
+            title="暂无练习入口"
+            :description="`${activeSubject.name} 暂无可用练习入口。`"
+          />
+
+          <div v-else class="divide-y divide-base-200">
+            <div v-for="entry in entryRows" :key="entry.type" class="min-w-0">
               <button
                 class="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_2rem] items-center gap-2 px-4 py-4 text-left transition active:bg-base-200/60"
                 type="button"
-                @click="toggleProjectExpand(row.key)"
+                @click="toggleEntryExpand(entry.type)"
               >
                 <span class="flex min-w-0 items-center gap-3">
                   <span
                     class="flex size-10 shrink-0 items-center justify-center rounded-full"
-                    :class="categoryToneClasses(row.color)"
+                    :class="entryToneClasses(entry.tone)"
                   >
-                    <component :is="row.icon" :size="18" />
+                    <component :is="entry.icon" :size="18" />
                   </span>
                   <span class="min-w-0">
-                    <span class="block truncate text-base font-semibold leading-tight">{{ row.label }}</span>
+                    <span class="block truncate text-base font-semibold leading-tight">{{
+                      entry.name
+                    }}</span>
                     <span class="mt-1 block truncate text-xs text-base-content/45">
-                      {{ row.preview || `${activeSubject.name}${row.label}` }}
+                      {{ entry.description || entry.name }}
                     </span>
                   </span>
                 </span>
 
                 <span class="flex items-center justify-end text-base-content/35">
                   <ChevronRight
+                    v-if="entry.children && entry.children.length > 0"
                     :size="20"
                     class="transition-transform"
-                    :class="{ 'rotate-90 text-primary': expandedProjectKey === row.key }"
+                    :class="{ 'rotate-90 text-primary': expandedEntryKey === entry.type }"
                   />
+                  <span
+                    v-else
+                    class="rounded-full bg-info/10 px-2 py-0.5 text-[11px] font-semibold text-info"
+                  >
+                    AI
+                  </span>
                 </span>
               </button>
 
               <div
-                v-show="expandedProjectKey === row.key"
+                v-if="entry.children && entry.children.length > 0"
+                v-show="expandedEntryKey === entry.type"
                 class="border-t border-base-200 bg-base-200/25 px-4 py-2"
               >
                 <button
-                  v-for="paper in row.papers"
-                  :key="paper.id || paper.name"
+                  v-for="child in entry.children"
+                  :key="child.paperId"
                   class="group flex w-full min-w-0 items-center gap-3 rounded-xl px-1 py-2.5 text-left transition active:bg-base-200"
                   type="button"
-                  @click="startPaper(paper)"
+                  @click="startEntryPaper(child)"
                 >
-                  <span class="flex size-8 shrink-0 items-center justify-center rounded-xl bg-base-100 text-primary">
+                  <span
+                    class="flex size-8 shrink-0 items-center justify-center rounded-xl bg-base-100 text-primary"
+                  >
                     <FileStack :size="16" />
                   </span>
                   <span class="min-w-0 flex-1">
-                    <span class="block truncate text-sm font-medium">{{ paper.name }}</span>
-                    <span class="mt-0.5 block truncate text-xs" :class="paper.isMock ? 'text-info' : 'text-base-content/40'">
-                      {{ paper.subtitle || row.label }}
+                    <span class="block truncate text-sm font-medium">{{ child.name }}</span>
+                    <span class="mt-0.5 block truncate text-xs text-base-content/40">
+                      {{ child.answeredCount }}/{{ child.questionCount }} 题
                     </span>
                   </span>
-                  <span class="inline-flex shrink-0 items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1.5 text-xs font-semibold text-primary">
-                    {{ paper.id ? '开始' : '预览' }}
-                    <ArrowRight :size="12" class="transition-transform group-active:translate-x-0.5" />
+                  <span
+                    class="inline-flex shrink-0 items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1.5 text-xs font-semibold text-primary"
+                  >
+                    开始
+                    <ArrowRight
+                      :size="12"
+                      class="transition-transform group-active:translate-x-0.5"
+                    />
                   </span>
                 </button>
               </div>
@@ -512,7 +528,9 @@ watch(
             type="button"
             @click="selectSubject(subject.code)"
           >
-            <span class="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
+            <span
+              class="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary"
+            >
               {{ subject.name.slice(0, 1) }}
             </span>
             <span class="min-w-0 flex-1">
@@ -525,7 +543,7 @@ watch(
                 />
               </span>
               <span class="mt-0.5 block truncate text-xs text-base-content/45">
-                {{ subject.code }} · {{ groupPaperCount(subject) }} 个题包
+                {{ subject.code }}
               </span>
             </span>
           </button>
@@ -581,7 +599,7 @@ watch(
         <select
           class="select select-bordered h-10 w-full rounded-2xl text-sm"
           :value="draftMajorId"
-          @change="draftMajorId = ($event.target as HTMLSelectElement).value; onMajorChange()"
+          @change="onMajorSelect"
         >
           <option value="">请选择专业</option>
           <option v-for="major in majorOptions" :key="major.id" :value="major.id">
@@ -616,7 +634,10 @@ watch(
             <div v-if="!draftMajorId" class="p-4 text-center text-sm text-base-content/50">
               请先选择专业
             </div>
-            <div v-else-if="subjectOptions.length === 0" class="p-4 text-center text-sm text-base-content/50">
+            <div
+              v-else-if="subjectOptions.length === 0"
+              class="p-4 text-center text-sm text-base-content/50"
+            >
               该专业暂无科目
             </div>
           </template>

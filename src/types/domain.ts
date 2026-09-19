@@ -306,6 +306,24 @@ export type UpdatePracticePlanBody = {
   subjectIds?: string[]
 }
 
+export type PracticeEntryChild = {
+  paperId: string
+  name: string
+  questionCount: number
+  answeredCount: number
+}
+
+export type PracticeEntry = {
+  type: string
+  name: string
+  description: string
+  questionCount: number
+  answeredCount: number
+  children?: PracticeEntryChild[]
+}
+
+export type PracticeEntryType = 'practice' | 'pastExam' | 'mock' | 'ai'
+
 export type PracticeMode = 'paper' | 'multi-paper' | 'subject'
 
 export type PracticeOverview = {

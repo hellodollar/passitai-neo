@@ -316,6 +316,7 @@ interface DashboardSummary {
 GET  /api/practice
 GET  /api/practice/plan
 PUT  /api/practice/plan
+GET  /api/practice/entries
 POST /api/practice/sessions
 GET  /api/practice/sessions/:id
 ```
@@ -361,6 +362,40 @@ interface UpdatePracticePlanBody {
 - `subjectIds` 是用户选择的科目 ID 数组，可为空或省略；服务端只保存这些选择，并忽略不属于该专业的科目。
 - `majorCode` 可选，服务端以专业实际 `code` 为准。
 - 更新成功后返回与 `GET /api/practice/plan` 相同的 `PracticePlan`。
+
+### 科目练习入口
+
+```http
+GET /api/practice/entries?code=<subject-code>
+```
+
+根据科目 `code` 返回该科目的练习入口列表（训练章节）。当前为 mock 数据，数据来源与存储表待补充：
+
+```ts
+interface PracticeEntry {
+  type: 'practice' | 'pastExam' | 'mock' | 'ai' | string
+  name: string
+  description: string
+  questionCount: number
+  answeredCount: number
+  children?: {
+    paperId: string
+    name: string
+    questionCount: number
+    answeredCount: number
+  }[]
+}
+```
+
+固定四类入口：
+
+- `practice` 专项训练：带 `children`，展开题集（考点通练、高频考点、易错强化）。
+- `pastExam` 历年真题：带 `children`，展开历年真题卷。
+- `mock` 考前模拟：带 `children`，展开系统后台生成的通用标准模拟卷。
+- `ai` AI训练：不带 `children`，点击后弹出模态框选择配置（规划中），确定后生成对应 AI 练习题。
+
+`description` 是入口的简短说明，供页面副标题展示。带 `children` 的入口点击后展开选择题集；不带
+`children` 的入口按 `type` 决定交互（当前仅 `ai`）。
 
 ### 练习入口
 
@@ -707,6 +742,7 @@ interface PasswordChangePlaceholder {
 | 真题卷列表         | `GET /papers`                               | 可直接开发             |
 | 试卷题目目录       | `GET /questions?paperId=`                   | 只能展示列表字段       |
 | 练习计划           | `GET /practice/plan`, `PUT /practice/plan`  | 已持久化到用户偏好     |
+| 科目练习入口       | `GET /practice/entries?code=`               | mock 数据              |
 | 练习入口           | `GET /practice`, `POST /practice/sessions`  | 会话占位               |
 | 我的记录 / 答题卡  | `GET /records`, `GET /answer-sheets`        | 记录列表 + 答题卡占位  |
 | 收藏               | `GET /favorites`                            | 空列表占位             |
