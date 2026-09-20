@@ -2,6 +2,7 @@
 import { nextTick, onMounted, ref, watch } from 'vue'
 
 import BaseModal from '@/components/common/BaseModal.vue'
+import SettingsToggleItem from '@/components/common/SettingsToggleItem.vue'
 import { fetchPracticeSettings, updatePracticeSettings } from '@/api/practice'
 import type { PracticeSettings } from '@/types/domain'
 
@@ -89,65 +90,31 @@ defineExpose({ practiceSettings })
 <template>
   <BaseModal v-model="model">
     <div class="grid gap-2">
-      <label class="flex items-center justify-between gap-4 rounded-2xl bg-base-200/70 p-3">
-        <span>
-          <span class="block text-sm font-medium">答题正确自动下一题</span>
-          <span class="text-xs text-base-content/50">答对后自动跳转下一题</span>
-        </span>
-        <input
-          type="checkbox"
-          class="toggle toggle-primary toggle-sm"
-          v-model="practiceSettings.autoNextOnCorrect"
-        />
-      </label>
-
-      <label class="flex items-center justify-between gap-4 rounded-2xl bg-base-200/70 p-3">
-        <span>
-          <span class="block text-sm font-medium">记录错题</span>
-          <span class="text-xs text-base-content/50">自动收集答错的题目到错题本</span>
-        </span>
-        <input
-          type="checkbox"
-          class="toggle toggle-primary toggle-sm"
-          v-model="practiceSettings.recordWrongQuestions"
-        />
-      </label>
-
-      <label class="flex items-center justify-between gap-4 rounded-2xl bg-base-200/70 p-3">
-        <span>
-          <span class="block text-sm font-medium">答题后显示解析</span>
-          <span class="text-xs text-base-content/50">提交答案后立即展示题目解析</span>
-        </span>
-        <input
-          type="checkbox"
-          class="toggle toggle-primary toggle-sm"
-          v-model="practiceSettings.showAnalysis"
-        />
-      </label>
-
-      <label class="flex items-center justify-between gap-4 rounded-2xl bg-base-200/70 p-3">
-        <span>
-          <span class="block text-sm font-medium">循环练习</span>
-          <span class="text-xs text-base-content/50">答完一遍后自动重新开始</span>
-        </span>
-        <input
-          type="checkbox"
-          class="toggle toggle-primary toggle-sm"
-          v-model="practiceSettings.loopPractice"
-        />
-      </label>
-
-      <label class="flex items-center justify-between gap-4 rounded-2xl bg-base-200/70 p-3">
-        <span>
-          <span class="block text-sm font-medium">自动交卷</span>
-          <span class="text-xs text-base-content/50">答完全部题目后自动提交</span>
-        </span>
-        <input
-          type="checkbox"
-          class="toggle toggle-primary toggle-sm"
-          v-model="practiceSettings.autoSubmit"
-        />
-      </label>
+      <SettingsToggleItem
+        v-model="practiceSettings.autoNextOnCorrect"
+        title="答题正确自动下一题"
+        description="答对后自动跳转下一题"
+      />
+      <SettingsToggleItem
+        v-model="practiceSettings.recordWrongQuestions"
+        title="记录错题"
+        description="自动收集答错的题目到错题本"
+      />
+      <SettingsToggleItem
+        v-model="practiceSettings.showAnalysis"
+        title="答题后显示解析"
+        description="提交答案后立即展示题目解析"
+      />
+      <SettingsToggleItem
+        v-model="practiceSettings.loopPractice"
+        title="循环练习"
+        description="答完一遍后自动重新开始"
+      />
+      <SettingsToggleItem
+        v-model="practiceSettings.autoSubmit"
+        title="自动交卷"
+        description="答完全部题目后自动提交"
+      />
     </div>
   </BaseModal>
 </template>

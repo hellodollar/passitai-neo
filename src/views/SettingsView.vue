@@ -14,6 +14,7 @@ import { useRouter } from 'vue-router'
 
 import { fetchUserMe } from '@/api/me'
 import BaseModal from '@/components/common/BaseModal.vue'
+import NotificationSettingsContent from '@/components/common/NotificationSettingsContent.vue'
 import PracticePlanModal from '@/components/common/PracticePlanModal.vue'
 import PracticeSettingsContent from '@/components/common/PracticeSettingsContent.vue'
 import { useAuthStore } from '@/stores/auth'
@@ -237,23 +238,6 @@ onMounted(() => {
 
     <PracticeSettingsContent v-model="practiceSettingsModalOpen" />
 
-    <BaseModal v-model="notificationModalOpen" title="通知设置">
-      <div class="grid gap-2">
-        <label class="flex items-center justify-between gap-4 rounded-2xl bg-base-200/70 p-3">
-          <span>
-            <span class="block text-sm font-medium">学习提醒</span>
-            <span class="text-xs text-base-content/50">功能占位</span>
-          </span>
-          <input type="checkbox" class="toggle toggle-primary toggle-sm" disabled />
-        </label>
-        <label class="flex items-center justify-between gap-4 rounded-2xl bg-base-200/70 p-3">
-          <span>
-            <span class="block text-sm font-medium">系统消息</span>
-            <span class="text-xs text-base-content/50">功能占位</span>
-          </span>
-          <input type="checkbox" class="toggle toggle-primary toggle-sm" disabled />
-        </label>
-      </div>
-    </BaseModal>
+    <NotificationSettingsContent v-model="notificationModalOpen" />
   </section>
 </template>

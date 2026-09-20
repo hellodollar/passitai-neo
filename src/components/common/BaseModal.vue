@@ -5,6 +5,7 @@ const model = defineModel<boolean>({ default: false })
 
 defineProps<{
   title?: string
+  compactFooter?: boolean
 }>()
 
 function close() {
@@ -41,7 +42,12 @@ function close() {
 
         <div
           v-if="$slots.footer"
-          class="flex gap-2 border-t border-base-200 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]"
+          class="flex gap-2 border-t border-base-200"
+          :class="
+            compactFooter
+              ? 'items-center justify-end px-4 py-1.5 pb-[calc(0.375rem+env(safe-area-inset-bottom))]'
+              : 'p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]'
+          "
         >
           <slot name="footer"></slot>
         </div>
