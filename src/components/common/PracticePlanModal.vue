@@ -23,6 +23,7 @@ const emit = defineEmits<{
 
 const majorOptions = ref<OptionItem[]>([])
 const subjectOptions = ref<OptionItem[]>([])
+const displaySubjects = ref<OptionItem[]>([])
 const draftMajorId = ref('')
 const draftSubjectIds = ref<Set<string>>(new Set())
 const subjectOptionsLoading = ref(false)
@@ -43,6 +44,7 @@ async function loadMajorOptions() {
 async function loadSubjectOptions(majorId: string) {
   if (!majorId) {
     subjectOptions.value = []
+    displaySubjects.value = []
     return
   }
   subjectOptionsLoading.value = true
@@ -55,10 +57,18 @@ async function loadSubjectOptions(majorId: string) {
   }
 }
 
+function applySelectedFirst() {
+  displaySubjects.value = [
+    ...subjectOptions.value.filter((subject) => draftSubjectIds.value.has(subject.id)),
+    ...subjectOptions.value.filter((subject) => !draftSubjectIds.value.has(subject.id)),
+  ]
+}
+
 async function syncDraft() {
   draftMajorId.value = ''
   draftSubjectIds.value = new Set()
   subjectOptions.value = []
+  displaySubjects.value = []
 
   await loadMajorOptions()
 
@@ -73,12 +83,14 @@ async function syncDraft() {
   draftSubjectIds.value = new Set(
     subjectOptions.value.filter((option) => planCodes.has(option.code)).map((option) => option.id),
   )
+  applySelectedFirst()
 }
 
-function onMajorSelect(event: Event) {
+async function onMajorSelect(event: Event) {
   draftMajorId.value = (event.target as HTMLSelectElement).value
   draftSubjectIds.value = new Set()
-  void loadSubjectOptions(draftMajorId.value)
+  await loadSubjectOptions(draftMajorId.value)
+  applySelectedFirst()
 }
 
 function toggleSubject(id: string) {
@@ -150,9 +162,9 @@ watch(model, (open) => {
             <span class="loading loading-spinner loading-sm"></span>
           </div>
           <template v-else>
-            <div v-if="subjectOptions.length > 0" class="divide-y divide-base-200">
+            <div v-if="displaySubjects.length > 0" class="divide-y divide-base-200">
               <label
-                v-for="subject in subjectOptions"
+                v-for="subject in displaySubjects"
                 :key="subject.id"
                 class="flex min-h-11 cursor-pointer items-center gap-2.5 px-3 py-2.5 transition-colors active:bg-base-200"
               >

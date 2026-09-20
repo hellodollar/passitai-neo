@@ -4,13 +4,9 @@ import {
   ArrowDown,
   ArrowUp,
   BookOpenCheck,
-  Check,
-  ChevronRight,
   ClipboardList,
-  Eye,
   EyeOff,
   FileStack,
-  GraduationCap,
   Settings2,
   SlidersHorizontal,
   Sparkles,
@@ -92,6 +88,10 @@ const entryRows = computed(() =>
     ...entryStyle(entry.type),
   })),
 )
+const activeEntry = computed(
+  () =>
+    entryRows.value.find((entry) => entry.type === expandedEntryKey.value) ?? entryRows.value[0],
+)
 
 function entryToneClasses(tone: EntryTone) {
   const map = {
@@ -108,8 +108,8 @@ function selectSubject(code: string) {
   expandedEntryKey.value = ''
 }
 
-function toggleEntryExpand(key: string) {
-  expandedEntryKey.value = expandedEntryKey.value === key ? '' : key
+function selectEntry(key: string) {
+  expandedEntryKey.value = key
 }
 
 function syncSubjectOrder() {
@@ -168,11 +168,16 @@ async function loadEntries() {
     entries.value = []
     return
   }
+  entries.value = []
   entriesLoading.value = true
   try {
     entries.value = await fetchPracticeEntries(subject.code)
+    if (!entries.value.some((entry) => entry.type === expandedEntryKey.value)) {
+      expandedEntryKey.value = entries.value[0]?.type ?? ''
+    }
   } catch {
     entries.value = []
+    expandedEntryKey.value = ''
   } finally {
     entriesLoading.value = false
   }
@@ -217,279 +222,283 @@ watch(
 
 <template>
   <section
-    class="flex min-h-[calc(100vh-8rem)] w-full min-w-0 max-w-full flex-col gap-4 overflow-x-hidden"
+    class="flex min-h-[calc(100vh-8rem)] w-full min-w-0 max-w-full flex-col gap-5 overflow-x-hidden"
   >
-    <section
-      class="w-full min-w-0 max-w-full overflow-hidden rounded-2xl border border-base-200 bg-base-100 p-4"
-    >
-      <div class="flex w-full min-w-0 items-start gap-3 text-left">
-        <span
-          class="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"
-        >
-          <GraduationCap :size="22" />
-        </span>
-        <span class="min-w-0 flex-1">
-          <span class="block truncate text-lg font-semibold leading-tight text-base-content">
-            {{ hasPracticePlan ? planMajorName || '当前计划' : '暂无练习计划' }}
-          </span>
-          <span class="mt-1 block truncate text-sm font-medium text-base-content/50">
-            {{ hasPracticePlan && planMajorCode ? `${planMajorCode} · ` : ''
-            }}{{ examCountdownText }}
-          </span>
-        </span>
+    <header class="flex min-w-0 items-start justify-between gap-3">
+      <div class="min-w-0 flex-1">
+        <h1 class="text-2xl font-semibold leading-tight">练习</h1>
+        <p class="mt-1 truncate text-sm text-base-content/50">
+          <template v-if="planLoading">正在同步练习计划…</template>
+          <template v-else-if="hasPracticePlan">
+            {{ planMajorName || '当前计划' }}{{ planMajorCode ? ` · ${planMajorCode}` : '' }} · 还剩
+            {{ daysUntilExam }} 天
+          </template>
+          <template v-else>设置报考专业与科目后开始练习</template>
+        </p>
       </div>
 
-      <div class="mt-4 grid grid-cols-2 gap-2">
+      <div class="flex shrink-0 items-center gap-1.5">
         <button
-          class="flex h-14 min-w-0 items-center gap-2 rounded-xl bg-base-200/70 px-3 text-left transition-colors active:bg-base-300"
+          class="btn h-9 min-h-9 rounded-xl border-base-200 bg-base-100 px-2.5 text-xs font-medium"
           type="button"
+          aria-label="练习计划"
           @click="planModalOpen = true"
         >
-          <SlidersHorizontal :size="18" class="shrink-0 text-primary" />
-          <span class="min-w-0">
-            <span class="block truncate text-sm font-semibold leading-tight">练习计划</span>
-            <span class="mt-0.5 block truncate text-xs font-medium text-base-content/45">
-              {{ planSubjects.length }} 个科目
-            </span>
-          </span>
+          <SlidersHorizontal :size="15" />
+          计划
         </button>
-
         <button
-          class="flex h-14 min-w-0 items-center gap-2 rounded-xl bg-base-200/70 px-3 text-left transition-colors active:bg-base-300"
+          class="btn h-9 min-h-9 rounded-xl border-base-200 bg-base-100 px-2.5 text-xs font-medium"
           type="button"
+          aria-label="练习设置"
           @click="settingsModalOpen = true"
         >
-          <Settings2 :size="18" class="shrink-0 text-primary" />
-          <span class="min-w-0">
-            <span class="block truncate text-sm font-semibold leading-tight">练习设置</span>
-            <span class="mt-0.5 block truncate text-xs font-medium text-base-content/45"
-              >答题与解析</span
-            >
-          </span>
+          <Settings2 :size="15" />
+          设置
         </button>
       </div>
+    </header>
+
+    <section v-if="planLoading" class="overflow-hidden rounded-2xl border border-base-200">
+      <EmptyState :icon="Target" title="加载中" description="正在获取练习计划…" />
     </section>
 
-    <section class="min-w-0 max-w-full overflow-hidden">
-      <div class="mb-3 flex items-center justify-between">
-        <h2 class="text-lg font-semibold">刷题科目</h2>
-        <span class="text-sm text-base-content/45">{{ planSubjects.length }} 个科目</span>
-      </div>
+    <section
+      v-else-if="!hasPracticePlan"
+      class="overflow-hidden rounded-2xl border border-base-200"
+    >
+      <EmptyState
+        :icon="Target"
+        title="暂无练习计划"
+        description="先选择报考专业与刷题科目。"
+        action-label="设置计划"
+        @action="planModalOpen = true"
+      />
+    </section>
 
-      <div
-        class="w-full min-w-0 max-w-full overflow-hidden rounded-2xl border border-base-200 bg-base-100"
-      >
-        <div
-          v-if="hasPracticePlan"
-          class="flex items-center gap-2 border-b border-base-200/70 px-4 py-1.5"
-        >
-          <div
-            class="-ml-1 flex min-w-0 flex-1 gap-5 overflow-x-auto pr-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-          >
-            <button
-              v-for="subject in visibleSubjects"
-              :key="subject.code"
-              class="flex max-w-[7.25rem] shrink-0 flex-col items-center pt-2 text-sm transition"
-              :class="
-                activeSubject?.code === subject.code
-                  ? 'font-semibold text-base-content'
-                  : 'font-medium text-base-content/45'
-              "
-              type="button"
-              @click="selectSubject(subject.code)"
-            >
-              <span class="block max-w-full truncate">{{ subject.name }}</span>
-              <span
-                class="mt-1 h-0.5 w-5 rounded-full transition"
-                :class="activeSubject?.code === subject.code ? 'bg-primary' : 'bg-transparent'"
-              ></span>
-            </button>
+    <template v-else>
+      <section class="min-w-0 max-w-full overflow-hidden">
+        <div class="mb-3 flex items-center justify-between gap-3">
+          <div>
+            <h2 class="text-lg font-semibold">选择科目</h2>
+            <p class="mt-0.5 text-xs text-base-content/45">切换后展示对应的练习内容</p>
           </div>
           <button
-            class="btn btn-square btn-ghost btn-sm shrink-0 text-base-content/65"
+            class="btn btn-ghost h-8 min-h-8 shrink-0 gap-1 rounded-lg px-2 text-xs font-medium text-base-content/55"
             type="button"
             aria-label="科目管理"
             @click="subjectPanelOpen = true"
           >
-            <SlidersHorizontal :size="21" />
+            <SlidersHorizontal :size="15" />
+            管理
           </button>
         </div>
 
-        <EmptyState
-          v-if="planLoading"
-          :icon="Target"
-          title="加载中"
-          description="正在获取练习计划…"
-        />
+        <div
+          class="flex min-w-0 gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          <button
+            v-for="subject in visibleSubjects"
+            :key="subject.code"
+            class="max-w-[10rem] shrink-0 rounded-xl border px-3 py-2 text-sm font-medium transition-colors"
+            :class="
+              activeSubject?.code === subject.code
+                ? 'border-primary bg-primary/10 text-primary'
+                : 'border-base-200 bg-base-100 text-base-content/65 active:bg-base-200/60'
+            "
+            type="button"
+            :aria-pressed="activeSubject?.code === subject.code"
+            @click="selectSubject(subject.code)"
+          >
+            <span class="block truncate">{{ subject.name }}</span>
+          </button>
+        </div>
+      </section>
 
+      <section
+        v-if="!activeSubject"
+        class="overflow-hidden rounded-2xl border border-base-200 bg-base-100"
+      >
         <EmptyState
-          v-else-if="!hasPracticePlan"
-          :icon="Target"
-          title="暂无练习计划"
-          description="还没有配置练习计划。"
-          action-label="重新加载"
-          @action="loadPlan"
-        />
-
-        <EmptyState
-          v-else-if="!activeSubject"
           :icon="EyeOff"
           title="所有科目已隐藏"
-          description="打开右上角科目管理，恢复需要展示的科目。"
+          description="在科目管理中恢复需要展示的科目。"
+          action-label="管理科目"
+          @action="subjectPanelOpen = true"
+        />
+      </section>
+
+      <section v-else class="min-w-0 max-w-full overflow-hidden">
+        <div class="mb-3 flex items-center justify-between gap-3">
+          <div class="min-w-0">
+            <h2 class="text-lg font-semibold">练习方式</h2>
+            <p class="mt-0.5 truncate text-xs text-base-content/45">{{ activeSubject.name }}</p>
+          </div>
+          <span class="shrink-0 text-xs text-base-content/40">{{ entryRows.length }} 种</span>
+        </div>
+
+        <div v-if="entriesLoading" class="flex min-h-44 items-center justify-center">
+          <span class="loading loading-spinner loading-sm"></span>
+        </div>
+
+        <EmptyState
+          v-else-if="entryRows.length === 0"
+          :icon="Target"
+          title="暂无练习入口"
+          :description="`${activeSubject.name} 暂无可用练习内容。`"
         />
 
-        <template v-else-if="activeSubject">
-          <div v-if="entriesLoading" class="flex items-center justify-center p-6">
-            <span class="loading loading-spinner loading-sm"></span>
+        <template v-else>
+          <div class="grid grid-cols-4 gap-2">
+            <button
+              v-for="entry in entryRows"
+              :key="entry.type"
+              class="flex min-w-0 flex-col items-center rounded-xl border px-1.5 py-2.5 text-center transition-colors"
+              :class="
+                activeEntry?.type === entry.type
+                  ? 'border-primary bg-primary/5 text-primary'
+                  : 'border-base-200 bg-base-100 text-base-content/60 active:bg-base-200/60'
+              "
+              type="button"
+              :aria-pressed="activeEntry?.type === entry.type"
+              @click="selectEntry(entry.type)"
+            >
+              <span
+                class="flex size-8 items-center justify-center rounded-full"
+                :class="entryToneClasses(entry.tone)"
+              >
+                <component :is="entry.icon" :size="16" />
+              </span>
+              <span class="mt-1.5 block max-w-full truncate text-xs font-semibold">
+                {{ entry.name }}
+              </span>
+            </button>
           </div>
 
-          <EmptyState
-            v-else-if="entryRows.length === 0"
-            :icon="Target"
-            title="暂无练习入口"
-            :description="`${activeSubject.name} 暂无可用练习入口。`"
-          />
+          <div
+            v-if="activeEntry"
+            class="mt-3 overflow-hidden rounded-2xl border border-base-200 bg-base-100"
+          >
+            <div class="flex min-w-0 items-center gap-3 border-b border-base-200 px-4 py-3.5">
+              <span
+                class="flex size-9 shrink-0 items-center justify-center rounded-full"
+                :class="entryToneClasses(activeEntry.tone)"
+              >
+                <component :is="activeEntry.icon" :size="17" />
+              </span>
+              <span class="min-w-0 flex-1">
+                <span class="block truncate text-sm font-semibold">{{ activeEntry.name }}</span>
+                <span class="mt-0.5 block truncate text-xs text-base-content/45">
+                  {{ activeEntry.description || activeEntry.name }}
+                </span>
+              </span>
+            </div>
 
-          <div v-else class="divide-y divide-base-200">
-            <div v-for="entry in entryRows" :key="entry.type" class="min-w-0">
+            <div
+              v-if="activeEntry.children && activeEntry.children.length > 0"
+              class="divide-y divide-base-200"
+            >
               <button
-                class="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_2rem] items-center gap-2 px-4 py-4 text-left transition active:bg-base-200/60"
+                v-for="child in activeEntry.children"
+                :key="child.paperId"
+                class="group flex w-full min-w-0 items-center gap-3 px-4 py-3.5 text-left transition active:bg-base-200/50"
                 type="button"
-                @click="toggleEntryExpand(entry.type)"
+                @click="startEntryPaper(child)"
               >
-                <span class="flex min-w-0 items-center gap-3">
-                  <span
-                    class="flex size-10 shrink-0 items-center justify-center rounded-full"
-                    :class="entryToneClasses(entry.tone)"
-                  >
-                    <component :is="entry.icon" :size="18" />
-                  </span>
-                  <span class="min-w-0">
-                    <span class="block truncate text-base font-semibold leading-tight">{{
-                      entry.name
-                    }}</span>
-                    <span class="mt-1 block truncate text-xs text-base-content/45">
-                      {{ entry.description || entry.name }}
-                    </span>
-                  </span>
-                </span>
-
-                <span class="flex items-center justify-end text-base-content/35">
-                  <ChevronRight
-                    v-if="entry.children && entry.children.length > 0"
-                    :size="20"
-                    class="transition-transform"
-                    :class="{ 'rotate-90 text-primary': expandedEntryKey === entry.type }"
-                  />
-                  <span
-                    v-else
-                    class="rounded-full bg-info/10 px-2 py-0.5 text-[11px] font-semibold text-info"
-                  >
-                    AI
-                  </span>
-                </span>
-              </button>
-
-              <div
-                v-if="entry.children && entry.children.length > 0"
-                v-show="expandedEntryKey === entry.type"
-                class="border-t border-base-200 bg-base-200/25 px-4 py-2"
-              >
-                <button
-                  v-for="child in entry.children"
-                  :key="child.paperId"
-                  class="group flex w-full min-w-0 items-center gap-3 rounded-xl px-1 py-2.5 text-left transition active:bg-base-200"
-                  type="button"
-                  @click="startEntryPaper(child)"
+                <span
+                  class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-base-200/70 text-primary"
                 >
-                  <span
-                    class="flex size-8 shrink-0 items-center justify-center rounded-xl bg-base-100 text-primary"
-                  >
-                    <FileStack :size="16" />
-                  </span>
-                  <span class="min-w-0 flex-1">
-                    <span class="block truncate text-sm font-medium">{{ child.name }}</span>
-                    <span class="mt-0.5 block truncate text-xs text-base-content/40">
+                  <FileStack :size="15" />
+                </span>
+                <span class="min-w-0 flex-1">
+                  <span class="block truncate text-sm font-medium">{{ child.name }}</span>
+                  <span class="mt-1 flex items-center gap-2">
+                    <progress
+                      class="progress progress-primary h-1.5 min-w-0 flex-1"
+                      :value="child.answeredCount"
+                      :max="child.questionCount || 1"
+                    ></progress>
+                    <span class="shrink-0 text-[11px] text-base-content/40">
                       {{ child.answeredCount }}/{{ child.questionCount }} 题
                     </span>
                   </span>
-                  <span
-                    class="inline-flex shrink-0 items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1.5 text-xs font-semibold text-primary"
-                  >
-                    开始
-                    <ArrowRight
-                      :size="12"
-                      class="transition-transform group-active:translate-x-0.5"
-                    />
-                  </span>
-                </button>
-              </div>
+                </span>
+                <span
+                  class="inline-flex shrink-0 items-center gap-1 rounded-lg bg-primary/10 px-2.5 py-1.5 text-xs font-semibold text-primary"
+                >
+                  开始
+                  <ArrowRight
+                    :size="12"
+                    class="transition-transform group-active:translate-x-0.5"
+                  />
+                </span>
+              </button>
+            </div>
+
+            <div
+              v-else
+              class="flex min-h-28 flex-col items-center justify-center px-5 py-6 text-center"
+            >
+              <span class="text-sm font-medium">当前暂无可用内容</span>
+              <span class="mt-1 text-xs text-base-content/45">{{ activeEntry.description }}</span>
             </div>
           </div>
         </template>
-      </div>
-    </section>
+      </section>
+    </template>
 
-    <BaseModal v-model="subjectPanelOpen" title="科目管理">
-      <div class="-m-1 grid gap-1.5">
+    <BaseModal v-model="subjectPanelOpen">
+      <div>
+        <h3 class="text-base font-semibold">科目管理</h3>
+        <p class="mt-1 text-xs text-base-content/50">勾选显示，使用箭头调整顺序</p>
+      </div>
+
+      <div class="mt-3 border-y border-base-200 divide-y divide-base-200">
         <div
           v-for="(subject, index) in orderedSubjects"
           :key="subject.code"
-          class="flex min-w-0 items-center gap-2 rounded-2xl border border-base-200 bg-base-100 px-2.5 py-2"
+          class="flex min-h-12 min-w-0 items-center gap-2 py-1.5"
         >
+          <label class="flex size-8 shrink-0 cursor-pointer items-center justify-center">
+            <input
+              type="checkbox"
+              class="checkbox checkbox-xs checkbox-primary"
+              :checked="!hiddenSubjectIds.has(subject.code)"
+              :aria-label="`${subject.name}显示状态`"
+              @change="toggleSubjectVisibility(subject.code)"
+            />
+          </label>
+
           <button
-            class="flex min-w-0 flex-1 items-center gap-2.5 text-left"
+            class="min-w-0 flex-1 truncate text-left text-sm font-medium"
+            :class="[
+              activeSubject?.code === subject.code ? 'text-primary' : '',
+              hiddenSubjectIds.has(subject.code) ? 'text-base-content/35' : '',
+            ]"
             type="button"
             @click="selectSubject(subject.code)"
           >
-            <span
-              class="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary"
-            >
-              {{ subject.name.slice(0, 1) }}
-            </span>
-            <span class="min-w-0 flex-1">
-              <span class="flex min-w-0 items-center gap-1.5">
-                <span class="truncate text-sm font-semibold">{{ subject.name }}</span>
-                <Check
-                  v-if="activeSubject?.code === subject.code"
-                  :size="15"
-                  class="shrink-0 text-primary"
-                />
-              </span>
-              <span class="mt-0.5 block truncate text-xs text-base-content/45">
-                {{ subject.code }}
-              </span>
-            </span>
+            {{ subject.name }}
           </button>
 
           <div class="flex shrink-0 items-center gap-0.5">
             <button
-              class="btn btn-square btn-ghost btn-xs text-base-content/55"
+              class="btn btn-square btn-ghost btn-xs text-base-content/45"
               type="button"
               aria-label="上移科目"
               :disabled="index === 0"
               @click="moveSubject(subject.code, -1)"
             >
-              <ArrowUp :size="14" />
+              <ArrowUp :size="15" />
             </button>
             <button
-              class="btn btn-square btn-ghost btn-xs text-base-content/55"
+              class="btn btn-square btn-ghost btn-xs text-base-content/45"
               type="button"
               aria-label="下移科目"
               :disabled="index === orderedSubjects.length - 1"
               @click="moveSubject(subject.code, 1)"
             >
-              <ArrowDown :size="14" />
-            </button>
-            <button
-              class="btn btn-square btn-ghost btn-xs"
-              :class="hiddenSubjectIds.has(subject.code) ? 'text-base-content/35' : 'text-primary'"
-              type="button"
-              :aria-label="hiddenSubjectIds.has(subject.code) ? '显示科目' : '隐藏科目'"
-              @click="toggleSubjectVisibility(subject.code)"
-            >
-              <EyeOff v-if="hiddenSubjectIds.has(subject.code)" :size="15" />
-              <Eye v-else :size="15" />
+              <ArrowDown :size="15" />
             </button>
           </div>
         </div>
