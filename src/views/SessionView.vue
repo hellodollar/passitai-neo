@@ -123,28 +123,12 @@ const isMultipleQuestion = computed(() => currentQuestion.value?.questionType ==
 const currentAnswerRecord = computed(() =>
   currentQuestion.value ? answerRecords.value[currentQuestion.value.id] : undefined,
 )
-const currentCorrectAnswer = computed(() => getReferenceAnswer(currentQuestion.value))
 const currentExplanation = computed(
   () => (currentQuestion.value as RichQuestionListItem | undefined)?.explanation ?? '',
 )
-const correctOptionValues = computed(() => {
-  const expectedValues = new Set(
-    currentCorrectAnswer.value
-      .split(/[\s,，、;；]/)
-      .map((value) => value.trim().toUpperCase())
-      .filter(Boolean),
-  )
-
-  return new Set(
-    resolvedQuestionOptions.value
-      .filter((option) =>
-        [option.value, option.label, option.text].some((value) =>
-          expectedValues.has(value.trim().toUpperCase()),
-        ),
-      )
-      .map((option) => option.value),
-  )
-})
+const correctOptionValues = computed(
+  () => new Set(getCorrectOptionValues(currentQuestion.value, resolvedQuestionOptions.value)),
+)
 const showOptionFeedback = computed(
   () => Boolean(currentAnswerRecord.value) && correctOptionValues.value.size > 0,
 )
@@ -349,12 +333,27 @@ function getQuestionOptions(question: QuestionListItem | undefined) {
 
   if (numberOptions.length > 0) return uniqueOptions(numberOptions)
 
-  return parsedQuestionTitle.value.options
+  return parseQuestionTitle(question).options
 }
 
 function formatAnswerValue(value: string | string[] | undefined) {
   if (Array.isArray(value)) return value.join('、')
   return value ?? ''
+}
+
+function parseChoiceAnswerValues(value: string | string[] | undefined) {
+  const tokens = formatAnswerValue(value)
+    .trim()
+    .toUpperCase()
+    .split(/[\s,，、;；]/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+
+  if (tokens.length === 1 && /^[A-H]{2,8}$/.test(tokens[0]!)) {
+    return [...tokens[0]!]
+  }
+
+  return tokens
 }
 
 function getReferenceAnswer(question: QuestionListItem | undefined) {
@@ -365,18 +364,39 @@ function getReferenceAnswer(question: QuestionListItem | undefined) {
   )
 }
 
+function getCorrectOptionValues(
+  question: QuestionListItem | undefined,
+  options = getQuestionOptions(question),
+) {
+  if (!question) return []
+
+  const expectedValues = new Set(parseChoiceAnswerValues(getReferenceAnswer(question)))
+  const availableOptions = options.length > 0 ? options : getPreviewOptions(question.questionType)
+
+  return availableOptions
+    .filter((option) =>
+      [option.value, option.label, option.text].some((value) =>
+        expectedValues.has(value.trim().toUpperCase()),
+      ),
+    )
+    .map((option) => option.value)
+}
+
 function isAnswerCorrect(record: PracticeAnswerRecord, question: QuestionListItem) {
-  const reference = getReferenceAnswer(question).toUpperCase()
+  const reference = getReferenceAnswer(question).trim()
   if (!reference) return false
 
-  const expected = reference
-    .split(/[\s,，、;；]/)
-    .map((item) => item.trim())
-    .filter(Boolean)
+  const isChoice = ['single', 'multiple', 'judge'].includes(question.questionType)
+  const expectedValues = isChoice ? getCorrectOptionValues(question) : [reference.toUpperCase()]
+  const actualValues = isChoice
+    ? parseChoiceAnswerValues(record.values)
+    : [record.text.trim().toUpperCase()]
+
+  const expected = expectedValues
+    .map((value) => value.toUpperCase())
     .sort()
     .join(',')
-
-  const actual = record.values
+  const actual = actualValues
     .map((value) => value.toUpperCase())
     .sort()
     .join(',')
@@ -522,7 +542,7 @@ function scheduleAutoAdvance() {
   autoAdvanceTimer.value = window.setTimeout(() => {
     nextQuestion()
     autoAdvanceTimer.value = null
-  }, 380)
+  }, 560)
 }
 
 function toggleFavorite() {
@@ -649,12 +669,7 @@ function buildAnswerRecord(item: PracticeAnswerSheetItem): PracticeAnswerRecord 
   if (!answer) return null
 
   const isChoice = ['single', 'multiple', 'judge'].includes(item.questionType)
-  const values = isChoice
-    ? answer
-        .split(/[\s,，、;；]/)
-        .map((value) => value.trim())
-        .filter(Boolean)
-    : [answer]
+  const values = isChoice ? parseChoiceAnswerValues(answer) : [answer]
 
   if (values.length === 0) return null
 
@@ -770,24 +785,26 @@ watch(
       @touchstart.passive="handleTouchStart"
       @touchend.passive="handleTouchEnd"
     >
-      <section class="min-w-0 px-5 pt-3">
+      <section class="min-w-0 px-5 pt-2">
         <div class="flex items-center justify-between gap-3">
-          <span class="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
+          <span
+            class="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary"
+          >
             {{ currentQuestionTypeLabel }}
           </span>
-          <span class="truncate text-[13px] font-medium text-base-content/45">{{
+          <span class="truncate text-xs font-medium text-base-content/45">{{
             currentSessionTitle
           }}</span>
         </div>
 
-        <h2 class="mt-3 whitespace-pre-line break-words text-base font-medium leading-6">
+        <h2 class="mt-2 whitespace-pre-line break-words text-base font-medium leading-[1.45]">
           {{ displayQuestionTitle }}
         </h2>
       </section>
 
-      <section v-if="expectsChoiceQuestion" class="px-5 pt-4">
+      <section v-if="expectsChoiceQuestion" class="px-5 pt-3">
         <div
-          class="grid gap-2"
+          class="grid gap-1.5"
           :class="currentQuestion.questionType === 'judge' ? 'grid-cols-2' : 'grid-cols-1'"
         >
           <button
@@ -821,11 +838,11 @@ watch(
           :disabled="!canSubmitCurrentAnswer"
           @click="submitCurrentAnswer(true)"
         >
-          确认所选答案
+          确认答案
         </button>
       </section>
 
-      <section v-else class="grid gap-3 px-5 pt-4">
+      <section v-else class="grid gap-3 px-5 pt-3">
         <textarea
           v-model="textAnswer"
           class="textarea min-h-[10rem] w-full resize-none rounded-xl border-base-200 bg-base-200/45 p-3.5 text-[15px] leading-relaxed focus:border-primary focus:bg-base-100 focus:outline-none"
@@ -844,12 +861,12 @@ watch(
         </button>
       </section>
 
-      <section v-if="currentAnswerRecord" class="mx-5 mt-6 border-t border-base-200 pt-4">
+      <section v-if="currentAnswerRecord" class="mx-5 mt-4 border-t border-base-200 pt-3">
         <h3 class="text-sm font-semibold text-base-content">题目解析</h3>
 
         <p
           v-if="currentExplanation"
-          class="mt-2 break-words text-sm leading-6 text-base-content/65"
+          class="mt-1.5 break-words text-sm leading-[1.55] text-base-content/65"
         >
           {{ currentExplanation }}
         </p>
@@ -966,13 +983,19 @@ watch(
           <p class="mb-1.5 text-[13px] font-medium text-base-content/50">
             {{ QUESTION_TYPE_LABELS[type] }}（{{ group.questions.length }}题）
           </p>
-          <div class="grid grid-cols-10 gap-1">
+          <div class="grid grid-cols-7 justify-items-center gap-1.5 sm:grid-cols-10">
             <button
               v-for="(question, offset) in group.questions"
               :key="question.id"
-              class="flex size-7 items-center justify-center rounded-full border text-[11px] font-medium tabular-nums transition active:scale-90"
-              :class="questionResultClasses(question)"
+              class="flex size-9 items-center justify-center rounded-full border text-xs font-medium tabular-nums transition active:scale-90"
+              :class="[
+                questionResultClasses(question),
+                currentIndex === group.startIndex + offset
+                  ? 'ring-2 ring-base-content/20 ring-offset-1 ring-offset-base-100'
+                  : '',
+              ]"
               type="button"
+              :aria-current="currentIndex === group.startIndex + offset ? 'step' : undefined"
               @click="goToQuestion(group.startIndex + offset)"
             >
               {{ group.startIndex + offset + 1 }}
@@ -982,8 +1005,6 @@ watch(
       </div>
     </BaseModal>
 
-    <BaseModal v-model="settingsModalOpen">
-      <PracticeSettingsContent />
-    </BaseModal>
+    <PracticeSettingsContent v-model="settingsModalOpen" />
   </section>
 </template>

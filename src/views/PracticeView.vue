@@ -22,11 +22,11 @@ import { useRouter } from 'vue-router'
 
 import BaseModal from '@/components/common/BaseModal.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
+import PracticePlanModal from '@/components/common/PracticePlanModal.vue'
 import PracticeSettingsContent from '@/components/common/PracticeSettingsContent.vue'
-import { fetchMajorOptions, fetchSubjectOptions } from '@/api/catalog'
-import { fetchPracticeEntries, fetchPracticePlan, updatePracticePlan } from '@/api/practice'
+import { fetchPracticeEntries, fetchPracticePlan } from '@/api/practice'
 import { useAppStore } from '@/stores/app'
-import type { OptionItem, PracticeEntry, PracticeEntryChild, PracticePlan } from '@/types/domain'
+import type { PracticeEntry, PracticeEntryChild, PracticePlan } from '@/types/domain'
 
 const router = useRouter()
 const app = useAppStore()
@@ -37,13 +37,6 @@ const subjectPanelOpen = ref(false)
 const planModalOpen = ref(false)
 const plan = ref<PracticePlan | null>(null)
 const planLoading = ref(false)
-
-const majorOptions = ref<OptionItem[]>([])
-const subjectOptions = ref<OptionItem[]>([])
-const draftMajorId = ref('')
-const draftSubjectIds = ref<Set<string>>(new Set())
-const planSaving = ref(false)
-const subjectOptionsLoading = ref(false)
 
 const subjectOrder = ref<string[]>([])
 const hiddenSubjectIds = ref<Set<string>>(new Set())
@@ -196,91 +189,8 @@ async function loadPlan() {
   }
 }
 
-let majorOptionsLoaded = false
-
-async function loadMajorOptions() {
-  if (majorOptionsLoaded) return
-  try {
-    majorOptions.value = await fetchMajorOptions()
-    majorOptionsLoaded = true
-  } catch {
-    majorOptions.value = []
-  }
-}
-
-async function loadSubjectOptions(majorId: string) {
-  if (!majorId) {
-    subjectOptions.value = []
-    return
-  }
-  subjectOptionsLoading.value = true
-  try {
-    subjectOptions.value = await fetchSubjectOptions({ majorId })
-  } catch {
-    subjectOptions.value = []
-  } finally {
-    subjectOptionsLoading.value = false
-  }
-}
-
-async function openPlanModal() {
-  planModalOpen.value = true
-  draftSubjectIds.value = new Set()
-  draftMajorId.value = ''
-  subjectOptions.value = []
-
-  await loadMajorOptions()
-
-  const matchedMajor = majorOptions.value.find((major) => major.code === plan.value?.majorCode)
-  draftMajorId.value = matchedMajor?.id ?? ''
-
-  if (!draftMajorId.value) return
-
-  await loadSubjectOptions(draftMajorId.value)
-
-  const planCodes = new Set(plan.value?.subjects.map((subject) => subject.code) ?? [])
-  draftSubjectIds.value = new Set(
-    subjectOptions.value.filter((option) => planCodes.has(option.code)).map((option) => option.id),
-  )
-}
-
-async function onMajorChange() {
-  draftSubjectIds.value = new Set()
-  await loadSubjectOptions(draftMajorId.value)
-}
-
-function onMajorSelect(event: Event) {
-  draftMajorId.value = (event.target as HTMLSelectElement).value
-  void onMajorChange()
-}
-
-function toggleDraftSubject(id: string) {
-  const next = new Set(draftSubjectIds.value)
-  if (next.has(id)) {
-    next.delete(id)
-  } else {
-    next.add(id)
-  }
-  draftSubjectIds.value = next
-}
-
-async function savePlan() {
-  if (!draftMajorId.value || planSaving.value) return
-  planSaving.value = true
-  try {
-    const major = majorOptions.value.find((item) => item.id === draftMajorId.value)
-    const updated = await updatePracticePlan({
-      majorId: draftMajorId.value,
-      majorCode: major?.code,
-      subjectIds: [...draftSubjectIds.value],
-    })
-    plan.value = updated
-    planModalOpen.value = false
-  } catch {
-    // keep modal open on failure
-  } finally {
-    planSaving.value = false
-  }
+function handlePlanUpdated(updated: PracticePlan) {
+  plan.value = updated
 }
 
 onMounted(() => {
@@ -333,7 +243,7 @@ watch(
         <button
           class="flex h-14 min-w-0 items-center gap-2 rounded-xl bg-base-200/70 px-3 text-left transition-colors active:bg-base-300"
           type="button"
-          @click="openPlanModal"
+          @click="planModalOpen = true"
         >
           <SlidersHorizontal :size="18" class="shrink-0 text-primary" />
           <span class="min-w-0">
@@ -593,79 +503,8 @@ watch(
       </div>
     </BaseModal>
 
-    <BaseModal v-model="settingsModalOpen" title="练习设置">
-      <PracticeSettingsContent />
-    </BaseModal>
+    <PracticeSettingsContent v-model="settingsModalOpen" />
 
-    <BaseModal v-model="planModalOpen" title="练习计划">
-      <div>
-        <p class="mb-1.5 text-xs font-medium text-base-content/50">专业</p>
-        <select
-          class="select select-bordered h-10 w-full rounded-2xl text-sm"
-          :value="draftMajorId"
-          @change="onMajorSelect"
-        >
-          <option value="">请选择专业</option>
-          <option v-for="major in majorOptions" :key="major.id" :value="major.id">
-            {{ major.name }}
-          </option>
-        </select>
-      </div>
-
-      <div class="mt-4">
-        <p class="mb-1.5 text-xs font-medium text-base-content/50">刷题科目</p>
-        <div class="max-h-72 overflow-y-auto rounded-2xl bg-base-200/70">
-          <div v-if="subjectOptionsLoading" class="flex items-center justify-center p-6">
-            <span class="loading loading-spinner loading-sm"></span>
-          </div>
-          <template v-else>
-            <label
-              v-for="subject in subjectOptions"
-              :key="subject.id"
-              class="flex cursor-pointer items-center gap-3 border-b border-base-200 p-3 last:border-b-0 hover:bg-base-200"
-              :class="{ 'bg-primary/5': draftSubjectIds.has(subject.id) }"
-            >
-              <input
-                type="checkbox"
-                class="checkbox checkbox-sm checkbox-primary"
-                :checked="draftSubjectIds.has(subject.id)"
-                @change="toggleDraftSubject(subject.id)"
-              />
-              <span class="flex-1 text-sm">{{ subject.name }}</span>
-              <span class="text-xs text-base-content/40">{{ subject.code }}</span>
-              <Check v-if="draftSubjectIds.has(subject.id)" :size="16" class="text-primary" />
-            </label>
-            <div v-if="!draftMajorId" class="p-4 text-center text-sm text-base-content/50">
-              请先选择专业
-            </div>
-            <div
-              v-else-if="subjectOptions.length === 0"
-              class="p-4 text-center text-sm text-base-content/50"
-            >
-              该专业暂无科目
-            </div>
-          </template>
-        </div>
-      </div>
-
-      <template #footer>
-        <button
-          class="btn btn-ghost btn-sm flex-1 rounded-full"
-          type="button"
-          @click="planModalOpen = false"
-        >
-          取消
-        </button>
-        <button
-          class="btn btn-primary btn-sm flex-1 rounded-full"
-          type="button"
-          :disabled="planSaving || !draftMajorId"
-          @click="savePlan"
-        >
-          <span v-if="planSaving" class="loading loading-spinner loading-xs"></span>
-          保存
-        </button>
-      </template>
-    </BaseModal>
+    <PracticePlanModal v-model="planModalOpen" :plan="plan" @updated="handlePlanUpdated" />
   </section>
 </template>

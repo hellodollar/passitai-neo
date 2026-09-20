@@ -123,7 +123,7 @@ export type CreatedBy = 'system' | 'user' | 'ai'
 
 export type QuestionType = 'single' | 'multiple' | 'judge' | 'shortAnswer' | 'essay'
 export type QuestionCategory = 'pastExam' | 'practice' | 'mock'
-export type PaperCategory = 'pastExam' | 'practice' | 'mock'
+export type PaperType = 'pastExam' | 'practice' | 'mock'
 export type RecordStatus = 'notStarted' | 'inProgress' | 'completed'
 ```
 
@@ -318,6 +318,8 @@ GET  /api/practice/plan
 PUT  /api/practice/plan
 GET  /api/practice/entries
 GET  /api/practice/answer-sheet
+GET  /api/practice/settings
+PUT  /api/practice/settings
 POST /api/practice/sessions
 GET  /api/practice/sessions/:id
 ```
@@ -437,6 +439,40 @@ interface PracticeAnswerSheet {
 - 选择题返回 `A`~`F` 选项（非选择题为 `null`）；多选题 `correctAnswer` 为逗号分隔，如 `A,B,C`。
 - `userAnswer` 为当前用户作答，未作答为 `null`；`score` 为得分，进行中通常为 `0`。
 
+### 练习设置
+
+```http
+GET /api/practice/settings
+PUT /api/practice/settings
+Content-Type: application/json
+```
+
+当前为占位数据，不写入数据库：
+
+```ts
+interface PracticeSettings {
+  autoNext: boolean
+  recordWrongQuestions: boolean
+  showExplanationAfterAnswer: boolean
+  loopAfterCompletion: boolean
+  autoSubmitAfterCompletion: boolean
+}
+```
+
+默认值：
+
+```json
+{
+  "autoNext": false,
+  "recordWrongQuestions": true,
+  "showExplanationAfterAnswer": true,
+  "loopAfterCompletion": false,
+  "autoSubmitAfterCompletion": false
+}
+```
+
+`PUT` 接收以上字段（可部分更新），返回合并后的 `PracticeSettings`，当前不持久化。
+
 ### 练习入口
 
 `GET /api/practice` 返回练习入口配置占位：
@@ -540,7 +576,7 @@ interface PaperListQuery {
   limit?: number
   keyword?: string
   subjectId?: string
-  paperCategory?: PaperCategory
+  paperType?: PaperType
   createdBy?: CreatedBy
 }
 ```
@@ -552,14 +588,14 @@ interface PaperListItem {
   id: string
   subjectId: string
   name: string
-  paperCategory: PaperCategory
+  paperType: PaperType
   status: 'enabled'
   createdBy: CreatedBy
   createdAt: string
 }
 ```
 
-获取某科目下的卷子使用 `GET /api/papers?subjectId=<subject-id>`。列表不返回 `paperQuestions`。当前可以用
+获取某科目下的卷子使用 `GET /api/papers?subjectId=<subject-id>`。列表不返回 `sections`。当前可以用
 `GET /api/questions?paperId=<paper-id>` 获取该卷关联的题目列表，但由于题目详情接口尚未提供，这个
 结果暂时只适合目录/摘要展示。
 
@@ -772,25 +808,26 @@ interface PasswordChangePlaceholder {
 
 ### 业务接口
 
-| 用户端页面         | 使用接口                                    | 当前状态               |
-| ------------------ | ------------------------------------------- | ---------------------- |
-| 注册 / 登录        | `POST /register`, `POST /login`             | 可直接开发             |
-| 我的 / 当前用户    | `GET /me`, `GET /user`, `POST /logout`      | 聚合信息占位           |
-| Profile            | `GET /profile`, `PUT/PATCH /profile`        | 读取基础信息，更新占位 |
-| 首页               | `GET /dashboard`                            | 占位统计               |
-| 题库列表           | `GET /papers?subjectId=`                    | 可直接开发             |
-| 真题卷列表         | `GET /papers`                               | 可直接开发             |
-| 试卷题目目录       | `GET /questions?paperId=`                   | 只能展示列表字段       |
-| 练习计划           | `GET /practice/plan`, `PUT /practice/plan`  | 已持久化到用户偏好     |
-| 科目练习入口       | `GET /practice/entries?code=`               | mock 数据              |
-| 答题卡             | `GET /practice/answer-sheet?paperId=`       | mock 数据              |
-| 练习入口           | `GET /practice`, `POST /practice/sessions`  | 会话占位               |
-| 我的记录 / 答题卡  | `GET /records`, `GET /answer-sheets`        | 记录列表 + 答题卡占位  |
-| 收藏               | `GET /favorites`                            | 空列表占位             |
-| 错题               | `GET /wrong-questions`                      | 空列表占位             |
-| 设置               | `PATCH /preferences`, `GET/PATCH /settings` | 占位                   |
-| 修改密码           | `PUT /settings/password`                    | 占位，不修改真实密码   |
-| 做题 / 交卷 / 评分 | 无真实接口                                  | 等待服务端补充         |
+| 用户端页面         | 使用接口                                           | 当前状态               |
+| ------------------ | -------------------------------------------------- | ---------------------- |
+| 注册 / 登录        | `POST /register`, `POST /login`                    | 可直接开发             |
+| 我的 / 当前用户    | `GET /me`, `GET /user`, `POST /logout`             | 聚合信息占位           |
+| Profile            | `GET /profile`, `PUT/PATCH /profile`               | 读取基础信息，更新占位 |
+| 首页               | `GET /dashboard`                                   | 占位统计               |
+| 题库列表           | `GET /papers?subjectId=`                           | 可直接开发             |
+| 真题卷列表         | `GET /papers`                                      | 可直接开发             |
+| 试卷题目目录       | `GET /questions?paperId=`                          | 只能展示列表字段       |
+| 练习计划           | `GET /practice/plan`, `PUT /practice/plan`         | 已持久化到用户偏好     |
+| 科目练习入口       | `GET /practice/entries?code=`                      | mock 数据              |
+| 答题卡             | `GET /practice/answer-sheet?paperId=`              | mock 数据              |
+| 练习设置           | `GET /practice/settings`, `PUT /practice/settings` | 占位                   |
+| 练习入口           | `GET /practice`, `POST /practice/sessions`         | 会话占位               |
+| 我的记录 / 答题卡  | `GET /records`, `GET /answer-sheets`               | 记录列表 + 答题卡占位  |
+| 收藏               | `GET /favorites`                                   | 空列表占位             |
+| 错题               | `GET /wrong-questions`                             | 空列表占位             |
+| 设置               | `PATCH /preferences`, `GET/PATCH /settings`        | 占位                   |
+| 修改密码           | `PUT /settings/password`                           | 占位，不修改真实密码   |
+| 做题 / 交卷 / 评分 | 无真实接口                                         | 等待服务端补充         |
 
 ### 选择项目接口
 

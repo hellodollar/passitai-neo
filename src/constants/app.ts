@@ -30,7 +30,7 @@ export const DEFAULT_SUBJECT_SELECTION = {
   subjectIds: [] as string[],
 } as const
 
-export const PAPER_CATEGORY_LABELS = {
+export const PAPER_TYPE_LABELS = {
   pastExam: '历年真题',
   practice: '专项练习',
   mock: '模拟卷',

@@ -18,7 +18,7 @@ export type CreatedBy = 'system' | 'user' | 'ai'
 
 export type QuestionType = 'single' | 'multiple' | 'judge' | 'shortAnswer' | 'essay'
 export type QuestionCategory = 'pastExam' | 'practice' | 'mock'
-export type PaperCategory = 'pastExam' | 'practice' | 'mock'
+export type PaperType = 'pastExam' | 'practice' | 'mock'
 
 // ---- Auth & User ----
 
@@ -147,7 +147,7 @@ export type PaperListItem = {
   id: string
   subjectId: string
   name: string
-  paperCategory: PaperCategory
+  paperType: PaperType
   status: 'enabled'
   createdBy: CreatedBy
   createdAt: string
@@ -158,7 +158,7 @@ export type PaperListQuery = {
   limit?: number
   keyword?: string
   subjectId?: string
-  paperCategory?: PaperCategory
+  paperType?: PaperType
   createdBy?: CreatedBy
 }
 
@@ -350,6 +350,14 @@ export type PracticeAnswerSheet = {
   recordStatus: string
   score: number
   questionGroups: PracticeAnswerSheetGroup[]
+}
+
+export type PracticeSettings = {
+  autoNext: boolean
+  recordWrongQuestions: boolean
+  showExplanationAfterAnswer: boolean
+  loopAfterCompletion: boolean
+  autoSubmitAfterCompletion: boolean
 }
 
 export type PracticeMode = 'paper' | 'multi-paper' | 'subject'

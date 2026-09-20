@@ -12,13 +12,13 @@ import {
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
-import { fetchUserMe, updateUserPreferences } from '@/api/me'
+import { fetchUserMe } from '@/api/me'
 import BaseModal from '@/components/common/BaseModal.vue'
 import PracticePlanModal from '@/components/common/PracticePlanModal.vue'
 import PracticeSettingsContent from '@/components/common/PracticeSettingsContent.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useAppStore } from '@/stores/app'
-import type { SubjectSelection, UserMe } from '@/types/domain'
+import type { PracticePlan, UserMe } from '@/types/domain'
 
 const auth = useAuthStore()
 const app = useAppStore()
@@ -94,21 +94,11 @@ async function loadMe() {
   }
 }
 
-function applyPlanSettings(selection: SubjectSelection) {
-  app.setSubjectSelection(selection)
-  void updateUserPreferences({
-    study: {
-      majorId: selection.majorId,
-      subjectIds: selection.subjectIds,
-      subjectOrder: selection.subjectIds,
-    },
-  }).catch(() => {})
-
-  if (me.value) {
-    me.value.preferences.study.majorId = selection.majorId
-    me.value.preferences.study.subjectIds = [...selection.subjectIds]
-    me.value.preferences.study.subjectOrder = [...selection.subjectIds]
-  }
+function onPlanUpdated(_plan: PracticePlan, selection: { majorId: string; subjectIds: string[] }) {
+  app.setSubjectSelection({
+    majorId: selection.majorId,
+    subjectIds: selection.subjectIds,
+  })
 }
 
 async function signOut() {
@@ -204,18 +194,9 @@ onMounted(() => {
       </div>
     </BaseModal>
 
-    <PracticePlanModal
-      v-model="planModalOpen"
-      :major-id="app.subjectSelection.majorId"
-      :subject-ids="app.subjectSelection.subjectIds"
-      :majors="me?.catalog?.majors ?? []"
-      :subjects="me?.catalog?.subjects ?? []"
-      @apply="applyPlanSettings"
-    />
+    <PracticePlanModal v-model="planModalOpen" @updated="onPlanUpdated" />
 
-    <BaseModal v-model="practiceSettingsModalOpen" title="练习设置">
-      <PracticeSettingsContent />
-    </BaseModal>
+    <PracticeSettingsContent v-model="practiceSettingsModalOpen" />
 
     <BaseModal v-model="notificationModalOpen" title="通知设置">
       <div class="grid gap-2">

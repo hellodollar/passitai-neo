@@ -8,7 +8,7 @@ export function fetchPapers(query: PaperListQuery = {}) {
       limit: query.limit ?? 100,
       keyword: query.keyword,
       subjectId: query.subjectId,
-      paperCategory: query.paperCategory,
+      paperType: query.paperType,
       createdBy: query.createdBy,
     },
   })

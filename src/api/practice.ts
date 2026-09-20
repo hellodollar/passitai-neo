@@ -6,6 +6,7 @@ import type {
   PracticeOverview,
   PracticePlan,
   PracticeSession,
+  PracticeSettings,
   UpdatePracticePlanBody,
 } from '@/types/domain'
 
@@ -29,6 +30,17 @@ export function fetchPracticeEntries(subjectCode: string) {
 export function fetchPracticeAnswerSheet(paperId: string) {
   return request<PracticeAnswerSheet>('/practice/answer-sheet', {
     query: { paperId },
+  })
+}
+
+export function fetchPracticeSettings() {
+  return request<PracticeSettings>('/practice/settings')
+}
+
+export function updatePracticeSettings(payload: Partial<PracticeSettings>) {
+  return request<PracticeSettings>('/practice/settings', {
+    method: 'PUT',
+    body: payload,
   })
 }
 
