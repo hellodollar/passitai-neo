@@ -38,34 +38,42 @@ const displayName = computed(() => {
   return name ? name.replace(/[._-]+/g, ' ') : 'PassIt AI'
 })
 
-const profileEmail = computed(() => me.value?.profile.email ?? auth.user?.email ?? 'you@passitai.ai')
+const profileEmail = computed(
+  () => me.value?.profile.email ?? auth.user?.email ?? 'you@passitai.ai',
+)
 
 const menuItems = [
   {
     title: '账户',
     subtitle: '修改密码、更换邮箱',
     icon: KeyRound,
+    iconClasses: 'bg-primary/10 text-primary',
     action: 'account',
   },
   {
     title: '刷题计划',
     subtitle: '专业和刷题科目',
     icon: GraduationCap,
+    iconClasses: 'bg-secondary/10 text-secondary',
     action: 'plan',
   },
   {
     title: '练习设置',
     subtitle: '答题方式、错题记录、解析显示',
     icon: Settings2,
+    iconClasses: 'bg-accent/15 text-accent',
     action: 'practice',
   },
   {
     title: '通知',
     subtitle: '学习提醒、系统消息',
     icon: Bell,
+    iconClasses: 'bg-info/10 text-info',
     action: 'notification',
   },
 ] as const
+
+const menuGroups = [menuItems.slice(0, 2), menuItems.slice(2)]
 
 function openMenuItem(action: SettingsAction) {
   if (action === 'account') {
@@ -116,63 +124,101 @@ onMounted(() => {
 </script>
 
 <template>
-  <section class="min-h-[calc(100vh-7rem)]">
-    <header class="me-hero -mx-5 -mt-5 h-52 overflow-hidden" aria-hidden="true"></header>
+  <section
+    class="-mx-5 -mb-24 -mt-5 flex min-h-dvh flex-col overflow-x-hidden bg-gradient-to-b from-primary/15 via-base-200/35 to-base-200/35 pb-24"
+  >
+    <header class="relative shrink-0 overflow-hidden px-5 pb-5 pt-10">
+      <span
+        class="pointer-events-none absolute -right-12 -top-16 size-52 rounded-full border border-primary/10 bg-primary/5"
+        aria-hidden="true"
+      ></span>
+      <span
+        class="pointer-events-none absolute -bottom-20 -left-12 size-48 rounded-full border border-primary/10 bg-primary/5"
+        aria-hidden="true"
+      ></span>
+      <span
+        class="pointer-events-none absolute right-24 top-8 size-16 rounded-full border border-primary/10"
+        aria-hidden="true"
+      ></span>
 
-    <section class="relative -mx-5 -mt-14 rounded-t-3xl bg-base-100 px-5 pb-6 pt-14">
-      <button
-        class="absolute left-1/2 top-0 flex size-[5.5rem] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-base-100"
-        type="button"
-        aria-label="查看头像"
-      >
-        <span class="flex size-20 items-center justify-center rounded-full bg-base-200" aria-hidden="true">
-          <UserRound :size="48" stroke-width="1.7" class="text-base-content/35" />
+      <section class="relative flex flex-col items-center px-4 text-center">
+        <span
+          class="flex size-20 shrink-0 items-center justify-center rounded-full border-4 border-base-100 bg-base-100 text-primary"
+          aria-hidden="true"
+        >
+          <span class="flex size-full items-center justify-center rounded-full bg-primary/10">
+            <UserRound :size="34" stroke-width="1.8" />
+          </span>
         </span>
-      </button>
 
-      <div class="text-center">
-        <h2 class="mx-auto max-w-full truncate text-2xl font-semibold capitalize leading-tight text-base-content">
+        <h1
+          class="mt-3 max-w-full truncate text-[22px] font-semibold capitalize leading-tight text-base-content"
+        >
           {{ displayName }}
-        </h2>
-        <p class="mx-auto mt-1.5 max-w-full truncate text-sm font-medium text-base-content/50">{{ profileEmail }}</p>
+        </h1>
+        <p class="mt-1.5 max-w-full truncate text-sm font-medium text-base-content/50">
+          {{ profileEmail }}
+        </p>
+      </section>
+    </header>
+
+    <div class="relative flex flex-1 flex-col px-5 pb-4">
+      <div class="grid gap-3">
+        <section
+          v-for="(group, groupIndex) in menuGroups"
+          :key="groupIndex"
+          class="w-full min-w-0 overflow-hidden rounded-2xl border border-base-200 bg-base-100 divide-y divide-base-200"
+        >
+          <button
+            v-for="item in group"
+            :key="item.title"
+            class="grid w-full min-w-0 grid-cols-[2.5rem_minmax(0,1fr)_1.25rem] items-center gap-3 px-4 py-3.5 text-left transition-colors active:bg-base-200/60"
+            type="button"
+            @click="openMenuItem(item.action)"
+          >
+            <span
+              class="flex size-10 shrink-0 items-center justify-center rounded-full"
+              :class="item.iconClasses"
+            >
+              <component :is="item.icon" :size="18" stroke-width="2" />
+            </span>
+
+            <span class="min-w-0">
+              <span class="block truncate text-base font-semibold leading-tight text-base-content">
+                {{ item.title }}
+              </span>
+              <span class="mt-1 block truncate text-xs leading-tight text-base-content/45">
+                {{ item.subtitle }}
+              </span>
+            </span>
+
+            <ChevronRight :size="20" class="justify-self-end text-base-content/30" />
+          </button>
+        </section>
       </div>
-    </section>
 
-    <section class="space-y-1 pb-3 pt-3">
       <button
-        v-for="item in menuItems"
-        :key="item.title"
-        class="grid w-full grid-cols-[3rem_minmax(0,1fr)_1.25rem] items-center gap-2 rounded-2xl py-3.5 text-left transition-colors hover:bg-base-200/50 active:bg-base-200"
+        class="mt-4 flex w-full items-center gap-3 rounded-2xl border border-base-200 bg-base-100 px-4 py-3.5 text-left text-error transition-colors active:bg-error/5 disabled:opacity-50"
         type="button"
-        @click="openMenuItem(item.action)"
+        :disabled="signingOut"
+        @click="signOut"
       >
-        <span class="flex size-10 shrink-0 items-center justify-center text-base-content/55">
-          <component :is="item.icon" :size="22" stroke-width="2.1" />
+        <span
+          class="flex size-10 shrink-0 items-center justify-center rounded-full bg-error/10 text-error"
+        >
+          <span v-if="signingOut" class="loading loading-spinner loading-xs"></span>
+          <LogOut v-else :size="18" />
         </span>
-
-        <span class="min-w-0">
-          <span class="block truncate text-base font-medium leading-tight text-base-content">{{ item.title }}</span>
-          <span class="mt-1 block truncate text-sm font-medium leading-tight text-base-content/50">{{ item.subtitle }}</span>
-        </span>
-
-        <ChevronRight :size="20" class="justify-self-end text-base-content/25" />
+        <span class="text-base font-semibold">退出登录</span>
       </button>
-    </section>
-
-    <button
-      class="mt-5 flex h-10 w-full items-center justify-center gap-2 rounded-full bg-base-200/70 px-5 text-sm font-medium text-base-content/45 transition-colors hover:bg-base-200 active:bg-base-300"
-      type="button"
-      :disabled="signingOut"
-      @click="signOut"
-    >
-      <span v-if="signingOut" class="loading loading-spinner loading-xs"></span>
-      <LogOut v-else :size="18" />
-      退出登录
-    </button>
+    </div>
 
     <BaseModal v-model="accountModalOpen" title="账户">
       <div class="grid gap-2">
-        <button class="grid w-full grid-cols-[2.5rem_minmax(0,1fr)] items-center gap-2 rounded-2xl bg-base-200/70 p-3 text-left" type="button">
+        <button
+          class="grid w-full grid-cols-[2.5rem_minmax(0,1fr)] items-center gap-2 rounded-2xl bg-base-200/70 p-3 text-left"
+          type="button"
+        >
           <span class="flex size-10 items-center justify-center text-base-content/55">
             <KeyRound :size="20" />
           </span>
@@ -182,13 +228,18 @@ onMounted(() => {
           </span>
         </button>
 
-        <button class="grid w-full grid-cols-[2.5rem_minmax(0,1fr)] items-center gap-2 rounded-2xl bg-base-200/70 p-3 text-left" type="button">
+        <button
+          class="grid w-full grid-cols-[2.5rem_minmax(0,1fr)] items-center gap-2 rounded-2xl bg-base-200/70 p-3 text-left"
+          type="button"
+        >
           <span class="flex size-10 items-center justify-center text-base-content/55">
             <Mail :size="20" />
           </span>
           <span class="min-w-0">
             <span class="block text-sm font-medium">更换邮箱</span>
-            <span class="mt-0.5 block truncate text-xs text-base-content/50">{{ profileEmail }}</span>
+            <span class="mt-0.5 block truncate text-xs text-base-content/50">{{
+              profileEmail
+            }}</span>
           </span>
         </button>
       </div>
@@ -218,15 +269,3 @@ onMounted(() => {
     </BaseModal>
   </section>
 </template>
-
-<style scoped>
-.me-hero {
-  background-color: #fbf6ef;
-  background-image:
-    linear-gradient(180deg, rgb(255 255 255 / 0.1), rgb(255 255 255 / 0.5)),
-    url("data:image/svg+xml,%3Csvg width='168' height='168' viewBox='0 0 168 168' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23ddd1c3' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' opacity='.58'%3E%3Cpath d='M18 21c12-10 28 4 18 17s-28 0-18-17Z'/%3E%3Ccircle cx='118' cy='29' r='12'/%3E%3Cpath d='M128 27h14M135 20v14'/%3E%3Cpath d='M48 83c8-13 29-8 28 8-1 12-18 20-29 10-6-5-5-12 1-18Z'/%3E%3Cpath d='M95 90l20 8-18 10 8-18Z'/%3E%3Cpath d='M24 133c18-3 29 5 34 18M134 126c-13 2-22 13-20 26'/%3E%3Cpath d='M68 36l8 4 8-4-4 8 4 8-8-4-8 4 4-8-4-8Z'/%3E%3Cpath d='M147 65c-8 0-8 12 0 12s8-12 0-12Z'/%3E%3Cpath d='M13 73h22M24 62v22'/%3E%3Cpath d='M81 134h20M91 124v20'/%3E%3C/g%3E%3C/svg%3E");
-  background-size:
-    100% 100%,
-    168px 168px;
-}
-</style>

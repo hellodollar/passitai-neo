@@ -39,7 +39,7 @@ export function fetchPracticeSettings() {
 
 export function updatePracticeSettings(payload: Partial<PracticeSettings>) {
   return request<PracticeSettings>('/practice/settings', {
-    method: 'PUT',
+    method: 'PATCH',
     body: payload,
   })
 }

@@ -319,7 +319,7 @@ PUT  /api/practice/plan
 GET  /api/practice/entries
 GET  /api/practice/answer-sheet
 GET  /api/practice/settings
-PUT  /api/practice/settings
+PATCH  /api/practice/settings
 POST /api/practice/sessions
 GET  /api/practice/sessions/:id
 ```
@@ -443,7 +443,7 @@ interface PracticeAnswerSheet {
 
 ```http
 GET /api/practice/settings
-PUT /api/practice/settings
+PATCH /api/practice/settings
 Content-Type: application/json
 ```
 
@@ -471,7 +471,7 @@ interface PracticeSettings {
 }
 ```
 
-`PUT` 接收以上字段（可部分更新），返回合并后的 `PracticeSettings`，当前不持久化。
+`PATCH` 接收以上字段（可部分更新），返回合并后的 `PracticeSettings`，当前不持久化。
 
 ### 练习入口
 
@@ -808,26 +808,26 @@ interface PasswordChangePlaceholder {
 
 ### 业务接口
 
-| 用户端页面         | 使用接口                                           | 当前状态               |
-| ------------------ | -------------------------------------------------- | ---------------------- |
-| 注册 / 登录        | `POST /register`, `POST /login`                    | 可直接开发             |
-| 我的 / 当前用户    | `GET /me`, `GET /user`, `POST /logout`             | 聚合信息占位           |
-| Profile            | `GET /profile`, `PUT/PATCH /profile`               | 读取基础信息，更新占位 |
-| 首页               | `GET /dashboard`                                   | 占位统计               |
-| 题库列表           | `GET /papers?subjectId=`                           | 可直接开发             |
-| 真题卷列表         | `GET /papers`                                      | 可直接开发             |
-| 试卷题目目录       | `GET /questions?paperId=`                          | 只能展示列表字段       |
-| 练习计划           | `GET /practice/plan`, `PUT /practice/plan`         | 已持久化到用户偏好     |
-| 科目练习入口       | `GET /practice/entries?code=`                      | mock 数据              |
-| 答题卡             | `GET /practice/answer-sheet?paperId=`              | mock 数据              |
-| 练习设置           | `GET /practice/settings`, `PUT /practice/settings` | 占位                   |
-| 练习入口           | `GET /practice`, `POST /practice/sessions`         | 会话占位               |
-| 我的记录 / 答题卡  | `GET /records`, `GET /answer-sheets`               | 记录列表 + 答题卡占位  |
-| 收藏               | `GET /favorites`                                   | 空列表占位             |
-| 错题               | `GET /wrong-questions`                             | 空列表占位             |
-| 设置               | `PATCH /preferences`, `GET/PATCH /settings`        | 占位                   |
-| 修改密码           | `PUT /settings/password`                           | 占位，不修改真实密码   |
-| 做题 / 交卷 / 评分 | 无真实接口                                         | 等待服务端补充         |
+| 用户端页面         | 使用接口                                             | 当前状态               |
+| ------------------ | ---------------------------------------------------- | ---------------------- |
+| 注册 / 登录        | `POST /register`, `POST /login`                      | 可直接开发             |
+| 我的 / 当前用户    | `GET /me`, `GET /user`, `POST /logout`               | 聚合信息占位           |
+| Profile            | `GET /profile`, `PUT/PATCH /profile`                 | 读取基础信息，更新占位 |
+| 首页               | `GET /dashboard`                                     | 占位统计               |
+| 题库列表           | `GET /papers?subjectId=`                             | 可直接开发             |
+| 真题卷列表         | `GET /papers`                                        | 可直接开发             |
+| 试卷题目目录       | `GET /questions?paperId=`                            | 只能展示列表字段       |
+| 练习计划           | `GET /practice/plan`, `PUT /practice/plan`           | 已持久化到用户偏好     |
+| 科目练习入口       | `GET /practice/entries?code=`                        | mock 数据              |
+| 答题卡             | `GET /practice/answer-sheet?paperId=`                | mock 数据              |
+| 练习设置           | `GET /practice/settings`, `PATCH /practice/settings` | 占位                   |
+| 练习入口           | `GET /practice`, `POST /practice/sessions`           | 会话占位               |
+| 我的记录 / 答题卡  | `GET /records`, `GET /answer-sheets`                 | 记录列表 + 答题卡占位  |
+| 收藏               | `GET /favorites`                                     | 空列表占位             |
+| 错题               | `GET /wrong-questions`                               | 空列表占位             |
+| 设置               | `PATCH /preferences`, `GET/PATCH /settings`          | 占位                   |
+| 修改密码           | `PUT /settings/password`                             | 占位，不修改真实密码   |
+| 做题 / 交卷 / 评分 | 无真实接口                                           | 等待服务端补充         |
 
 ### 选择项目接口
 

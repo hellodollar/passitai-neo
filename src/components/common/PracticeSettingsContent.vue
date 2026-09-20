@@ -2,31 +2,40 @@
 import { nextTick, onMounted, ref, watch } from 'vue'
 
 import BaseModal from '@/components/common/BaseModal.vue'
-import { fetchUserSettings, updatePracticeSettings } from '@/api/settings'
+import { fetchPracticeSettings, updatePracticeSettings } from '@/api/practice'
+import type { PracticeSettings } from '@/types/domain'
 
 const model = defineModel<boolean>({ default: false })
 
 const practiceSettings = ref({
-  autoNextOnCorrect: true,
+  autoNextOnCorrect: false,
   recordWrongQuestions: true,
-  showAnalysis: false,
+  showAnalysis: true,
   loopPractice: false,
   autoSubmit: false,
 })
 const loaded = ref(false)
 
+let lastValues = {
+  autoNextOnCorrect: false,
+  recordWrongQuestions: true,
+  showAnalysis: true,
+  loopPractice: false,
+  autoSubmit: false,
+}
+
 async function loadPracticeSettings() {
   try {
-    const settings = await fetchUserSettings()
-    practiceSettings.value = {
-      autoNextOnCorrect: Boolean(
-        settings.practice?.autoNext ?? settings.practice?.autoNextOnCorrect ?? true,
-      ),
-      recordWrongQuestions: Boolean(settings.practice?.recordWrongQuestions ?? true),
-      showAnalysis: Boolean(settings.practice?.showAnswerAfterSubmit ?? false),
-      loopPractice: false,
-      autoSubmit: false,
+    const settings = await fetchPracticeSettings()
+    const next = {
+      autoNextOnCorrect: Boolean(settings.autoNext),
+      recordWrongQuestions: Boolean(settings.recordWrongQuestions),
+      showAnalysis: Boolean(settings.showExplanationAfterAnswer),
+      loopPractice: Boolean(settings.loopAfterCompletion),
+      autoSubmit: Boolean(settings.autoSubmitAfterCompletion),
     }
+    practiceSettings.value = next
+    lastValues = { ...next }
   } catch {
     // Keep local defaults while the backend settings endpoint is still placeholder-only.
   } finally {
@@ -40,12 +49,32 @@ watch(
   (settings) => {
     if (!loaded.value) return
 
-    void updatePracticeSettings({
-      autoNext: settings.autoNextOnCorrect,
-      autoNextOnCorrect: settings.autoNextOnCorrect,
-      recordWrongQuestions: settings.recordWrongQuestions,
-      showAnswerAfterSubmit: settings.showAnalysis,
-    }).catch(() => {})
+    const payload: Partial<PracticeSettings> = {}
+
+    if (settings.autoNextOnCorrect !== lastValues.autoNextOnCorrect) {
+      payload.autoNext = settings.autoNextOnCorrect
+      lastValues.autoNextOnCorrect = settings.autoNextOnCorrect
+    }
+    if (settings.recordWrongQuestions !== lastValues.recordWrongQuestions) {
+      payload.recordWrongQuestions = settings.recordWrongQuestions
+      lastValues.recordWrongQuestions = settings.recordWrongQuestions
+    }
+    if (settings.showAnalysis !== lastValues.showAnalysis) {
+      payload.showExplanationAfterAnswer = settings.showAnalysis
+      lastValues.showAnalysis = settings.showAnalysis
+    }
+    if (settings.loopPractice !== lastValues.loopPractice) {
+      payload.loopAfterCompletion = settings.loopPractice
+      lastValues.loopPractice = settings.loopPractice
+    }
+    if (settings.autoSubmit !== lastValues.autoSubmit) {
+      payload.autoSubmitAfterCompletion = settings.autoSubmit
+      lastValues.autoSubmit = settings.autoSubmit
+    }
+
+    if (Object.keys(payload).length === 0) return
+
+    void updatePracticeSettings(payload).catch(() => {})
   },
   { deep: true },
 )

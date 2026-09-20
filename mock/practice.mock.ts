@@ -44,6 +44,14 @@ function buildPlan(majorId: string, subjectIds: string[]) {
 
 let plan = buildPlan('major_006', ['subj_011', 'subj_012', 'subj_013'])
 
+let practiceSettings = {
+  autoNext: false,
+  recordWrongQuestions: true,
+  showExplanationAfterAnswer: true,
+  loopAfterCompletion: false,
+  autoSubmitAfterCompletion: false,
+}
+
 export default defineMock([
   {
     url: '/api/practice/plan',
@@ -182,6 +190,21 @@ export default defineMock([
           },
         ],
       }),
+  },
+  {
+    url: '/api/practice/settings',
+    method: 'GET',
+    delay: 100,
+    body: ok(practiceSettings),
+  },
+  {
+    url: '/api/practice/settings',
+    method: 'PATCH',
+    delay: 100,
+    body: ({ body }) => {
+      practiceSettings = { ...practiceSettings, ...body }
+      return ok(practiceSettings)
+    },
   },
   {
     url: '/api/wrong-questions',
