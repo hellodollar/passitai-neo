@@ -39,8 +39,7 @@ function buildChart() {
         {
           stroke: 'oklch(45% 0.02 258)',
           grid: { stroke: 'transparent' },
-          values: (_, ticks) =>
-            ticks.map((tick) => labels[Math.round(tick) - 1] ?? `${tick}`),
+          values: (_, ticks) => ticks.map((tick) => labels[Math.round(tick) - 1] ?? `${tick}`),
         },
         {
           stroke: 'oklch(45% 0.02 258)',
@@ -51,10 +50,15 @@ function buildChart() {
       series: [
         {},
         {
-          stroke: 'oklch(63% 0.18 153)',
+          stroke: 'oklch(51.1% 0.262 276.966)',
           width: 3,
-          fill: 'oklch(63% 0.18 153 / 0.14)',
-          points: { show: true, size: 7, stroke: 'oklch(63% 0.18 153)', fill: 'white' },
+          fill: 'oklch(51.1% 0.262 276.966 / 0.1)',
+          points: {
+            show: true,
+            size: 7,
+            stroke: 'oklch(51.1% 0.262 276.966)',
+            fill: 'white',
+          },
         },
       ],
     },
