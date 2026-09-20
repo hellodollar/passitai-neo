@@ -73,8 +73,6 @@ const menuItems = [
   },
 ] as const
 
-const menuGroups = [menuItems.slice(0, 2), menuItems.slice(2)]
-
 function openMenuItem(action: SettingsAction) {
   if (action === 'account') {
     accountModalOpen.value = true
@@ -125,28 +123,22 @@ onMounted(() => {
 
 <template>
   <section
-    class="-mx-5 -mb-24 -mt-5 flex min-h-dvh flex-col overflow-x-hidden bg-gradient-to-b from-primary/15 via-base-200/35 to-base-200/35 pb-24"
+    class="relative -mx-5 -mb-24 -mt-5 flex min-h-dvh flex-col overflow-x-hidden bg-base-200/35 pb-24"
   >
-    <header class="relative shrink-0 overflow-hidden px-5 pb-5 pt-10">
-      <span
-        class="pointer-events-none absolute -right-12 -top-16 size-52 rounded-full border border-primary/10 bg-primary/5"
-        aria-hidden="true"
-      ></span>
-      <span
-        class="pointer-events-none absolute -bottom-20 -left-12 size-48 rounded-full border border-primary/10 bg-primary/5"
-        aria-hidden="true"
-      ></span>
-      <span
-        class="pointer-events-none absolute right-24 top-8 size-16 rounded-full border border-primary/10"
-        aria-hidden="true"
-      ></span>
+    <div
+      class="pointer-events-none absolute inset-x-0 top-0 h-72 overflow-hidden bg-gradient-to-br from-primary/20 via-info/10 to-transparent [mask-image:linear-gradient(to_bottom,black_0%,black_62%,transparent_100%)]"
+      aria-hidden="true"
+    ></div>
 
+    <header class="relative shrink-0 px-5 pb-5 pt-10">
       <section class="relative flex flex-col items-center px-4 text-center">
         <span
           class="flex size-20 shrink-0 items-center justify-center rounded-full border-4 border-base-100 bg-base-100 text-primary"
           aria-hidden="true"
         >
-          <span class="flex size-full items-center justify-center rounded-full bg-primary/10">
+          <span
+            class="flex size-full items-center justify-center rounded-full bg-gradient-to-br from-primary/15 to-info/10"
+          >
             <UserRound :size="34" stroke-width="1.8" />
           </span>
         </span>
@@ -163,39 +155,35 @@ onMounted(() => {
     </header>
 
     <div class="relative flex flex-1 flex-col px-5 pb-4">
-      <div class="grid gap-3">
-        <section
-          v-for="(group, groupIndex) in menuGroups"
-          :key="groupIndex"
-          class="w-full min-w-0 overflow-hidden rounded-2xl border border-base-200 bg-base-100 divide-y divide-base-200"
+      <section
+        class="w-full min-w-0 overflow-hidden rounded-2xl border border-base-200 bg-base-100 divide-y divide-base-200"
+      >
+        <button
+          v-for="item in menuItems"
+          :key="item.title"
+          class="grid w-full min-w-0 grid-cols-[2.5rem_minmax(0,1fr)_1.25rem] items-center gap-3 px-4 py-3.5 text-left transition-colors active:bg-base-200/60"
+          type="button"
+          @click="openMenuItem(item.action)"
         >
-          <button
-            v-for="item in group"
-            :key="item.title"
-            class="grid w-full min-w-0 grid-cols-[2.5rem_minmax(0,1fr)_1.25rem] items-center gap-3 px-4 py-3.5 text-left transition-colors active:bg-base-200/60"
-            type="button"
-            @click="openMenuItem(item.action)"
+          <span
+            class="flex size-10 shrink-0 items-center justify-center rounded-full"
+            :class="item.iconClasses"
           >
-            <span
-              class="flex size-10 shrink-0 items-center justify-center rounded-full"
-              :class="item.iconClasses"
-            >
-              <component :is="item.icon" :size="18" stroke-width="2" />
-            </span>
+            <component :is="item.icon" :size="18" stroke-width="2" />
+          </span>
 
-            <span class="min-w-0">
-              <span class="block truncate text-base font-semibold leading-tight text-base-content">
-                {{ item.title }}
-              </span>
-              <span class="mt-1 block truncate text-xs leading-tight text-base-content/45">
-                {{ item.subtitle }}
-              </span>
+          <span class="min-w-0">
+            <span class="block truncate text-base font-semibold leading-tight text-base-content">
+              {{ item.title }}
             </span>
+            <span class="mt-1 block truncate text-xs leading-tight text-base-content/45">
+              {{ item.subtitle }}
+            </span>
+          </span>
 
-            <ChevronRight :size="20" class="justify-self-end text-base-content/30" />
-          </button>
-        </section>
-      </div>
+          <ChevronRight :size="20" class="justify-self-end text-base-content/30" />
+        </button>
+      </section>
 
       <button
         class="mt-4 flex w-full items-center gap-3 rounded-2xl border border-base-200 bg-base-100 px-4 py-3.5 text-left text-error transition-colors active:bg-error/5 disabled:opacity-50"
