@@ -130,6 +130,60 @@ export default defineMock([
     },
   },
   {
+    url: '/api/practice/answer-sheet',
+    method: 'GET',
+    delay: 100,
+    body: () =>
+      ok({
+        paperName: '2025年4月真题',
+        recordStatus: 'inProgress',
+        score: 0,
+        questionGroups: [
+          {
+            type: 'single',
+            label: '单选题',
+            items: [
+              {
+                id: 'qst_80310cb2cff5',
+                title: '若矩阵A中有一个r+1阶子式等于零，且所有r阶子式都不为零，则必有',
+                questionType: 'single',
+                A: 'r(A)=r',
+                B: 'r(A) ≥r',
+                C: 'r(A)< r',
+                D: 'r(A)=r+1',
+                E: null,
+                F: null,
+                correctAnswer: 'B',
+                userAnswer: 'A',
+                explanation: '由矩阵秩的定义，A 存在一个 r 阶子式不为零，可得 r(A) ≥ r，选 B。',
+              },
+            ],
+          },
+          {
+            type: 'multiple',
+            label: '多选题',
+            items: [
+              {
+                id: 'qst_1517a98908c0',
+                title: '古典管理理论主要是由以下哪几个学派构成的？（　）',
+                questionType: 'multiple',
+                A: '科学管理理论',
+                B: '一般管理理论',
+                C: '行政组织理论',
+                D: '行为科学理论',
+                E: '决策理论',
+                F: null,
+                correctAnswer: 'A,B,C',
+                userAnswer: 'A,B',
+                explanation:
+                  '古典管理理论阶段，主要由泰勒的科学管理理论、法约尔的一般管理理论和韦伯的行政组织理论构成。',
+              },
+            ],
+          },
+        ],
+      }),
+  },
+  {
     url: '/api/wrong-questions',
     method: 'GET',
     delay: 100,

@@ -15,9 +15,8 @@ import BaseModal from '@/components/common/BaseModal.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import PracticeSettingsContent from '@/components/common/PracticeSettingsContent.vue'
 import { useAppStore } from '@/stores/app'
-import { fetchPapers } from '@/api/papers'
-import { fetchQuestions } from '@/api/questions'
-import type { PaperListItem, QuestionListItem, QuestionType } from '@/types/domain'
+import { fetchPracticeAnswerSheet } from '@/api/practice'
+import type { PracticeAnswerSheetItem, QuestionListItem, QuestionType } from '@/types/domain'
 
 const router = useRouter()
 const app = useAppStore()
@@ -80,7 +79,7 @@ const OPTION_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
 
 const settingsModalOpen = ref(false)
 const questionSheetOpen = ref(false)
-const sessionPapers = ref<PaperListItem[]>([])
+const sessionTitles = ref<string[]>([])
 
 const currentQuestions = ref<QuestionListItem[]>([])
 const currentIndex = ref(0)
@@ -102,9 +101,9 @@ const resolvedQuestionOptions = computed(() => {
   return getPreviewOptions(currentQuestion.value?.questionType)
 })
 const currentSessionTitle = computed(() => {
-  if (sessionPapers.value.length === 0) return '练习'
-  if (sessionPapers.value.length === 1) return sessionPapers.value[0]!.name
-  return `${sessionPapers.value[0]!.name} 等 ${sessionPapers.value.length} 套`
+  if (sessionTitles.value.length === 0) return '练习'
+  if (sessionTitles.value.length === 1) return sessionTitles.value[0]!
+  return `${sessionTitles.value[0]!} 等 ${sessionTitles.value.length} 套`
 })
 const expectsChoiceQuestion = computed(() =>
   currentQuestion.value
@@ -115,6 +114,10 @@ const isChoiceMode = computed(() => resolvedQuestionOptions.value.length > 0)
 const isMultipleQuestion = computed(() => currentQuestion.value?.questionType === 'multiple')
 const currentAnswerRecord = computed(() =>
   currentQuestion.value ? answerRecords.value[currentQuestion.value.id] : undefined,
+)
+const currentCorrectAnswer = computed(() => getReferenceAnswer(currentQuestion.value))
+const currentExplanation = computed(
+  () => (currentQuestion.value as RichQuestionListItem | undefined)?.explanation ?? '',
 )
 const answeredCount = computed(() => Object.keys(answerRecords.value).length)
 const currentQuestionPosition = computed(() =>
@@ -138,10 +141,6 @@ const correctCount = computed(() => {
   return count
 })
 const wrongCount = computed(() => answeredCount.value - correctCount.value)
-const progress = computed(() => {
-  const total = currentQuestions.value.length || 1
-  return ((currentIndex.value + 1) / total) * 100
-})
 
 function parseOptionLine(line: string): NormalizedQuestionOption | null {
   const match = line.trim().match(/^([A-Ha-h])\s*[.\u3001)\uff09:：]\s*(.+)$/)
@@ -493,6 +492,46 @@ const questionSheetGroups = computed(() => {
   )
 })
 
+function toQuestionListItem(item: PracticeAnswerSheetItem): QuestionListItem {
+  const richQuestion: RichQuestionListItem = {
+    id: item.id,
+    subjectId: '',
+    title: item.title,
+    questionType: item.questionType as QuestionType,
+    questionCategory: 'practice',
+    status: 'enabled',
+    createdBy: 'system',
+    createdAt: '',
+    optionA: item.A ?? undefined,
+    optionB: item.B ?? undefined,
+    optionC: item.C ?? undefined,
+    optionD: item.D ?? undefined,
+    optionE: item.E ?? undefined,
+    optionF: item.F ?? undefined,
+    correctAnswer: item.correctAnswer,
+    explanation: item.explanation ?? undefined,
+  }
+  return richQuestion
+}
+
+function buildAnswerRecord(item: PracticeAnswerSheetItem): PracticeAnswerRecord | null {
+  const answer = item.userAnswer
+  if (!answer) return null
+
+  const isChoice = ['single', 'multiple', 'judge'].includes(item.questionType)
+  const values = isChoice
+    ? answer.split(/[\s,，、;；]/).map((value) => value.trim()).filter(Boolean)
+    : [answer]
+
+  if (values.length === 0) return null
+
+  return {
+    questionId: item.id,
+    text: answer,
+    values,
+  }
+}
+
 async function loadSessionData() {
   loading.value = true
   currentIndex.value = 0
@@ -500,6 +539,7 @@ async function loadSessionData() {
   selectedOptionValues.value = new Set()
   textAnswer.value = ''
   answerRecords.value = {}
+  sessionTitles.value = []
 
   const paperIds = app.practiceSessionPaperIds
   if (paperIds.length === 0) {
@@ -508,15 +548,24 @@ async function loadSessionData() {
   }
 
   try {
-    const papersResult = await fetchPapers({ limit: 100 })
-    sessionPapers.value = papersResult.items.filter((p) => paperIds.includes(p.id))
+    const sheets = await Promise.all(paperIds.map((paperId) => fetchPracticeAnswerSheet(paperId)))
 
-    const allQuestions: QuestionListItem[] = []
-    for (const paperId of paperIds) {
-      const result = await fetchQuestions({ paperId, limit: 100 })
-      allQuestions.push(...result.items)
+    const questions: QuestionListItem[] = []
+    const records: Record<string, PracticeAnswerRecord> = {}
+
+    for (const sheet of sheets) {
+      sessionTitles.value.push(sheet.paperName)
+      for (const group of sheet.questionGroups) {
+        for (const item of group.items) {
+          questions.push(toQuestionListItem(item))
+          const record = buildAnswerRecord(item)
+          if (record) records[item.id] = record
+        }
+      }
     }
-    currentQuestions.value = allQuestions.sort(compareQuestionType)
+
+    currentQuestions.value = questions.sort(compareQuestionType)
+    answerRecords.value = records
   } catch {
     currentQuestions.value = []
   } finally {
@@ -642,6 +691,15 @@ watch(
         </div>
         <p class="mt-1 break-words text-sm leading-relaxed text-base-content/65">
           你的答案：<span class="font-medium text-base-content">{{ currentAnswerRecord.text }}</span>
+        </p>
+      </section>
+
+      <section v-if="currentAnswerRecord" class="mx-5 mt-2 rounded-2xl border border-base-200 bg-base-100 px-3 py-2.5">
+        <p class="text-sm font-medium text-base-content">
+          正确答案：<span class="text-primary">{{ currentCorrectAnswer || '—' }}</span>
+        </p>
+        <p v-if="currentExplanation" class="mt-1.5 break-words text-sm leading-relaxed text-base-content/65">
+          解析：{{ currentExplanation }}
         </p>
       </section>
     </article>

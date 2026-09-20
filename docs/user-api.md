@@ -317,6 +317,7 @@ GET  /api/practice
 GET  /api/practice/plan
 PUT  /api/practice/plan
 GET  /api/practice/entries
+GET  /api/practice/answer-sheet
 POST /api/practice/sessions
 GET  /api/practice/sessions/:id
 ```
@@ -396,6 +397,45 @@ interface PracticeEntry {
 
 `description` 是入口的简短说明，供页面副标题展示。带 `children` 的入口点击后展开选择题集；不带
 `children` 的入口按 `type` 决定交互（当前仅 `ai`）。
+
+### 答题卡
+
+```http
+GET /api/practice/answer-sheet?paperId=<paper-id>
+```
+
+根据试卷 `paperId` 返回答题卡信息（含题目、正确答案、用户作答与解析）。当前为 mock 数据，数据来源与
+存储表待补充：
+
+```ts
+interface PracticeAnswerSheet {
+  paperName: string
+  recordStatus: 'notStarted' | 'inProgress' | 'completed' | string
+  score: number
+  questionGroups: {
+    type: 'single' | 'multiple' | 'judge' | 'shortAnswer' | 'essay' | string
+    label: string
+    items: {
+      id: string
+      title: string
+      questionType: string
+      A: string | null
+      B: string | null
+      C: string | null
+      D: string | null
+      E: string | null
+      F: string | null
+      correctAnswer: string
+      userAnswer: string | null
+      explanation: string | null
+    }[]
+  }[]
+}
+```
+
+- `questionGroups` 按题型分组，`type` 为题型，`label` 为分组标题（如「单选题」「多选题」）。
+- 选择题返回 `A`~`F` 选项（非选择题为 `null`）；多选题 `correctAnswer` 为逗号分隔，如 `A,B,C`。
+- `userAnswer` 为当前用户作答，未作答为 `null`；`score` 为得分，进行中通常为 `0`。
 
 ### 练习入口
 
@@ -743,6 +783,7 @@ interface PasswordChangePlaceholder {
 | 试卷题目目录       | `GET /questions?paperId=`                   | 只能展示列表字段       |
 | 练习计划           | `GET /practice/plan`, `PUT /practice/plan`  | 已持久化到用户偏好     |
 | 科目练习入口       | `GET /practice/entries?code=`               | mock 数据              |
+| 答题卡             | `GET /practice/answer-sheet?paperId=`       | mock 数据              |
 | 练习入口           | `GET /practice`, `POST /practice/sessions`  | 会话占位               |
 | 我的记录 / 答题卡  | `GET /records`, `GET /answer-sheets`        | 记录列表 + 答题卡占位  |
 | 收藏               | `GET /favorites`                            | 空列表占位             |

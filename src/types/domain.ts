@@ -324,6 +324,34 @@ export type PracticeEntry = {
 
 export type PracticeEntryType = 'practice' | 'pastExam' | 'mock' | 'ai'
 
+export type PracticeAnswerSheetItem = {
+  id: string
+  title: string
+  questionType: string
+  A: string | null
+  B: string | null
+  C: string | null
+  D: string | null
+  E: string | null
+  F: string | null
+  correctAnswer: string
+  userAnswer: string | null
+  explanation: string | null
+}
+
+export type PracticeAnswerSheetGroup = {
+  type: string
+  label: string
+  items: PracticeAnswerSheetItem[]
+}
+
+export type PracticeAnswerSheet = {
+  paperName: string
+  recordStatus: string
+  score: number
+  questionGroups: PracticeAnswerSheetGroup[]
+}
+
 export type PracticeMode = 'paper' | 'multi-paper' | 'subject'
 
 export type PracticeOverview = {
