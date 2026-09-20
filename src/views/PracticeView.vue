@@ -162,7 +162,11 @@ function toggleSubjectVisibility(code: string) {
 function startEntryPaper(child: PracticeEntryChild) {
   if (!child.paperId) return
   app.startPracticeSession([child.paperId])
-  router.push({ name: 'session' })
+  router.push({
+    name: 'session',
+    params: { paperId: child.paperId },
+    query: { subject: activeSubject.value?.name ?? '' },
+  })
 }
 
 async function loadEntries() {

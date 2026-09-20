@@ -2,34 +2,36 @@
 import {
   ArrowLeft,
   Bookmark,
-  CheckCircle2,
+  CircleAlert,
   ClipboardCheck,
   ClipboardList,
-  ListChecks,
+  Grid2X2,
   Settings,
 } from '@lucide/vue'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 import BaseModal from '@/components/common/BaseModal.vue'
-import EmptyState from '@/components/common/EmptyState.vue'
 import PracticeSettingsContent from '@/components/common/PracticeSettingsContent.vue'
 import { useAppStore } from '@/stores/app'
 import { fetchPracticeAnswerSheet } from '@/api/practice'
 import type { PracticeAnswerSheetItem, QuestionListItem, QuestionType } from '@/types/domain'
 
 const router = useRouter()
+const route = useRoute()
 const app = useAppStore()
 
-type RawQuestionOption = string | {
-  id?: string
-  value?: string
-  label?: string
-  text?: string
-  content?: string
-  title?: string
-  name?: string
-}
+type RawQuestionOption =
+  | string
+  | {
+      id?: string
+      value?: string
+      label?: string
+      text?: string
+      content?: string
+      title?: string
+      name?: string
+    }
 
 type NormalizedQuestionOption = {
   label: string
@@ -75,6 +77,8 @@ type PracticeAnswerRecord = {
   values: string[]
 }
 
+type SessionLoadState = 'loading' | 'ready' | 'missing' | 'empty' | 'error'
+
 const OPTION_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
 
 const settingsModalOpen = ref(false)
@@ -90,7 +94,7 @@ const favoriteQuestionIds = ref<Set<string>>(new Set())
 const touchStartX = ref(0)
 const touchStartY = ref(0)
 const autoAdvanceTimer = ref<ReturnType<typeof window.setTimeout> | null>(null)
-const loading = ref(false)
+const sessionLoadState = ref<SessionLoadState>('loading')
 
 const currentQuestion = computed(() => currentQuestions.value[currentIndex.value])
 const parsedQuestionTitle = computed(() => parseQuestionTitle(currentQuestion.value))
@@ -104,6 +108,10 @@ const currentSessionTitle = computed(() => {
   if (sessionTitles.value.length === 0) return '练习'
   if (sessionTitles.value.length === 1) return sessionTitles.value[0]!
   return `${sessionTitles.value[0]!} 等 ${sessionTitles.value.length} 套`
+})
+const sessionSubjectName = computed(() => {
+  const subject = route.query.subject
+  return typeof subject === 'string' ? subject : ''
 })
 const expectsChoiceQuestion = computed(() =>
   currentQuestion.value
@@ -119,6 +127,27 @@ const currentCorrectAnswer = computed(() => getReferenceAnswer(currentQuestion.v
 const currentExplanation = computed(
   () => (currentQuestion.value as RichQuestionListItem | undefined)?.explanation ?? '',
 )
+const correctOptionValues = computed(() => {
+  const expectedValues = new Set(
+    currentCorrectAnswer.value
+      .split(/[\s,，、;；]/)
+      .map((value) => value.trim().toUpperCase())
+      .filter(Boolean),
+  )
+
+  return new Set(
+    resolvedQuestionOptions.value
+      .filter((option) =>
+        [option.value, option.label, option.text].some((value) =>
+          expectedValues.has(value.trim().toUpperCase()),
+        ),
+      )
+      .map((option) => option.value),
+  )
+})
+const showOptionFeedback = computed(
+  () => Boolean(currentAnswerRecord.value) && correctOptionValues.value.size > 0,
+)
 const answeredCount = computed(() => Object.keys(answerRecords.value).length)
 const currentQuestionPosition = computed(() =>
   currentQuestions.value.length === 0 ? 0 : currentIndex.value + 1,
@@ -126,6 +155,48 @@ const currentQuestionPosition = computed(() =>
 const currentQuestionFavorited = computed(() =>
   currentQuestion.value ? favoriteQuestionIds.value.has(currentQuestion.value.id) : false,
 )
+const currentQuestionTypeLabel = computed(() =>
+  currentQuestion.value ? QUESTION_TYPE_LABELS[currentQuestion.value.questionType] : '',
+)
+const progressPercent = computed(() => {
+  if (currentQuestions.value.length === 0) return 0
+  return (currentQuestionPosition.value / currentQuestions.value.length) * 100
+})
+const sessionStateContent = computed(() => {
+  if (sessionLoadState.value === 'error') {
+    return {
+      icon: CircleAlert,
+      iconClasses: 'bg-error/10 text-error',
+      eyebrow: '加载失败',
+      title: '题目没有加载成功',
+      description: '可能是网络波动或题目数据异常，请重新加载后再试。',
+      primaryLabel: '重新加载',
+      showSecondaryAction: true,
+    }
+  }
+
+  if (sessionLoadState.value === 'missing') {
+    return {
+      icon: ClipboardList,
+      iconClasses: 'bg-warning/15 text-warning',
+      eyebrow: '练习已失效',
+      title: '需要重新选择练习',
+      description: '当前页面没有找到练习信息，返回练习页重新选择后即可继续。',
+      primaryLabel: '返回练习',
+      showSecondaryAction: false,
+    }
+  }
+
+  return {
+    icon: ClipboardList,
+    iconClasses: 'bg-primary/10 text-primary',
+    eyebrow: '暂无题目',
+    title: '这个练习包暂时是空的',
+    description: '当前练习包没有可用题目，可以返回后更换其他练习包。',
+    primaryLabel: '更换练习包',
+    showSecondaryAction: false,
+  }
+})
 const canSubmitCurrentAnswer = computed(() => {
   if (currentAnswerRecord.value) return false
   if (isChoiceMode.value) return selectedOptionValues.value.size > 0
@@ -205,7 +276,10 @@ function parseQuestionTitle(question: QuestionListItem | undefined): ParsedQuest
   }
 }
 
-function normalizeOption(option: RawQuestionOption, index: number): NormalizedQuestionOption | null {
+function normalizeOption(
+  option: RawQuestionOption,
+  index: number,
+): NormalizedQuestionOption | null {
   const fallbackLabel = OPTION_LETTERS[index] ?? String(index + 1)
 
   if (typeof option === 'string') {
@@ -219,7 +293,9 @@ function normalizeOption(option: RawQuestionOption, index: number): NormalizedQu
     }
   }
 
-  const rawText = String(option.text ?? option.content ?? option.title ?? option.name ?? option.value ?? '')
+  const rawText = String(
+    option.text ?? option.content ?? option.title ?? option.name ?? option.value ?? '',
+  )
   const parsedText = parseOptionLine(rawText)
   const label = option.label ? String(option.label).trim() : (parsedText?.label ?? fallbackLabel)
   const value = String(option.value ?? option.id ?? label)
@@ -253,7 +329,7 @@ function getQuestionOptions(question: QuestionListItem | undefined) {
     richQuestion.optionG,
     richQuestion.optionH,
   ]
-    .map((option, index) => option ? normalizeOption(option, index) : null)
+    .map((option, index) => (option ? normalizeOption(option, index) : null))
     .filter((option): option is NormalizedQuestionOption => Boolean(option))
 
   if (letterOptions.length > 0) return uniqueOptions(letterOptions)
@@ -268,7 +344,7 @@ function getQuestionOptions(question: QuestionListItem | undefined) {
     richQuestion.option7,
     richQuestion.option8,
   ]
-    .map((option, index) => option ? normalizeOption(option, index) : null)
+    .map((option, index) => (option ? normalizeOption(option, index) : null))
     .filter((option): option is NormalizedQuestionOption => Boolean(option))
 
   if (numberOptions.length > 0) return uniqueOptions(numberOptions)
@@ -284,7 +360,9 @@ function formatAnswerValue(value: string | string[] | undefined) {
 function getReferenceAnswer(question: QuestionListItem | undefined) {
   if (!question) return ''
   const richQuestion = question as RichQuestionListItem
-  return formatAnswerValue(richQuestion.correctAnswer ?? richQuestion.referenceAnswer ?? richQuestion.answer)
+  return formatAnswerValue(
+    richQuestion.correctAnswer ?? richQuestion.referenceAnswer ?? richQuestion.answer,
+  )
 }
 
 function isAnswerCorrect(record: PracticeAnswerRecord, question: QuestionListItem) {
@@ -306,6 +384,15 @@ function isAnswerCorrect(record: PracticeAnswerRecord, question: QuestionListIte
   return actual === expected
 }
 
+function questionResultClasses(question: QuestionListItem) {
+  const record = answerRecords.value[question.id]
+  if (!record) return 'border-base-300 bg-base-100 text-base-content/70'
+
+  return isAnswerCorrect(record, question)
+    ? 'border-success bg-success text-white font-semibold'
+    : 'border-error bg-error text-white font-semibold'
+}
+
 function syncCurrentDraft() {
   const question = currentQuestion.value
   if (!question) {
@@ -321,6 +408,50 @@ function syncCurrentDraft() {
 
 function optionSelected(optionValue: string) {
   return selectedOptionValues.value.has(optionValue)
+}
+
+function optionIsCorrect(optionValue: string) {
+  return correctOptionValues.value.has(optionValue)
+}
+
+function optionClasses(optionValue: string) {
+  const selected = optionSelected(optionValue)
+
+  if (!showOptionFeedback.value) {
+    return selected
+      ? 'border-primary bg-primary/[0.07] text-base-content shadow-[inset_0_0_0_1px_var(--color-primary)]'
+      : 'border-base-200 bg-base-100 text-base-content active:border-base-300 active:bg-base-200/60'
+  }
+
+  if (optionIsCorrect(optionValue)) {
+    return 'border-success bg-success/[0.06] text-base-content'
+  }
+
+  if (selected) {
+    return 'border-error bg-error/[0.06] text-base-content'
+  }
+
+  return 'border-base-200 bg-base-100 text-base-content/55'
+}
+
+function optionMarkerClasses(optionValue: string) {
+  const selected = optionSelected(optionValue)
+
+  if (!showOptionFeedback.value) {
+    return selected
+      ? 'border-primary bg-primary text-primary-content'
+      : 'border-base-300 bg-base-100 text-base-content/55'
+  }
+
+  if (optionIsCorrect(optionValue)) {
+    return 'border-success bg-success/10 text-success'
+  }
+
+  if (selected) {
+    return 'border-error bg-error/10 text-error'
+  }
+
+  return 'border-base-300 bg-base-100 text-base-content/40'
 }
 
 function toggleOption(optionValue: string) {
@@ -369,16 +500,6 @@ function submitCurrentAnswer(autoAdvance = false) {
   }
 }
 
-function editCurrentAnswer() {
-  const question = currentQuestion.value
-  if (!question) return
-
-  clearAutoAdvance()
-  const nextRecords = { ...answerRecords.value }
-  delete nextRecords[question.id]
-  answerRecords.value = nextRecords
-}
-
 function goToQuestion(index: number) {
   if (index < 0 || index >= currentQuestions.value.length) return
   clearAutoAdvance()
@@ -401,7 +522,7 @@ function scheduleAutoAdvance() {
   autoAdvanceTimer.value = window.setTimeout(() => {
     nextQuestion()
     autoAdvanceTimer.value = null
-  }, 260)
+  }, 380)
 }
 
 function toggleFavorite() {
@@ -457,6 +578,15 @@ function prevQuestion() {
 function exitSession() {
   app.endPracticeSession()
   router.push('/practice')
+}
+
+function handleSessionStateAction() {
+  if (sessionLoadState.value === 'error') {
+    loadSessionData()
+    return
+  }
+
+  exitSession()
 }
 
 const QUESTION_TYPE_ORDER: Record<QuestionType, number> = {
@@ -520,7 +650,10 @@ function buildAnswerRecord(item: PracticeAnswerSheetItem): PracticeAnswerRecord 
 
   const isChoice = ['single', 'multiple', 'judge'].includes(item.questionType)
   const values = isChoice
-    ? answer.split(/[\s,，、;；]/).map((value) => value.trim()).filter(Boolean)
+    ? answer
+        .split(/[\s,，、;；]/)
+        .map((value) => value.trim())
+        .filter(Boolean)
     : [answer]
 
   if (values.length === 0) return null
@@ -533,7 +666,7 @@ function buildAnswerRecord(item: PracticeAnswerSheetItem): PracticeAnswerRecord 
 }
 
 async function loadSessionData() {
-  loading.value = true
+  sessionLoadState.value = 'loading'
   currentIndex.value = 0
   currentQuestions.value = []
   selectedOptionValues.value = new Set()
@@ -541,9 +674,10 @@ async function loadSessionData() {
   answerRecords.value = {}
   sessionTitles.value = []
 
-  const paperIds = app.practiceSessionPaperIds
+  const paperId = route.params.paperId
+  const paperIds = typeof paperId === 'string' && paperId ? [paperId] : []
   if (paperIds.length === 0) {
-    loading.value = false
+    sessionLoadState.value = 'missing'
     return
   }
 
@@ -566,14 +700,15 @@ async function loadSessionData() {
 
     currentQuestions.value = questions.sort(compareQuestionType)
     answerRecords.value = records
+    sessionLoadState.value = questions.length > 0 ? 'ready' : 'empty'
   } catch {
     currentQuestions.value = []
-  } finally {
-    loading.value = false
+    sessionLoadState.value = 'error'
   }
 }
 
 onMounted(() => {
+  app.setPracticeSessionActive(true)
   loadSessionData()
 })
 
@@ -591,86 +726,116 @@ watch(
 </script>
 
 <template>
-  <section class="flex w-full min-w-0 max-w-full flex-col gap-0 overflow-x-hidden">
-    <header class="sticky top-0 z-30 -mx-5 border-b border-base-200 bg-base-100/96 px-4 pb-3 pt-[calc(0.35rem+env(safe-area-inset-top))] backdrop-blur">
-      <div class="relative flex h-11 items-center justify-center">
-        <button class="btn btn-square btn-ghost absolute left-0" type="button" aria-label="退出练习" @click="exitSession">
-          <ArrowLeft :size="22" />
+  <section class="flex min-h-dvh w-full min-w-0 max-w-full flex-col overflow-x-hidden">
+    <header
+      class="fixed left-1/2 top-0 z-40 w-full max-w-[32rem] -translate-x-1/2 border-b border-base-200/80 bg-base-100/95 pt-[env(safe-area-inset-top)] backdrop-blur-xl"
+    >
+      <div class="grid h-14 grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-2 px-3">
+        <button
+          class="flex size-10 items-center justify-center rounded-full text-base-content transition active:bg-base-200"
+          type="button"
+          aria-label="退出练习"
+          @click="exitSession"
+        >
+          <ArrowLeft :size="21" />
         </button>
-        <h1 class="mx-12 truncate text-center text-base font-semibold leading-tight">{{ currentSessionTitle }}</h1>
+
+        <h1 class="truncate text-center text-[15px] font-semibold leading-tight">
+          {{ sessionSubjectName || currentSessionTitle }}
+        </h1>
+
+        <span aria-hidden="true"></span>
+      </div>
+      <div class="h-0.5 bg-base-200">
+        <div
+          class="h-full bg-primary transition-[width] duration-300"
+          :style="{ width: `${progressPercent}%` }"
+        ></div>
       </div>
     </header>
 
-    <div v-if="loading" class="-mx-5 py-24 text-center">
-      <span class="loading loading-spinner loading-lg text-primary"></span>
-    </div>
+    <section
+      v-if="sessionLoadState === 'loading'"
+      class="-mx-5 flex flex-1 items-center justify-center px-6 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-[calc(5rem+env(safe-area-inset-top))]"
+    >
+      <div class="text-center" role="status" aria-live="polite">
+        <span class="loading loading-spinner loading-md text-primary"></span>
+        <p class="mt-3 text-sm font-medium text-base-content/60">正在准备题目…</p>
+      </div>
+    </section>
 
     <article
       v-else-if="currentQuestion"
-      class="-mx-5 flex min-w-0 flex-col pb-[calc(5.25rem+env(safe-area-inset-bottom))]"
+      class="-mx-5 flex min-w-0 flex-1 flex-col pb-[calc(6.5rem+env(safe-area-inset-bottom))] pt-[calc(3.85rem+env(safe-area-inset-top))]"
       @touchstart.passive="handleTouchStart"
       @touchend.passive="handleTouchEnd"
     >
-      <section class="min-w-0 px-5 pb-4 pt-2">
-        <div class="max-h-48 min-h-24 overflow-y-auto">
-          <h1 class="whitespace-pre-line break-words text-base font-normal leading-[1.7]">
-            {{ displayQuestionTitle }}
-          </h1>
+      <section class="min-w-0 px-5 pt-3">
+        <div class="flex items-center justify-between gap-3">
+          <span class="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
+            {{ currentQuestionTypeLabel }}
+          </span>
+          <span class="truncate text-[13px] font-medium text-base-content/45">{{
+            currentSessionTitle
+          }}</span>
         </div>
-        <div class="mt-7 h-px bg-base-200"></div>
+
+        <h2 class="mt-3 whitespace-pre-line break-words text-base font-medium leading-6">
+          {{ displayQuestionTitle }}
+        </h2>
       </section>
 
-      <section v-if="expectsChoiceQuestion" class="grid gap-2 px-5 pt-1">
-        <button
-          v-for="option in resolvedQuestionOptions"
-          :key="option.value"
-          class="flex min-w-0 items-center gap-2.5 rounded-2xl border px-3 py-2.5 text-left transition"
-          :class="[
-            optionSelected(option.value)
-              ? 'border-primary bg-primary/5 ring-1 ring-primary/40'
-              : 'border-base-200 bg-base-100 text-base-content active:bg-base-200/70',
-            currentAnswerRecord ? 'cursor-default' : '',
-          ]"
-          type="button"
-          :aria-pressed="optionSelected(option.value)"
-          @click="toggleOption(option.value)"
+      <section v-if="expectsChoiceQuestion" class="px-5 pt-4">
+        <div
+          class="grid gap-2"
+          :class="currentQuestion.questionType === 'judge' ? 'grid-cols-2' : 'grid-cols-1'"
         >
-          <span
-            class="flex size-7 shrink-0 items-center justify-center border text-xs font-semibold"
-            :class="[
-              isMultipleQuestion ? 'rounded-xl' : 'rounded-full',
-              optionSelected(option.value)
-                ? 'border-primary bg-primary text-primary-content'
-                : 'border-base-300 text-base-content/70',
-            ]"
+          <button
+            v-for="option in resolvedQuestionOptions"
+            :key="option.value"
+            class="group flex min-h-11 min-w-0 items-center gap-2.5 rounded-xl border px-2.5 py-2 text-left transition"
+            :class="[optionClasses(option.value), currentAnswerRecord ? 'cursor-default' : '']"
+            type="button"
+            :aria-pressed="optionSelected(option.value)"
+            @click="toggleOption(option.value)"
           >
-            {{ option.label }}
-          </span>
-          <span class="min-w-0 flex-1 break-words text-sm leading-relaxed">{{ option.text }}</span>
-        </button>
+            <span
+              class="flex size-7 shrink-0 items-center justify-center border text-xs font-bold transition"
+              :class="[
+                isMultipleQuestion ? 'rounded-lg' : 'rounded-full',
+                optionMarkerClasses(option.value),
+              ]"
+            >
+              {{ option.label }}
+            </span>
+            <span class="min-w-0 flex-1 break-words text-[14px] leading-[1.55]">{{
+              option.text
+            }}</span>
+          </button>
+        </div>
 
         <button
           v-if="isMultipleQuestion && !currentAnswerRecord"
-          class="btn btn-primary mt-3 h-11 w-full rounded-full"
+          class="btn btn-primary mt-3 h-10 min-h-10 w-full rounded-xl text-sm"
           type="button"
           :disabled="!canSubmitCurrentAnswer"
           @click="submitCurrentAnswer(true)"
         >
-          确认答案
+          确认所选答案
         </button>
       </section>
 
       <section v-else class="grid gap-3 px-5 pt-4">
         <textarea
           v-model="textAnswer"
-          class="textarea min-h-[11rem] w-full resize-none rounded-2xl border-base-200 bg-base-200/55 p-4 text-base leading-relaxed focus:border-primary focus:outline-none"
-          placeholder="输入答案"
+          class="textarea min-h-[10rem] w-full resize-none rounded-xl border-base-200 bg-base-200/45 p-3.5 text-[15px] leading-relaxed focus:border-primary focus:bg-base-100 focus:outline-none"
+          placeholder="在这里输入你的答案…"
           :disabled="Boolean(currentAnswerRecord)"
         ></textarea>
 
         <button
           v-if="!currentAnswerRecord"
-          class="btn btn-primary h-11 w-full rounded-full"
+          class="btn btn-primary h-10 min-h-10 w-full rounded-xl text-sm"
           type="button"
           :disabled="!canSubmitCurrentAnswer"
           @click="submitCurrentAnswer(true)"
@@ -679,84 +844,134 @@ watch(
         </button>
       </section>
 
-      <section v-if="currentAnswerRecord" class="mx-5 mt-4 rounded-2xl border border-primary/15 bg-primary/5 px-3 py-2.5">
-        <div class="flex items-center justify-between gap-3">
-          <span class="inline-flex min-w-0 items-center gap-1.5 text-sm font-medium text-primary">
-            <CheckCircle2 :size="17" />
-            已作答
-          </span>
-          <button class="btn btn-ghost btn-xs h-7 min-h-0 px-2 text-base-content/60" type="button" @click="editCurrentAnswer">
-            修改
-          </button>
-        </div>
-        <p class="mt-1 break-words text-sm leading-relaxed text-base-content/65">
-          你的答案：<span class="font-medium text-base-content">{{ currentAnswerRecord.text }}</span>
-        </p>
-      </section>
+      <section v-if="currentAnswerRecord" class="mx-5 mt-6 border-t border-base-200 pt-4">
+        <h3 class="text-sm font-semibold text-base-content">题目解析</h3>
 
-      <section v-if="currentAnswerRecord" class="mx-5 mt-2 rounded-2xl border border-base-200 bg-base-100 px-3 py-2.5">
-        <p class="text-sm font-medium text-base-content">
-          正确答案：<span class="text-primary">{{ currentCorrectAnswer || '—' }}</span>
+        <p
+          v-if="currentExplanation"
+          class="mt-2 break-words text-sm leading-6 text-base-content/65"
+        >
+          {{ currentExplanation }}
         </p>
-        <p v-if="currentExplanation" class="mt-1.5 break-words text-sm leading-relaxed text-base-content/65">
-          解析：{{ currentExplanation }}
-        </p>
+        <p v-else class="mt-2 text-sm text-base-content/40">暂无解析</p>
       </section>
     </article>
 
     <div
       v-if="currentQuestion"
-      class="fixed bottom-0 left-1/2 z-30 w-full max-w-[32rem] -translate-x-1/2 border-t border-base-200 bg-base-100/96 px-3 pb-[calc(0.45rem+env(safe-area-inset-bottom))] pt-2 backdrop-blur"
+      class="fixed bottom-0 left-1/2 z-40 w-full max-w-[32rem] -translate-x-1/2 border-t border-base-200/80 bg-base-100/95 px-3 pb-[calc(0.65rem+env(safe-area-inset-bottom))] pt-2.5 backdrop-blur-xl"
     >
-      <div class="grid grid-cols-4 gap-1">
-        <button class="flex h-14 flex-col items-center justify-center gap-0.5 rounded-2xl text-[11px]" type="button" @click="toggleFavorite">
-          <Bookmark :size="21" :class="currentQuestionFavorited ? 'fill-primary text-primary' : 'text-base-content'" />
-          <span :class="currentQuestionFavorited ? 'font-semibold text-primary' : 'text-base-content/65'">收藏</span>
+      <div class="grid grid-cols-4 items-center gap-1">
+        <button
+          class="flex h-12 min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-medium transition active:bg-base-200"
+          :class="currentQuestionFavorited ? 'text-primary' : 'text-base-content/60'"
+          type="button"
+          :aria-label="currentQuestionFavorited ? '取消收藏' : '收藏题目'"
+          @click="toggleFavorite"
+        >
+          <Bookmark
+            :size="19"
+            :class="currentQuestionFavorited ? 'fill-primary text-primary' : 'text-base-content/65'"
+          />
+          <span>{{ currentQuestionFavorited ? '已收藏' : '收藏' }}</span>
         </button>
-        <button class="flex h-14 flex-col items-center justify-center gap-0.5 rounded-2xl text-[11px]" type="button">
-          <ClipboardCheck :size="21" class="text-base-content" />
-          <span class="text-base-content/65">对{{ correctCount }}/错{{ wrongCount }}</span>
+
+        <div
+          class="flex h-12 min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-medium tabular-nums text-base-content/60"
+          :aria-label="`答对 ${correctCount} 题，答错 ${wrongCount} 题`"
+        >
+          <ClipboardCheck :size="19" />
+          <span>
+            <span class="text-success">对{{ correctCount }}</span>
+            <span class="mx-0.5 text-base-content/25">/</span>
+            <span class="text-error">错{{ wrongCount }}</span>
+          </span>
+        </div>
+
+        <button
+          class="flex h-12 min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-medium tabular-nums text-base-content/60 transition active:bg-base-200"
+          type="button"
+          aria-label="打开答题卡"
+          @click="questionSheetOpen = true"
+        >
+          <Grid2X2 :size="19" />
+          <span>{{ currentQuestionPosition }}/{{ currentQuestions.length }}</span>
         </button>
-        <button class="flex h-14 flex-col items-center justify-center gap-0.5 rounded-2xl text-[11px]" type="button" @click="questionSheetOpen = true">
-          <ListChecks :size="21" class="text-base-content" />
-          <span class="text-base-content/65">{{ currentQuestionPosition }}/{{ currentQuestions.length }}</span>
-        </button>
-        <button class="flex h-14 flex-col items-center justify-center gap-0.5 rounded-2xl text-[11px] text-base-content/65" type="button" @click="settingsModalOpen = true">
-          <Settings :size="21" />
+
+        <button
+          class="flex h-12 min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-medium text-base-content/60 transition active:bg-base-200"
+          type="button"
+          aria-label="答题设置"
+          @click="settingsModalOpen = true"
+        >
+          <Settings :size="19" />
           <span>设置</span>
         </button>
       </div>
     </div>
 
-    <EmptyState
-      v-else
-      :icon="ClipboardList"
-      title="当前选择下暂无题目"
-      description="返回后换一个练习包，或调整专业科目筛选。"
-    />
+    <section
+      v-else-if="sessionLoadState !== 'ready'"
+      class="-mx-5 flex flex-1 items-center justify-center px-7 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-[calc(5rem+env(safe-area-inset-top))]"
+    >
+      <div class="w-full max-w-sm text-center">
+        <span
+          class="mx-auto flex size-14 items-center justify-center rounded-2xl"
+          :class="sessionStateContent.iconClasses"
+        >
+          <component :is="sessionStateContent.icon" :size="27" />
+        </span>
+
+        <p class="mt-5 text-xs font-semibold tracking-[0.16em] text-base-content/40">
+          {{ sessionStateContent.eyebrow }}
+        </p>
+        <h2 class="mt-2 text-xl font-semibold tracking-tight text-base-content">
+          {{ sessionStateContent.title }}
+        </h2>
+        <p class="mx-auto mt-2 max-w-xs text-sm leading-6 text-base-content/55">
+          {{ sessionStateContent.description }}
+        </p>
+
+        <div class="mx-auto mt-6 grid max-w-[15rem] gap-2.5">
+          <button
+            class="btn btn-primary h-11 min-h-11 rounded-xl px-6 text-sm"
+            type="button"
+            @click="handleSessionStateAction"
+          >
+            {{ sessionStateContent.primaryLabel }}
+          </button>
+          <button
+            v-if="sessionStateContent.showSecondaryAction"
+            class="btn btn-ghost h-10 min-h-10 rounded-xl text-sm text-base-content/55"
+            type="button"
+            @click="exitSession"
+          >
+            返回练习
+          </button>
+        </div>
+      </div>
+    </section>
 
     <BaseModal v-model="questionSheetOpen">
-      <div class="mb-4 flex items-center justify-between text-sm text-base-content/60">
-        <span>已完成 {{ answeredCount }}/{{ currentQuestions.length }}</span>
-        <span>对 {{ correctCount }} / 错 {{ wrongCount }}</span>
+      <div class="mb-3 flex items-center gap-3 border-b border-base-200 pb-3 text-xs tabular-nums">
+        <span class="font-semibold text-base-content/70">
+          {{ answeredCount }}/{{ currentQuestions.length }} 已完成
+        </span>
+        <span class="text-success">{{ correctCount }} 正确</span>
+        <span class="text-error">{{ wrongCount }} 错误</span>
       </div>
-      <div class="grid max-h-96 gap-4 overflow-y-auto">
+
+      <div class="grid gap-2">
         <div v-for="[type, group] in questionSheetGroups" :key="type">
-          <p class="mb-2 text-xs font-medium text-base-content/50">
+          <p class="mb-1.5 text-[13px] font-medium text-base-content/50">
             {{ QUESTION_TYPE_LABELS[type] }}（{{ group.questions.length }}题）
           </p>
-          <div class="grid grid-cols-8 gap-2">
+          <div class="grid grid-cols-10 gap-1">
             <button
               v-for="(question, offset) in group.questions"
               :key="question.id"
-              class="flex aspect-square items-center justify-center rounded-full border text-xs"
-              :class="[
-                group.startIndex + offset === currentIndex
-                  ? 'border-primary bg-primary text-primary-content'
-                  : answerRecords[question.id]
-                    ? 'border-primary/20 bg-primary/10 text-primary'
-                    : 'border-base-200 bg-base-100 text-base-content/70',
-              ]"
+              class="flex size-7 items-center justify-center rounded-full border text-[11px] font-medium tabular-nums transition active:scale-90"
+              :class="questionResultClasses(question)"
               type="button"
               @click="goToQuestion(group.startIndex + offset)"
             >
