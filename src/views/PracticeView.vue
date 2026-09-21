@@ -389,6 +389,46 @@ watch(
             </option>
           </select>
         </div>
+
+        <div v-if="activeSubject" class="border-t border-base-200 px-3 py-3">
+          <div class="mb-2.5 flex items-center justify-between px-1">
+            <span class="text-xs font-medium text-base-content/50">练习方式</span>
+            <span v-if="entriesLoading" class="loading loading-spinner loading-xs"></span>
+          </div>
+
+          <div v-if="!entriesLoading && entryRows.length > 0" class="grid grid-cols-4 gap-1.5">
+            <button
+              v-for="entry in entryRows"
+              :key="entry.type"
+              class="flex min-w-0 flex-col items-center rounded-xl px-1 py-2 text-center transition-colors"
+              :class="
+                activeEntry?.type === entry.type
+                  ? 'bg-primary/10 text-primary ring-1 ring-primary/40'
+                  : 'bg-base-200/45 text-base-content/60 active:bg-base-200/75'
+              "
+              type="button"
+              :aria-pressed="activeEntry?.type === entry.type"
+              @click="selectEntry(entry.type)"
+            >
+              <span
+                class="flex size-7 items-center justify-center rounded-full"
+                :class="entryToneClasses(entry.tone)"
+              >
+                <component :is="entry.icon" :size="14" />
+              </span>
+              <span class="mt-1.5 block max-w-full truncate text-[11px] font-semibold">
+                {{ entry.name }}
+              </span>
+            </button>
+          </div>
+
+          <p
+            v-else-if="!entriesLoading"
+            class="rounded-xl bg-base-200/35 px-3 py-3 text-center text-xs text-base-content/45"
+          >
+            暂无可用练习方式
+          </p>
+        </div>
       </section>
 
       <section
@@ -404,120 +444,77 @@ watch(
         />
       </section>
 
-      <section v-else class="min-w-0 max-w-full overflow-hidden">
-        <div class="mb-3 flex items-center justify-between gap-3">
-          <div class="min-w-0">
-            <h2 class="text-lg font-semibold">练习方式</h2>
-          </div>
-        </div>
+      <EmptyState
+        v-else-if="!entriesLoading && entryRows.length === 0"
+        :icon="Target"
+        title="暂无练习入口"
+        :description="`${activeSubject.name} 暂无可用练习内容。`"
+      />
 
-        <div v-if="entriesLoading" class="flex min-h-44 items-center justify-center">
-          <span class="loading loading-spinner loading-sm"></span>
-        </div>
-
-        <EmptyState
-          v-else-if="entryRows.length === 0"
-          :icon="Target"
-          title="暂无练习入口"
-          :description="`${activeSubject.name} 暂无可用练习内容。`"
-        />
-
-        <template v-else>
-          <div class="grid grid-cols-4 gap-2">
-            <button
-              v-for="entry in entryRows"
-              :key="entry.type"
-              class="flex min-w-0 flex-col items-center rounded-xl border px-1.5 py-2.5 text-center transition-colors"
-              :class="
-                activeEntry?.type === entry.type
-                  ? 'border-primary bg-primary/5 text-primary'
-                  : 'border-base-200 bg-base-100 text-base-content/60 active:bg-base-200/60'
-              "
-              type="button"
-              :aria-pressed="activeEntry?.type === entry.type"
-              @click="selectEntry(entry.type)"
-            >
-              <span
-                class="flex size-8 items-center justify-center rounded-full"
-                :class="entryToneClasses(entry.tone)"
-              >
-                <component :is="entry.icon" :size="16" />
-              </span>
-              <span class="mt-1.5 block max-w-full truncate text-xs font-semibold">
-                {{ entry.name }}
-              </span>
-            </button>
-          </div>
-
-          <div
-            v-if="activeEntry"
-            class="mt-3 overflow-hidden rounded-2xl border border-base-200 bg-base-100"
+      <section
+        v-else-if="activeEntry"
+        class="min-w-0 max-w-full overflow-hidden rounded-2xl border border-base-200 bg-base-100"
+      >
+        <div class="flex min-w-0 items-center gap-3 border-b border-base-200 px-4 py-3.5">
+          <span
+            class="flex size-9 shrink-0 items-center justify-center rounded-full"
+            :class="entryToneClasses(activeEntry.tone)"
           >
-            <div class="flex min-w-0 items-center gap-3 border-b border-base-200 px-4 py-3.5">
-              <span
-                class="flex size-9 shrink-0 items-center justify-center rounded-full"
-                :class="entryToneClasses(activeEntry.tone)"
-              >
-                <component :is="activeEntry.icon" :size="17" />
-              </span>
-              <span class="min-w-0 flex-1">
-                <span class="block truncate text-sm font-semibold">{{ activeEntry.name }}</span>
-                <span class="mt-0.5 block truncate text-xs text-base-content/45">
-                  {{ activeEntry.description || activeEntry.name }}
-                </span>
-              </span>
-            </div>
+            <component :is="activeEntry.icon" :size="17" />
+          </span>
+          <span class="min-w-0 flex-1">
+            <span class="block truncate text-sm font-semibold">{{ activeEntry.name }}</span>
+            <span class="mt-0.5 block truncate text-xs text-base-content/45">
+              {{ activeEntry.description || activeEntry.name }}
+            </span>
+          </span>
+        </div>
 
-            <div
-              v-if="activeEntry.children && activeEntry.children.length > 0"
-              class="divide-y divide-base-200"
+        <div
+          v-if="activeEntry.children && activeEntry.children.length > 0"
+          class="divide-y divide-base-200"
+        >
+          <button
+            v-for="child in activeEntry.children"
+            :key="child.paperId"
+            class="group flex w-full min-w-0 items-center gap-3 px-4 py-3.5 text-left transition active:bg-base-200/50"
+            type="button"
+            @click="startEntryPaper(child)"
+          >
+            <span
+              class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-base-200/70 text-primary"
             >
-              <button
-                v-for="child in activeEntry.children"
-                :key="child.paperId"
-                class="group flex w-full min-w-0 items-center gap-3 px-4 py-3.5 text-left transition active:bg-base-200/50"
-                type="button"
-                @click="startEntryPaper(child)"
-              >
-                <span
-                  class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-base-200/70 text-primary"
-                >
-                  <FileStack :size="15" />
+              <FileStack :size="15" />
+            </span>
+            <span class="min-w-0 flex-1">
+              <span class="block truncate text-sm font-medium">{{ child.name }}</span>
+              <span class="mt-1 flex items-center gap-2">
+                <progress
+                  class="progress progress-primary h-1.5 min-w-0 flex-1"
+                  :value="child.answeredCount"
+                  :max="child.questionCount || 1"
+                ></progress>
+                <span class="shrink-0 text-[11px] text-base-content/40">
+                  {{ child.answeredCount }}/{{ child.questionCount }} 题
                 </span>
-                <span class="min-w-0 flex-1">
-                  <span class="block truncate text-sm font-medium">{{ child.name }}</span>
-                  <span class="mt-1 flex items-center gap-2">
-                    <progress
-                      class="progress progress-primary h-1.5 min-w-0 flex-1"
-                      :value="child.answeredCount"
-                      :max="child.questionCount || 1"
-                    ></progress>
-                    <span class="shrink-0 text-[11px] text-base-content/40">
-                      {{ child.answeredCount }}/{{ child.questionCount }} 题
-                    </span>
-                  </span>
-                </span>
-                <span
-                  class="inline-flex shrink-0 items-center gap-1 rounded-lg bg-primary/10 px-2.5 py-1.5 text-xs font-semibold text-primary"
-                >
-                  开始
-                  <ArrowRight
-                    :size="12"
-                    class="transition-transform group-active:translate-x-0.5"
-                  />
-                </span>
-              </button>
-            </div>
+              </span>
+            </span>
+            <span
+              class="inline-flex shrink-0 items-center gap-1 rounded-lg bg-primary/10 px-2.5 py-1.5 text-xs font-semibold text-primary"
+            >
+              开始
+              <ArrowRight :size="12" class="transition-transform group-active:translate-x-0.5" />
+            </span>
+          </button>
+        </div>
 
-            <div
-              v-else
-              class="flex min-h-28 flex-col items-center justify-center px-5 py-6 text-center"
-            >
-              <span class="text-sm font-medium">当前暂无可用内容</span>
-              <span class="mt-1 text-xs text-base-content/45">{{ activeEntry.description }}</span>
-            </div>
-          </div>
-        </template>
+        <div
+          v-else
+          class="flex min-h-28 flex-col items-center justify-center px-5 py-6 text-center"
+        >
+          <span class="text-sm font-medium">当前暂无可用内容</span>
+          <span class="mt-1 text-xs text-base-content/45">{{ activeEntry.description }}</span>
+        </div>
       </section>
     </template>
 
