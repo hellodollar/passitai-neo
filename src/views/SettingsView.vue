@@ -34,45 +34,56 @@ const me = ref<UserMe | null>(null)
 type SettingsAction = 'account' | 'plan' | 'practice' | 'notification'
 
 const displayName = computed(() => {
-  if (me.value?.profile.displayName) return me.value.profile.displayName
   const name = auth.user?.email.split('@')[0]
   return name ? name.replace(/[._-]+/g, ' ') : 'PassIt AI'
 })
 
 const profileEmail = computed(
-  () => me.value?.profile.email ?? auth.user?.email ?? 'you@passitai.ai',
+  () => me.value?.user.email ?? auth.user?.email ?? 'you@passitai.ai',
 )
 
-const menuItems = [
-  {
-    title: '账户',
-    subtitle: '修改密码、更换邮箱',
-    icon: KeyRound,
-    iconClasses: 'bg-primary/10 text-primary',
-    action: 'account',
-  },
-  {
-    title: '刷题计划',
-    subtitle: '专业和刷题科目',
-    icon: GraduationCap,
-    iconClasses: 'bg-secondary/10 text-secondary',
-    action: 'plan',
-  },
-  {
-    title: '练习设置',
-    subtitle: '答题方式、错题记录、解析显示',
-    icon: Settings2,
-    iconClasses: 'bg-accent/15 text-accent',
-    action: 'practice',
-  },
-  {
-    title: '通知',
-    subtitle: '学习提醒、系统消息',
-    icon: Bell,
-    iconClasses: 'bg-info/10 text-info',
-    action: 'notification',
-  },
-] as const
+const menuItems = computed(() => {
+  const plan = me.value?.preferences.plan
+  const practice = me.value?.preferences.practice
+  const notifications = me.value?.preferences.notifications
+
+  return [
+    {
+      title: '账户',
+      subtitle: profileEmail.value,
+      icon: KeyRound,
+      iconClasses: 'bg-primary/10 text-primary',
+      action: 'account' as const,
+    },
+    {
+      title: '刷题计划',
+      subtitle: plan ? `${plan.majorName} · ${plan.subjects.length} 个科目` : '专业和刷题科目',
+      icon: GraduationCap,
+      iconClasses: 'bg-secondary/10 text-secondary',
+      action: 'plan' as const,
+    },
+    {
+      title: '练习设置',
+      subtitle: practice
+        ? `自动下一题 ${practice.autoNext ? '开' : '关'} · 解析 ${practice.showExplanationAfterAnswer ? '开' : '关'}`
+        : '答题方式、错题记录、解析显示',
+      icon: Settings2,
+      iconClasses: 'bg-accent/15 text-accent',
+      action: 'practice' as const,
+    },
+    {
+      title: '通知',
+      subtitle: notifications
+        ? notifications.dailyReminder
+          ? '学习提醒已开启'
+          : '学习提醒已关闭'
+        : '学习提醒、系统消息',
+      icon: Bell,
+      iconClasses: 'bg-info/10 text-info',
+      action: 'notification' as const,
+    },
+  ]
+})
 
 function openMenuItem(action: SettingsAction) {
   if (action === 'account') {
@@ -101,7 +112,10 @@ async function loadMe() {
   }
 }
 
-function onPlanUpdated(_plan: PracticePlan, selection: { majorId: string; subjectIds: string[] }) {
+function onPlanUpdated(plan: PracticePlan, selection: { majorId: string; subjectIds: string[] }) {
+  if (me.value) {
+    me.value.preferences.plan = plan
+  }
   app.setSubjectSelection({
     majorId: selection.majorId,
     subjectIds: selection.subjectIds,
@@ -234,10 +248,21 @@ onMounted(() => {
       </div>
     </BaseModal>
 
-    <PracticePlanModal v-model="planModalOpen" @updated="onPlanUpdated" />
+    <PracticePlanModal
+      v-model="planModalOpen"
+      :plan="me?.preferences.plan"
+      @updated="onPlanUpdated"
+    />
 
-    <PracticeSettingsContent v-model="practiceSettingsModalOpen" />
+    <PracticeSettingsContent
+      v-model="practiceSettingsModalOpen"
+      external
+      :settings="me?.preferences.practice"
+    />
 
-    <NotificationSettingsContent v-model="notificationModalOpen" />
+    <NotificationSettingsContent
+      v-model="notificationModalOpen"
+      :notifications="me?.preferences.notifications"
+    />
   </section>
 </template>

@@ -182,23 +182,38 @@ GET /api/user
 GET /api/me
 ```
 
-一次性返回用户端“我的/设置”页面需要展示的信息。当前 profile、preferences、settings 都是占位数据，
-更新入口会在 `editable` 中声明：
+一次性返回用户端「我的/设置」页面需要展示的信息。`preferences` 是三个子接口的投影：
 
 ```ts
 interface UserMe {
-  user: AuthResult['user']
-  profile: UserProfile
-  preferences: UserPreferences
-  settings: UserSettings
-  editable: {
-    profile: { method: 'PATCH'; path: '/api/profile'; fields: string[] }
-    preferences: { method: 'PATCH'; path: '/api/preferences'; fields: string[] }
-    settings: { method: 'PATCH'; path: '/api/settings'; fields: string[] }
+  user: AuthResult['user'] & { status: DataStatus }
+  preferences: {
+    plan: {
+      majorName: string
+      majorCode: string
+      subjects: { name: string; code: string }[]
+    }
+    practice: {
+      autoNext: boolean
+      recordWrongQuestions: boolean
+      showExplanationAfterAnswer: boolean
+      loopAfterCompletion: boolean
+      autoSubmitAfterCompletion: boolean
+    }
+    notifications: {
+      dailyReminder: boolean
+      reminderTime: string
+      weeklyReport: boolean
+    }
   }
-  placeholder: true
 }
 ```
+
+- `preferences.plan` 等价于 `GET /api/practice/plan`。
+- `preferences.practice` 等价于 `GET /api/practice/settings`。
+- `preferences.notifications` 等价于 `GET /api/notifications`。
+- 三者的数据统一存储在用户表的 `preferences` 字段（`{ plan, practice, notifications }`），
+  `/api/me` 只是聚合投影，不额外持久化。
 
 ### 退出
 
@@ -326,7 +341,7 @@ GET  /api/practice/sessions/:id
 
 ### 练习计划
 
-练习计划是当前用户已保存的「专业 + 自选科目」，持久化在用户的 `preferences` 字段中。
+练习计划是当前用户已保存的「专业 + 自选科目」，持久化在用户表的 `preferences.plan` 字段中。
 
 ```http
 GET /api/practice/plan
@@ -447,7 +462,7 @@ PATCH /api/practice/settings
 Content-Type: application/json
 ```
 
-当前为占位数据，不写入数据库：
+当前持久化在用户表的 `preferences.practice` 中，未设置时返回默认值：
 
 ```ts
 interface PracticeSettings {
@@ -471,7 +486,7 @@ interface PracticeSettings {
 }
 ```
 
-`PATCH` 接收以上字段（可部分更新），返回合并后的 `PracticeSettings`，当前不持久化。
+`PATCH` 接收以上字段（可部分更新），返回合并后的 `PracticeSettings` 并写入 `preferences.practice`。
 
 ### 练习入口
 
@@ -804,6 +819,37 @@ interface PasswordChangePlaceholder {
 }
 ```
 
+### 通知设置
+
+```http
+GET   /api/notifications
+PATCH /api/notifications
+Content-Type: application/json
+```
+
+持久化在用户表的 `preferences.notifications` 中，未设置时返回默认值：
+
+```ts
+interface NotificationSettings {
+  dailyReminder: boolean
+  reminderTime: string
+  weeklyReport: boolean
+}
+```
+
+默认值：
+
+```json
+{
+  "dailyReminder": false,
+  "reminderTime": "",
+  "weeklyReport": false
+}
+```
+
+`PATCH` 接收以上字段（可部分更新），返回合并后的 `NotificationSettings` 并写入
+`preferences.notifications`。
+
 ## 15. 页面与接口映射
 
 ### 业务接口
@@ -820,7 +866,8 @@ interface PasswordChangePlaceholder {
 | 练习计划           | `GET /practice/plan`, `PUT /practice/plan`           | 已持久化到用户偏好     |
 | 科目练习入口       | `GET /practice/entries?code=`                        | mock 数据              |
 | 答题卡             | `GET /practice/answer-sheet?paperId=`                | mock 数据              |
-| 练习设置           | `GET /practice/settings`, `PATCH /practice/settings` | 占位                   |
+| 练习设置           | `GET /practice/settings`, `PATCH /practice/settings` | 已持久化到用户偏好     |
+| 通知设置           | `GET /notifications`, `PATCH /notifications`         | 已持久化到用户偏好     |
 | 练习入口           | `GET /practice`, `POST /practice/sessions`           | 会话占位               |
 | 我的记录 / 答题卡  | `GET /records`, `GET /answer-sheets`                 | 记录列表 + 答题卡占位  |
 | 收藏               | `GET /favorites`                                     | 空列表占位             |

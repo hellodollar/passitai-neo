@@ -1,15 +1,40 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 
 import BaseModal from '@/components/common/BaseModal.vue'
 import SettingsToggleItem from '@/components/common/SettingsToggleItem.vue'
 
 const model = defineModel<boolean>({ default: false })
 
+const props = withDefaults(
+  defineProps<{
+    notifications?: {
+      dailyReminder?: boolean
+      reminderTime?: string
+      weeklyReport?: boolean
+    } | null
+  }>(),
+  {
+    notifications: null,
+  },
+)
+
 const notificationSettings = ref({
   studyReminder: false,
   systemMessage: false,
 })
+
+watch(
+  () => props.notifications,
+  (value) => {
+    if (!value) return
+    notificationSettings.value = {
+      studyReminder: Boolean(value.dailyReminder),
+      systemMessage: Boolean(value.weeklyReport),
+    }
+  },
+  { immediate: true },
+)
 </script>
 
 <template>

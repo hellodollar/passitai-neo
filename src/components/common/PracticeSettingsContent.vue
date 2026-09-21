@@ -8,6 +8,17 @@ import type { PracticeSettings } from '@/types/domain'
 
 const model = defineModel<boolean>({ default: false })
 
+const props = withDefaults(
+  defineProps<{
+    settings?: PracticeSettings | null
+    external?: boolean
+  }>(),
+  {
+    settings: null,
+    external: false,
+  },
+)
+
 const practiceSettings = ref({
   autoNextOnCorrect: false,
   recordWrongQuestions: true,
@@ -25,18 +36,28 @@ let lastValues = {
   autoSubmit: false,
 }
 
+function applySettings(settings: PracticeSettings) {
+  const next = {
+    autoNextOnCorrect: Boolean(settings.autoNext),
+    recordWrongQuestions: Boolean(settings.recordWrongQuestions),
+    showAnalysis: Boolean(settings.showExplanationAfterAnswer),
+    loopPractice: Boolean(settings.loopAfterCompletion),
+    autoSubmit: Boolean(settings.autoSubmitAfterCompletion),
+  }
+  practiceSettings.value = next
+  lastValues = { ...next }
+}
+
 async function loadPracticeSettings() {
+  if (props.external) {
+    if (props.settings) applySettings(props.settings)
+    await nextTick()
+    loaded.value = true
+    return
+  }
+
   try {
-    const settings = await fetchPracticeSettings()
-    const next = {
-      autoNextOnCorrect: Boolean(settings.autoNext),
-      recordWrongQuestions: Boolean(settings.recordWrongQuestions),
-      showAnalysis: Boolean(settings.showExplanationAfterAnswer),
-      loopPractice: Boolean(settings.loopAfterCompletion),
-      autoSubmit: Boolean(settings.autoSubmitAfterCompletion),
-    }
-    practiceSettings.value = next
-    lastValues = { ...next }
+    applySettings(await fetchPracticeSettings())
   } catch {
     // Keep local defaults while the backend settings endpoint is still placeholder-only.
   } finally {
@@ -78,6 +99,13 @@ watch(
     void updatePracticeSettings(payload).catch(() => {})
   },
   { deep: true },
+)
+
+watch(
+  () => props.settings,
+  (value) => {
+    if (value) applySettings(value)
+  },
 )
 
 onMounted(() => {

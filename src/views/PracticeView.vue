@@ -4,6 +4,8 @@ import {
   ArrowDown,
   ArrowUp,
   BookOpenCheck,
+  Check,
+  ChevronDown,
   ClipboardList,
   EyeOff,
   FileStack,
@@ -43,6 +45,7 @@ const planMetadataPlaceholders: Record<string, { educationLevel?: string; nextEx
 
 const settingsModalOpen = ref(false)
 const subjectPanelOpen = ref(false)
+const subjectPickerOpen = ref(false)
 const planModalOpen = ref(false)
 const plan = ref<PracticePlan | null>(null)
 const planLoading = ref(false)
@@ -134,10 +137,7 @@ function entryToneClasses(tone: EntryTone) {
 function selectSubject(code: string) {
   activeSubjectCode.value = code
   expandedEntryKey.value = ''
-}
-
-function onSubjectSelect(event: Event) {
-  selectSubject((event.target as HTMLSelectElement).value)
+  subjectPickerOpen.value = false
 }
 
 function subjectCreditsText(subject: PracticePlanSubject) {
@@ -376,27 +376,26 @@ watch(
           </button>
         </div>
 
-        <div v-if="activeSubject" class="flex min-w-0 items-center border-t border-base-200 px-4">
+        <button
+          v-if="activeSubject"
+          class="flex h-12 w-full min-w-0 items-center border-t border-base-200 px-4 text-left"
+          type="button"
+          aria-label="选择练习科目"
+          @click="subjectPickerOpen = true"
+        >
           <span class="mr-3 h-6 w-1 shrink-0 rounded-full bg-secondary" aria-hidden="true"></span>
-          <select
-            class="select h-12 min-h-12 min-w-0 flex-1 border-0 bg-transparent px-0 pr-8 text-sm font-semibold focus:outline-none"
-            aria-label="选择练习科目"
-            :value="activeSubject.code"
-            @change="onSubjectSelect"
-          >
-            <option v-for="subject in visibleSubjects" :key="subject.code" :value="subject.code">
-              {{ subject.name }}
-            </option>
-          </select>
-        </div>
+          <span class="min-w-0 flex-1 truncate text-sm font-semibold">{{
+            activeSubject.name
+          }}</span>
+          <ChevronDown :size="16" class="ml-3 shrink-0 text-base-content/45" />
+        </button>
 
         <div v-if="activeSubject" class="border-t border-base-200 px-3 py-3">
-          <div class="mb-2.5 flex items-center justify-between px-1">
-            <span class="text-xs font-medium text-base-content/50">练习方式</span>
-            <span v-if="entriesLoading" class="loading loading-spinner loading-xs"></span>
+          <div v-if="entriesLoading" class="flex min-h-14 items-center justify-center">
+            <span class="loading loading-spinner loading-xs"></span>
           </div>
 
-          <div v-if="!entriesLoading && entryRows.length > 0" class="grid grid-cols-4 gap-1.5">
+          <div v-else-if="entryRows.length > 0" class="grid grid-cols-4 gap-1.5">
             <button
               v-for="entry in entryRows"
               :key="entry.type"
@@ -429,91 +428,71 @@ watch(
             暂无可用练习方式
           </p>
         </div>
-      </section>
 
-      <section
-        v-if="!activeSubject"
-        class="overflow-hidden rounded-2xl border border-base-200 bg-base-100"
-      >
-        <EmptyState
-          :icon="EyeOff"
-          title="所有科目已隐藏"
-          description="在科目管理中恢复需要展示的科目。"
-          action-label="管理科目"
-          @action="subjectPanelOpen = true"
-        />
-      </section>
-
-      <EmptyState
-        v-else-if="!entriesLoading && entryRows.length === 0"
-        :icon="Target"
-        title="暂无练习入口"
-        :description="`${activeSubject.name} 暂无可用练习内容。`"
-      />
-
-      <section
-        v-else-if="activeEntry"
-        class="min-w-0 max-w-full overflow-hidden rounded-2xl border border-base-200 bg-base-100"
-      >
-        <div class="flex min-w-0 items-center gap-3 border-b border-base-200 px-4 py-3.5">
-          <span
-            class="flex size-9 shrink-0 items-center justify-center rounded-full"
-            :class="entryToneClasses(activeEntry.tone)"
-          >
-            <component :is="activeEntry.icon" :size="17" />
-          </span>
-          <span class="min-w-0 flex-1">
-            <span class="block truncate text-sm font-semibold">{{ activeEntry.name }}</span>
-            <span class="mt-0.5 block truncate text-xs text-base-content/45">
-              {{ activeEntry.description || activeEntry.name }}
-            </span>
-          </span>
+        <div v-if="!activeSubject" class="border-t border-base-200">
+          <EmptyState
+            :icon="EyeOff"
+            title="所有科目已隐藏"
+            description="在科目管理中恢复需要展示的科目。"
+            action-label="管理科目"
+            @action="subjectPanelOpen = true"
+          />
         </div>
 
-        <div
-          v-if="activeEntry.children && activeEntry.children.length > 0"
-          class="divide-y divide-base-200"
-        >
-          <button
-            v-for="child in activeEntry.children"
-            :key="child.paperId"
-            class="group flex w-full min-w-0 items-center gap-3 px-4 py-3.5 text-left transition active:bg-base-200/50"
-            type="button"
-            @click="startEntryPaper(child)"
+        <div v-else-if="!entriesLoading && entryRows.length === 0" class="border-t border-base-200">
+          <EmptyState
+            :icon="Target"
+            title="暂无练习入口"
+            :description="`${activeSubject.name} 暂无可用练习内容。`"
+          />
+        </div>
+
+        <div v-else-if="activeEntry" class="min-w-0 border-t border-base-200">
+          <div
+            v-if="activeEntry.children && activeEntry.children.length > 0"
+            class="divide-y divide-base-200"
           >
-            <span
-              class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-base-200/70 text-primary"
+            <button
+              v-for="child in activeEntry.children"
+              :key="child.paperId"
+              class="group flex w-full min-w-0 items-center gap-3 px-4 py-3.5 text-left transition active:bg-base-200/50"
+              type="button"
+              @click="startEntryPaper(child)"
             >
-              <FileStack :size="15" />
-            </span>
-            <span class="min-w-0 flex-1">
-              <span class="block truncate text-sm font-medium">{{ child.name }}</span>
-              <span class="mt-1 flex items-center gap-2">
-                <progress
-                  class="progress progress-primary h-1.5 min-w-0 flex-1"
-                  :value="child.answeredCount"
-                  :max="child.questionCount || 1"
-                ></progress>
-                <span class="shrink-0 text-[11px] text-base-content/40">
-                  {{ child.answeredCount }}/{{ child.questionCount }} 题
+              <span
+                class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-base-200/70 text-primary"
+              >
+                <FileStack :size="15" />
+              </span>
+              <span class="min-w-0 flex-1">
+                <span class="block truncate text-sm font-medium">{{ child.name }}</span>
+                <span class="mt-1 flex items-center gap-2">
+                  <progress
+                    class="progress progress-primary h-1.5 min-w-0 flex-1"
+                    :value="child.answeredCount"
+                    :max="child.questionCount || 1"
+                  ></progress>
+                  <span class="shrink-0 text-[11px] text-base-content/40">
+                    {{ child.answeredCount }}/{{ child.questionCount }} 题
+                  </span>
                 </span>
               </span>
-            </span>
-            <span
-              class="inline-flex shrink-0 items-center gap-1 rounded-lg bg-primary/10 px-2.5 py-1.5 text-xs font-semibold text-primary"
-            >
-              开始
-              <ArrowRight :size="12" class="transition-transform group-active:translate-x-0.5" />
-            </span>
-          </button>
-        </div>
+              <span
+                class="inline-flex shrink-0 items-center gap-1 rounded-lg bg-primary/10 px-2.5 py-1.5 text-xs font-semibold text-primary"
+              >
+                开始
+                <ArrowRight :size="12" class="transition-transform group-active:translate-x-0.5" />
+              </span>
+            </button>
+          </div>
 
-        <div
-          v-else
-          class="flex min-h-28 flex-col items-center justify-center px-5 py-6 text-center"
-        >
-          <span class="text-sm font-medium">当前暂无可用内容</span>
-          <span class="mt-1 text-xs text-base-content/45">{{ activeEntry.description }}</span>
+          <div
+            v-else
+            class="flex min-h-28 flex-col items-center justify-center px-5 py-6 text-center"
+          >
+            <span class="text-sm font-medium">当前暂无可用内容</span>
+            <span class="mt-1 text-xs text-base-content/45">{{ activeEntry.description }}</span>
+          </div>
         </div>
       </section>
     </template>
@@ -590,6 +569,34 @@ watch(
           title="暂无可管理科目"
           description="暂无练习计划科目。"
         />
+      </div>
+    </BaseModal>
+
+    <BaseModal v-model="subjectPickerOpen">
+      <h3 class="text-base font-semibold">选择刷题科目</h3>
+
+      <div class="mt-3 border-y border-base-200 divide-y divide-base-200">
+        <button
+          v-for="subject in visibleSubjects"
+          :key="subject.code"
+          class="flex min-h-12 w-full min-w-0 items-center gap-3 py-2 text-left"
+          type="button"
+          :aria-pressed="activeSubject?.code === subject.code"
+          @click="selectSubject(subject.code)"
+        >
+          <span class="min-w-0 flex-1">
+            <span class="block truncate text-sm font-medium">{{ subject.name }}</span>
+            <span v-if="subject.code" class="mt-0.5 block text-[11px] text-base-content/40">
+              {{ subject.code }}
+            </span>
+          </span>
+          <span
+            v-if="activeSubject?.code === subject.code"
+            class="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"
+          >
+            <Check :size="14" :stroke-width="2.5" />
+          </span>
+        </button>
       </div>
     </BaseModal>
 

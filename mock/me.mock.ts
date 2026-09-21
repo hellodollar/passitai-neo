@@ -61,31 +61,6 @@ const mockSettings = {
   },
 }
 
-const mockCatalog = {
-  majors: [
-    { id: 'major_001', name: '工商管理' },
-    { id: 'major_002', name: '会计学' },
-    { id: 'major_003', name: '计算机科学与技术' },
-    { id: 'major_004', name: '汉语言文学' },
-    { id: 'major_005', name: '法学' },
-    { id: 'major_006', name: '人力资源管理' },
-  ],
-  subjects: [
-    { id: 'subj_001', name: '中国近现代史纲要', majorId: 'major_001', majorName: '工商管理' },
-    { id: 'subj_002', name: '马克思主义基本原理', majorId: 'major_001', majorName: '工商管理' },
-    { id: 'subj_003', name: '英语(二)', majorId: 'major_001', majorName: '工商管理' },
-    { id: 'subj_004', name: '管理学原理', majorId: 'major_001', majorName: '工商管理' },
-    { id: 'subj_005', name: '线性代数(经管类)', majorId: 'major_002', majorName: '会计学' },
-    { id: 'subj_006', name: '高级财务会计', majorId: 'major_002', majorName: '会计学' },
-    { id: 'subj_007', name: '数据结构', majorId: 'major_003', majorName: '计算机科学与技术' },
-    { id: 'subj_008', name: '操作系统', majorId: 'major_003', majorName: '计算机科学与技术' },
-    { id: 'subj_009', name: '中国古代文学史', majorId: 'major_004', majorName: '汉语言文学' },
-    { id: 'subj_010', name: '宪法学', majorId: 'major_005', majorName: '法学' },
-    { id: 'subj_011', name: '人力资源管理(一)', majorId: 'major_006', majorName: '人力资源管理' },
-    { id: 'subj_012', name: '劳动经济学', majorId: 'major_006', majorName: '人力资源管理' },
-  ],
-}
-
 function readSection(body: unknown, key: string) {
   return body && typeof body === 'object' && !Array.isArray(body)
     ? ((body as Record<string, unknown>)[key] ?? {})
@@ -94,29 +69,30 @@ function readSection(body: unknown, key: string) {
 
 function mockMe() {
   return {
-    user: mockUser,
-    profile: mockProfile,
-    preferences: mockPreferences,
-    settings: mockSettings,
-    catalog: mockCatalog,
-    editable: {
-      profile: {
-        method: 'PATCH',
-        path: '/api/profile',
-        fields: ['displayName', 'avatarUrl', 'bio', 'examGoal'],
+    user: { ...mockUser, status: 'enabled' },
+    preferences: {
+      plan: {
+        majorName: '人力资源管理',
+        majorCode: '120206',
+        subjects: [
+          { name: '绩效管理', code: '13811-gd' },
+          { name: '薪酬管理', code: '06091-gd' },
+          { name: '劳动关系与劳动法', code: '13967-gd' },
+        ],
       },
-      preferences: {
-        method: 'PATCH',
-        path: '/api/preferences',
-        fields: ['study', 'notifications', 'display'],
+      practice: {
+        autoNext: false,
+        recordWrongQuestions: true,
+        showExplanationAfterAnswer: true,
+        loopAfterCompletion: false,
+        autoSubmitAfterCompletion: false,
       },
-      settings: {
-        method: 'PATCH',
-        path: '/api/settings',
-        fields: ['account', 'privacy', 'security'],
+      notifications: {
+        dailyReminder: false,
+        reminderTime: '',
+        weeklyReport: false,
       },
     },
-    placeholder: true,
   }
 }
 

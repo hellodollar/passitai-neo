@@ -109,23 +109,12 @@ export type UserSettings = {
 }
 
 export type UserMe = {
-  user: User
-  profile: UserProfile
-  preferences: UserPreferences
-  settings: UserSettings
-  catalog?: {
-    majors: Major[]
-    subjects: Subject[]
+  user: User & { status: string }
+  preferences: {
+    plan: PracticePlan
+    practice: PracticeSettings
+    notifications: NotificationSettings
   }
-  editable?: Record<
-    string,
-    {
-      method: string
-      path: string
-      fields: string[]
-    }
-  >
-  placeholder?: boolean
 }
 
 export type UpdateUserPreferencesBody = Partial<{
@@ -361,6 +350,12 @@ export type PracticeSettings = {
   showExplanationAfterAnswer: boolean
   loopAfterCompletion: boolean
   autoSubmitAfterCompletion: boolean
+}
+
+export type NotificationSettings = {
+  dailyReminder: boolean
+  reminderTime: string
+  weeklyReport: boolean
 }
 
 export type PracticeMode = 'paper' | 'multi-paper' | 'subject'
