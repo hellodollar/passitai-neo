@@ -7,6 +7,7 @@ import {
   ClipboardList,
   EyeOff,
   FileStack,
+  Pencil,
   Settings2,
   SlidersHorizontal,
   Sparkles,
@@ -31,7 +32,14 @@ import type {
 
 const router = useRouter()
 const app = useAppStore()
-const examDate = new Date('2026-10-20T00:00:00+08:00')
+
+const planMetadataPlaceholders: Record<string, { educationLevel?: string; nextExamDate?: string }> =
+  {
+    '120206': {
+      educationLevel: '本科',
+      nextExamDate: '2026-10-25T00:00:00+08:00',
+    },
+  }
 
 const settingsModalOpen = ref(false)
 const subjectPanelOpen = ref(false)
@@ -63,18 +71,25 @@ function entryStyle(type: string) {
 const planMajorName = computed(() => plan.value?.majorName ?? '')
 const planMajorCode = computed(() => plan.value?.majorCode ?? '')
 const planSubjects = computed(() => plan.value?.subjects ?? [])
-const planEducationLevel = computed(() => plan.value?.educationLevel || '待完善')
+const placeholderPlanMetadata = computed(() => planMetadataPlaceholders[planMajorCode.value])
+const planEducationLevel = computed(
+  () => plan.value?.educationLevel || placeholderPlanMetadata.value?.educationLevel || '',
+)
 const nextExamDate = computed(() => {
-  if (!plan.value?.nextExamDate) return examDate
-  const parsedDate = new Date(plan.value.nextExamDate)
-  return Number.isNaN(parsedDate.getTime()) ? examDate : parsedDate
+  const dateValue = plan.value?.nextExamDate || placeholderPlanMetadata.value?.nextExamDate
+  if (!dateValue) return null
+  const parsedDate = new Date(dateValue)
+  return Number.isNaN(parsedDate.getTime()) ? null : parsedDate
 })
 
 const hasPracticePlan = computed(() => planSubjects.value.length > 0)
-const daysUntilExam = computed(() =>
-  Math.max(0, differenceInCalendarDays(nextExamDate.value, new Date())),
+const daysUntilExam = computed(() => {
+  if (!nextExamDate.value) return null
+  return Math.max(0, differenceInCalendarDays(nextExamDate.value, new Date()))
+})
+const nextExamDateText = computed(() =>
+  nextExamDate.value ? format(nextExamDate.value, 'yyyy年M月d日') : '',
 )
-const nextExamDateText = computed(() => format(nextExamDate.value, 'yyyy.MM.dd'))
 
 const orderedSubjects = computed(() => {
   const orderMap = new Map(subjectOrder.value.map((code, index) => [code, index]))
@@ -126,7 +141,7 @@ function onSubjectSelect(event: Event) {
 }
 
 function subjectCreditsText(subject: PracticePlanSubject) {
-  return typeof subject.credits === 'number' ? `${subject.credits} 学分` : '学分待完善'
+  return typeof subject.credits === 'number' ? `${subject.credits} 学分` : ''
 }
 
 function selectEntry(key: string) {
@@ -264,16 +279,52 @@ watch(
 
     <template v-else>
       <section class="overflow-hidden rounded-2xl border border-base-200 bg-base-100">
-        <div class="flex min-w-0 items-center justify-between gap-4 px-4 py-3.5">
-          <div class="min-w-0 flex-1">
-            <h2 class="truncate text-base font-semibold">{{ planMajorName || '待完善' }}</h2>
-            <p class="mt-1 truncate text-xs text-base-content/45">
-              层次 {{ planEducationLevel }} · 代码 {{ planMajorCode || '待完善' }}
-            </p>
+        <div class="px-4 py-4">
+          <div class="flex min-w-0 items-start justify-between gap-3">
+            <div class="min-w-0">
+              <div class="flex min-w-0 items-center gap-2">
+                <h2 class="truncate text-lg font-semibold">{{ planMajorName }}</h2>
+                <span
+                  v-if="planEducationLevel"
+                  class="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary"
+                >
+                  {{ planEducationLevel }}
+                </span>
+              </div>
+              <p v-if="planMajorCode" class="mt-1.5 text-xs text-base-content/45">
+                专业代码 {{ planMajorCode }}
+              </p>
+            </div>
+            <span
+              class="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"
+            >
+              <Target :size="17" />
+            </span>
           </div>
-          <div class="shrink-0 text-right">
-            <p class="text-sm font-semibold tabular-nums">{{ nextExamDateText }}</p>
-            <p class="mt-1 text-[11px] text-base-content/45">距考试 {{ daysUntilExam }} 天</p>
+
+          <div
+            v-if="nextExamDate"
+            class="mt-4 grid grid-cols-2 overflow-hidden rounded-xl bg-base-200/40"
+          >
+            <div class="border-r border-base-200 px-3 py-2.5">
+              <p class="flex items-center gap-1.5 text-[11px] text-base-content/45">
+                <span class="size-1.5 rounded-full bg-info"></span>
+                考试时间
+              </p>
+              <p class="mt-1.5 text-sm font-semibold tabular-nums">{{ nextExamDateText }}</p>
+            </div>
+            <div class="px-3 py-2.5 text-right">
+              <p class="flex items-center justify-end gap-1.5 text-[11px] text-base-content/45">
+                <span class="size-1.5 rounded-full bg-primary"></span>
+                距离考试
+              </p>
+              <p class="mt-0.5 text-sm text-base-content/65">
+                <strong class="text-lg font-semibold text-primary tabular-nums">
+                  {{ daysUntilExam }}
+                </strong>
+                天
+              </p>
+            </div>
           </div>
         </div>
 
@@ -299,29 +350,44 @@ watch(
         </div>
       </section>
 
-      <section class="min-w-0 max-w-full">
-        <div class="flex items-center gap-2">
-          <div v-if="activeSubject" class="min-w-0 flex-1">
-            <select
-              class="select select-bordered h-11 min-h-11 w-full rounded-xl border-base-200 bg-base-100 pr-10 text-sm font-medium"
-              aria-label="选择练习科目"
-              :value="activeSubject.code"
-              @change="onSubjectSelect"
+      <section class="overflow-hidden rounded-2xl border border-base-200 bg-base-100">
+        <div class="flex min-w-0 items-center justify-between gap-3 px-4 py-3">
+          <div class="flex min-w-0 items-center gap-2.5">
+            <span
+              class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-secondary/10 text-secondary"
             >
-              <option v-for="subject in visibleSubjects" :key="subject.code" :value="subject.code">
-                {{ subject.name }}
-              </option>
-            </select>
+              <BookOpenCheck :size="16" />
+            </span>
+            <span class="truncate text-sm font-medium">刷题科目</span>
+            <span
+              class="shrink-0 rounded-full bg-secondary/10 px-2 py-0.5 text-xs font-semibold text-secondary"
+            >
+              {{ planSubjects.length }}个
+            </span>
           </div>
           <button
-            class="btn h-11 min-h-11 shrink-0 gap-1.5 rounded-xl border-base-200 bg-base-100 px-3 text-xs font-medium text-base-content/60"
+            class="flex shrink-0 items-center gap-1 text-xs font-medium text-primary"
             type="button"
             aria-label="科目管理"
             @click="subjectPanelOpen = true"
           >
-            <SlidersHorizontal :size="15" />
+            <Pencil :size="13" />
             管理
           </button>
+        </div>
+
+        <div v-if="activeSubject" class="flex min-w-0 items-center border-t border-base-200 px-4">
+          <span class="mr-3 h-6 w-1 shrink-0 rounded-full bg-secondary" aria-hidden="true"></span>
+          <select
+            class="select h-12 min-h-12 min-w-0 flex-1 border-0 bg-transparent px-0 pr-8 text-sm font-semibold focus:outline-none"
+            aria-label="选择练习科目"
+            :value="activeSubject.code"
+            @change="onSubjectSelect"
+          >
+            <option v-for="subject in visibleSubjects" :key="subject.code" :value="subject.code">
+              {{ subject.name }}
+            </option>
+          </select>
         </div>
       </section>
 
@@ -487,8 +553,15 @@ watch(
             @click="selectSubject(subject.code)"
           >
             <span class="block truncate text-sm font-medium">{{ subject.name }}</span>
-            <span class="mt-0.5 block truncate text-[11px] text-base-content/40">
-              科目代码 {{ subject.code }} · {{ subjectCreditsText(subject) }}
+            <span
+              v-if="subject.code || subjectCreditsText(subject)"
+              class="mt-0.5 block truncate text-[11px] text-base-content/40"
+            >
+              <template v-if="subject.code">{{ subject.code }}</template>
+              <template v-if="subject.code && subjectCreditsText(subject)"> · </template>
+              <template v-if="subjectCreditsText(subject)">
+                {{ subjectCreditsText(subject) }}
+              </template>
             </span>
           </button>
 

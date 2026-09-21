@@ -8,7 +8,13 @@ const mockMajors = [
   { id: 'major_003', code: '080901', name: '计算机科学与技术' },
   { id: 'major_004', code: '050101', name: '汉语言文学' },
   { id: 'major_005', code: '030101K', name: '法学' },
-  { id: 'major_006', code: '120206', name: '人力资源管理' },
+  {
+    id: 'major_006',
+    code: '120206',
+    name: '人力资源管理',
+    educationLevel: '本科',
+    nextExamDate: '2026-10-25T00:00:00+08:00',
+  },
 ]
 
 const mockSubjects = [
@@ -38,6 +44,8 @@ function buildPlan(majorId: string, subjectIds: string[]) {
   return {
     majorName: major?.name ?? '',
     majorCode: major?.code ?? '',
+    educationLevel: major?.educationLevel,
+    nextExamDate: major?.nextExamDate,
     subjects,
   }
 }
