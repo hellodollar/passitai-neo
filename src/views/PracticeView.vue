@@ -12,7 +12,7 @@ import {
   Sparkles,
   Target,
 } from '@lucide/vue'
-import { differenceInCalendarDays } from 'date-fns'
+import { differenceInCalendarDays, format } from 'date-fns'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
@@ -22,7 +22,12 @@ import PracticePlanModal from '@/components/common/PracticePlanModal.vue'
 import PracticeSettingsContent from '@/components/common/PracticeSettingsContent.vue'
 import { fetchPracticeEntries, fetchPracticePlan } from '@/api/practice'
 import { useAppStore } from '@/stores/app'
-import type { PracticeEntry, PracticeEntryChild, PracticePlan } from '@/types/domain'
+import type {
+  PracticeEntry,
+  PracticeEntryChild,
+  PracticePlan,
+  PracticePlanSubject,
+} from '@/types/domain'
 
 const router = useRouter()
 const app = useAppStore()
@@ -58,10 +63,18 @@ function entryStyle(type: string) {
 const planMajorName = computed(() => plan.value?.majorName ?? '')
 const planMajorCode = computed(() => plan.value?.majorCode ?? '')
 const planSubjects = computed(() => plan.value?.subjects ?? [])
+const planEducationLevel = computed(() => plan.value?.educationLevel || '待完善')
+const nextExamDate = computed(() => {
+  if (!plan.value?.nextExamDate) return examDate
+  const parsedDate = new Date(plan.value.nextExamDate)
+  return Number.isNaN(parsedDate.getTime()) ? examDate : parsedDate
+})
 
 const hasPracticePlan = computed(() => planSubjects.value.length > 0)
-const daysUntilExam = computed(() => Math.max(0, differenceInCalendarDays(examDate, new Date())))
-const examCountdownText = computed(() => `2026年10月20日 · 还剩 ${daysUntilExam.value} 天`)
+const daysUntilExam = computed(() =>
+  Math.max(0, differenceInCalendarDays(nextExamDate.value, new Date())),
+)
+const nextExamDateText = computed(() => format(nextExamDate.value, 'yyyy.MM.dd'))
 
 const orderedSubjects = computed(() => {
   const orderMap = new Map(subjectOrder.value.map((code, index) => [code, index]))
@@ -106,6 +119,14 @@ function entryToneClasses(tone: EntryTone) {
 function selectSubject(code: string) {
   activeSubjectCode.value = code
   expandedEntryKey.value = ''
+}
+
+function onSubjectSelect(event: Event) {
+  selectSubject((event.target as HTMLSelectElement).value)
+}
+
+function subjectCreditsText(subject: PracticePlanSubject) {
+  return typeof subject.credits === 'number' ? `${subject.credits} 学分` : '学分待完善'
 }
 
 function selectEntry(key: string) {
@@ -222,43 +243,8 @@ watch(
 
 <template>
   <section
-    class="flex min-h-[calc(100vh-8rem)] w-full min-w-0 max-w-full flex-col gap-5 overflow-x-hidden"
+    class="flex min-h-[calc(100vh-8rem)] w-full min-w-0 max-w-full flex-col gap-4 overflow-x-hidden"
   >
-    <header class="flex min-w-0 items-start justify-between gap-3">
-      <div class="min-w-0 flex-1">
-        <h1 class="text-2xl font-semibold leading-tight">练习</h1>
-        <p class="mt-1 truncate text-sm text-base-content/50">
-          <template v-if="planLoading">正在同步练习计划…</template>
-          <template v-else-if="hasPracticePlan">
-            {{ planMajorName || '当前计划' }}{{ planMajorCode ? ` · ${planMajorCode}` : '' }} · 还剩
-            {{ daysUntilExam }} 天
-          </template>
-          <template v-else>设置报考专业与科目后开始练习</template>
-        </p>
-      </div>
-
-      <div class="flex shrink-0 items-center gap-1.5">
-        <button
-          class="btn h-9 min-h-9 rounded-xl border-base-200 bg-base-100 px-2.5 text-xs font-medium"
-          type="button"
-          aria-label="练习计划"
-          @click="planModalOpen = true"
-        >
-          <SlidersHorizontal :size="15" />
-          计划
-        </button>
-        <button
-          class="btn h-9 min-h-9 rounded-xl border-base-200 bg-base-100 px-2.5 text-xs font-medium"
-          type="button"
-          aria-label="练习设置"
-          @click="settingsModalOpen = true"
-        >
-          <Settings2 :size="15" />
-          设置
-        </button>
-      </div>
-    </header>
-
     <section v-if="planLoading" class="overflow-hidden rounded-2xl border border-base-200">
       <EmptyState :icon="Target" title="加载中" description="正在获取练习计划…" />
     </section>
@@ -277,40 +263,64 @@ watch(
     </section>
 
     <template v-else>
-      <section class="min-w-0 max-w-full overflow-hidden">
-        <div class="mb-3 flex items-center justify-between gap-3">
-          <div>
-            <h2 class="text-lg font-semibold">选择科目</h2>
-            <p class="mt-0.5 text-xs text-base-content/45">切换后展示对应的练习内容</p>
+      <section class="overflow-hidden rounded-2xl border border-base-200 bg-base-100">
+        <div class="flex min-w-0 items-center justify-between gap-4 px-4 py-3.5">
+          <div class="min-w-0 flex-1">
+            <h2 class="truncate text-base font-semibold">{{ planMajorName || '待完善' }}</h2>
+            <p class="mt-1 truncate text-xs text-base-content/45">
+              层次 {{ planEducationLevel }} · 代码 {{ planMajorCode || '待完善' }}
+            </p>
+          </div>
+          <div class="shrink-0 text-right">
+            <p class="text-sm font-semibold tabular-nums">{{ nextExamDateText }}</p>
+            <p class="mt-1 text-[11px] text-base-content/45">距考试 {{ daysUntilExam }} 天</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 divide-x divide-base-200 border-t border-base-200">
+          <button
+            class="flex h-10 items-center justify-center gap-1.5 text-xs font-medium text-base-content/65 transition active:bg-base-200/50"
+            type="button"
+            aria-label="刷题计划"
+            @click="planModalOpen = true"
+          >
+            <SlidersHorizontal :size="15" />
+            刷题计划
+          </button>
+          <button
+            class="flex h-10 items-center justify-center gap-1.5 text-xs font-medium text-base-content/65 transition active:bg-base-200/50"
+            type="button"
+            aria-label="练习设置"
+            @click="settingsModalOpen = true"
+          >
+            <Settings2 :size="15" />
+            练习设置
+          </button>
+        </div>
+      </section>
+
+      <section class="min-w-0 max-w-full">
+        <div class="flex items-center gap-2">
+          <div v-if="activeSubject" class="min-w-0 flex-1">
+            <select
+              class="select select-bordered h-11 min-h-11 w-full rounded-xl border-base-200 bg-base-100 pr-10 text-sm font-medium"
+              aria-label="选择练习科目"
+              :value="activeSubject.code"
+              @change="onSubjectSelect"
+            >
+              <option v-for="subject in visibleSubjects" :key="subject.code" :value="subject.code">
+                {{ subject.name }}
+              </option>
+            </select>
           </div>
           <button
-            class="btn btn-ghost h-8 min-h-8 shrink-0 gap-1 rounded-lg px-2 text-xs font-medium text-base-content/55"
+            class="btn h-11 min-h-11 shrink-0 gap-1.5 rounded-xl border-base-200 bg-base-100 px-3 text-xs font-medium text-base-content/60"
             type="button"
             aria-label="科目管理"
             @click="subjectPanelOpen = true"
           >
             <SlidersHorizontal :size="15" />
             管理
-          </button>
-        </div>
-
-        <div
-          class="flex min-w-0 gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        >
-          <button
-            v-for="subject in visibleSubjects"
-            :key="subject.code"
-            class="max-w-[10rem] shrink-0 rounded-xl border px-3 py-2 text-sm font-medium transition-colors"
-            :class="
-              activeSubject?.code === subject.code
-                ? 'border-primary bg-primary/10 text-primary'
-                : 'border-base-200 bg-base-100 text-base-content/65 active:bg-base-200/60'
-            "
-            type="button"
-            :aria-pressed="activeSubject?.code === subject.code"
-            @click="selectSubject(subject.code)"
-          >
-            <span class="block truncate">{{ subject.name }}</span>
           </button>
         </div>
       </section>
@@ -332,9 +342,7 @@ watch(
         <div class="mb-3 flex items-center justify-between gap-3">
           <div class="min-w-0">
             <h2 class="text-lg font-semibold">练习方式</h2>
-            <p class="mt-0.5 truncate text-xs text-base-content/45">{{ activeSubject.name }}</p>
           </div>
-          <span class="shrink-0 text-xs text-base-content/40">{{ entryRows.length }} 种</span>
         </div>
 
         <div v-if="entriesLoading" class="flex min-h-44 items-center justify-center">
@@ -457,7 +465,7 @@ watch(
         <div
           v-for="(subject, index) in orderedSubjects"
           :key="subject.code"
-          class="flex min-h-12 min-w-0 items-center gap-2 py-1.5"
+          class="flex min-h-14 min-w-0 items-center gap-2 py-1.5"
         >
           <label class="flex size-8 shrink-0 cursor-pointer items-center justify-center">
             <input
@@ -470,7 +478,7 @@ watch(
           </label>
 
           <button
-            class="min-w-0 flex-1 truncate text-left text-sm font-medium"
+            class="min-w-0 flex-1 text-left"
             :class="[
               activeSubject?.code === subject.code ? 'text-primary' : '',
               hiddenSubjectIds.has(subject.code) ? 'text-base-content/35' : '',
@@ -478,7 +486,10 @@ watch(
             type="button"
             @click="selectSubject(subject.code)"
           >
-            {{ subject.name }}
+            <span class="block truncate text-sm font-medium">{{ subject.name }}</span>
+            <span class="mt-0.5 block truncate text-[11px] text-base-content/40">
+              科目代码 {{ subject.code }} · {{ subjectCreditsText(subject) }}
+            </span>
           </button>
 
           <div class="flex shrink-0 items-center gap-0.5">

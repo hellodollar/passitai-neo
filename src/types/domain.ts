@@ -292,11 +292,14 @@ export type DashboardSummary = {
 export type PracticePlanSubject = {
   name: string
   code: string
+  credits?: number | null
 }
 
 export type PracticePlan = {
   majorName: string
   majorCode: string
+  educationLevel?: string | null
+  nextExamDate?: string | null
   subjects: PracticePlanSubject[]
 }
 
