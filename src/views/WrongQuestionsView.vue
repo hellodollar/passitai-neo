@@ -1,26 +1,36 @@
 <script setup lang="ts">
-import { AlertCircle, XCircle } from '@lucide/vue'
+import { AlertCircle, Play, Trash2, XCircle } from '@lucide/vue'
 import { onMounted, ref } from 'vue'
+import { RouterLink } from 'vue-router'
 
+import { fetchPracticeAnswerSheet } from '@/api/practice'
 import EmptyState from '@/components/common/EmptyState.vue'
-import ReviewGroup from '@/components/common/ReviewGroup.vue'
 import { useLearningStore } from '@/stores/learning'
 
 const learning = useLearningStore()
-const expandedIds = ref<Set<string>>(new Set())
 const loaded = ref(false)
+const questionDetails = ref<Record<string, { paperName: string; title: string }>>({})
 
-function toggleExpand(id: string) {
-  if (expandedIds.value.has(id)) {
-    expandedIds.value.delete(id)
-  } else {
-    expandedIds.value.add(id)
+async function loadQuestionDetails() {
+  const paperIds = [...new Set(learning.wrongQuestions.map((item) => item.paperId))]
+  const results = await Promise.allSettled(paperIds.map(fetchPracticeAnswerSheet))
+  const details: Record<string, { paperName: string; title: string }> = {}
+
+  for (const result of results) {
+    if (result.status !== 'fulfilled') continue
+    for (const group of result.value.questionGroups) {
+      for (const question of group.items) {
+        details[question.id] = { paperName: result.value.paperName, title: question.title }
+      }
+    }
   }
+  questionDetails.value = details
 }
 
 onMounted(async () => {
   try {
     await learning.loadWrongQuestions()
+    await loadQuestionDetails()
   } finally {
     loaded.value = true
   }
@@ -46,44 +56,47 @@ onMounted(async () => {
       <div class="mb-3 flex items-center justify-between">
         <h2 class="text-lg font-semibold">错题本</h2>
         <span class="rounded-full bg-base-200 px-3 py-1.5 text-sm font-medium text-base-content/65">
-          共 {{ learning.wrongQuestionsTotal }}
+          共 {{ learning.wrongQuestionsTotal }} 道
         </span>
       </div>
 
       <div class="grid gap-3">
-        <ReviewGroup
-          v-for="wq in learning.wrongQuestions"
-          :key="wq.id"
-          :icon="XCircle"
-          :expanded="expandedIds.has(wq.id)"
-          :title="wq.subjectName"
-          :meta="`${wq.total} 道错题`"
-          tone="error"
-          @toggle="toggleExpand(wq.id)"
-          @remove="learning.removeWrongQuestion(wq.id)"
+        <article
+          v-for="item in learning.wrongQuestions"
+          :key="item.id"
+          class="flex items-center gap-3 rounded-2xl border border-base-200 bg-base-100 p-3"
         >
-          <ul class="grid gap-2">
-            <li
-              v-for="item in wq.wrongList"
-              :key="item.qid"
-              class="flex items-start gap-3 rounded-2xl bg-base-100 p-3"
-            >
-              <XCircle :size="16" class="mt-0.5 shrink-0 text-error" />
-              <div class="min-w-0 flex-1">
-                <span class="text-sm font-medium leading-relaxed">{{ item.title }}</span>
-                <div class="mt-1 flex flex-wrap items-center gap-2 text-xs text-base-content/50">
-                  <span class="rounded-full bg-warning/15 px-2 py-0.5 font-semibold text-warning">
-                    {{ item.count }}x
-                  </span>
-                  <span v-if="Array.isArray(item.userAnswer)">
-                    我的答案：{{ item.userAnswer.join(', ') }}
-                  </span>
-                  <span v-else>我的答案：{{ item.userAnswer }}</span>
-                </div>
-              </div>
-            </li>
-          </ul>
-        </ReviewGroup>
+          <span
+            class="flex size-10 shrink-0 items-center justify-center rounded-full bg-error/10 text-error"
+          >
+            <XCircle :size="20" />
+          </span>
+
+          <div class="min-w-0 flex-1">
+            <p class="line-clamp-2 text-sm font-medium leading-relaxed">
+              {{ questionDetails[item.questionId]?.title ?? `题目 ${item.questionId}` }}
+            </p>
+            <p class="mt-1 truncate text-xs text-base-content/45">
+              {{ questionDetails[item.questionId]?.paperName ?? `试卷 ${item.paperId}` }}
+            </p>
+          </div>
+
+          <RouterLink
+            class="btn btn-square btn-ghost btn-sm text-primary"
+            :to="`/practice/session/${item.paperId}`"
+            aria-label="重新练习"
+          >
+            <Play :size="16" />
+          </RouterLink>
+          <button
+            class="btn btn-square btn-ghost btn-sm text-error"
+            type="button"
+            aria-label="移除错题"
+            @click="learning.removeWrongQuestion(item.questionId)"
+          >
+            <Trash2 :size="16" />
+          </button>
+        </article>
       </div>
     </section>
   </section>

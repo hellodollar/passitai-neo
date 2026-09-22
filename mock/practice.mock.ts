@@ -60,6 +60,23 @@ let practiceSettings = {
   autoSubmitAfterCompletion: false,
 }
 
+type MockFavorite = {
+  id: string
+  userId: string
+  questionId: string
+  subjectId: string
+  paperId: string
+  createdAt: string
+  updatedAt: string | null
+  deletedAt: null
+}
+
+const mockFavorites = new Map<string, MockFavorite>()
+
+type MockWrongQuestion = Omit<MockFavorite, 'id'> & { id: string }
+
+const mockWrongQuestions = new Map<string, MockWrongQuestion>()
+
 export default defineMock([
   {
     url: '/api/practice/plan',
@@ -149,8 +166,10 @@ export default defineMock([
     url: '/api/practice/answer-sheet',
     method: 'GET',
     delay: 100,
-    body: () =>
+    body: ({ query = {} } = {}) =>
       ok({
+        paperId: String(query.paperId ?? ''),
+        subjectId: 'sub_ec79a4fcb062',
         paperName: '2025年4月真题',
         recordStatus: 'inProgress',
         score: 0,
@@ -295,13 +314,101 @@ export default defineMock([
     url: '/api/wrong-questions',
     method: 'GET',
     delay: 100,
-    body: ok({ total: 0, items: [] }),
+    body: () => {
+      const items = [...mockWrongQuestions.values()]
+      return ok({ total: items.length, items })
+    },
+  },
+  {
+    url: '/api/wrong-questions/status',
+    method: 'POST',
+    delay: 100,
+    body: ({ body }) => {
+      const questionIds = Array.isArray(body?.questionIds) ? (body.questionIds as string[]) : []
+      return ok({
+        questionIds: questionIds.filter((questionId) => mockWrongQuestions.has(questionId)),
+      })
+    },
+  },
+  {
+    url: '/api/wrong-questions/questions/:questionId',
+    method: 'PUT',
+    delay: 100,
+    body: ({ body, params }) => {
+      const questionId = String(params.questionId ?? '')
+      const existing = mockWrongQuestions.get(questionId)
+      const now = new Date().toISOString()
+      const wrongQuestion: MockWrongQuestion = {
+        id: existing?.id ?? `wrq_${questionId.slice(-12)}`,
+        userId: 'usr_000000000001',
+        questionId,
+        subjectId: 'sub_ec79a4fcb062',
+        paperId: String(body?.paperId ?? ''),
+        createdAt: existing?.createdAt ?? now,
+        updatedAt: existing ? now : null,
+        deletedAt: null,
+      }
+      mockWrongQuestions.set(questionId, wrongQuestion)
+      return ok(wrongQuestion)
+    },
+  },
+  {
+    url: '/api/wrong-questions/questions/:questionId',
+    method: 'DELETE',
+    delay: 100,
+    body: ({ params }) => {
+      mockWrongQuestions.delete(String(params.questionId ?? ''))
+      return ok(null)
+    },
   },
   {
     url: '/api/favorites',
     method: 'GET',
     delay: 100,
-    body: ok({ total: 0, items: [] }),
+    body: () => {
+      const items = [...mockFavorites.values()]
+      return ok({ total: items.length, items })
+    },
+  },
+  {
+    url: '/api/favorites/status',
+    method: 'POST',
+    delay: 100,
+    body: ({ body }) => {
+      const questionIds = Array.isArray(body?.questionIds) ? (body.questionIds as string[]) : []
+      return ok({ questionIds: questionIds.filter((questionId) => mockFavorites.has(questionId)) })
+    },
+  },
+  {
+    url: '/api/favorites/questions/:questionId',
+    method: 'PUT',
+    delay: 100,
+    body: ({ body, params }) => {
+      const questionId = String(params.questionId ?? '')
+      const existing = mockFavorites.get(questionId)
+      const now = new Date().toISOString()
+      const favorite: MockFavorite = {
+        id: existing?.id ?? `fav_${questionId.slice(-12)}`,
+        userId: 'usr_000000000001',
+        questionId,
+        subjectId: 'sub_ec79a4fcb062',
+        paperId: String(body?.paperId ?? ''),
+        createdAt: existing?.createdAt ?? now,
+        updatedAt: existing ? now : null,
+        deletedAt: null,
+      }
+      mockFavorites.set(questionId, favorite)
+      return ok(favorite)
+    },
+  },
+  {
+    url: '/api/favorites/questions/:questionId',
+    method: 'DELETE',
+    delay: 100,
+    body: ({ params }) => {
+      mockFavorites.delete(String(params.questionId ?? ''))
+      return ok(null)
+    },
   },
   {
     url: '/api/answer-sheets',

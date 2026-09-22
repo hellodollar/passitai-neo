@@ -175,52 +175,36 @@ export type QuestionListQuery = {
 
 // ---- Favorites ----
 
-export type FavoriteQuestion = {
-  qid: string
-  title: string
-}
-
-export type SaveFavoriteBody = {
-  subjectId: string
-  subjectName: string
-  questions: FavoriteQuestion[]
-}
-
 export type Favorite = {
   id: string
   userId: string
+  questionId: string
   subjectId: string
-  subjectName: string
-  questions: FavoriteQuestion[]
-  total: number
+  paperId: string
   createdAt: string
   updatedAt?: string | null
+  deletedAt?: string | null
+}
+
+export type FavoriteStatus = {
+  questionIds: string[]
 }
 
 // ---- Wrong Questions ----
 
-export type WrongQuestionItem = {
-  qid: string
-  title: string
-  count: number
-  userAnswer: string | string[]
-}
-
-export type SaveWrongQuestionBody = {
-  subjectId: string
-  subjectName: string
-  wrongList: WrongQuestionItem[]
-}
-
 export type WrongQuestion = {
   id: string
   userId: string
+  questionId: string
   subjectId: string
-  subjectName: string
-  wrongList: WrongQuestionItem[]
-  total: number
+  paperId: string
   createdAt: string
   updatedAt?: string | null
+  deletedAt?: string | null
+}
+
+export type WrongQuestionStatus = {
+  questionIds: string[]
 }
 
 // ---- Catalog (mock) ----
@@ -305,6 +289,8 @@ export type PracticeAnswerSheetGroup = {
 }
 
 export type PracticeAnswerSheet = {
+  paperId: string
+  subjectId: string
   paperName: string
   recordStatus: string
   score: number

@@ -15,6 +15,7 @@ import { useRoute, useRouter } from 'vue-router'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
 import PracticeSettingsContent from '@/components/common/PracticeSettingsContent.vue'
+import { addFavorite, fetchFavoriteStatus, removeFavorite } from '@/api/favorites'
 import { ROUTE_NAMES } from '@/constants/app'
 import { useAppStore } from '@/stores/app'
 import { fetchPracticeAnswerSheet, submitPracticeSession } from '@/api/practice'
@@ -106,6 +107,8 @@ const selectedOptionValues = ref<Set<string>>(new Set())
 const textAnswer = ref('')
 const answerRecords = ref<Record<string, PracticeAnswerRecord>>({})
 const favoriteQuestionIds = ref<Set<string>>(new Set())
+const pendingFavoriteQuestionIds = ref<Set<string>>(new Set())
+const favoriteError = ref('')
 const touchStartX = ref(0)
 const touchStartY = ref(0)
 const autoAdvanceTimer = ref<ReturnType<typeof window.setTimeout> | null>(null)
@@ -156,6 +159,9 @@ const currentQuestionPosition = computed(() =>
 )
 const currentQuestionFavorited = computed(() =>
   currentQuestion.value ? favoriteQuestionIds.value.has(currentQuestion.value.id) : false,
+)
+const currentQuestionFavoritePending = computed(() =>
+  currentQuestion.value ? pendingFavoriteQuestionIds.value.has(currentQuestion.value.id) : false,
 )
 const currentQuestionTypeLabel = computed(() =>
   currentQuestion.value ? QUESTION_TYPE_LABELS[currentQuestion.value.questionType] : '',
@@ -677,17 +683,43 @@ function scheduleAutoAdvance() {
   }, 560)
 }
 
-function toggleFavorite() {
+async function toggleFavorite() {
   const question = currentQuestion.value
-  if (!question) return
+  const paperId = route.params.paperId
+  if (!question || typeof paperId !== 'string' || !paperId) return
+  if (pendingFavoriteQuestionIds.value.has(question.id)) return
 
+  favoriteError.value = ''
+  const wasFavorited = favoriteQuestionIds.value.has(question.id)
   const nextIds = new Set(favoriteQuestionIds.value)
-  if (nextIds.has(question.id)) {
+  if (wasFavorited) {
     nextIds.delete(question.id)
   } else {
     nextIds.add(question.id)
   }
   favoriteQuestionIds.value = nextIds
+
+  const nextPendingIds = new Set(pendingFavoriteQuestionIds.value)
+  nextPendingIds.add(question.id)
+  pendingFavoriteQuestionIds.value = nextPendingIds
+
+  try {
+    if (wasFavorited) {
+      await removeFavorite(question.id)
+    } else {
+      await addFavorite(question.id, paperId)
+    }
+  } catch {
+    const rollbackIds = new Set(favoriteQuestionIds.value)
+    if (wasFavorited) rollbackIds.add(question.id)
+    else rollbackIds.delete(question.id)
+    favoriteQuestionIds.value = rollbackIds
+    favoriteError.value = '收藏状态更新失败，请稍后重试'
+  } finally {
+    const settledPendingIds = new Set(pendingFavoriteQuestionIds.value)
+    settledPendingIds.delete(question.id)
+    pendingFavoriteQuestionIds.value = settledPendingIds
+  }
 }
 
 function handleTouchStart(event: TouchEvent) {
@@ -774,10 +806,10 @@ const questionSheetGroups = computed(() => {
   )
 })
 
-function toQuestionListItem(item: PracticeAnswerSheetItem): QuestionListItem {
+function toQuestionListItem(item: PracticeAnswerSheetItem, subjectId: string): QuestionListItem {
   const richQuestion: RichQuestionListItem = {
     id: item.id,
-    subjectId: '',
+    subjectId,
     title: item.title,
     questionType: item.questionType as QuestionType,
     questionCategory: 'practice',
@@ -819,6 +851,9 @@ async function loadSessionData() {
   selectedOptionValues.value = new Set()
   textAnswer.value = ''
   answerRecords.value = {}
+  favoriteQuestionIds.value = new Set()
+  pendingFavoriteQuestionIds.value = new Set()
+  favoriteError.value = ''
   sessionTitles.value = []
 
   const paperId = route.params.paperId
@@ -838,7 +873,7 @@ async function loadSessionData() {
       sessionTitles.value.push(sheet.paperName)
       for (const group of sheet.questionGroups) {
         for (const item of group.items) {
-          questions.push(toQuestionListItem(item))
+          questions.push(toQuestionListItem(item, sheet.subjectId))
           const record = buildAnswerRecord(item)
           if (record) records[item.id] = record
         }
@@ -847,6 +882,12 @@ async function loadSessionData() {
 
     currentQuestions.value = questions.sort(compareQuestionType)
     answerRecords.value = records
+    try {
+      const favoriteStatus = await fetchFavoriteStatus(questions.map((question) => question.id))
+      favoriteQuestionIds.value = new Set(favoriteStatus.questionIds)
+    } catch {
+      favoriteQuestionIds.value = new Set()
+    }
     sessionLoadState.value = questions.length > 0 ? 'ready' : 'empty'
   } catch {
     currentQuestions.value = []
@@ -1010,11 +1051,16 @@ watch(
       v-if="currentQuestion"
       class="fixed bottom-0 left-1/2 z-40 w-full max-w-[32rem] -translate-x-1/2 border-t border-base-200/80 bg-base-100/95 px-3 pb-[calc(0.65rem+env(safe-area-inset-bottom))] pt-2.5 backdrop-blur-xl"
     >
+      <p v-if="favoriteError" class="mb-2 text-center text-xs text-error">{{ favoriteError }}</p>
       <div class="grid grid-cols-4 items-center gap-1">
         <button
           class="flex h-12 min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-medium transition active:bg-base-200"
-          :class="currentQuestionFavorited ? 'text-primary' : 'text-base-content/60'"
+          :class="[
+            currentQuestionFavorited ? 'text-primary' : 'text-base-content/60',
+            currentQuestionFavoritePending ? 'opacity-50' : '',
+          ]"
           type="button"
+          :disabled="currentQuestionFavoritePending"
           :aria-label="currentQuestionFavorited ? '取消收藏' : '收藏题目'"
           @click="toggleFavorite"
         >

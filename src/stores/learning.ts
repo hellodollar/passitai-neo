@@ -2,9 +2,12 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 
 import { fetchAnswerSheets } from '@/api/answer-sheets'
-import { deleteFavorite, fetchFavorites } from '@/api/favorites'
+import { fetchFavorites, removeFavorite as removeFavoriteRequest } from '@/api/favorites'
 import { fetchPapers } from '@/api/papers'
-import { deleteWrongQuestion, fetchWrongQuestions } from '@/api/wrong-questions'
+import {
+  fetchWrongQuestions,
+  removeWrongQuestion as removeWrongQuestionRequest,
+} from '@/api/wrong-questions'
 import type {
   AnswerSheetListItem,
   Favorite,
@@ -20,10 +23,8 @@ export const useLearningStore = defineStore('learning', () => {
   const wrongQuestions = ref<WrongQuestion[]>([])
   const loading = ref(false)
 
-  const favoritesTotal = computed(() => favorites.value.reduce((sum, fav) => sum + fav.total, 0))
-  const wrongQuestionsTotal = computed(() =>
-    wrongQuestions.value.reduce((sum, wq) => sum + wq.total, 0),
-  )
+  const favoritesTotal = computed(() => favorites.value.length)
+  const wrongQuestionsTotal = computed(() => wrongQuestions.value.length)
 
   async function loadPapers(query: PaperListQuery = {}) {
     loading.value = true
@@ -49,9 +50,9 @@ export const useLearningStore = defineStore('learning', () => {
     }
   }
 
-  async function removeFavorite(id: string) {
-    await deleteFavorite(id)
-    favorites.value = favorites.value.filter((fav) => fav.id !== id)
+  async function removeFavorite(questionId: string) {
+    await removeFavoriteRequest(questionId)
+    favorites.value = favorites.value.filter((fav) => fav.questionId !== questionId)
   }
 
   async function loadAnswerSheets() {
@@ -78,9 +79,9 @@ export const useLearningStore = defineStore('learning', () => {
     }
   }
 
-  async function removeWrongQuestion(id: string) {
-    await deleteWrongQuestion(id)
-    wrongQuestions.value = wrongQuestions.value.filter((wq) => wq.id !== id)
+  async function removeWrongQuestion(questionId: string) {
+    await removeWrongQuestionRequest(questionId)
+    wrongQuestions.value = wrongQuestions.value.filter((item) => item.questionId !== questionId)
   }
 
   return {
