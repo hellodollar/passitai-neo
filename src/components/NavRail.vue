@@ -24,7 +24,7 @@ function isItemActive(to: string) {
 </script>
 
 <template>
-  <nav :class="direction === 'tabs' ? 'grid grid-cols-5 gap-1' : 'grid gap-1.5'">
+  <nav :class="direction === 'tabs' ? 'grid grid-flow-col auto-cols-fr gap-1' : 'grid gap-1.5'">
     <RouterLink
       v-for="item in items"
       :key="item.to"

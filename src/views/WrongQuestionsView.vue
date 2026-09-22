@@ -38,7 +38,7 @@ onMounted(async () => {
         title="暂无错题"
         description="答错的题目会自动收集到这里。"
         action-label="去练习"
-        action-to="/practice"
+        action-to="/"
       />
     </div>
 

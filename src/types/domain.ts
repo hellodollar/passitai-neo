@@ -243,39 +243,6 @@ export type OptionItem = {
   name: string
 }
 
-// ---- Dashboard (mock) ----
-
-export type DashboardTodayStats = {
-  answeredCount: number
-  wrongCount: number
-  favoriteCount: number
-  paperCount: number
-}
-
-export type SubjectProgress = {
-  subjectId: string
-  subjectName: string
-  totalPapers: number
-  completedPapers: number
-  progress: number
-  accent: string
-}
-
-export type TopWrongQuestion = {
-  qid: string
-  title: string
-  wrongCount: number
-  subjectName: string
-}
-
-export type DashboardSummary = {
-  placeholder?: true
-  todayStats: DashboardTodayStats
-  subjectProgress: SubjectProgress[]
-  topWrongQuestions: TopWrongQuestion[]
-  weeklyVolume: number[]
-}
-
 // ---- Practice placeholders ----
 
 export type PracticePlanSubject = {
@@ -390,6 +357,58 @@ export type PracticeSession = {
   persisted: false
   createdAt?: string
   questions?: unknown[]
+}
+
+export type PracticeSubmissionAnswer = {
+  questionId: string
+  answer: string
+  values?: string[]
+}
+
+export type SubmitPracticeSessionBody = {
+  paperId: string
+  subjectName?: string
+  elapsedSeconds?: number
+  answers: PracticeSubmissionAnswer[]
+}
+
+export type PracticeSubmitResponse = {
+  id: string
+  paperId: string
+  status: 'submitted'
+  submittedAt: string
+  placeholder?: boolean
+}
+
+export type PracticeResultQuestionStatus = 'correct' | 'wrong' | 'unanswered' | 'pending'
+
+export type PracticeResultQuestion = {
+  id: string
+  index: number
+  title: string
+  questionType: QuestionType
+  userAnswer: string
+  correctAnswer: string
+  explanation?: string
+  status: PracticeResultQuestionStatus
+}
+
+export type PracticeSubmissionResult = {
+  submissionId: string
+  paperId: string
+  paperName: string
+  subjectName?: string
+  score?: number | null
+  totalCount: number
+  answeredCount: number
+  correctCount: number
+  wrongCount: number
+  unansweredCount: number
+  accuracy: number
+  elapsedSeconds?: number
+  submittedAt?: string
+  questions: PracticeResultQuestion[]
+  placeholder?: boolean
 }
 
 // ---- Settings placeholders ----

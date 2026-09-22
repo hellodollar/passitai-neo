@@ -1,17 +1,21 @@
 <script setup lang="ts">
 import {
-  ArrowRight,
   ArrowDown,
   ArrowUp,
   BookOpenCheck,
   Check,
   ChevronDown,
+  ChevronRight,
+  ClipboardCheck,
   ClipboardList,
   EyeOff,
-  FileStack,
+  FileText,
+  Flame,
+  GraduationCap,
+  ListChecks,
   Pencil,
   Settings2,
-  SlidersHorizontal,
+  ShieldAlert,
   Sparkles,
   Target,
 } from '@lucide/vue'
@@ -19,6 +23,7 @@ import { differenceInCalendarDays, format } from 'date-fns'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
+import logoPassitai from '@/assets/icons/icon-passitai.svg'
 import BaseModal from '@/components/common/BaseModal.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import PracticePlanModal from '@/components/common/PracticePlanModal.vue'
@@ -60,15 +65,15 @@ const entriesLoading = ref(false)
 
 type EntryTone = 'primary' | 'secondary' | 'accent' | 'info'
 
-const entryStyles: Record<string, { tone: EntryTone; icon: typeof FileStack }> = {
-  practice: { tone: 'primary', icon: FileStack },
+const entryStyles: Record<string, { tone: EntryTone; icon: typeof ListChecks }> = {
+  practice: { tone: 'primary', icon: ListChecks },
   pastExam: { tone: 'secondary', icon: BookOpenCheck },
-  mock: { tone: 'accent', icon: ClipboardList },
+  mock: { tone: 'accent', icon: ClipboardCheck },
   ai: { tone: 'info', icon: Sparkles },
 }
 
 function entryStyle(type: string) {
-  return entryStyles[type] ?? { tone: 'primary' as EntryTone, icon: FileStack }
+  return entryStyles[type] ?? { tone: 'primary' as EntryTone, icon: ListChecks }
 }
 
 const planMajorName = computed(() => plan.value?.majorName ?? '')
@@ -122,6 +127,51 @@ const entryRows = computed(() =>
 const activeEntry = computed(
   () =>
     entryRows.value.find((entry) => entry.type === expandedEntryKey.value) ?? entryRows.value[0],
+)
+
+const practiceChildVisuals = [
+  { icon: Target, iconClass: 'bg-primary/10 text-primary', progressClass: 'bg-primary' },
+  { icon: Flame, iconClass: 'bg-warning/10 text-warning', progressClass: 'bg-warning' },
+  { icon: ShieldAlert, iconClass: 'bg-error/10 text-error', progressClass: 'bg-error' },
+]
+
+function childVisual(type: string, index: number) {
+  if (type === 'practice') {
+    return practiceChildVisuals[index] ?? practiceChildVisuals[0]!
+  }
+
+  const map = {
+    ai: { icon: Sparkles, iconClass: 'bg-info/10 text-info', progressClass: 'bg-info' },
+    mock: {
+      icon: ClipboardCheck,
+      iconClass: 'bg-accent/10 text-accent',
+      progressClass: 'bg-accent',
+    },
+    pastExam: {
+      icon: FileText,
+      iconClass: 'bg-secondary/10 text-secondary',
+      progressClass: 'bg-secondary',
+    },
+  }
+
+  return (
+    map[type as keyof typeof map] ?? {
+      icon: Target,
+      iconClass: 'bg-primary/10 text-primary',
+      progressClass: 'bg-primary',
+    }
+  )
+}
+
+const activeEntryChildren = computed(() =>
+  (activeEntry.value?.children ?? []).map((child, index) => ({
+    ...child,
+    ...childVisual(activeEntry.value?.type ?? '', index),
+    progressPercent:
+      child.questionCount > 0
+        ? Math.min(100, Math.round((child.answeredCount / child.questionCount) * 100))
+        : 0,
+  })),
 )
 
 function entryToneClasses(tone: EntryTone) {
@@ -260,6 +310,10 @@ watch(
   <section
     class="flex min-h-[calc(100vh-8rem)] w-full min-w-0 max-w-full flex-col gap-4 overflow-x-hidden"
   >
+    <header class="flex h-9 shrink-0 items-center">
+      <img :src="logoPassitai" alt="Passitai" class="h-8 w-auto" />
+    </header>
+
     <section v-if="planLoading" class="overflow-hidden rounded-2xl border border-base-200">
       <EmptyState :icon="Target" title="加载中" description="正在获取练习计划…" />
     </section>
@@ -296,9 +350,9 @@ watch(
               </p>
             </div>
             <span
-              class="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"
+              class="flex size-9 shrink-0 items-center justify-center rounded-xl bg-secondary/10 text-secondary"
             >
-              <Target :size="17" />
+              <GraduationCap :size="17" />
             </span>
           </div>
 
@@ -335,7 +389,7 @@ watch(
             aria-label="刷题计划"
             @click="planModalOpen = true"
           >
-            <SlidersHorizontal :size="15" />
+            <ClipboardList :size="15" />
             刷题计划
           </button>
           <button
@@ -448,41 +502,47 @@ watch(
         </div>
 
         <div v-else-if="activeEntry" class="min-w-0 border-t border-base-200">
-          <div
-            v-if="activeEntry.children && activeEntry.children.length > 0"
-            class="divide-y divide-base-200"
-          >
+          <div v-if="activeEntryChildren.length > 0" class="divide-y divide-base-200">
             <button
-              v-for="child in activeEntry.children"
+              v-for="child in activeEntryChildren"
               :key="child.paperId"
-              class="group flex w-full min-w-0 items-center gap-3 px-4 py-3.5 text-left transition active:bg-base-200/50"
+              class="group flex w-full min-w-0 items-center gap-3 px-4 py-3 text-left transition active:bg-base-200/50"
               type="button"
+              :aria-label="`${child.name}，进入详情`"
               @click="startEntryPaper(child)"
             >
               <span
-                class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-base-200/70 text-primary"
+                class="flex size-9 shrink-0 items-center justify-center rounded-xl"
+                :class="child.iconClass"
               >
-                <FileStack :size="15" />
+                <component :is="child.icon" :size="17" />
               </span>
               <span class="min-w-0 flex-1">
-                <span class="block truncate text-sm font-medium">{{ child.name }}</span>
-                <span class="mt-1 flex items-center gap-2">
-                  <progress
-                    class="progress progress-primary h-1.5 min-w-0 flex-1"
-                    :value="child.answeredCount"
-                    :max="child.questionCount || 1"
-                  ></progress>
-                  <span class="shrink-0 text-[11px] text-base-content/40">
-                    {{ child.answeredCount }}/{{ child.questionCount }} 题
+                <span class="flex min-w-0 items-center justify-between gap-2">
+                  <span class="truncate text-sm font-medium">{{ child.name }}</span>
+                  <span class="shrink-0 text-[11px] text-base-content/40 tabular-nums">
+                    {{ child.answeredCount }}/{{ child.questionCount }}
+                  </span>
+                </span>
+                <span class="mt-2 flex items-center gap-2">
+                  <span class="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-base-200">
+                    <span
+                      class="block h-full rounded-full transition-all"
+                      :class="child.progressClass"
+                      :style="{ width: `${child.progressPercent}%` }"
+                    ></span>
+                  </span>
+                  <span
+                    class="w-7 shrink-0 text-right text-[10px] text-base-content/35 tabular-nums"
+                  >
+                    {{ child.progressPercent }}%
                   </span>
                 </span>
               </span>
-              <span
-                class="inline-flex shrink-0 items-center gap-1 rounded-lg bg-primary/10 px-2.5 py-1.5 text-xs font-semibold text-primary"
-              >
-                开始
-                <ArrowRight :size="12" class="transition-transform group-active:translate-x-0.5" />
-              </span>
+              <ChevronRight
+                :size="17"
+                class="shrink-0 text-base-content/25 transition group-active:translate-x-0.5 group-active:text-primary"
+              />
             </button>
           </div>
 

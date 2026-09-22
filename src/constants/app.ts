@@ -11,9 +11,9 @@ export const STORAGE_KEYS = {
 export const ROUTE_NAMES = {
   login: 'login',
   register: 'register',
-  dashboard: 'dashboard',
   practice: 'practice',
   session: 'session',
+  practiceResult: 'practice-result',
   favorites: 'favorites',
   wrongQuestions: 'wrong-book',
   settings: 'settings',

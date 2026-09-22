@@ -7,6 +7,9 @@ import type {
   PracticePlan,
   PracticeSession,
   PracticeSettings,
+  PracticeSubmissionResult,
+  PracticeSubmitResponse,
+  SubmitPracticeSessionBody,
   UpdatePracticePlanBody,
 } from '@/types/domain'
 
@@ -57,4 +60,19 @@ export function createPracticeSession(payload: CreatePracticeSessionBody) {
 
 export function fetchPracticeSession(id: string) {
   return request<PracticeSession>(`/practice/sessions/${id}`)
+}
+
+// Placeholder contract: replace the endpoint when the submission API is finalized.
+export function submitPracticeSession(payload: SubmitPracticeSessionBody) {
+  return request<PracticeSubmitResponse>('/practice/submit', {
+    method: 'POST',
+    body: payload,
+  })
+}
+
+// Placeholder contract: replace the endpoint and response mapping when result fields are finalized.
+export function fetchPracticeSubmissionResult(paperId: string, submissionId?: string) {
+  return request<PracticeSubmissionResult>('/practice/result', {
+    query: { paperId, submissionId },
+  })
 }

@@ -25,18 +25,26 @@ const router = createRouter({
       children: [
         {
           path: '',
-          name: ROUTE_NAMES.dashboard,
-          component: () => import('@/views/DashboardView.vue'),
+          name: ROUTE_NAMES.practice,
+          component: () => import('@/views/PracticeView.vue'),
         },
         {
           path: 'practice',
-          name: ROUTE_NAMES.practice,
-          component: () => import('@/views/PracticeView.vue'),
+          redirect: (to) => ({
+            name: ROUTE_NAMES.practice,
+            query: to.query,
+            hash: to.hash,
+          }),
         },
         {
           path: 'practice/session/:paperId',
           name: ROUTE_NAMES.session,
           component: () => import('@/views/SessionView.vue'),
+        },
+        {
+          path: 'practice/session/:paperId/result',
+          name: ROUTE_NAMES.practiceResult,
+          component: () => import('@/views/PracticeResultView.vue'),
         },
         {
           path: 'favorites',
@@ -73,7 +81,7 @@ router.beforeEach((to) => {
   }
 
   if (to.meta.publicOnly && auth.isAuthenticated) {
-    return { name: ROUTE_NAMES.dashboard }
+    return { name: ROUTE_NAMES.practice }
   }
 })
 

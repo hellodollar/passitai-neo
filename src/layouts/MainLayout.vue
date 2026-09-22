@@ -1,11 +1,5 @@
 <script setup lang="ts">
-import {
-  BookMarked,
-  Home,
-  Target,
-  UserRound,
-  XCircle,
-} from '@lucide/vue'
+import { BookMarked, Home, UserRound, XCircle } from '@lucide/vue'
 import { RouterView } from 'vue-router'
 
 import NavRail from '@/components/NavRail.vue'
@@ -15,7 +9,6 @@ const app = useAppStore()
 
 const navItems = [
   { label: '首页', to: '/', icon: Home },
-  { label: '练习', to: '/practice', icon: Target },
   { label: '收藏', to: '/favorites', icon: BookMarked },
   { label: '错题', to: '/wrong-book', icon: XCircle },
   { label: '我的', to: '/me', icon: UserRound },

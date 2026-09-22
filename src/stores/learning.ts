@@ -2,13 +2,11 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 
 import { fetchAnswerSheets } from '@/api/answer-sheets'
-import { fetchDashboard } from '@/api/dashboard'
 import { deleteFavorite, fetchFavorites } from '@/api/favorites'
 import { fetchPapers } from '@/api/papers'
 import { deleteWrongQuestion, fetchWrongQuestions } from '@/api/wrong-questions'
 import type {
   AnswerSheetListItem,
-  DashboardSummary,
   Favorite,
   PaperListItem,
   PaperListQuery,
@@ -20,7 +18,6 @@ export const useLearningStore = defineStore('learning', () => {
   const answerSheets = ref<AnswerSheetListItem[]>([])
   const favorites = ref<Favorite[]>([])
   const wrongQuestions = ref<WrongQuestion[]>([])
-  const dashboard = ref<DashboardSummary | null>(null)
   const loading = ref(false)
 
   const favoritesTotal = computed(() => favorites.value.reduce((sum, fav) => sum + fav.total, 0))
@@ -86,22 +83,11 @@ export const useLearningStore = defineStore('learning', () => {
     wrongQuestions.value = wrongQuestions.value.filter((wq) => wq.id !== id)
   }
 
-  async function loadDashboard() {
-    loading.value = true
-    try {
-      dashboard.value = await fetchDashboard()
-    } finally {
-      loading.value = false
-    }
-  }
-
   return {
     answerSheets,
-    dashboard,
     favorites,
     favoritesTotal,
     loadAnswerSheets,
-    loadDashboard,
     loadFavorites,
     loadPapers,
     loadWrongQuestions,

@@ -38,9 +38,7 @@ const displayName = computed(() => {
   return name ? name.replace(/[._-]+/g, ' ') : 'PassIt AI'
 })
 
-const profileEmail = computed(
-  () => me.value?.user.email ?? auth.user?.email ?? 'you@passitai.ai',
-)
+const profileEmail = computed(() => me.value?.user.email ?? auth.user?.email ?? 'you@passitai.ai')
 
 const menuItems = computed(() => {
   const plan = me.value?.preferences.plan
@@ -51,7 +49,7 @@ const menuItems = computed(() => {
     {
       title: '账户',
       subtitle: profileEmail.value,
-      icon: KeyRound,
+      icon: UserRound,
       iconClasses: 'bg-primary/10 text-primary',
       action: 'account' as const,
     },
@@ -176,15 +174,15 @@ onMounted(() => {
         <button
           v-for="item in menuItems"
           :key="item.title"
-          class="grid w-full min-w-0 grid-cols-[2.5rem_minmax(0,1fr)_1.25rem] items-center gap-3 px-4 py-3.5 text-left transition-colors active:bg-base-200/60"
+          class="grid w-full min-w-0 grid-cols-[2.25rem_minmax(0,1fr)_1.125rem] items-center gap-3 px-4 py-3.5 text-left transition-colors active:bg-base-200/60"
           type="button"
           @click="openMenuItem(item.action)"
         >
           <span
-            class="flex size-10 shrink-0 items-center justify-center rounded-full"
+            class="flex size-9 shrink-0 items-center justify-center rounded-xl"
             :class="item.iconClasses"
           >
-            <component :is="item.icon" :size="18" stroke-width="2" />
+            <component :is="item.icon" :size="17" stroke-width="2" />
           </span>
 
           <span class="min-w-0">
@@ -196,7 +194,7 @@ onMounted(() => {
             </span>
           </span>
 
-          <ChevronRight :size="20" class="justify-self-end text-base-content/30" />
+          <ChevronRight :size="18" class="justify-self-end text-base-content/30" />
         </button>
       </section>
 
@@ -207,12 +205,12 @@ onMounted(() => {
         @click="signOut"
       >
         <span
-          class="flex size-10 shrink-0 items-center justify-center rounded-full bg-error/10 text-error"
+          class="flex size-9 shrink-0 items-center justify-center rounded-xl bg-error/10 text-error"
         >
           <span v-if="signingOut" class="loading loading-spinner loading-xs"></span>
-          <LogOut v-else :size="18" />
+          <LogOut v-else :size="17" />
         </span>
-        <span class="text-base font-semibold">退出登录</span>
+        <span class="text-sm font-semibold">退出登录</span>
       </button>
     </div>
 

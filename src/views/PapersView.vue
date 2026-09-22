@@ -100,10 +100,7 @@ onMounted(() => {
               </div>
             </div>
           </div>
-          <RouterLink
-            class="btn btn-primary btn-sm rounded-full"
-            :to="`/practice?paperId=${paper.id}`"
-          >
+          <RouterLink class="btn btn-primary btn-sm rounded-full" :to="`/?paperId=${paper.id}`">
             开始
           </RouterLink>
         </div>

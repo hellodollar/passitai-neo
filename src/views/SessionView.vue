@@ -6,16 +6,27 @@ import {
   ClipboardCheck,
   ClipboardList,
   Grid2X2,
+  Send,
   Settings,
 } from '@lucide/vue'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import BaseDialog from '@/components/common/BaseDialog.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
 import PracticeSettingsContent from '@/components/common/PracticeSettingsContent.vue'
+import { ROUTE_NAMES } from '@/constants/app'
 import { useAppStore } from '@/stores/app'
-import { fetchPracticeAnswerSheet } from '@/api/practice'
-import type { PracticeAnswerSheetItem, QuestionListItem, QuestionType } from '@/types/domain'
+import { fetchPracticeAnswerSheet, submitPracticeSession } from '@/api/practice'
+import type {
+  PracticeAnswerSheetItem,
+  PracticeSubmissionResult,
+  PracticeSubmitResponse,
+  QuestionListItem,
+  QuestionType,
+  SubmitPracticeSessionBody,
+} from '@/types/domain'
+import { writePracticeResultSnapshot } from '@/utils/practice-result'
 
 const router = useRouter()
 const route = useRoute()
@@ -83,7 +94,11 @@ const OPTION_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
 
 const settingsModalOpen = ref(false)
 const questionSheetOpen = ref(false)
+const submitConfirmOpen = ref(false)
+const submitting = ref(false)
+const submitError = ref('')
 const sessionTitles = ref<string[]>([])
+const sessionStartedAt = Date.now()
 
 const currentQuestions = ref<QuestionListItem[]>([])
 const currentIndex = ref(0)
@@ -133,6 +148,9 @@ const showOptionFeedback = computed(
   () => Boolean(currentAnswerRecord.value) && correctOptionValues.value.size > 0,
 )
 const answeredCount = computed(() => Object.keys(answerRecords.value).length)
+const unansweredCount = computed(() =>
+  Math.max(0, currentQuestions.value.length - answeredCount.value),
+)
 const currentQuestionPosition = computed(() =>
   currentQuestions.value.length === 0 ? 0 : currentIndex.value + 1,
 )
@@ -439,7 +457,7 @@ function optionClasses(optionValue: string) {
 
   if (!showOptionFeedback.value) {
     return selected
-      ? 'border-primary bg-primary/[0.07] text-base-content shadow-[inset_0_0_0_1px_var(--color-primary)]'
+      ? 'border-primary bg-primary/[0.07] text-base-content'
       : 'border-base-200 bg-base-100 text-base-content active:border-base-300 active:bg-base-200/60'
   }
 
@@ -520,6 +538,120 @@ function submitCurrentAnswer(autoAdvance = false) {
   }
 }
 
+function buildResultSnapshot(
+  paperId: string,
+  submission: PracticeSubmitResponse,
+): PracticeSubmissionResult {
+  const questions = currentQuestions.value.map((question, index) => {
+    const record = answerRecords.value[question.id]
+    const correctAnswer = getReferenceAnswer(question)
+    const status = !record
+      ? ('unanswered' as const)
+      : !correctAnswer
+        ? ('pending' as const)
+        : isAnswerCorrect(record, question)
+          ? ('correct' as const)
+          : ('wrong' as const)
+
+    return {
+      id: question.id,
+      index: index + 1,
+      title: question.title,
+      questionType: question.questionType,
+      userAnswer: record?.text ?? '',
+      correctAnswer,
+      explanation: (question as RichQuestionListItem).explanation,
+      status,
+    }
+  })
+
+  const correct = questions.filter((question) => question.status === 'correct').length
+  const wrong = questions.filter((question) => question.status === 'wrong').length
+  const unanswered = questions.filter((question) => question.status === 'unanswered').length
+  const total = questions.length
+  const answered = total - unanswered
+  const graded = correct + wrong
+  const accuracy = graded > 0 ? Math.round((correct / graded) * 100) : 0
+
+  return {
+    submissionId: submission.id,
+    paperId,
+    paperName: currentSessionTitle.value,
+    subjectName: sessionSubjectName.value,
+    score: accuracy,
+    totalCount: total,
+    answeredCount: answered,
+    correctCount: correct,
+    wrongCount: wrong,
+    unansweredCount: unanswered,
+    accuracy,
+    elapsedSeconds: Math.max(0, Math.round((Date.now() - sessionStartedAt) / 1000)),
+    submittedAt: submission.submittedAt,
+    questions,
+    placeholder: submission.placeholder,
+  }
+}
+
+function requestSubmitSession() {
+  clearAutoAdvance()
+  submitError.value = ''
+  questionSheetOpen.value = false
+  submitConfirmOpen.value = true
+}
+
+async function confirmSubmitSession() {
+  if (submitting.value) return
+
+  const paperId = route.params.paperId
+  if (typeof paperId !== 'string' || !paperId) {
+    submitError.value = '当前练习信息已失效，请返回后重新进入。'
+    return
+  }
+
+  const payload: SubmitPracticeSessionBody = {
+    paperId,
+    subjectName: sessionSubjectName.value || undefined,
+    elapsedSeconds: Math.max(0, Math.round((Date.now() - sessionStartedAt) / 1000)),
+    answers: Object.values(answerRecords.value).map((record) => ({
+      questionId: record.questionId,
+      answer: record.text,
+      values: record.values,
+    })),
+  }
+
+  submitting.value = true
+  submitError.value = ''
+
+  let submission: PracticeSubmitResponse
+  try {
+    submission = await submitPracticeSession(payload)
+  } catch {
+    // Temporary local response until the real submission endpoint is finalized.
+    submission = {
+      id: `local_${Date.now()}`,
+      paperId,
+      status: 'submitted',
+      submittedAt: new Date().toISOString(),
+      placeholder: true,
+    }
+  }
+
+  const result = buildResultSnapshot(paperId, submission)
+  writePracticeResultSnapshot(result)
+  submitting.value = false
+  submitConfirmOpen.value = false
+  app.endPracticeSession()
+
+  await router.replace({
+    name: ROUTE_NAMES.practiceResult,
+    params: { paperId },
+    query: {
+      submissionId: submission.id,
+      subject: sessionSubjectName.value || undefined,
+    },
+  })
+}
+
 function goToQuestion(index: number) {
   if (index < 0 || index >= currentQuestions.value.length) return
   clearAutoAdvance()
@@ -597,7 +729,7 @@ function prevQuestion() {
 
 function exitSession() {
   app.endPracticeSession()
-  router.push('/practice')
+  router.push({ name: ROUTE_NAMES.practice })
 }
 
 function handleSessionStateAction() {
@@ -969,7 +1101,7 @@ watch(
       </div>
     </section>
 
-    <BaseModal v-model="questionSheetOpen">
+    <BaseModal v-model="questionSheetOpen" compact-footer>
       <div class="mb-3 flex items-center gap-3 border-b border-base-200 pb-3 text-xs tabular-nums">
         <span class="font-semibold text-base-content/70">
           {{ answeredCount }}/{{ currentQuestions.length }} 已完成
@@ -1003,7 +1135,53 @@ watch(
           </div>
         </div>
       </div>
+
+      <template #footer>
+        <button
+          class="btn btn-primary h-10 min-h-10 w-full rounded-xl text-sm"
+          type="button"
+          :disabled="currentQuestions.length === 0"
+          @click="requestSubmitSession"
+        >
+          <Send :size="15" />
+          交卷
+        </button>
+      </template>
     </BaseModal>
+
+    <BaseDialog v-model="submitConfirmOpen" title="确认交卷" :close-on-backdrop="!submitting">
+      <p
+        class="text-sm leading-6"
+        :class="unansweredCount > 0 ? 'text-warning' : 'text-base-content/55'"
+      >
+        <template v-if="unansweredCount > 0">
+          还有 {{ unansweredCount }} 题未答，交卷后不可修改。
+        </template>
+        <template v-else>交卷后不可修改。</template>
+      </p>
+
+      <p v-if="submitError" class="mt-3 text-sm text-error" role="alert">{{ submitError }}</p>
+
+      <template #footer>
+        <button
+          class="btn h-10 min-h-10 flex-1 rounded-xl border-base-200 bg-base-100 text-sm"
+          type="button"
+          :disabled="submitting"
+          @click="submitConfirmOpen = false"
+        >
+          取消
+        </button>
+        <button
+          class="btn btn-primary h-10 min-h-10 flex-1 rounded-xl text-sm"
+          type="button"
+          :disabled="submitting"
+          @click="confirmSubmitSession"
+        >
+          <span v-if="submitting" class="loading loading-spinner loading-xs"></span>
+          {{ submitting ? '提交中' : '确定' }}
+        </button>
+      </template>
+    </BaseDialog>
 
     <PracticeSettingsContent v-model="settingsModalOpen" />
   </section>

@@ -38,7 +38,7 @@ onMounted(async () => {
         title="暂无收藏"
         description="练习时收藏的题目会出现在这里。"
         action-label="去练习"
-        action-to="/practice"
+        action-to="/"
       />
     </div>
 
