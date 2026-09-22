@@ -59,6 +59,9 @@ interface RegisterBody extends AuthBody {
 注册时 `inviteCode` 必须为 `taikula`，否则返回 `code: 2005`（邀请码无效）；缺失或为空返回
 `code: 1002`（请输入邀请码）。
 
+登录仅允许 `role = user` 的账号；`admin` 账号请使用管理端登录，在用户端登录统一返回
+`code: 2001`（账号或密码错误）。
+
 注册与登录成功返回：
 
 ```ts
@@ -151,6 +154,9 @@ interface UpdatePracticePlanBody {
 
 计划存储在当前用户的 `preferences.plan`。`majorId` 必须指向存在且未删除的专业，否则返回资源不存在。
 `educationLevel`、`nextExamDate` 为临时写死字段，后续接入专业维度配置。
+
+用户未设置计划（新用户）、专业不存在或已删除时，`GET /api/plan` 返回 `data: null`，`/api/me` 的
+`preferences.plan` 同样为 `null`；需先调用 `PUT /api/plan` 手动设置计划。
 
 ## 4. 练习模块
 

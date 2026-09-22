@@ -43,7 +43,8 @@ export type RegisterCredentials = AuthCredentials & {
 export type UserMe = {
   user: User & { status: string }
   preferences: {
-    plan: PracticePlan
+    /** 未设置计划时为 null，需用户手动添加 */
+    plan: PracticePlan | null
     practice: PracticeSettings
     notifications: NotificationSettings
   }
