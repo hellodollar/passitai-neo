@@ -1,6 +1,6 @@
-# Neo 用户端 API
+# Neo 客户端 API
 
-本文是 Neo 用户端接入的唯一接口契约。基础路径为 `/api`，仅接受用户端登录签发的 `app` scope
+本文是 Neo 客户端接入的唯一接口契约。基础路径为 `/api`，仅接受客户端登录签发的 `app` scope
 JWT。除注册、登录外，所有接口都需要：
 
 ```http
@@ -26,7 +26,7 @@ interface PaginationResult<T> {
 
 `code === 0` 表示成功。分页参数默认 `page=1&limit=20`，`limit` 最大为 `100`。
 
-接口只划分为以下六个模块。本文未列出的其他 `/api` 用户端路径均不存在，不应调用。标记为“占位”的
+接口只划分为以下六个模块。本文未列出的其他 `/api` 客户端路径均不存在，不应调用。标记为“占位”的
 接口只用于固定路径和基础入参，暂不执行真实业务写入。
 
 ## 2. 用户模块
@@ -38,8 +38,8 @@ interface PaginationResult<T> {
 | `POST`  | `/api/logout`                      | 用户登出，必须鉴权 | 可用 |
 | `GET`   | `/api/user`                        | 获取用户基础信息   | 可用 |
 | `GET`   | `/api/me`                          | 获取用户聚合信息   | 可用 |
-| `PUT`   | `/api/user/password`               | 修改密码           | 占位 |
-| `PUT`   | `/api/user/email`                  | 修改邮箱           | 占位 |
+| `PUT`   | `/api/user/password`               | 修改密码           | 可用 |
+| `PUT`   | `/api/user/email`                  | 修改邮箱           | 可用 |
 | `GET`   | `/api/user/settings/notifications` | 获取通知开关配置   | 可用 |
 | `PATCH` | `/api/user/settings/notifications` | 更新通知开关       | 可用 |
 
@@ -48,13 +48,16 @@ interface PaginationResult<T> {
 ```ts
 interface AuthBody {
   email: string
-  password: string // 6-20 位
+  password: string // 6-20 位，须同时包含字母和数字
 }
 
 interface RegisterBody extends AuthBody {
-  inviteCode?: string // 注册邀请码，接口层不做字段校验；缺失或不为 "taikula" 时注册失败（2005 邀请码无效）
+  inviteCode: string // 注册邀请码，当前服务端固定校验为 "taikula"
 }
 ```
+
+注册时 `inviteCode` 必须为 `taikula`，否则返回 `code: 2005`（邀请码无效）；缺失或为空返回
+`code: 1002`（请输入邀请码）。
 
 注册与登录成功返回：
 
@@ -101,16 +104,10 @@ interface ChangeEmailBody {
 }
 ```
 
-这两个接口当前返回明确的占位结果，不修改数据库：
-
-```ts
-interface AccountChangePlaceholder {
-  userId: string
-  changed: false
-  placeholder: true
-  persisted: false
-}
-```
+- `PUT /api/user/password`：校验当前密码后更新为新密码，成功返回 `{ userId, changed: true }`。当前密码
+  错误返回 `code: 2001`；新密码与当前密码相同返回 `code: 1000`。
+- `PUT /api/user/email`：校验登录密码并确保新邮箱未被占用后更新，成功返回 `{ userId, email }`。邮箱
+  已存在返回 `code: 2003`（HTTP 409）。
 
 ### 通知开关
 
