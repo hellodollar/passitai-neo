@@ -55,6 +55,11 @@ export type AuthCredentials = {
   password: string
 }
 
+export type RegisterCredentials = AuthCredentials & {
+  /** 邀请码，通用占位字段，后端校验规则待接入 */
+  inviteCode?: string
+}
+
 export type UserPreferenceStudy = {
   dailyGoal?: number
   defaultMode?: string

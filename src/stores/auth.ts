@@ -3,14 +3,13 @@ import { defineStore } from 'pinia'
 
 import { fetchMe, login, logout, register } from '@/api/auth'
 import { STORAGE_KEYS } from '@/constants/app'
-import type { AuthCredentials, AuthSession, User } from '@/types/domain'
+import type { AuthCredentials, AuthSession, RegisterCredentials, User } from '@/types/domain'
 import { readStorage, removeStorage, writeStorage } from '@/utils/storage'
 
 export const useAuthStore = defineStore('auth', () => {
   const session = ref<AuthSession | null>(readStorage<AuthSession | null>(STORAGE_KEYS.authSession, null))
   const user = ref<User | null>(session.value?.user ?? null)
   const loading = ref(false)
-  const error = ref('')
 
   const isAuthenticated = computed(() => Boolean(session.value?.token))
 
@@ -20,29 +19,29 @@ export const useAuthStore = defineStore('auth', () => {
     writeStorage(STORAGE_KEYS.authSession, nextSession)
   }
 
-  async function signIn(payload: AuthCredentials) {
+  async function signIn(payload: AuthCredentials): Promise<boolean> {
     loading.value = true
-    error.value = ''
 
     try {
       persistSession(await login(payload))
-    } catch (currentError) {
-      error.value = currentError instanceof Error ? currentError.message : 'Unable to sign in'
-      throw currentError
+      return true
+    } catch {
+      // 错误提示由请求层统一弹出，这里只返回结果
+      return false
     } finally {
       loading.value = false
     }
   }
 
-  async function signUp(payload: AuthCredentials) {
+  async function signUp(payload: RegisterCredentials): Promise<boolean> {
     loading.value = true
-    error.value = ''
 
     try {
       persistSession(await register(payload))
-    } catch (currentError) {
-      error.value = currentError instanceof Error ? currentError.message : 'Unable to create account'
-      throw currentError
+      return true
+    } catch {
+      // 错误提示由请求层统一弹出，这里只返回结果
+      return false
     } finally {
       loading.value = false
     }
@@ -72,7 +71,6 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   return {
-    error,
     hydrate,
     isAuthenticated,
     loading,

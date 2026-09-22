@@ -1,17 +1,19 @@
 import { request } from '@/api/http'
-import type { AuthCredentials, AuthSession, User, UserMe } from '@/types/domain'
+import type { AuthCredentials, AuthSession, RegisterCredentials, User, UserMe } from '@/types/domain'
 
 export function login(payload: AuthCredentials) {
   return request<AuthSession>('/login', {
     method: 'POST',
     body: payload,
+    notify: true,
   })
 }
 
-export function register(payload: AuthCredentials) {
+export function register(payload: RegisterCredentials) {
   return request<AuthSession>('/register', {
     method: 'POST',
     body: payload,
+    notify: true,
   })
 }
 

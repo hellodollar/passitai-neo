@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowLeft, CheckCircle2, ChevronRight, CircleAlert, Clock3, FileCheck2 } from '@lucide/vue'
+import { ArrowLeft, CheckCircle2, CircleAlert, Clock3, FileCheck2 } from '@lucide/vue'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
