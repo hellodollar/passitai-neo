@@ -1,6 +1,7 @@
 import { normalizePagination, request } from '@/api/http'
-import type { PaginationResult, WrongQuestion, WrongQuestionStatus } from '@/types/domain'
+import type { PaginationResult, WrongQuestion } from '@/types/domain'
 
+/** 文档:GET /api/wrong-questions?page=&limit=&subjectId=&paperId= */
 export function fetchWrongQuestions(
   query: { page?: number; limit?: number; subjectId?: string; paperId?: string } = {},
 ) {
@@ -14,35 +15,17 @@ export function fetchWrongQuestions(
   }).then(normalizePagination)
 }
 
-export async function fetchWrongQuestionStatus(questionIds: string[]) {
-  const uniqueQuestionIds = [...new Set(questionIds)]
-  if (uniqueQuestionIds.length === 0) return { questionIds: [] }
-
-  const batches: string[][] = []
-  for (let index = 0; index < uniqueQuestionIds.length; index += 200) {
-    batches.push(uniqueQuestionIds.slice(index, index + 200))
-  }
-
-  const results = await Promise.all(
-    batches.map((batch) =>
-      request<WrongQuestionStatus>('/wrong-questions/status', {
-        method: 'POST',
-        body: { questionIds: batch },
-      }),
-    ),
-  )
-  return { questionIds: [...new Set(results.flatMap((result) => result.questionIds))] }
-}
-
+/** 文档:PUT /api/wrong-questions/:questionId，body { paperId }，幂等 */
 export function addWrongQuestion(questionId: string, paperId: string) {
-  return request<WrongQuestion>(`/wrong-questions/questions/${questionId}`, {
+  return request<WrongQuestion>(`/wrong-questions/${questionId}`, {
     method: 'PUT',
     body: { paperId },
   })
 }
 
+/** 文档:DELETE /api/wrong-questions/:questionId，幂等 */
 export function removeWrongQuestion(questionId: string) {
-  return request<null>(`/wrong-questions/questions/${questionId}`, {
+  return request<null>(`/wrong-questions/${questionId}`, {
     method: 'DELETE',
   })
 }

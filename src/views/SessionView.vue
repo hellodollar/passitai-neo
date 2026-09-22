@@ -15,7 +15,7 @@ import { useRoute, useRouter } from 'vue-router'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
 import PracticeSettingsContent from '@/components/common/PracticeSettingsContent.vue'
-import { addFavorite, fetchFavoriteStatus, removeFavorite } from '@/api/favorites'
+import { addFavorite, fetchFavorites, removeFavorite } from '@/api/favorites'
 import { ROUTE_NAMES } from '@/constants/app'
 import { useAppStore } from '@/stores/app'
 import { fetchPracticeAnswerSheet, submitPracticeSession } from '@/api/practice'
@@ -883,8 +883,9 @@ async function loadSessionData() {
     currentQuestions.value = questions.sort(compareQuestionType)
     answerRecords.value = records
     try {
-      const favoriteStatus = await fetchFavoriteStatus(questions.map((question) => question.id))
-      favoriteQuestionIds.value = new Set(favoriteStatus.questionIds)
+      // 文档无收藏状态批量接口，用当前试卷的收藏列表代替
+      const favoritesResult = await fetchFavorites({ paperId: paperIds[0] })
+      favoriteQuestionIds.value = new Set(favoritesResult.items.map((item) => item.questionId))
     } catch {
       favoriteQuestionIds.value = new Set()
     }

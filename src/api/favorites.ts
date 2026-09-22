@@ -1,6 +1,7 @@
 import { normalizePagination, request } from '@/api/http'
-import type { Favorite, FavoriteStatus, PaginationResult } from '@/types/domain'
+import type { Favorite, PaginationResult } from '@/types/domain'
 
+/** 文档:GET /api/favorites?page=&limit=&subjectId=&paperId= */
 export async function fetchFavorites(
   query: { page?: number; limit?: number; subjectId?: string; paperId?: string } = {},
 ) {
@@ -16,35 +17,17 @@ export async function fetchFavorites(
   return normalizePagination(data)
 }
 
-export async function fetchFavoriteStatus(questionIds: string[]) {
-  const uniqueQuestionIds = [...new Set(questionIds)]
-  if (uniqueQuestionIds.length === 0) return { questionIds: [] }
-
-  const batches: string[][] = []
-  for (let index = 0; index < uniqueQuestionIds.length; index += 200) {
-    batches.push(uniqueQuestionIds.slice(index, index + 200))
-  }
-
-  const results = await Promise.all(
-    batches.map((batch) =>
-      request<FavoriteStatus>('/favorites/status', {
-        method: 'POST',
-        body: { questionIds: batch },
-      }),
-    ),
-  )
-  return { questionIds: [...new Set(results.flatMap((result) => result.questionIds))] }
-}
-
+/** 文档:PUT /api/favorites/:questionId，body { paperId }，幂等 */
 export function addFavorite(questionId: string, paperId: string) {
-  return request<Favorite>(`/favorites/questions/${questionId}`, {
+  return request<Favorite>(`/favorites/${questionId}`, {
     method: 'PUT',
     body: { paperId },
   })
 }
 
+/** 文档:DELETE /api/favorites/:questionId，幂等 */
 export function removeFavorite(questionId: string) {
-  return request<null>(`/favorites/questions/${questionId}`, {
+  return request<null>(`/favorites/${questionId}`, {
     method: 'DELETE',
   })
 }

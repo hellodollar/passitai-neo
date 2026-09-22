@@ -21,6 +21,7 @@ const errors = reactive({
   email: '',
   password: '',
   confirmPassword: '',
+  inviteCode: '',
 })
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -49,10 +50,16 @@ function validateConfirmPassword() {
   return !errors.confirmPassword
 }
 
+function validateInviteCode() {
+  errors.inviteCode = form.inviteCode.trim() ? '' : '请输入邀请码'
+  return !errors.inviteCode
+}
+
 const validators = {
   email: validateEmail,
   password: validatePassword,
   confirmPassword: validateConfirmPassword,
+  inviteCode: validateInviteCode,
 } as const
 
 // 首次提交前只做失焦校验；提交失败后进入实时校验，改对了错误立即消失
@@ -77,7 +84,7 @@ async function submit() {
   const success = await auth.signUp({
     email: form.email.trim(),
     password: form.password,
-    inviteCode: form.inviteCode.trim() || undefined,
+    inviteCode: form.inviteCode.trim(),
   })
   if (success) router.push('/')
 }
@@ -123,8 +130,10 @@ async function submit() {
         v-model="form.inviteCode"
         label="邀请码"
         :icon="TicketPercent"
+        :error="errors.inviteCode"
         autocomplete="off"
-        placeholder="选填"
+        placeholder="请输入邀请码"
+        @blur="validateInviteCode"
       />
 
       <button class="btn btn-primary h-12 w-full rounded-full text-sm font-semibold" :disabled="auth.loading">

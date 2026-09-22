@@ -4,6 +4,7 @@ import { ref, watch } from 'vue'
 import BaseModal from '@/components/common/BaseModal.vue'
 import { fetchMajorOptions, fetchSubjectOptions } from '@/api/catalog'
 import { updatePracticePlan } from '@/api/practice'
+import { showSuccessToast } from '@/utils/toast'
 import type { OptionItem, PracticePlan } from '@/types/domain'
 
 const model = defineModel<boolean>({ default: false })
@@ -49,7 +50,7 @@ async function loadSubjectOptions(majorId: string) {
   }
   subjectOptionsLoading.value = true
   try {
-    subjectOptions.value = await fetchSubjectOptions({ majorId })
+    subjectOptions.value = await fetchSubjectOptions(majorId)
   } catch {
     subjectOptions.value = []
   } finally {
@@ -113,6 +114,8 @@ async function save() {
       majorCode: major?.code,
       subjectIds: [...draftSubjectIds.value],
     })
+    // 接口失败时错误提示由请求层统一弹出，弹框保持打开
+    showSuccessToast('刷题计划已更新')
     emit('updated', updated, {
       majorId: draftMajorId.value,
       subjectIds: [...draftSubjectIds.value],

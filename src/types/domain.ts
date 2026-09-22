@@ -14,11 +14,7 @@ export type PaginationResult<T> = {
 // ---- Enums ----
 
 export type UserRole = 'admin' | 'user'
-export type CreatedBy = 'system' | 'user' | 'ai'
-
 export type QuestionType = 'single' | 'multiple' | 'judge' | 'shortAnswer' | 'essay'
-export type QuestionCategory = 'pastExam' | 'practice' | 'mock'
-export type PaperType = 'pastExam' | 'practice' | 'mock'
 
 // ---- Auth & User ----
 
@@ -27,22 +23,6 @@ export type User = {
   email: string
   role: UserRole
   createdAt: string
-}
-
-export type UserProfile = User & {
-  displayName: string
-  avatarUrl: string
-  bio: string
-  examGoal: string
-  placeholder?: boolean
-  persisted?: boolean
-}
-
-export type UpdateProfileBody = {
-  displayName?: string
-  avatarUrl?: string
-  bio?: string
-  examGoal?: string
 }
 
 export type AuthSession = {
@@ -56,61 +36,8 @@ export type AuthCredentials = {
 }
 
 export type RegisterCredentials = AuthCredentials & {
-  /** 邀请码，通用占位字段，后端校验规则待接入 */
-  inviteCode?: string
-}
-
-export type UserPreferenceStudy = {
-  dailyGoal?: number
-  defaultMode?: string
-  questionOrder?: string
-  autoNext?: boolean
-  showAnswerAfterSubmit?: boolean
-  majorId?: string
-  subjectIds?: string[]
-  subjectOrder?: string[]
-  hiddenSubjectIds?: string[]
-} & Record<string, unknown>
-
-export type UserPreferences = {
-  userId: string
-  placeholder?: boolean
-  persisted?: boolean
-  study: UserPreferenceStudy
-  notifications: {
-    dailyReminder?: boolean
-    reminderTime?: string
-    weeklyReport?: boolean
-  } & Record<string, unknown>
-  display: {
-    theme?: string
-    compactMode?: boolean
-  } & Record<string, unknown>
-}
-
-export type UserSettings = {
-  userId: string
-  placeholder?: boolean
-  practice: {
-    dailyGoal?: number
-    questionOrder?: string
-    autoNext?: boolean
-    autoNextOnCorrect?: boolean
-    recordWrongQuestions?: boolean
-    showAnswerAfterSubmit?: boolean
-  } & Record<string, unknown>
-  account: {
-    emailChangeEnabled?: boolean
-    passwordChangeEnabled?: boolean
-  } & Record<string, unknown>
-  privacy?: {
-    profileVisibility?: string
-    showLearningStats?: boolean
-  } & Record<string, unknown>
-  security?: {
-    activeSessions?: unknown[]
-  } & Record<string, unknown>
-  persisted?: boolean
+  /** 邀请码，文档约定当前固定为 "taikula"，必填 */
+  inviteCode: string
 }
 
 export type UserMe = {
@@ -120,62 +47,6 @@ export type UserMe = {
     practice: PracticeSettings
     notifications: NotificationSettings
   }
-}
-
-export type UpdateUserPreferencesBody = Partial<{
-  study: Partial<UserPreferenceStudy>
-  notifications: Partial<UserPreferences['notifications']>
-  display: Partial<UserPreferences['display']>
-}>
-
-export type UpdateUserSettingsBody = Partial<{
-  practice: Partial<UserSettings['practice']>
-  account: Partial<UserSettings['account']>
-  privacy: Partial<NonNullable<UserSettings['privacy']>>
-  security: Partial<NonNullable<UserSettings['security']>>
-}>
-
-// ---- Papers ----
-
-export type PaperListItem = {
-  id: string
-  subjectId: string
-  name: string
-  paperType: PaperType
-  status: 'enabled'
-  createdBy: CreatedBy
-  createdAt: string
-}
-
-export type PaperListQuery = {
-  page?: number
-  limit?: number
-  keyword?: string
-  subjectId?: string
-  paperType?: PaperType
-  createdBy?: CreatedBy
-}
-
-// ---- Questions ----
-
-export type QuestionListItem = {
-  id: string
-  subjectId: string
-  title: string
-  questionType: QuestionType
-  questionCategory: QuestionCategory
-  status: 'enabled'
-  createdBy: CreatedBy
-  createdAt: string
-}
-
-export type QuestionListQuery = {
-  page?: number
-  limit?: number
-  keyword?: string
-  subjectId?: string
-  paperId?: string
-  createdBy?: CreatedBy
 }
 
 // ---- Favorites ----
@@ -191,10 +62,6 @@ export type Favorite = {
   deletedAt?: string | null
 }
 
-export type FavoriteStatus = {
-  questionIds: string[]
-}
-
 // ---- Wrong Questions ----
 
 export type WrongQuestion = {
@@ -208,28 +75,25 @@ export type WrongQuestion = {
   deletedAt?: string | null
 }
 
-export type WrongQuestionStatus = {
-  questionIds: string[]
-}
-
-// ---- Catalog (mock) ----
-
-export type Subject = {
-  id: string
-  name: string
-  majorId: string
-  majorName: string
-}
-
-export type Major = {
-  id: string
-  name: string
-}
+// ---- Catalog ----
 
 export type OptionItem = {
   id: string
   code: string
   name: string
+}
+
+// ---- Questions ----
+
+export type QuestionListItem = {
+  id: string
+  subjectId: string
+  title: string
+  questionType: QuestionType
+  questionCategory: string
+  status: string
+  createdBy: string
+  createdAt: string
 }
 
 // ---- Practice placeholders ----
@@ -269,8 +133,6 @@ export type PracticeEntry = {
   answeredCount: number
   children?: PracticeEntryChild[]
 }
-
-export type PracticeEntryType = 'practice' | 'pastExam' | 'mock' | 'ai'
 
 export type PracticeAnswerSheetItem = {
   id: string
@@ -314,40 +176,6 @@ export type NotificationSettings = {
   dailyReminder: boolean
   reminderTime: string
   weeklyReport: boolean
-}
-
-export type PracticeMode = 'paper' | 'multi-paper' | 'subject'
-
-export type PracticeOverview = {
-  placeholder: true
-  defaultMode: PracticeMode
-  modes: Array<{
-    key: PracticeMode | string
-    name: string
-    enabled: boolean
-  }>
-  hints: {
-    paperListApi: string
-    questionListApi: string
-  }
-}
-
-export type CreatePracticeSessionBody = {
-  mode?: PracticeMode | string
-  paperId?: string
-  paperIds?: string[]
-}
-
-export type PracticeSession = {
-  id: string
-  userId: string
-  mode: string
-  paperIds: string[]
-  status: 'notStarted'
-  placeholder: true
-  persisted: false
-  createdAt?: string
-  questions?: unknown[]
 }
 
 export type PracticeSubmissionAnswer = {
@@ -402,29 +230,7 @@ export type PracticeSubmissionResult = {
   placeholder?: boolean
 }
 
-// ---- Settings placeholders ----
-
-export type UpdatePracticeSettingsBody = Partial<UserSettings['practice']>
-
 // ---- Answer sheets ----
-
-export type AnswerSheetListItem = {
-  id: string
-  paperId: string
-  paperName: string
-  status: string
-  answeredCount: number
-  totalCount: number
-  updatedAt?: string | null
-  createdAt: string
-}
-
-export type AnswerSheetListQuery = {
-  page?: number
-  limit?: number
-  paperId?: string
-  status?: string
-}
 
 export type PasswordChangeBody = {
   currentPassword: string
