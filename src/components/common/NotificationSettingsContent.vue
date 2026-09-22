@@ -38,7 +38,7 @@ watch(
 </script>
 
 <template>
-  <BaseModal v-model="model">
+  <BaseModal v-model="model" title="通知设置">
     <div class="grid gap-2">
       <SettingsToggleItem
         v-model="notificationSettings.studyReminder"

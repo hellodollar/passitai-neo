@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { X } from '@lucide/vue'
-
 const model = defineModel<boolean>({ default: false })
 
 defineProps<{
@@ -21,19 +19,11 @@ function close() {
       >
         <div
           v-if="title || $slots.header"
-          class="flex items-center justify-between border-b border-base-200 p-4"
+          class="flex items-center justify-center border-b border-base-200 px-4 py-2.5"
         >
           <slot name="header">
-            <h3 class="text-base font-semibold leading-tight">{{ title }}</h3>
+            <h3 class="text-[15px] font-semibold leading-tight">{{ title }}</h3>
           </slot>
-          <button
-            class="btn btn-square btn-ghost btn-sm"
-            type="button"
-            aria-label="关闭"
-            @click="close"
-          >
-            <X :size="16" />
-          </button>
         </div>
 
         <div class="max-h-[calc(88dvh-9rem)] overflow-y-auto p-4 sm:max-h-[calc(100dvh-10rem)]">

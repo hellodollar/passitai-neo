@@ -1147,7 +1147,7 @@ watch(
       </div>
     </section>
 
-    <BaseModal v-model="questionSheetOpen" compact-footer>
+    <BaseModal v-model="questionSheetOpen" title="答题卡" compact-footer>
       <div class="mb-3 flex items-center gap-3 border-b border-base-200 pb-3 text-xs tabular-nums">
         <span class="font-semibold text-base-content/70">
           {{ answeredCount }}/{{ currentQuestions.length }} 已完成

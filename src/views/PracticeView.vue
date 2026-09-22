@@ -557,10 +557,9 @@ watch(
       </section>
     </template>
 
-    <BaseModal v-model="subjectPanelOpen">
+    <BaseModal v-model="subjectPanelOpen" title="科目管理">
       <div>
-        <h3 class="text-base font-semibold">科目管理</h3>
-        <p class="mt-1 text-xs text-base-content/50">勾选显示，使用箭头调整顺序</p>
+        <p class="text-xs text-base-content/50">勾选显示，使用箭头调整顺序</p>
       </div>
 
       <div class="mt-3 border-y border-base-200 divide-y divide-base-200">
@@ -632,10 +631,8 @@ watch(
       </div>
     </BaseModal>
 
-    <BaseModal v-model="subjectPickerOpen">
-      <h3 class="text-base font-semibold">选择刷题科目</h3>
-
-      <div class="mt-3 border-y border-base-200 divide-y divide-base-200">
+    <BaseModal v-model="subjectPickerOpen" title="选择刷题科目">
+      <div class="border-y border-base-200 divide-y divide-base-200">
         <button
           v-for="subject in visibleSubjects"
           :key="subject.code"

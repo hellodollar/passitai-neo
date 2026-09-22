@@ -131,7 +131,7 @@ watch(model, (open) => {
 </script>
 
 <template>
-  <BaseModal v-model="model" compact-footer>
+  <BaseModal v-model="model" title="刷题计划" compact-footer>
     <div>
       <section class="border-b border-base-200 px-0.5 pb-4">
         <div>

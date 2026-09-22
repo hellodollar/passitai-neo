@@ -50,6 +50,10 @@ interface AuthBody {
   email: string
   password: string // 6-20 位
 }
+
+interface RegisterBody extends AuthBody {
+  inviteCode?: string // 注册邀请码，接口层不做字段校验；缺失或不为 "taikula" 时注册失败（2005 邀请码无效）
+}
 ```
 
 注册与登录成功返回：

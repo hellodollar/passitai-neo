@@ -13,6 +13,8 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { fetchUserMe } from '@/api/me'
+import AccountEmailContent from '@/components/common/AccountEmailContent.vue'
+import AccountPasswordContent from '@/components/common/AccountPasswordContent.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
 import NotificationSettingsContent from '@/components/common/NotificationSettingsContent.vue'
 import PracticePlanModal from '@/components/common/PracticePlanModal.vue'
@@ -26,6 +28,8 @@ const app = useAppStore()
 const router = useRouter()
 const signingOut = ref(false)
 const accountModalOpen = ref(false)
+const passwordModalOpen = ref(false)
+const emailModalOpen = ref(false)
 const planModalOpen = ref(false)
 const practiceSettingsModalOpen = ref(false)
 const notificationModalOpen = ref(false)
@@ -118,6 +122,19 @@ function onPlanUpdated(plan: PracticePlan, selection: { majorId: string; subject
     majorId: selection.majorId,
     subjectIds: selection.subjectIds,
   })
+}
+
+function onEmailUpdated(email: string) {
+  if (me.value) {
+    me.value.user.email = email
+  }
+  auth.updateEmail(email)
+}
+
+function openAccountAction(action: 'password' | 'email') {
+  accountModalOpen.value = false
+  if (action === 'password') passwordModalOpen.value = true
+  else emailModalOpen.value = true
 }
 
 async function signOut() {
@@ -217,21 +234,24 @@ onMounted(() => {
     <BaseModal v-model="accountModalOpen" title="账户">
       <div class="grid gap-2">
         <button
-          class="grid w-full grid-cols-[2.5rem_minmax(0,1fr)] items-center gap-2 rounded-2xl bg-base-200/70 p-3 text-left"
+          class="grid w-full grid-cols-[2.5rem_minmax(0,1fr)_1.125rem] items-center gap-2 rounded-2xl bg-base-200/70 p-3 text-left transition-colors active:bg-base-300/70"
           type="button"
+          @click="openAccountAction('password')"
         >
           <span class="flex size-10 items-center justify-center text-base-content/55">
             <KeyRound :size="20" />
           </span>
           <span class="min-w-0">
             <span class="block text-sm font-medium">修改密码</span>
-            <span class="mt-0.5 block truncate text-xs text-base-content/50">功能占位</span>
+            <span class="mt-0.5 block truncate text-xs text-base-content/50">定期更新密码更安全</span>
           </span>
+          <ChevronRight :size="16" class="justify-self-end text-base-content/30" />
         </button>
 
         <button
-          class="grid w-full grid-cols-[2.5rem_minmax(0,1fr)] items-center gap-2 rounded-2xl bg-base-200/70 p-3 text-left"
+          class="grid w-full grid-cols-[2.5rem_minmax(0,1fr)_1.125rem] items-center gap-2 rounded-2xl bg-base-200/70 p-3 text-left transition-colors active:bg-base-300/70"
           type="button"
+          @click="openAccountAction('email')"
         >
           <span class="flex size-10 items-center justify-center text-base-content/55">
             <Mail :size="20" />
@@ -242,9 +262,14 @@ onMounted(() => {
               profileEmail
             }}</span>
           </span>
+          <ChevronRight :size="16" class="justify-self-end text-base-content/30" />
         </button>
       </div>
     </BaseModal>
+
+    <AccountPasswordContent v-model="passwordModalOpen" />
+
+    <AccountEmailContent v-model="emailModalOpen" :current-email="profileEmail" @updated="onEmailUpdated" />
 
     <PracticePlanModal
       v-model="planModalOpen"

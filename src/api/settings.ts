@@ -1,7 +1,5 @@
 import { request } from '@/api/http'
 import type {
-  PasswordChangeBody,
-  PasswordChangePlaceholder,
   UpdatePracticeSettingsBody,
   UpdateUserSettingsBody,
   UserSettings,
@@ -21,13 +19,6 @@ export function updatePracticeSettings(payload: UpdatePracticeSettingsBody) {
 export function updateUserSettings(payload: UpdateUserSettingsBody) {
   return request<UserSettings>('/settings', {
     method: 'PATCH',
-    body: payload,
-  })
-}
-
-export function changePassword(payload: PasswordChangeBody) {
-  return request<PasswordChangePlaceholder>('/settings/password', {
-    method: 'PUT',
     body: payload,
   })
 }

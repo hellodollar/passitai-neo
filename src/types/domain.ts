@@ -427,15 +427,23 @@ export type AnswerSheetListQuery = {
 }
 
 export type PasswordChangeBody = {
-  currentPassword?: string
-  newPassword?: string
+  currentPassword: string
+  newPassword: string
 }
 
-export type PasswordChangePlaceholder = {
+export type PasswordChangeResult = {
   userId: string
-  changed: false
-  placeholder: true
-  persisted: false
+  changed: boolean
+}
+
+export type EmailChangeBody = {
+  password: string
+  newEmail: string
+}
+
+export type EmailChangeResult = {
+  userId: string
+  email: string
 }
 
 // ---- App preferences (UI only) ----

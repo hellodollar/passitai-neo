@@ -47,6 +47,16 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  /**
+   * 更换邮箱后同步本地会话中的用户邮箱，避免刷新后回显旧值。
+   */
+  function updateEmail(email: string) {
+    if (!session.value || !user.value) return
+    user.value = { ...user.value, email }
+    session.value = { ...session.value, user: user.value }
+    writeStorage(STORAGE_KEYS.authSession, session.value)
+  }
+
   async function hydrate() {
     if (!session.value?.token) return
 
@@ -78,6 +88,7 @@ export const useAuthStore = defineStore('auth', () => {
     signIn,
     signOut,
     signUp,
+    updateEmail,
     user,
   }
 })

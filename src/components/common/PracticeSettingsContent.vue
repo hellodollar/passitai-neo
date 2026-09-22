@@ -116,7 +116,7 @@ defineExpose({ practiceSettings })
 </script>
 
 <template>
-  <BaseModal v-model="model">
+  <BaseModal v-model="model" title="练习设置">
     <div class="grid gap-2">
       <SettingsToggleItem
         v-model="practiceSettings.autoNextOnCorrect"
