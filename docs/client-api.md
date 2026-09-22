@@ -134,6 +134,8 @@ interface NotificationSettings {
 interface PracticePlan {
   majorName: string
   majorCode: string
+  educationLevel?: string | null // 教育层次，当前服务端写死返回，仅部分专业有值
+  nextExamDate?: string | null // 考试时间（ISO 字符串），当前服务端写死返回，仅部分专业有值
   subjects: {
     name: string
     code: string
@@ -148,6 +150,7 @@ interface UpdatePracticePlanBody {
 ```
 
 计划存储在当前用户的 `preferences.plan`。`majorId` 必须指向存在且未删除的专业，否则返回资源不存在。
+`educationLevel`、`nextExamDate` 为临时写死字段，后续接入专业维度配置。
 
 ## 4. 练习模块
 

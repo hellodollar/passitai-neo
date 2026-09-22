@@ -8,6 +8,11 @@ import type { PracticeSettings } from '@/types/domain'
 
 const model = defineModel<boolean>({ default: false })
 
+const emit = defineEmits<{
+  /** 单项设置保存成功，携带当前完整设置，供外层同步聚合数据 */
+  saved: [settings: PracticeSettings]
+}>()
+
 const props = withDefaults(
   defineProps<{
     settings?: PracticeSettings | null
@@ -96,7 +101,18 @@ watch(
 
     if (Object.keys(payload).length === 0) return
 
-    void updatePracticeSettings(payload).catch(() => {})
+    void updatePracticeSettings(payload)
+      .then(() => {
+        const s = practiceSettings.value
+        emit('saved', {
+          autoNext: s.autoNextOnCorrect,
+          recordWrongQuestions: s.recordWrongQuestions,
+          showExplanationAfterAnswer: s.showAnalysis,
+          loopAfterCompletion: s.loopPractice,
+          autoSubmitAfterCompletion: s.autoSubmit,
+        })
+      })
+      .catch(() => {})
   },
   { deep: true },
 )

@@ -21,7 +21,7 @@ import PracticePlanModal from '@/components/common/PracticePlanModal.vue'
 import PracticeSettingsContent from '@/components/common/PracticeSettingsContent.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useAppStore } from '@/stores/app'
-import type { PracticePlan, UserMe } from '@/types/domain'
+import type { PracticePlan, PracticeSettings, UserMe } from '@/types/domain'
 
 const auth = useAuthStore()
 const app = useAppStore()
@@ -122,6 +122,12 @@ function onPlanUpdated(plan: PracticePlan, selection: { majorId: string; subject
     majorId: selection.majorId,
     subjectIds: selection.subjectIds,
   })
+}
+
+function onPracticeSettingsSaved(settings: PracticeSettings) {
+  if (me.value) {
+    me.value.preferences.practice = settings
+  }
 }
 
 function onEmailUpdated(email: string) {
@@ -281,6 +287,7 @@ onMounted(() => {
       v-model="practiceSettingsModalOpen"
       external
       :settings="me?.preferences.practice"
+      @saved="onPracticeSettingsSaved"
     />
 
     <NotificationSettingsContent
