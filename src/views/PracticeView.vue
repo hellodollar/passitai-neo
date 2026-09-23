@@ -10,6 +10,7 @@ import {
   FileText,
   Flame,
   GraduationCap,
+  Hourglass,
   ListChecks,
   Settings2,
   ShieldAlert,
@@ -37,14 +38,6 @@ import type {
 
 const router = useRouter()
 const app = useAppStore()
-
-const planMetadataPlaceholders: Record<string, { educationLevel?: string; nextExamDate?: string }> =
-  {
-    '120206': {
-      educationLevel: '本科',
-      nextExamDate: '2026-10-25T00:00:00+08:00',
-    },
-  }
 
 const settingsModalOpen = ref(false)
 const subjectPanelOpen = ref(false)
@@ -89,12 +82,9 @@ function entryStyle(type: string) {
 const planMajorName = computed(() => plan.value?.majorName ?? '')
 const planMajorCode = computed(() => plan.value?.majorCode ?? '')
 const planSubjects = computed(() => plan.value?.subjects ?? [])
-const placeholderPlanMetadata = computed(() => planMetadataPlaceholders[planMajorCode.value])
-const planEducationLevel = computed(
-  () => plan.value?.educationLevel || placeholderPlanMetadata.value?.educationLevel || '',
-)
+const planEducationLevel = computed(() => plan.value?.educationLevel ?? '')
 const nextExamDate = computed(() => {
-  const dateValue = plan.value?.nextExamDate || placeholderPlanMetadata.value?.nextExamDate
+  const dateValue = plan.value?.nextExamDate
   if (!dateValue) return null
   const parsedDate = new Date(dateValue)
   return Number.isNaN(parsedDate.getTime()) ? null : parsedDate
@@ -356,7 +346,7 @@ watch(
     </header>
 
     <section v-if="planLoading" class="overflow-hidden rounded-2xl border border-base-200">
-      <EmptyState :icon="Target" title="加载中" description="正在获取练习计划…" />
+      <EmptyState :icon="Hourglass" title="加载中" description="正在获取练习计划…" />
     </section>
 
     <section
@@ -413,7 +403,7 @@ watch(
                 <span class="size-1.5 rounded-full bg-primary"></span>
                 距离考试
               </p>
-              <p class="mt-0.5 text-sm text-base-content/65">
+              <p class="mt-0.5 text-sm text-base-content/60">
                 <strong class="text-lg font-semibold text-primary tabular-nums">
                   {{ daysUntilExam }}
                 </strong>
@@ -425,7 +415,7 @@ watch(
 
         <div class="grid grid-cols-2 divide-x divide-base-200 border-t border-base-200">
           <button
-            class="flex h-10 items-center justify-center gap-1.5 text-xs font-medium text-base-content/65 transition active:bg-base-200/50"
+            class="flex h-10 items-center justify-center gap-1.5 text-xs font-medium text-base-content/60 transition active:bg-base-200/50"
             type="button"
             aria-label="刷题计划"
             @click="planModalOpen = true"
@@ -434,7 +424,7 @@ watch(
             刷题计划
           </button>
           <button
-            class="flex h-10 items-center justify-center gap-1.5 text-xs font-medium text-base-content/65 transition active:bg-base-200/50"
+            class="flex h-10 items-center justify-center gap-1.5 text-xs font-medium text-base-content/60 transition active:bg-base-200/50"
             type="button"
             aria-label="练习设置"
             @click="settingsModalOpen = true"
@@ -448,7 +438,7 @@ watch(
       <div class="flex items-end justify-between gap-3 px-0.5">
         <div class="flex items-baseline gap-2">
           <h2 class="text-[17px] font-semibold leading-tight">刷题科目</h2>
-          <span class="text-xs text-base-content/40">{{ planSubjects.length }}个</span>
+          <span class="text-xs text-base-content/45">{{ planSubjects.length }}个</span>
         </div>
         <button
           class="flex shrink-0 items-center gap-0.5 text-sm font-medium text-primary transition-opacity active:opacity-70"
@@ -465,7 +455,7 @@ watch(
         <div v-if="visibleSubjects.length > 0" class="relative">
           <div
             ref="chipsRow"
-            class="no-scrollbar flex gap-2 overflow-x-auto px-3 py-3"
+            class="no-scrollbar flex gap-2 overflow-x-auto px-4 py-3"
             @scroll.passive="updateChipsScrollHint"
           >
             <button
@@ -502,7 +492,10 @@ watch(
           />
         </div>
 
-        <div v-else-if="entriesLoading" class="flex min-h-20 items-center justify-center border-t border-base-200">
+        <div
+          v-else-if="entriesLoading"
+          class="flex min-h-20 items-center justify-center border-t border-base-200"
+        >
           <span class="loading loading-spinner loading-xs text-base-content/40"></span>
         </div>
 
@@ -515,7 +508,7 @@ watch(
         </div>
 
         <template v-else>
-          <div class="border-t border-base-200 px-3 py-3">
+          <div class="border-t border-base-200 px-4 py-3">
             <div class="grid grid-cols-4 gap-1.5">
               <button
                 v-for="entry in entryRows"
@@ -543,7 +536,10 @@ watch(
             </div>
           </div>
 
-          <div v-if="activeEntryChildren.length > 0" class="min-w-0 divide-y divide-base-200 border-t border-base-200">
+          <div
+            v-if="activeEntryChildren.length > 0"
+            class="min-w-0 divide-y divide-base-200 border-t border-base-200"
+          >
             <button
               v-for="child in activeEntryChildren"
               :key="child.paperId"
@@ -561,7 +557,7 @@ watch(
               <span class="min-w-0 flex-1">
                 <span class="flex min-w-0 items-center justify-between gap-2">
                   <span class="truncate text-sm font-medium">{{ child.name }}</span>
-                  <span class="shrink-0 text-[11px] text-base-content/40 tabular-nums">
+                  <span class="shrink-0 text-[11px] text-base-content/45 tabular-nums">
                     {{ child.answeredCount }}/{{ child.questionCount }}
                   </span>
                 </span>
@@ -582,7 +578,7 @@ watch(
               </span>
               <ChevronRight
                 :size="17"
-                class="shrink-0 text-base-content/25 transition group-active:translate-x-0.5 group-active:text-primary"
+                class="shrink-0 text-base-content/30 transition group-active:translate-x-0.5 group-active:text-primary"
               />
             </button>
           </div>
@@ -598,7 +594,7 @@ watch(
 
     <BaseModal v-model="subjectPanelOpen" title="科目管理">
       <div>
-        <p class="text-xs text-base-content/50">勾选显示，使用箭头调整顺序</p>
+        <p class="text-xs text-base-content/45">勾选显示，使用箭头调整顺序</p>
       </div>
 
       <div class="mt-3 border-y border-base-200 divide-y divide-base-200">

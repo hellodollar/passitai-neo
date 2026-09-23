@@ -55,7 +55,7 @@ onMounted(async () => {
     <section v-else-if="loaded">
       <div class="mb-3 flex items-center justify-between">
         <h2 class="text-lg font-semibold">收藏题目</h2>
-        <span class="rounded-full bg-base-200 px-3 py-1.5 text-sm font-medium text-base-content/65">
+        <span class="rounded-full bg-base-200 px-3 py-1.5 text-sm font-medium text-base-content/60">
           共 {{ learning.favoritesTotal }} 道
         </span>
       </div>

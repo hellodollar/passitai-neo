@@ -45,6 +45,7 @@ onMounted(async () => {
     >
       <EmptyState
         :icon="AlertCircle"
+        tone="warning"
         title="暂无错题"
         description="答错的题目会自动收集到这里。"
         action-label="去练习"
@@ -55,7 +56,7 @@ onMounted(async () => {
     <section v-else-if="loaded">
       <div class="mb-3 flex items-center justify-between">
         <h2 class="text-lg font-semibold">错题本</h2>
-        <span class="rounded-full bg-base-200 px-3 py-1.5 text-sm font-medium text-base-content/65">
+        <span class="rounded-full bg-base-200 px-3 py-1.5 text-sm font-medium text-base-content/60">
           共 {{ learning.wrongQuestionsTotal }} 道
         </span>
       </div>

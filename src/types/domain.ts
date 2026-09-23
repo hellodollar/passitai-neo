@@ -1,3 +1,5 @@
+import type { DomainValue } from '@/generated/domain-values'
+
 // ---- API envelope ----
 
 export type ApiEnvelope<T> = {
@@ -13,8 +15,8 @@ export type PaginationResult<T> = {
 
 // ---- Enums ----
 
-export type UserRole = 'admin' | 'user'
-export type QuestionType = 'single' | 'multiple' | 'judge' | 'shortAnswer' | 'essay'
+export type UserRole = DomainValue<'userRole'>
+export type QuestionType = DomainValue<'questionType'>
 
 // ---- Auth & User ----
 
@@ -108,8 +110,8 @@ export type PracticePlanSubject = {
 export type PracticePlan = {
   majorName: string
   majorCode: string
-  educationLevel?: string | null
-  nextExamDate?: string | null
+  educationLevel: DomainValue<'educationLevel'>
+  nextExamDate: string | null
   subjects: PracticePlanSubject[]
 }
 

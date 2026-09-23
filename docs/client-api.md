@@ -137,8 +137,8 @@ interface NotificationSettings {
 interface PracticePlan {
   majorName: string
   majorCode: string
-  educationLevel?: string | null // 教育层次，当前服务端写死返回，仅部分专业有值
-  nextExamDate?: string | null // 考试时间（ISO 字符串），当前服务端写死返回，仅部分专业有值
+  educationLevel: '本科' | '专科' // 来自 majors.educationLevel
+  nextExamDate: string | null // 来自 majors.nextExamDate，YYYY-MM-DD
   subjects: {
     name: string
     code: string
@@ -153,7 +153,7 @@ interface UpdatePracticePlanBody {
 ```
 
 计划存储在当前用户的 `preferences.plan`。`majorId` 必须指向存在且未删除的专业，否则返回资源不存在。
-`educationLevel`、`nextExamDate` 为临时写死字段，后续接入专业维度配置。
+`educationLevel`、`nextExamDate` 均从所选专业读取。
 
 用户未设置计划（新用户）、专业不存在或已删除时，`GET /api/plan` 返回 `data: null`，`/api/me` 的
 `preferences.plan` 同样为 `null`；需先调用 `PUT /api/plan` 手动设置计划。

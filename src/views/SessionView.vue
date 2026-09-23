@@ -17,6 +17,7 @@ import BaseModal from '@/components/common/BaseModal.vue'
 import PracticeSettingsContent from '@/components/common/PracticeSettingsContent.vue'
 import { addFavorite, fetchFavorites, removeFavorite } from '@/api/favorites'
 import { ROUTE_NAMES } from '@/constants/app'
+import { QUESTION_TYPE_LABELS, QUESTION_TYPE_ORDER } from '@/constants/domain'
 import { useAppStore } from '@/stores/app'
 import { fetchPracticeAnswerSheet, submitPracticeSession } from '@/api/practice'
 import type {
@@ -175,9 +176,8 @@ const sessionStateContent = computed(() => {
     return {
       icon: CircleAlert,
       iconClasses: 'bg-error/10 text-error',
-      eyebrow: '加载失败',
-      title: '题目没有加载成功',
-      description: '可能是网络波动或题目数据异常，请重新加载后再试。',
+      title: '加载失败',
+      description: '网络波动或题目异常，请重试。',
       primaryLabel: '重新加载',
       showSecondaryAction: true,
     }
@@ -187,9 +187,8 @@ const sessionStateContent = computed(() => {
     return {
       icon: ClipboardList,
       iconClasses: 'bg-warning/15 text-warning',
-      eyebrow: '练习已失效',
-      title: '需要重新选择练习',
-      description: '当前页面没有找到练习信息，返回练习页重新选择后即可继续。',
+      title: '练习已失效',
+      description: '返回练习页重新选择即可继续。',
       primaryLabel: '返回练习',
       showSecondaryAction: false,
     }
@@ -198,9 +197,8 @@ const sessionStateContent = computed(() => {
   return {
     icon: ClipboardList,
     iconClasses: 'bg-primary/10 text-primary',
-    eyebrow: '暂无题目',
-    title: '这个练习包暂时是空的',
-    description: '当前练习包没有可用题目，可以返回后更换其他练习包。',
+    title: '暂无题目',
+    description: '这个练习包没有题目，换一个试试。',
     primaryLabel: '更换练习包',
     showSecondaryAction: false,
   }
@@ -773,22 +771,6 @@ function handleSessionStateAction() {
   exitSession()
 }
 
-const QUESTION_TYPE_ORDER: Record<QuestionType, number> = {
-  single: 0,
-  multiple: 1,
-  judge: 2,
-  shortAnswer: 3,
-  essay: 4,
-}
-
-const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
-  single: '单选题',
-  multiple: '多选题',
-  judge: '判断题',
-  shortAnswer: '简答题',
-  essay: '论述题',
-}
-
 function compareQuestionType(a: QuestionListItem, b: QuestionListItem) {
   return (QUESTION_TYPE_ORDER[a.questionType] ?? 99) - (QUESTION_TYPE_ORDER[b.questionType] ?? 99)
 }
@@ -1112,25 +1094,22 @@ watch(
     >
       <div class="w-full max-w-sm text-center">
         <span
-          class="mx-auto flex size-14 items-center justify-center rounded-2xl"
+          class="mx-auto flex size-14 items-center justify-center rounded-full"
           :class="sessionStateContent.iconClasses"
         >
-          <component :is="sessionStateContent.icon" :size="27" />
+          <component :is="sessionStateContent.icon" :size="24" />
         </span>
 
-        <p class="mt-5 text-xs font-semibold tracking-[0.16em] text-base-content/40">
-          {{ sessionStateContent.eyebrow }}
-        </p>
-        <h2 class="mt-2 text-xl font-semibold tracking-tight text-base-content">
+        <h2 class="mt-4 text-base font-semibold text-base-content">
           {{ sessionStateContent.title }}
         </h2>
-        <p class="mx-auto mt-2 max-w-xs text-sm leading-6 text-base-content/55">
+        <p class="mt-1.5 text-sm leading-relaxed text-base-content/55">
           {{ sessionStateContent.description }}
         </p>
 
-        <div class="mx-auto mt-6 grid max-w-[15rem] gap-2.5">
+        <div class="mx-auto mt-5 grid max-w-[15rem] gap-2.5">
           <button
-            class="btn btn-primary h-11 min-h-11 rounded-xl px-6 text-sm"
+            class="btn btn-primary h-11 min-h-11 rounded-full px-6 text-sm"
             type="button"
             @click="handleSessionStateAction"
           >
@@ -1138,7 +1117,7 @@ watch(
           </button>
           <button
             v-if="sessionStateContent.showSecondaryAction"
-            class="btn btn-ghost h-10 min-h-10 rounded-xl text-sm text-base-content/55"
+            class="btn btn-ghost h-10 min-h-10 rounded-full text-sm text-base-content/55"
             type="button"
             @click="exitSession"
           >

@@ -6,6 +6,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { fetchPracticeAnswerSheet, fetchPracticeSubmissionResult } from '@/api/practice'
 import BaseModal from '@/components/common/BaseModal.vue'
 import { ROUTE_NAMES } from '@/constants/app'
+import { QUESTION_TYPE_LABELS } from '@/constants/domain'
 import { useAppStore } from '@/stores/app'
 import type {
   PracticeAnswerSheet,
@@ -34,14 +35,6 @@ const paperId = computed(() =>
 const submissionId = computed(() =>
   typeof route.query.submissionId === 'string' ? route.query.submissionId : '',
 )
-
-const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
-  single: '单选题',
-  multiple: '多选题',
-  judge: '判断题',
-  shortAnswer: '简答题',
-  essay: '论述题',
-}
 
 const filteredQuestions = computed(() => {
   const questions = result.value?.questions ?? []
