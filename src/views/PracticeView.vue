@@ -3,8 +3,6 @@ import {
   ArrowDown,
   ArrowUp,
   BookOpenCheck,
-  Check,
-  ChevronDown,
   ChevronRight,
   ClipboardCheck,
   ClipboardList,
@@ -13,14 +11,13 @@ import {
   Flame,
   GraduationCap,
   ListChecks,
-  Pencil,
   Settings2,
   ShieldAlert,
   Sparkles,
   Target,
 } from '@lucide/vue'
 import { differenceInCalendarDays, format } from 'date-fns'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import logoPassitai from '@/assets/icons/icon-passitai.svg'
@@ -29,6 +26,7 @@ import EmptyState from '@/components/common/EmptyState.vue'
 import PracticePlanModal from '@/components/common/PracticePlanModal.vue'
 import PracticeSettingsContent from '@/components/common/PracticeSettingsContent.vue'
 import { fetchPracticeEntries, fetchPracticePlan } from '@/api/practice'
+import { fetchMajorOptions, fetchSubjectOptions } from '@/api/catalog'
 import { useAppStore } from '@/stores/app'
 import type {
   PracticeEntry,
@@ -50,7 +48,6 @@ const planMetadataPlaceholders: Record<string, { educationLevel?: string; nextEx
 
 const settingsModalOpen = ref(false)
 const subjectPanelOpen = ref(false)
-const subjectPickerOpen = ref(false)
 const planModalOpen = ref(false)
 const plan = ref<PracticePlan | null>(null)
 const planLoading = ref(false)
@@ -62,6 +59,19 @@ const expandedEntryKey = ref('')
 
 const entries = ref<PracticeEntry[]>([])
 const entriesLoading = ref(false)
+
+// 科目 chips 单行横滑，右侧渐隐提示是否还有未滑出的科目
+const chipsRow = ref<HTMLElement | null>(null)
+const chipsCanScrollRight = ref(false)
+
+function updateChipsScrollHint() {
+  const el = chipsRow.value
+  if (!el) {
+    chipsCanScrollRight.value = false
+    return
+  }
+  chipsCanScrollRight.value = el.scrollLeft + el.clientWidth < el.scrollWidth - 1
+}
 
 type EntryTone = 'primary' | 'secondary' | 'accent' | 'info'
 
@@ -187,7 +197,6 @@ function entryToneClasses(tone: EntryTone) {
 function selectSubject(code: string) {
   activeSubjectCode.value = code
   expandedEntryKey.value = ''
-  subjectPickerOpen.value = false
 }
 
 function subjectCreditsText(subject: PracticePlanSubject) {
@@ -248,6 +257,25 @@ function startEntryPaper(child: PracticeEntryChild) {
   })
 }
 
+// 计划里的科目只有 code，练习入口接口需要真实 subjectId，
+// 通过字典接口解析 code -> id，并按专业缓存
+const subjectIdByCode = ref<Map<string, string>>(new Map())
+let subjectLookupMajorCode = ''
+
+async function loadSubjectIdMap(majorCode: string) {
+  if (!majorCode || subjectLookupMajorCode === majorCode) return
+  try {
+    const majors = await fetchMajorOptions({ code: majorCode })
+    const majorId = majors.find((major) => major.code === majorCode)?.id
+    if (!majorId) return
+    const subjects = await fetchSubjectOptions(majorId)
+    subjectIdByCode.value = new Map(subjects.map((subject) => [subject.code, subject.id]))
+    subjectLookupMajorCode = majorCode
+  } catch {
+    // 字典获取失败时保持空映射，入口区按无内容展示
+  }
+}
+
 async function loadEntries() {
   const subject = activeSubject.value
   if (!subject) {
@@ -257,7 +285,11 @@ async function loadEntries() {
   entries.value = []
   entriesLoading.value = true
   try {
-    entries.value = await fetchPracticeEntries(subject.code)
+    await loadSubjectIdMap(planMajorCode.value)
+    const subjectId = subjectIdByCode.value.get(subject.code)
+    if (!subjectId) return
+
+    entries.value = await fetchPracticeEntries(subjectId)
     if (!entries.value.some((entry) => entry.type === expandedEntryKey.value)) {
       expandedEntryKey.value = entries.value[0]?.type ?? ''
     }
@@ -292,6 +324,15 @@ watch(
   () => planSubjects.value.map((subject) => subject.code).join('|'),
   () => {
     syncSubjectOrder()
+  },
+  { immediate: true },
+)
+
+watch(
+  () => visibleSubjects.value.map((subject) => subject.code).join('|'),
+  async () => {
+    await nextTick()
+    updateChipsScrollHint()
   },
   { immediate: true },
 )
@@ -404,86 +445,54 @@ watch(
         </div>
       </section>
 
-      <section class="overflow-hidden rounded-2xl border border-base-200 bg-base-100">
-        <div class="flex min-w-0 items-center justify-between gap-3 px-4 py-3">
-          <div class="flex min-w-0 items-center gap-2.5">
-            <span
-              class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-secondary/10 text-secondary"
-            >
-              <BookOpenCheck :size="16" />
-            </span>
-            <span class="truncate text-sm font-medium">刷题科目</span>
-            <span
-              class="shrink-0 rounded-full bg-secondary/10 px-2 py-0.5 text-xs font-semibold text-secondary"
-            >
-              {{ planSubjects.length }}个
-            </span>
-          </div>
-          <button
-            class="flex shrink-0 items-center gap-1 text-xs font-medium text-primary"
-            type="button"
-            aria-label="科目管理"
-            @click="subjectPanelOpen = true"
-          >
-            <Pencil :size="13" />
-            管理
-          </button>
+      <div class="flex items-end justify-between gap-3 px-0.5">
+        <div class="flex items-baseline gap-2">
+          <h2 class="text-[17px] font-semibold leading-tight">刷题科目</h2>
+          <span class="text-xs text-base-content/40">{{ planSubjects.length }}个</span>
         </div>
-
         <button
-          v-if="activeSubject"
-          class="flex h-12 w-full min-w-0 items-center border-t border-base-200 px-4 text-left"
+          class="flex shrink-0 items-center gap-0.5 text-sm font-medium text-primary transition-opacity active:opacity-70"
           type="button"
-          aria-label="选择练习科目"
-          @click="subjectPickerOpen = true"
+          aria-label="科目管理"
+          @click="subjectPanelOpen = true"
         >
-          <span class="mr-3 h-6 w-1 shrink-0 rounded-full bg-secondary" aria-hidden="true"></span>
-          <span class="min-w-0 flex-1 truncate text-sm font-semibold">{{
-            activeSubject.name
-          }}</span>
-          <ChevronDown :size="16" class="ml-3 shrink-0 text-base-content/45" />
+          管理
+          <ChevronRight :size="15" class="-mr-0.5 mt-px" />
         </button>
+      </div>
 
-        <div v-if="activeSubject" class="border-t border-base-200 px-3 py-3">
-          <div v-if="entriesLoading" class="flex min-h-14 items-center justify-center">
-            <span class="loading loading-spinner loading-xs"></span>
-          </div>
-
-          <div v-else-if="entryRows.length > 0" class="grid grid-cols-4 gap-1.5">
+      <section class="overflow-hidden rounded-2xl border border-base-200 bg-base-100">
+        <div v-if="visibleSubjects.length > 0" class="relative">
+          <div
+            ref="chipsRow"
+            class="no-scrollbar flex gap-2 overflow-x-auto px-3 py-3"
+            @scroll.passive="updateChipsScrollHint"
+          >
             <button
-              v-for="entry in entryRows"
-              :key="entry.type"
-              class="flex min-w-0 flex-col items-center rounded-xl px-1 py-2 text-center transition-colors"
+              v-for="subject in visibleSubjects"
+              :key="subject.code"
+              class="max-w-[9.5rem] shrink-0 truncate rounded-full px-3.5 py-1.5 text-[13px] font-medium transition-colors"
               :class="
-                activeEntry?.type === entry.type
-                  ? 'bg-primary/10 text-primary ring-1 ring-primary/40'
-                  : 'bg-base-200/45 text-base-content/60 active:bg-base-200/75'
+                activeSubject?.code === subject.code
+                  ? 'bg-primary text-primary-content'
+                  : 'bg-base-200/60 text-base-content/60 active:bg-base-200'
               "
               type="button"
-              :aria-pressed="activeEntry?.type === entry.type"
-              @click="selectEntry(entry.type)"
+              :aria-pressed="activeSubject?.code === subject.code"
+              @click="selectSubject(subject.code)"
             >
-              <span
-                class="flex size-7 items-center justify-center rounded-full"
-                :class="entryToneClasses(entry.tone)"
-              >
-                <component :is="entry.icon" :size="14" />
-              </span>
-              <span class="mt-1.5 block max-w-full truncate text-[11px] font-semibold">
-                {{ entry.name }}
-              </span>
+              {{ subject.name }}
             </button>
           </div>
-
-          <p
-            v-else-if="!entriesLoading"
-            class="rounded-xl bg-base-200/35 px-3 py-3 text-center text-xs text-base-content/45"
-          >
-            暂无可用练习方式
-          </p>
+          <!-- 右侧渐隐提示还有更多科目可横滑 -->
+          <span
+            v-if="chipsCanScrollRight"
+            class="pointer-events-none absolute inset-y-2 right-0 w-9 rounded-r-2xl bg-gradient-to-l from-base-100 via-base-100/85 to-transparent"
+            aria-hidden="true"
+          ></span>
         </div>
 
-        <div v-if="!activeSubject" class="border-t border-base-200">
+        <div v-if="!activeSubject">
           <EmptyState
             :icon="EyeOff"
             title="所有科目已隐藏"
@@ -493,7 +502,11 @@ watch(
           />
         </div>
 
-        <div v-else-if="!entriesLoading && entryRows.length === 0" class="border-t border-base-200">
+        <div v-else-if="entriesLoading" class="flex min-h-20 items-center justify-center border-t border-base-200">
+          <span class="loading loading-spinner loading-xs text-base-content/40"></span>
+        </div>
+
+        <div v-else-if="entryRows.length === 0" class="border-t border-base-200">
           <EmptyState
             :icon="Target"
             title="暂无练习入口"
@@ -501,8 +514,36 @@ watch(
           />
         </div>
 
-        <div v-else-if="activeEntry" class="min-w-0 border-t border-base-200">
-          <div v-if="activeEntryChildren.length > 0" class="divide-y divide-base-200">
+        <template v-else>
+          <div class="border-t border-base-200 px-3 py-3">
+            <div class="grid grid-cols-4 gap-1.5">
+              <button
+                v-for="entry in entryRows"
+                :key="entry.type"
+                class="flex min-w-0 flex-col items-center rounded-xl px-1 py-2 text-center transition-colors"
+                :class="
+                  activeEntry?.type === entry.type
+                    ? 'bg-primary/10 text-primary ring-1 ring-primary/40'
+                    : 'bg-base-200/45 text-base-content/60 active:bg-base-200/75'
+                "
+                type="button"
+                :aria-pressed="activeEntry?.type === entry.type"
+                @click="selectEntry(entry.type)"
+              >
+                <span
+                  class="flex size-7 items-center justify-center rounded-full"
+                  :class="entryToneClasses(entry.tone)"
+                >
+                  <component :is="entry.icon" :size="14" />
+                </span>
+                <span class="mt-1.5 block max-w-full truncate text-[11px] font-semibold">
+                  {{ entry.name }}
+                </span>
+              </button>
+            </div>
+          </div>
+
+          <div v-if="activeEntryChildren.length > 0" class="min-w-0 divide-y divide-base-200 border-t border-base-200">
             <button
               v-for="child in activeEntryChildren"
               :key="child.paperId"
@@ -546,14 +587,12 @@ watch(
             </button>
           </div>
 
-          <div
-            v-else
-            class="flex min-h-28 flex-col items-center justify-center px-5 py-6 text-center"
-          >
-            <span class="text-sm font-medium">当前暂无可用内容</span>
-            <span class="mt-1 text-xs text-base-content/45">{{ activeEntry.description }}</span>
+          <div v-else-if="activeEntry" class="px-4 py-5 text-center">
+            <p class="text-xs text-base-content/45">
+              {{ activeEntry.description || '当前入口暂无可用内容' }}
+            </p>
           </div>
-        </div>
+        </template>
       </section>
     </template>
 
@@ -628,32 +667,6 @@ watch(
           title="暂无可管理科目"
           description="暂无练习计划科目。"
         />
-      </div>
-    </BaseModal>
-
-    <BaseModal v-model="subjectPickerOpen" title="选择刷题科目">
-      <div class="border-y border-base-200 divide-y divide-base-200">
-        <button
-          v-for="subject in visibleSubjects"
-          :key="subject.code"
-          class="flex min-h-12 w-full min-w-0 items-center gap-3 py-2 text-left"
-          type="button"
-          :aria-pressed="activeSubject?.code === subject.code"
-          @click="selectSubject(subject.code)"
-        >
-          <span class="min-w-0 flex-1">
-            <span class="block truncate text-sm font-medium">{{ subject.name }}</span>
-            <span v-if="subject.code" class="mt-0.5 block text-[11px] text-base-content/40">
-              {{ subject.code }}
-            </span>
-          </span>
-          <span
-            v-if="activeSubject?.code === subject.code"
-            class="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"
-          >
-            <Check :size="14" :stroke-width="2.5" />
-          </span>
-        </button>
       </div>
     </BaseModal>
 

@@ -80,6 +80,16 @@ svg {
   flex-shrink: 0;
 }
 
+/* 横向滚动区域隐藏滚动条 */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 .uplot {
   font-family: inherit;
 }
