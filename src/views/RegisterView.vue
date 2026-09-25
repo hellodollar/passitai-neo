@@ -27,6 +27,9 @@ const errors = reactive({
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 // 简单密码规则：6-20 位，须同时包含字母和数字
 const PASSWORD_PATTERN = /^(?=.*[A-Za-z])(?=.*\d).{6,20}$/
+// 邀请码非必填：不填写可直接提交（由服务端判定），填写了则校验长度
+const INVITE_CODE_MIN = 6
+const INVITE_CODE_MAX = 8
 
 function validateEmail() {
   const value = form.email.trim()
@@ -51,7 +54,11 @@ function validateConfirmPassword() {
 }
 
 function validateInviteCode() {
-  errors.inviteCode = form.inviteCode.trim() ? '' : '请输入邀请码'
+  const value = form.inviteCode.trim()
+  if (!value) errors.inviteCode = ''
+  else if (value.length < INVITE_CODE_MIN || value.length > INVITE_CODE_MAX)
+    errors.inviteCode = `邀请码长度需在 ${INVITE_CODE_MIN}-${INVITE_CODE_MAX} 位之间`
+  else errors.inviteCode = ''
   return !errors.inviteCode
 }
 
@@ -84,7 +91,7 @@ async function submit() {
   const success = await auth.signUp({
     email: form.email.trim(),
     password: form.password,
-    inviteCode: form.inviteCode.trim(),
+    inviteCode: form.inviteCode.trim() || undefined,
   })
   if (success) router.push('/')
 }
@@ -132,7 +139,7 @@ async function submit() {
         :icon="TicketPercent"
         :error="errors.inviteCode"
         autocomplete="off"
-        placeholder="请输入邀请码"
+        placeholder="选填，6-8 位"
         @blur="validateInviteCode"
       />
 

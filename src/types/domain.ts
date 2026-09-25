@@ -38,8 +38,8 @@ export type AuthCredentials = {
 }
 
 export type RegisterCredentials = AuthCredentials & {
-  /** 邀请码，文档约定当前固定为 "taikula"，必填 */
-  inviteCode: string
+  /** 邀请码，选填：不填写可直接提交（服务端判定失败）；填写时须 6-8 位 */
+  inviteCode?: string
 }
 
 export type UserMe = {
