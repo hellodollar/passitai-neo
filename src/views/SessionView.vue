@@ -112,7 +112,7 @@ const pendingFavoriteQuestionIds = ref<Set<string>>(new Set())
 const favoriteError = ref('')
 const touchStartX = ref(0)
 const touchStartY = ref(0)
-const autoAdvanceTimer = ref<ReturnType<typeof window.setTimeout> | null>(null)
+const autoAdvanceTimer = ref<number | null>(null)
 const sessionLoadState = ref<SessionLoadState>('loading')
 
 const currentQuestion = computed(() => currentQuestions.value[currentIndex.value])
