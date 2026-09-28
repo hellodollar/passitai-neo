@@ -129,7 +129,7 @@ export type PracticeEntryChild = {
 }
 
 export type PracticeEntry = {
-  type: string
+  type: DomainValue<'paperType'>
   name: string
   description: string
   questionCount: number

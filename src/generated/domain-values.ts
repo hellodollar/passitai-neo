@@ -1,4 +1,4 @@
-// Generated from banana-api/src/constants. Run pnpm sync:domain-values in banana-api.
+// Generated from passitai-api/src/constants. Run pnpm sync:domain-values in passitai-api.
 export const domainValues = {
   dataStatus: ['enabled', 'disabled'],
   sourceType: ['system', 'crawler', 'manual', 'import', 'ai'],

@@ -166,15 +166,15 @@ interface UpdatePracticePlanBody {
 - `record`：用户的一次练习记录。
 - `entries`：按科目获取的练习入口和可刷试卷列表。
 
-| Method  | Path                                      | 说明                       | 状态 |
-| ------- | ----------------------------------------- | -------------------------- | ---- |
-| `GET`   | `/api/practice/settings`                  | 获取练习全局配置           | 可用 |
-| `PATCH` | `/api/practice/settings`                  | 修改练习全局配置           | 可用 |
-| `GET`   | `/api/practice/entries?subjectId=sub_xxx` | 获取该科目下的练习入口     | 占位 |
-| `POST`  | `/api/practice/records`                   | 创建练习记录               | 占位 |
-| `GET`   | `/api/practice/records/:recordId`         | 获取练习记录               | 占位 |
-| `POST`  | `/api/practice/records/:recordId/submit`  | 提交练习记录               | 占位 |
-| `GET`   | `/api/practice/records/:recordId/result`  | 获取本次作答结果和错题明细 | 占位 |
+| Method  | Path                                      | 说明                       | 状态     |
+| ------- | ----------------------------------------- | -------------------------- | -------- |
+| `GET`   | `/api/practice/settings`                  | 获取练习全局配置           | 可用     |
+| `PATCH` | `/api/practice/settings`                  | 修改练习全局配置           | 可用     |
+| `GET`   | `/api/practice/entries?subjectId=sub_xxx` | 获取该科目下的练习入口     | 部分可用 |
+| `POST`  | `/api/practice/records`                   | 创建练习记录               | 占位     |
+| `GET`   | `/api/practice/records/:recordId`         | 获取练习记录               | 占位     |
+| `POST`  | `/api/practice/records/:recordId/submit`  | 提交练习记录               | 占位     |
+| `GET`   | `/api/practice/records/:recordId/result`  | 获取本次作答结果和错题明细 | 占位     |
 
 ### 练习设置
 
@@ -192,7 +192,16 @@ interface PracticeSettings {
 
 ### 练习入口
 
-`subjectId` 必填。当前返回固定占位列表，第二阶段再确定实际试卷筛选、进度和响应字段。
+`subjectId` 必填。固定返回 `baseline`（专项训练）、`pastExam`（历年真题）、`mock`（考前模拟）、
+`ai`（AI训练）四个入口；`type` 与题集 `type` 使用同一组取值。
+
+`pastExam`、`mock`、`ai` 的 `children` 分别来自该科目下同类型、启用且未删除的题集，只包含平台题集
+或当前用户自己的题集。每个子项返回 `{ paperId, name, questionCount, answeredCount }`，其中
+`questionCount` 暂取题集 `sections` 数组长度，`answeredCount` 暂为 `0`；父项的 `questionCount`
+为全部子项之和。父项 `name`、`description` 和 `answeredCount` 保持现有固定值，没有匹配题集时
+`children` 为 `[]`、`questionCount` 为 `0`。
+
+`baseline`（专项训练）的入口与子项仍为占位数据；四类入口的作答进度尚未接入练习记录。
 
 ### 练习记录
 

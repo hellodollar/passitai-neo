@@ -68,15 +68,15 @@ function updateChipsScrollHint() {
 
 type EntryTone = 'primary' | 'secondary' | 'accent' | 'info'
 
-const entryStyles: Record<string, { tone: EntryTone; icon: typeof ListChecks }> = {
-  practice: { tone: 'primary', icon: ListChecks },
+const entryStyles: Record<PracticeEntry['type'], { tone: EntryTone; icon: typeof ListChecks }> = {
+  baseline: { tone: 'primary', icon: ListChecks },
   pastExam: { tone: 'secondary', icon: BookOpenCheck },
   mock: { tone: 'accent', icon: ClipboardCheck },
   ai: { tone: 'info', icon: Sparkles },
 }
 
-function entryStyle(type: string) {
-  return entryStyles[type] ?? { tone: 'primary' as EntryTone, icon: ListChecks }
+function entryStyle(type: PracticeEntry['type']) {
+  return entryStyles[type]
 }
 
 const planMajorName = computed(() => plan.value?.majorName ?? '')
@@ -136,7 +136,7 @@ const practiceChildVisuals = [
 ]
 
 function childVisual(type: string, index: number) {
-  if (type === 'practice') {
+  if (type === 'baseline') {
     return practiceChildVisuals[index] ?? practiceChildVisuals[0]!
   }
 
