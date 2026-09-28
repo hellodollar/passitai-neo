@@ -5,7 +5,8 @@ import type { ApiEnvelope, AuthSession, PaginationResult } from '@/types/domain'
 import { readStorage, removeStorage } from '@/utils/storage'
 import { showErrorToast } from '@/utils/toast'
 
-const apiBase = import.meta.env.VITE_API_BASE_URL || '/api'
+const configuredApiBase = import.meta.env.VITE_API_BASE_URL?.trim()
+const apiBase = configuredApiBase || '/api'
 
 const FALLBACK_MESSAGE = '请求失败，请稍后重试'
 const NETWORK_MESSAGE = '网络连接失败，请检查网络后重试'
