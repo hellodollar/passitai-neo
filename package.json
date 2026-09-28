@@ -9,7 +9,7 @@
     "build": "run-p type-check \"build-only {@}\" --",
     "build-only": "vite build",
     "preview": "vite preview",
-    "deploy": "pnpm run build && wrangler pages deploy dist --project-name neo",
+    "deploy": "pnpm run build && wrangler deploy",
     "type-check": "vue-tsc --build",
     "lint": "run-s lint:*",
     "lint:oxlint": "oxlint . --fix",
