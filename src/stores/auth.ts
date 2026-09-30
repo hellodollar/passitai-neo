@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 
 import { fetchMe, login, logout, register } from '@/api/auth'
 import { STORAGE_KEYS } from '@/constants/app'
+import { usePracticeSettingsStore } from '@/stores/practiceSettings'
 import type { AuthCredentials, AuthSession, RegisterCredentials, User } from '@/types/domain'
 import { readStorage, removeStorage, writeStorage } from '@/utils/storage'
 
@@ -17,6 +18,8 @@ export const useAuthStore = defineStore('auth', () => {
     session.value = nextSession
     user.value = nextSession.user
     writeStorage(STORAGE_KEYS.authSession, nextSession)
+    // 会话变化(登录/注册)后,练习设置缓存按新账号重新拉取
+    usePracticeSettingsStore().clear()
   }
 
   async function signIn(payload: AuthCredentials): Promise<boolean> {
@@ -78,6 +81,7 @@ export const useAuthStore = defineStore('auth', () => {
     session.value = null
     user.value = null
     removeStorage(STORAGE_KEYS.authSession)
+    usePracticeSettingsStore().clear()
   }
 
   return {

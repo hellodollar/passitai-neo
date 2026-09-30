@@ -28,6 +28,7 @@ import PracticePlanModal from '@/components/common/PracticePlanModal.vue'
 import PracticeSettingsContent from '@/components/common/PracticeSettingsContent.vue'
 import { fetchPracticeEntries, fetchPracticePlan } from '@/api/practice'
 import { fetchMajorOptions, fetchSubjectOptions } from '@/api/catalog'
+import { ROUTE_NAMES } from '@/constants/app'
 import { useAppStore } from '@/stores/app'
 import type {
   PracticeEntry,
@@ -241,7 +242,7 @@ function startEntryPaper(child: PracticeEntryChild) {
   if (!child.paperId) return
   app.startPracticeSession([child.paperId])
   router.push({
-    name: 'session',
+    name: ROUTE_NAMES.practicePaper,
     params: { paperId: child.paperId },
     query: { subject: activeSubject.value?.name ?? '' },
   })

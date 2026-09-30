@@ -5,6 +5,7 @@ import { RouterLink } from 'vue-router'
 
 import { fetchPracticeAnswerSheet } from '@/api/practice'
 import EmptyState from '@/components/common/EmptyState.vue'
+import { ROUTE_NAMES } from '@/constants/app'
 import { useLearningStore } from '@/stores/learning'
 
 const learning = useLearningStore()
@@ -84,7 +85,7 @@ onMounted(async () => {
 
           <RouterLink
             class="btn btn-square btn-ghost btn-sm text-primary"
-            :to="`/practice/session/${item.paperId}`"
+            :to="{ name: ROUTE_NAMES.practicePaper, params: { paperId: item.paperId } }"
             aria-label="重新练习"
           >
             <Play :size="16" />

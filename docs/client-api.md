@@ -197,11 +197,20 @@ interface PracticeSettings {
 
 `pastExam`、`mock`、`ai` 的 `children` 分别来自该科目下同类型、启用且未删除的题集，只包含平台题集
 或当前用户自己的题集。每个子项返回 `{ paperId, name, questionCount, answeredCount }`，其中
-`questionCount` 暂取题集 `sections` 数组长度，`answeredCount` 暂为 `0`；父项的 `questionCount`
-为全部子项之和。父项 `name`、`description` 和 `answeredCount` 保持现有固定值，没有匹配题集时
-`children` 为 `[]`、`questionCount` 为 `0`。
+`questionCount` 为题集 `sections` 内全部题目数之和，`answeredCount` 暂为 `0`；父项的
+`questionCount` 为全部子项之和。父项 `name`、`description` 和 `answeredCount` 保持现有固定值，
+没有匹配题集时 `children` 为 `[]`、`questionCount` 为 `0`。
 
-`baseline`（专项训练）的入口与子项仍为占位数据；四类入口的作答进度尚未接入练习记录。
+`baseline`（专项训练）的 `children` 来自该科目 `type=baseline` 的题集，按 `assessmentType`
+映射为固定子项（顺序固定，子项名取配置文案，`paperId` 为该组第一个题集）：
+
+| assessmentType | 子项名   | 说明                   |
+| -------------- | -------- | ---------------------- |
+| `overall`      | 考点通练 | 按大纲全面覆盖，逐考点建立基准 |
+| `highFrequency`| 高频考点 | 聚焦历年高频考点，优先突破重点 |
+| `errorProne`   | 易错强化 | 针对易错点定向强化，查漏补缺 |
+
+该科目缺少某 `assessmentType` 的 baseline 题集时跳过对应子项。四类入口的作答进度尚未接入练习记录。
 
 ### 练习记录
 

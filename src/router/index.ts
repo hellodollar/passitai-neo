@@ -37,14 +37,32 @@ const router = createRouter({
           }),
         },
         {
+          path: 'practice/papers/:paperId',
+          name: ROUTE_NAMES.practicePaper,
+          component: () => import('@/views/PracticePaperView.vue'),
+        },
+        {
+          path: 'practice/papers/:paperId/result',
+          name: ROUTE_NAMES.practicePaperResult,
+          component: () => import('@/views/PracticeResultView.vue'),
+        },
+        {
           path: 'practice/session/:paperId',
-          name: ROUTE_NAMES.session,
-          component: () => import('@/views/SessionView.vue'),
+          redirect: (to) => ({
+            name: ROUTE_NAMES.practicePaper,
+            params: { paperId: to.params.paperId },
+            query: to.query,
+            hash: to.hash,
+          }),
         },
         {
           path: 'practice/session/:paperId/result',
-          name: ROUTE_NAMES.practiceResult,
-          component: () => import('@/views/PracticeResultView.vue'),
+          redirect: (to) => ({
+            name: ROUTE_NAMES.practicePaperResult,
+            params: { paperId: to.params.paperId },
+            query: to.query,
+            hash: to.hash,
+          }),
         },
         {
           path: 'favorites',

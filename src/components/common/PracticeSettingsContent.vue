@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { nextTick, onMounted, ref, watch } from 'vue'
+import { nextTick, ref, watch } from 'vue'
 
 import BaseModal from '@/components/common/BaseModal.vue'
 import SettingsToggleItem from '@/components/common/SettingsToggleItem.vue'
-import { fetchPracticeSettings, updatePracticeSettings } from '@/api/practice'
+import { usePracticeSettingsStore } from '@/stores/practiceSettings'
 import type { PracticeSettings } from '@/types/domain'
 
 const model = defineModel<boolean>({ default: false })
@@ -23,6 +23,8 @@ const props = withDefaults(
     external: false,
   },
 )
+
+const practiceSettingsStore = usePracticeSettingsStore()
 
 const practiceSettings = ref({
   autoNextOnCorrect: false,
@@ -53,22 +55,19 @@ function applySettings(settings: PracticeSettings) {
   lastValues = { ...next }
 }
 
+// 首次打开时才加载:优先用外部传入,缺失时走 store 缓存(无缓存才请求)
 async function loadPracticeSettings() {
-  if (props.external) {
-    if (props.settings) applySettings(props.settings)
+  if (props.external && props.settings) {
+    applySettings(props.settings)
     await nextTick()
     loaded.value = true
     return
   }
 
-  try {
-    applySettings(await fetchPracticeSettings())
-  } catch {
-    // Keep local defaults while the backend settings endpoint is still placeholder-only.
-  } finally {
-    await nextTick()
-    loaded.value = true
-  }
+  const cached = await practiceSettingsStore.ensure()
+  if (cached) applySettings(cached)
+  await nextTick()
+  loaded.value = true
 }
 
 watch(
@@ -101,7 +100,8 @@ watch(
 
     if (Object.keys(payload).length === 0) return
 
-    void updatePracticeSettings(payload)
+    void practiceSettingsStore
+      .patch(payload)
       .then(() => {
         const s = practiceSettings.value
         emit('saved', {
@@ -124,8 +124,9 @@ watch(
   },
 )
 
-onMounted(() => {
-  loadPracticeSettings()
+// 打开弹框时按需加载一次,之后复用 store 缓存
+watch(model, (open) => {
+  if (open && !loaded.value) void loadPracticeSettings()
 })
 
 defineExpose({ practiceSettings })

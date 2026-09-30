@@ -647,7 +647,7 @@ async function confirmSubmitSession() {
   app.endPracticeSession()
 
   await router.replace({
-    name: ROUTE_NAMES.practiceResult,
+    name: ROUTE_NAMES.practicePaperResult,
     params: { paperId },
     query: {
       submissionId: submission.id,
