@@ -17,16 +17,14 @@ import BaseModal from '@/components/common/BaseModal.vue'
 import PracticeSettingsContent from '@/components/common/PracticeSettingsContent.vue'
 import { addFavorite, fetchFavorites, removeFavorite } from '@/api/favorites'
 import { ROUTE_NAMES } from '@/constants/app'
-import { QUESTION_TYPE_LABELS, QUESTION_TYPE_ORDER } from '@/constants/domain'
+import { QUESTION_TYPE_LABELS } from '@/constants/domain'
 import { useAppStore } from '@/stores/app'
-import { fetchPracticeAnswerSheet, submitPracticeSession } from '@/api/practice'
+import { fetchPracticePaper } from '@/api/practice'
 import type {
-  PracticeAnswerSheetItem,
+  PracticePaperItem,
   PracticeSubmissionResult,
-  PracticeSubmitResponse,
   QuestionListItem,
   QuestionType,
-  SubmitPracticeSessionBody,
 } from '@/types/domain'
 import { writePracticeResultSnapshot } from '@/utils/practice-result'
 
@@ -90,6 +88,20 @@ type PracticeAnswerRecord = {
   values: string[]
 }
 
+type LocalSubmission = {
+  id: string
+  paperId: string
+  submittedAt: string
+  placeholder: true
+}
+
+type QuestionSheetGroup = {
+  key: string
+  label: string
+  startIndex: number
+  questions: QuestionListItem[]
+}
+
 type SessionLoadState = 'loading' | 'ready' | 'missing' | 'empty' | 'error'
 
 const OPTION_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
@@ -103,6 +115,7 @@ const sessionTitles = ref<string[]>([])
 const sessionStartedAt = Date.now()
 
 const currentQuestions = ref<QuestionListItem[]>([])
+const questionSheetGroups = ref<QuestionSheetGroup[]>([])
 const currentIndex = ref(0)
 const selectedOptionValues = ref<Set<string>>(new Set())
 const textAnswer = ref('')
@@ -544,7 +557,7 @@ function submitCurrentAnswer(autoAdvance = false) {
 
 function buildResultSnapshot(
   paperId: string,
-  submission: PracticeSubmitResponse,
+  submission: LocalSubmission,
 ): PracticeSubmissionResult {
   const questions = currentQuestions.value.map((question, index) => {
     const record = answerRecords.value[question.id]
@@ -612,32 +625,15 @@ async function confirmSubmitSession() {
     return
   }
 
-  const payload: SubmitPracticeSessionBody = {
-    paperId,
-    subjectName: sessionSubjectName.value || undefined,
-    elapsedSeconds: Math.max(0, Math.round((Date.now() - sessionStartedAt) / 1000)),
-    answers: Object.values(answerRecords.value).map((record) => ({
-      questionId: record.questionId,
-      answer: record.text,
-      values: record.values,
-    })),
-  }
-
   submitting.value = true
   submitError.value = ''
 
-  let submission: PracticeSubmitResponse
-  try {
-    submission = await submitPracticeSession(payload)
-  } catch {
-    // Temporary local response until the real submission endpoint is finalized.
-    submission = {
-      id: `local_${Date.now()}`,
-      paperId,
-      status: 'submitted',
-      submittedAt: new Date().toISOString(),
-      placeholder: true,
-    }
+  // 记录提交协议尚未实现；结果仅存于当前浏览器会话，不伪装为远端记录。
+  const submission: LocalSubmission = {
+    id: `local_${Date.now()}`,
+    paperId,
+    submittedAt: new Date().toISOString(),
+    placeholder: true,
   }
 
   const result = buildResultSnapshot(paperId, submission)
@@ -771,24 +767,7 @@ function handleSessionStateAction() {
   exitSession()
 }
 
-function compareQuestionType(a: QuestionListItem, b: QuestionListItem) {
-  return (QUESTION_TYPE_ORDER[a.questionType] ?? 99) - (QUESTION_TYPE_ORDER[b.questionType] ?? 99)
-}
-
-const questionSheetGroups = computed(() => {
-  const groups = new Map<QuestionType, { startIndex: number; questions: QuestionListItem[] }>()
-  currentQuestions.value.forEach((question, index) => {
-    if (!groups.has(question.questionType)) {
-      groups.set(question.questionType, { startIndex: index, questions: [] })
-    }
-    groups.get(question.questionType)!.questions.push(question)
-  })
-  return [...groups.entries()].sort(
-    (a, b) => (QUESTION_TYPE_ORDER[a[0]] ?? 99) - (QUESTION_TYPE_ORDER[b[0]] ?? 99),
-  )
-})
-
-function toQuestionListItem(item: PracticeAnswerSheetItem, subjectId: string): QuestionListItem {
+function toQuestionListItem(item: PracticePaperItem, subjectId: string): QuestionListItem {
   const richQuestion: RichQuestionListItem = {
     id: item.id,
     subjectId,
@@ -810,18 +789,24 @@ function toQuestionListItem(item: PracticeAnswerSheetItem, subjectId: string): Q
   return richQuestion
 }
 
-function buildAnswerRecord(item: PracticeAnswerSheetItem): PracticeAnswerRecord | null {
-  const answer = item.userAnswer
-  if (!answer) return null
+function buildAnswerRecord(
+  item: PracticePaperItem,
+  answer: string | string[] | undefined,
+): PracticeAnswerRecord | null {
+  if (answer === undefined) return null
 
   const isChoice = ['single', 'multiple', 'judge'].includes(item.questionType)
-  const values = isChoice ? parseChoiceAnswerValues(answer) : [answer]
+  const values = Array.isArray(answer)
+    ? answer
+    : isChoice
+      ? parseChoiceAnswerValues(answer)
+      : [answer]
 
   if (values.length === 0) return null
 
   return {
     questionId: item.id,
-    text: answer,
+    text: Array.isArray(answer) ? answer.join('、') : answer,
     values,
   }
 }
@@ -830,6 +815,7 @@ async function loadSessionData() {
   sessionLoadState.value = 'loading'
   currentIndex.value = 0
   currentQuestions.value = []
+  questionSheetGroups.value = []
   selectedOptionValues.value = new Set()
   textAnswer.value = ''
   answerRecords.value = {}
@@ -839,34 +825,44 @@ async function loadSessionData() {
   sessionTitles.value = []
 
   const paperId = route.params.paperId
-  const paperIds = typeof paperId === 'string' && paperId ? [paperId] : []
-  if (paperIds.length === 0) {
+  if (typeof paperId !== 'string' || !paperId) {
     sessionLoadState.value = 'missing'
     return
   }
 
   try {
-    const sheets = await Promise.all(paperIds.map((paperId) => fetchPracticeAnswerSheet(paperId)))
+    const { paper, latestRecord } = await fetchPracticePaper(paperId)
 
     const questions: QuestionListItem[] = []
+    const groups: QuestionSheetGroup[] = []
     const records: Record<string, PracticeAnswerRecord> = {}
 
-    for (const sheet of sheets) {
-      sessionTitles.value.push(sheet.paperName)
-      for (const group of sheet.questionGroups) {
-        for (const item of group.items) {
-          questions.push(toQuestionListItem(item, sheet.subjectId))
-          const record = buildAnswerRecord(item)
-          if (record) records[item.id] = record
-        }
+    sessionTitles.value.push(paper.name)
+    for (const [groupIndex, group] of paper.sections.entries()) {
+      const groupQuestions = group.items.map((item) => toQuestionListItem(item, paper.subjectId))
+      groups.push({
+        key: `${paper.id}-${groupIndex}`,
+        label:
+          group.name ||
+          (group.questionType
+            ? QUESTION_TYPE_LABELS[group.questionType]
+            : `Section ${groupIndex + 1}`),
+        startIndex: questions.length,
+        questions: groupQuestions,
+      })
+      questions.push(...groupQuestions)
+      for (const item of group.items) {
+        const record = buildAnswerRecord(item, latestRecord?.userAnswers[item.id])
+        if (record) records[item.id] = record
       }
     }
 
-    currentQuestions.value = questions.sort(compareQuestionType)
+    currentQuestions.value = questions
+    questionSheetGroups.value = groups
     answerRecords.value = records
     try {
       // 文档无收藏状态批量接口，用当前试卷的收藏列表代替
-      const favoritesResult = await fetchFavorites({ paperId: paperIds[0] })
+      const favoritesResult = await fetchFavorites({ paperId })
       favoriteQuestionIds.value = new Set(favoritesResult.items.map((item) => item.questionId))
     } catch {
       favoriteQuestionIds.value = new Set()
@@ -874,6 +870,7 @@ async function loadSessionData() {
     sessionLoadState.value = questions.length > 0 ? 'ready' : 'empty'
   } catch {
     currentQuestions.value = []
+    questionSheetGroups.value = []
     sessionLoadState.value = 'error'
   }
 }
@@ -1137,9 +1134,9 @@ watch(
       </div>
 
       <div class="grid gap-2">
-        <div v-for="[type, group] in questionSheetGroups" :key="type">
+        <div v-for="group in questionSheetGroups" :key="group.key">
           <p class="mb-1.5 text-[13px] font-medium text-base-content/50">
-            {{ QUESTION_TYPE_LABELS[type] }}（{{ group.questions.length }}题）
+            {{ group.label }}（{{ group.questions.length }}题）
           </p>
           <div class="grid grid-cols-7 justify-items-center gap-1.5 sm:grid-cols-10">
             <button

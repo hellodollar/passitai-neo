@@ -166,15 +166,12 @@ interface UpdatePracticePlanBody {
 - `record`：用户的一次练习记录。
 - `entries`：按科目获取的练习入口和可刷试卷列表。
 
-| Method  | Path                                      | 说明                       | 状态     |
-| ------- | ----------------------------------------- | -------------------------- | -------- |
-| `GET`   | `/api/practice/settings`                  | 获取练习全局配置           | 可用     |
-| `PATCH` | `/api/practice/settings`                  | 修改练习全局配置           | 可用     |
-| `GET`   | `/api/practice/entries?subjectId=sub_xxx` | 获取该科目下的练习入口     | 部分可用 |
-| `POST`  | `/api/practice/records`                   | 创建练习记录               | 占位     |
-| `GET`   | `/api/practice/records/:recordId`         | 获取练习记录               | 占位     |
-| `POST`  | `/api/practice/records/:recordId/submit`  | 提交练习记录               | 占位     |
-| `GET`   | `/api/practice/records/:recordId/result`  | 获取本次作答结果和错题明细 | 占位     |
+| Method  | Path                                      | 说明                           | 状态     |
+| ------- | ----------------------------------------- | ------------------------------ | -------- |
+| `GET`   | `/api/practice/settings`                  | 获取练习全局配置               | 可用     |
+| `PATCH` | `/api/practice/settings`                  | 修改练习全局配置               | 可用     |
+| `GET`   | `/api/practice/entries?subjectId=sub_xxx` | 获取该科目下的练习入口         | 部分可用 |
+| `GET`   | `/api/practice/papers/:paperId`           | 获取题集内容及最近真实练习记录 | 可用     |
 
 ### 练习设置
 
@@ -204,26 +201,79 @@ interface PracticeSettings {
 `baseline`（专项训练）的 `children` 来自该科目 `type=baseline` 的题集，按 `assessmentType`
 映射为固定子项（顺序固定，子项名取配置文案，`paperId` 为该组第一个题集）：
 
-| assessmentType | 子项名   | 说明                   |
-| -------------- | -------- | ---------------------- |
-| `overall`      | 考点通练 | 按大纲全面覆盖，逐考点建立基准 |
-| `highFrequency`| 高频考点 | 聚焦历年高频考点，优先突破重点 |
-| `errorProne`   | 易错强化 | 针对易错点定向强化，查漏补缺 |
+| assessmentType  | 子项名   | 说明                           |
+| --------------- | -------- | ------------------------------ |
+| `overall`       | 考点通练 | 按大纲全面覆盖，逐考点建立基准 |
+| `highFrequency` | 高频考点 | 聚焦历年高频考点，优先突破重点 |
+| `errorProne`    | 易错强化 | 针对易错点定向强化，查漏补缺   |
 
 该科目缺少某 `assessmentType` 的 baseline 题集时跳过对应子项。四类入口的作答进度尚未接入练习记录。
 
-### 练习记录
+### 题集详情与最近练习记录
 
-创建记录的请求体已经固定：
+`paperId` 为路径参数。只能读取启用且未删除的平台题集或当前用户自己的题集。返回结构：
 
 ```ts
-interface CreatePracticeRecordBody {
-  paperId: string
+type QuestionType = 'single' | 'multiple' | 'judge' | 'nounExplain' | 'shortAnswer' | 'essay'
+
+interface PracticePaperDetail {
+  paper: {
+    id: string
+    name: string
+    subjectId: string
+    type: 'baseline' | 'pastExam' | 'mock' | 'ai'
+    assessmentType: string
+    questionCount: number
+    sections: PracticePaperSection[]
+  }
+  latestRecord: {
+    id: string
+    recordStatus: 'notStarted' | 'inProgress' | 'completed'
+    userAnswers: Record<string, string | string[]>
+    score: number | null
+    startTime: string | null
+    endTime: string | null
+  } | null
+}
+
+interface PracticePaperSection {
+  name: string
+  questionType?: QuestionType // 缺失表示通用 Section
+  totalScore?: number
+  perScore?: number
+  items: PracticePaperItem[]
+}
+
+interface PracticePaperItem {
+  id: string
+  title: string
+  questionType: QuestionType // 每道题始终有具体题型
+  A: string | null
+  B: string | null
+  C: string | null
+  D: string | null
+  E: string | null
+  F: string | null
+  correctAnswer: string
+  explanation: string | null
 }
 ```
 
-创建、详情、提交和结果接口当前仅返回带有 `placeholder: true`、`persisted: false` 的占位数据。
-提交请求体和完整结果字段留到第二阶段确定，当前不要依赖未文档化字段。
+`sections` 严格保持题集 Section 顺序，组内 `items` 严格保持 `questionIds` 顺序。具体题型
+Section 的所有题目都与 `questionType` 一致；缺失 `questionType` 表示通用（不限题型），组内可以包含
+不同题型。客户端不得把通用 Section 强制拆分或重新按题型排序，渲染题目时应使用每个 item 自身的
+`questionType`。
+
+题型和同类型 Section 的默认中文文案由 API `src/constants/question.ts` 的 `QuestionTypeLabels`
+维护，同步到 Neo/Dash 的 `src/generated/domain-values.ts`：`single`→`单选题`、
+`multiple`→`多选题`、`judge`→`判断题`、`nounExplain`→`名词解释`、
+`shortAnswer`→`简答题`、`essay`→`论述题`。这只是展示/输入建议；Section 的 `name`
+如已自定义，客户端须原样展示，不用默认文案覆盖。
+
+`latestRecord` 仅从当前用户、当前题集、未删除的真实记录中选创建时间最新的一条。无记录时为 `null`，
+页面以空答案 `{}` 初始化；有记录时，`userAnswers` 为按题目 ID 索引的已解析对象，而非数据库 JSON 字符串。
+`score` 未评分时为 `null`，不再伪造 `0`。当前不提供客户端记录创建、保存、提交或结果接口；页面本地
+结果预览不代表记录已持久化。旧 `/api/practice/answer-sheet` 及占位 `/api/practice/records/*` 已移除。
 
 ## 5. 题目收藏模块
 
@@ -321,10 +371,7 @@ PUT    /api/plan
 GET    /api/practice/settings
 PATCH  /api/practice/settings
 GET    /api/practice/entries
-POST   /api/practice/records
-GET    /api/practice/records/:recordId
-POST   /api/practice/records/:recordId/submit
-GET    /api/practice/records/:recordId/result
+GET    /api/practice/papers/:paperId
 
 GET    /api/favorites
 PUT    /api/favorites/:questionId

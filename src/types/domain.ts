@@ -137,7 +137,7 @@ export type PracticeEntry = {
   children?: PracticeEntryChild[]
 }
 
-export type PracticeAnswerSheetItem = {
+export type PracticePaperItem = {
   id: string
   title: string
   questionType: string
@@ -148,23 +148,36 @@ export type PracticeAnswerSheetItem = {
   E: string | null
   F: string | null
   correctAnswer: string
-  userAnswer: string | null
   explanation: string | null
 }
 
-export type PracticeAnswerSheetGroup = {
-  type: string
-  label: string
-  items: PracticeAnswerSheetItem[]
+export type PracticePaperSection = {
+  name: string
+  /** 缺失表示通用 Section，组内可包含不同题型。 */
+  questionType?: QuestionType
+  totalScore?: number
+  perScore?: number
+  items: PracticePaperItem[]
 }
 
-export type PracticeAnswerSheet = {
-  paperId: string
-  subjectId: string
-  paperName: string
-  recordStatus: string
-  score: number
-  questionGroups: PracticeAnswerSheetGroup[]
+export type PracticePaperDetail = {
+  paper: {
+    id: string
+    name: string
+    subjectId: string
+    type: DomainValue<'paperType'>
+    assessmentType: string
+    questionCount: number
+    sections: PracticePaperSection[]
+  }
+  latestRecord: {
+    id: string
+    recordStatus: DomainValue<'recordStatus'>
+    userAnswers: Record<string, string | string[]>
+    score: number | null
+    startTime: string | null
+    endTime: string | null
+  } | null
 }
 
 export type PracticeSettings = {
@@ -179,27 +192,6 @@ export type NotificationSettings = {
   dailyReminder: boolean
   reminderTime: string
   weeklyReport: boolean
-}
-
-export type PracticeSubmissionAnswer = {
-  questionId: string
-  answer: string
-  values?: string[]
-}
-
-export type SubmitPracticeSessionBody = {
-  paperId: string
-  subjectName?: string
-  elapsedSeconds?: number
-  answers: PracticeSubmissionAnswer[]
-}
-
-export type PracticeSubmitResponse = {
-  id: string
-  paperId: string
-  status: 'submitted'
-  submittedAt: string
-  placeholder?: boolean
 }
 
 export type PracticeResultQuestionStatus = 'correct' | 'wrong' | 'unanswered' | 'pending'

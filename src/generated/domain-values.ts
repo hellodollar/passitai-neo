@@ -18,4 +18,13 @@ export const domainValues = {
   runnerActivityStatus: ['idle', 'running', 'error'],
 } as const
 
+export const questionTypeLabels = {
+  single: '单选题',
+  multiple: '多选题',
+  judge: '判断题',
+  nounExplain: '名词解释',
+  shortAnswer: '简答题',
+  essay: '论述题',
+} as const satisfies Record<(typeof domainValues.questionType)[number], string>
+
 export type DomainValue<K extends keyof typeof domainValues> = (typeof domainValues)[K][number]

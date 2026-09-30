@@ -7,7 +7,6 @@ import {
   ClipboardCheck,
   ClipboardList,
   EyeOff,
-  FileText,
   Flame,
   GraduationCap,
   Hourglass,
@@ -67,13 +66,43 @@ function updateChipsScrollHint() {
   chipsCanScrollRight.value = el.scrollLeft + el.clientWidth < el.scrollWidth - 1
 }
 
-type EntryTone = 'primary' | 'secondary' | 'accent' | 'info'
+type EntryTone = 'primary' | 'secondary' | 'accent' | 'ai'
 
 const entryStyles: Record<PracticeEntry['type'], { tone: EntryTone; icon: typeof ListChecks }> = {
   baseline: { tone: 'primary', icon: ListChecks },
   pastExam: { tone: 'secondary', icon: BookOpenCheck },
   mock: { tone: 'accent', icon: ClipboardCheck },
-  ai: { tone: 'info', icon: Sparkles },
+  ai: { tone: 'ai', icon: Sparkles },
+}
+
+const entryToneStyles: Record<
+  EntryTone,
+  { icon: string; active: string; progress: string; chevron: string }
+> = {
+  primary: {
+    icon: 'bg-primary/10 text-primary',
+    active: 'bg-primary/10 text-primary ring-primary/40',
+    progress: 'bg-primary',
+    chevron: 'group-active:text-primary',
+  },
+  secondary: {
+    icon: 'bg-secondary/10 text-secondary',
+    active: 'bg-secondary/10 text-secondary ring-secondary/40',
+    progress: 'bg-secondary',
+    chevron: 'group-active:text-secondary',
+  },
+  accent: {
+    icon: 'bg-accent/15 text-accent',
+    active: 'bg-accent/15 text-accent ring-accent/40',
+    progress: 'bg-accent',
+    chevron: 'group-active:text-accent',
+  },
+  ai: {
+    icon: 'bg-fuchsia-50 text-fuchsia-700',
+    active: 'bg-fuchsia-50 text-fuchsia-700 ring-fuchsia-300',
+    progress: 'bg-fuchsia-600',
+    chevron: 'group-active:text-fuchsia-700',
+  },
 }
 
 function entryStyle(type: PracticeEntry['type']) {
@@ -130,59 +159,28 @@ const activeEntry = computed(
     entryRows.value.find((entry) => entry.type === expandedEntryKey.value) ?? entryRows.value[0],
 )
 
-const practiceChildVisuals = [
-  { icon: Target, iconClass: 'bg-primary/10 text-primary', progressClass: 'bg-primary' },
-  { icon: Flame, iconClass: 'bg-warning/10 text-warning', progressClass: 'bg-warning' },
-  { icon: ShieldAlert, iconClass: 'bg-error/10 text-error', progressClass: 'bg-error' },
-]
+const baselineChildIcons = [Target, Flame, ShieldAlert]
 
-function childVisual(type: string, index: number) {
-  if (type === 'baseline') {
-    return practiceChildVisuals[index] ?? practiceChildVisuals[0]!
-  }
+const activeEntryChildren = computed(() => {
+  const entry = activeEntry.value
+  if (!entry) return []
 
-  const map = {
-    ai: { icon: Sparkles, iconClass: 'bg-info/10 text-info', progressClass: 'bg-info' },
-    mock: {
-      icon: ClipboardCheck,
-      iconClass: 'bg-accent/10 text-accent',
-      progressClass: 'bg-accent',
-    },
-    pastExam: {
-      icon: FileText,
-      iconClass: 'bg-secondary/10 text-secondary',
-      progressClass: 'bg-secondary',
-    },
-  }
-
-  return (
-    map[type as keyof typeof map] ?? {
-      icon: Target,
-      iconClass: 'bg-primary/10 text-primary',
-      progressClass: 'bg-primary',
-    }
-  )
-}
-
-const activeEntryChildren = computed(() =>
-  (activeEntry.value?.children ?? []).map((child, index) => ({
+  const tone = entryToneStyles[entry.tone]
+  return (entry.children ?? []).map((child, index) => ({
     ...child,
-    ...childVisual(activeEntry.value?.type ?? '', index),
+    icon: entry.type === 'baseline' ? (baselineChildIcons[index] ?? Target) : entry.icon,
+    iconClass: tone.icon,
+    progressClass: tone.progress,
+    chevronClass: tone.chevron,
     progressPercent:
       child.questionCount > 0
         ? Math.min(100, Math.round((child.answeredCount / child.questionCount) * 100))
         : 0,
-  })),
-)
+  }))
+})
 
 function entryToneClasses(tone: EntryTone) {
-  const map = {
-    accent: 'bg-accent/15 text-accent',
-    info: 'bg-info/10 text-info',
-    primary: 'bg-primary/10 text-primary',
-    secondary: 'bg-secondary/10 text-secondary',
-  }
-  return map[tone]
+  return entryToneStyles[tone].icon
 }
 
 function selectSubject(code: string) {
@@ -517,7 +515,7 @@ watch(
                 class="flex min-w-0 flex-col items-center rounded-xl px-1 py-2 text-center transition-colors"
                 :class="
                   activeEntry?.type === entry.type
-                    ? 'bg-primary/10 text-primary ring-1 ring-primary/40'
+                    ? `ring-1 ${entryToneStyles[entry.tone].active}`
                     : 'bg-base-200/45 text-base-content/60 active:bg-base-200/75'
                 "
                 type="button"
@@ -579,7 +577,8 @@ watch(
               </span>
               <ChevronRight
                 :size="17"
-                class="shrink-0 text-base-content/30 transition group-active:translate-x-0.5 group-active:text-primary"
+                class="shrink-0 text-base-content/30 transition group-active:translate-x-0.5"
+                :class="child.chevronClass"
               />
             </button>
           </div>

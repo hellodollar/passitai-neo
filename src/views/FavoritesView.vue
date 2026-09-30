@@ -3,7 +3,7 @@ import { Bookmark, BookOpenCheck, Play, Trash2 } from '@lucide/vue'
 import { onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 
-import { fetchPracticeAnswerSheet } from '@/api/practice'
+import { fetchPracticePaper } from '@/api/practice'
 import EmptyState from '@/components/common/EmptyState.vue'
 import { ROUTE_NAMES } from '@/constants/app'
 import { useLearningStore } from '@/stores/learning'
@@ -14,14 +14,14 @@ const questionDetails = ref<Record<string, { paperName: string; title: string }>
 
 async function loadQuestionDetails() {
   const paperIds = [...new Set(learning.favorites.map((favorite) => favorite.paperId))]
-  const results = await Promise.allSettled(paperIds.map(fetchPracticeAnswerSheet))
+  const results = await Promise.allSettled(paperIds.map(fetchPracticePaper))
   const details: Record<string, { paperName: string; title: string }> = {}
 
   for (const result of results) {
     if (result.status !== 'fulfilled') continue
-    for (const group of result.value.questionGroups) {
-      for (const question of group.items) {
-        details[question.id] = { paperName: result.value.paperName, title: question.title }
+    for (const section of result.value.paper.sections) {
+      for (const question of section.items) {
+        details[question.id] = { paperName: result.value.paper.name, title: question.title }
       }
     }
   }

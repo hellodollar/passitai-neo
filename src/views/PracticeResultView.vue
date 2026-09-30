@@ -3,14 +3,14 @@ import { ArrowLeft, CheckCircle2, CircleAlert, Clock3, FileCheck2 } from '@lucid
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import { fetchPracticeAnswerSheet, fetchPracticeSubmissionResult } from '@/api/practice'
+import { fetchPracticePaper } from '@/api/practice'
 import BaseModal from '@/components/common/BaseModal.vue'
 import { ROUTE_NAMES } from '@/constants/app'
 import { QUESTION_TYPE_LABELS } from '@/constants/domain'
 import { useAppStore } from '@/stores/app'
 import type {
-  PracticeAnswerSheet,
-  PracticeAnswerSheetItem,
+  PracticePaperDetail,
+  PracticePaperItem,
   PracticeResultQuestion,
   PracticeResultQuestionStatus,
   PracticeSubmissionResult,
@@ -86,7 +86,13 @@ const elapsedText = computed(() => {
   return minutes > 0 ? `${minutes}分${restSeconds}秒` : `${restSeconds}秒`
 })
 
-function normalizeAnswer(answer: string) {
+function normalizeAnswer(answer: string, questionType: string) {
+  if (
+    ['single', 'multiple', 'judge'].includes(questionType) &&
+    /^[A-F\s,，、;；]+$/i.test(answer)
+  ) {
+    return [...new Set(answer.toUpperCase().match(/[A-F]/g) ?? [])].sort().join('')
+  }
   return answer
     .toUpperCase()
     .split(/[\s,，、;；]/)
@@ -96,28 +102,34 @@ function normalizeAnswer(answer: string) {
     .join(',')
 }
 
-function sheetQuestionStatus(item: PracticeAnswerSheetItem): PracticeResultQuestionStatus {
-  if (!item.userAnswer) return 'unanswered'
+function paperQuestionStatus(
+  item: PracticePaperItem,
+  userAnswer: string,
+): PracticeResultQuestionStatus {
+  if (!userAnswer) return 'unanswered'
   if (!item.correctAnswer) return 'pending'
-  return normalizeAnswer(item.userAnswer) === normalizeAnswer(item.correctAnswer)
+  return normalizeAnswer(userAnswer, item.questionType) ===
+    normalizeAnswer(item.correctAnswer, item.questionType)
     ? 'correct'
     : 'wrong'
 }
 
-function buildFallbackResult(sheet: PracticeAnswerSheet): PracticeSubmissionResult {
+function buildFallbackResult(detail: PracticePaperDetail): PracticeSubmissionResult {
   let index = 0
-  const questions = sheet.questionGroups.flatMap((group) =>
+  const questions = detail.paper.sections.flatMap((group) =>
     group.items.map((item) => {
       index += 1
+      const answer = detail.latestRecord?.userAnswers[item.id]
+      const userAnswer = Array.isArray(answer) ? answer.join('、') : (answer ?? '')
       return {
         id: item.id,
         index,
         title: item.title,
         questionType: item.questionType as QuestionType,
-        userAnswer: item.userAnswer ?? '',
+        userAnswer,
         correctAnswer: item.correctAnswer,
         explanation: item.explanation ?? undefined,
-        status: sheetQuestionStatus(item),
+        status: paperQuestionStatus(item, userAnswer),
       }
     }),
   )
@@ -129,19 +141,20 @@ function buildFallbackResult(sheet: PracticeAnswerSheet): PracticeSubmissionResu
   const gradedCount = correctCount + wrongCount
 
   return {
-    submissionId: submissionId.value || `preview_${paperId.value}`,
+    submissionId: submissionId.value || detail.latestRecord?.id || `preview_${paperId.value}`,
     paperId: paperId.value,
-    paperName: sheet.paperName,
+    paperName: detail.paper.name,
     subjectName: typeof route.query.subject === 'string' ? route.query.subject : '',
-    score: sheet.score,
+    score: detail.latestRecord?.score ?? null,
     totalCount,
     answeredCount: totalCount - unansweredCount,
     correctCount,
     wrongCount,
     unansweredCount,
     accuracy: gradedCount > 0 ? Math.round((correctCount / gradedCount) * 100) : 0,
+    submittedAt: detail.latestRecord?.endTime ?? undefined,
     questions,
-    placeholder: true,
+    placeholder: detail.latestRecord?.recordStatus !== 'completed',
   }
 }
 
@@ -156,25 +169,12 @@ async function loadResult() {
   if (snapshot) {
     result.value = snapshot
     loading.value = false
-  }
-
-  try {
-    const remoteResult = await fetchPracticeSubmissionResult(
-      paperId.value,
-      submissionId.value || undefined,
-    )
-    if (!snapshot || !remoteResult.placeholder) {
-      result.value = remoteResult
-    }
-    loading.value = false
     return
-  } catch {
-    if (snapshot) return
   }
 
   try {
-    const sheet = await fetchPracticeAnswerSheet(paperId.value)
-    result.value = buildFallbackResult(sheet)
+    const detail = await fetchPracticePaper(paperId.value)
+    result.value = buildFallbackResult(detail)
   } catch {
     loadError.value = true
   } finally {
