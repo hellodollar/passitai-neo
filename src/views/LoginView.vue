@@ -57,7 +57,9 @@ watch(
 
 async function submit() {
   submitted = true
-  const valid = Object.values(validators).map((validate) => validate()).every(Boolean)
+  const valid = Object.values(validators)
+    .map((validate) => validate())
+    .every(Boolean)
   if (!valid) return
 
   // 接口失败时错误提示由请求层统一弹出，成功才跳转
@@ -94,7 +96,10 @@ async function submit() {
         @blur="validatePassword"
       />
 
-      <button class="btn btn-primary h-12 w-full rounded-full text-sm font-semibold" :disabled="auth.loading">
+      <button
+        class="btn btn-primary h-12 w-full rounded-full text-sm font-semibold"
+        :disabled="auth.loading"
+      >
         <span v-if="auth.loading" class="loading loading-spinner loading-sm"></span>
         登录
       </button>
@@ -102,7 +107,9 @@ async function submit() {
 
     <p class="mt-3 text-center text-sm text-base-content/60">
       还没有账号？
-      <RouterLink class="font-semibold text-primary hover:underline" to="/register">创建账号</RouterLink>
+      <RouterLink class="font-semibold text-primary hover:underline" to="/register"
+        >创建账号</RouterLink
+      >
     </p>
   </AuthFrame>
 </template>

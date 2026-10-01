@@ -249,7 +249,9 @@ onMounted(() => {
           </span>
           <span class="min-w-0">
             <span class="block text-sm font-medium">修改密码</span>
-            <span class="mt-0.5 block truncate text-xs text-base-content/50">定期更新密码更安全</span>
+            <span class="mt-0.5 block truncate text-xs text-base-content/50"
+              >定期更新密码更安全</span
+            >
           </span>
           <ChevronRight :size="16" class="justify-self-end text-base-content/30" />
         </button>
@@ -275,7 +277,11 @@ onMounted(() => {
 
     <AccountPasswordContent v-model="passwordModalOpen" />
 
-    <AccountEmailContent v-model="emailModalOpen" :current-email="profileEmail" @updated="onEmailUpdated" />
+    <AccountEmailContent
+      v-model="emailModalOpen"
+      :current-email="profileEmail"
+      @updated="onEmailUpdated"
+    />
 
     <PracticePlanModal
       v-model="planModalOpen"

@@ -79,7 +79,9 @@ watch(model, (open) => {
 
 async function submit() {
   submitted = true
-  const valid = Object.values(validators).map((validate) => validate()).every(Boolean)
+  const valid = Object.values(validators)
+    .map((validate) => validate())
+    .every(Boolean)
   if (!valid || submitting.value) return
 
   submitting.value = true

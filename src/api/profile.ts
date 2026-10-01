@@ -1,5 +1,10 @@
 import { request } from '@/api/http'
-import type { EmailChangeBody, EmailChangeResult, PasswordChangeBody, PasswordChangeResult } from '@/types/domain'
+import type {
+  EmailChangeBody,
+  EmailChangeResult,
+  PasswordChangeBody,
+  PasswordChangeResult,
+} from '@/types/domain'
 
 export function changePassword(payload: PasswordChangeBody) {
   return request<PasswordChangeResult>('/user/password', {

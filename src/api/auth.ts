@@ -1,5 +1,11 @@
 import { request } from '@/api/http'
-import type { AuthCredentials, AuthSession, RegisterCredentials, User, UserMe } from '@/types/domain'
+import type {
+  AuthCredentials,
+  AuthSession,
+  RegisterCredentials,
+  User,
+  UserMe,
+} from '@/types/domain'
 
 export function login(payload: AuthCredentials) {
   return request<AuthSession>('/login', {

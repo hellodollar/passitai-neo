@@ -1,4 +1,5 @@
 import { domainValues, questionTypeLabels } from '@/generated/domain-values'
+import type { QuestionType } from '@/types/domain'
 
 export const QUESTION_TYPE_LABELS = questionTypeLabels
 

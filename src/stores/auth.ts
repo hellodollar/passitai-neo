@@ -8,7 +8,9 @@ import type { AuthCredentials, AuthSession, RegisterCredentials, User } from '@/
 import { readStorage, removeStorage, writeStorage } from '@/utils/storage'
 
 export const useAuthStore = defineStore('auth', () => {
-  const session = ref<AuthSession | null>(readStorage<AuthSession | null>(STORAGE_KEYS.authSession, null))
+  const session = ref<AuthSession | null>(
+    readStorage<AuthSession | null>(STORAGE_KEYS.authSession, null),
+  )
   const user = ref<User | null>(session.value?.user ?? null)
   const loading = ref(false)
 

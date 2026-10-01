@@ -49,7 +49,10 @@ const id = useId()
       />
     </span>
     <!-- 固定高度提示行：错误出现/消失都不改变布局 -->
-    <p :id="`${id}-error`" class="mt-0.5 flex min-h-4 items-center gap-1 px-1 text-xs font-medium text-error">
+    <p
+      :id="`${id}-error`"
+      class="mt-0.5 flex min-h-4 items-center gap-1 px-1 text-xs font-medium text-error"
+    >
       <CircleAlert v-if="error" :size="13" class="shrink-0" />
       {{ error }}
     </p>

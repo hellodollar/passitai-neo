@@ -20,9 +20,7 @@ export const useAppStore = defineStore('app', () => {
   const isOnline = ref(typeof navigator === 'undefined' ? true : navigator.onLine)
 
   const isCompactNavigation = computed(() => preferences.value.sidebarCollapsed)
-  const hasSubjectSelection = computed(
-    () => subjectSelection.value.subjectIds.length > 0,
-  )
+  const hasSubjectSelection = computed(() => subjectSelection.value.subjectIds.length > 0)
 
   function bootstrap() {
     if (bootstrapped.value) return

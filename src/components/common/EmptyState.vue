@@ -53,7 +53,11 @@ const toneClasses = computed(() => {
     >
       {{ description }}
     </p>
-    <RouterLink v-if="actionLabel && actionTo" class="btn btn-primary btn-sm mt-5 rounded-full px-5" :to="actionTo">
+    <RouterLink
+      v-if="actionLabel && actionTo"
+      class="btn btn-primary btn-sm mt-5 rounded-full px-5"
+      :to="actionTo"
+    >
       {{ actionLabel }}
     </RouterLink>
     <button

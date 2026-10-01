@@ -72,9 +72,9 @@ export default defineMock([
           questionCount: 120,
           answeredCount: 30,
           children: [
-            { paperId: 'pap_a1b2c3d4e5f6', name: '考点通练', questionCount: 40, answeredCount: 12 },
-            { paperId: 'pap_b2c3d4e5f6a7', name: '高频考点', questionCount: 40, answeredCount: 10 },
-            { paperId: 'pap_c3d4e5f6a7b8', name: '易错强化', questionCount: 40, answeredCount: 8 },
+            { paperId: 'pap_a1b2c3d4e5f6', name: '考点通练', assessmentType: 'overall', questionCount: 40, answeredCount: 12 },
+            { paperId: 'pap_b2c3d4e5f6a7', name: '高频考点', assessmentType: 'highFrequency', questionCount: 40, answeredCount: 10 },
+            { paperId: 'pap_c3d4e5f6a7b8', name: '易错强化', assessmentType: 'errorProne', questionCount: 40, answeredCount: 8 },
           ],
         },
         {

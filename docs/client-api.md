@@ -207,6 +207,7 @@ interface PracticeSettings {
 | `highFrequency` | 高频考点 | 聚焦历年高频考点，优先突破重点 |
 | `errorProne`    | 易错强化 | 针对易错点定向强化，查漏补缺   |
 
+baseline 子项额外返回 `assessmentType` 字段（取值见上表），供客户端做差异化展示；
 该科目缺少某 `assessmentType` 的 baseline 题集时跳过对应子项。四类入口的作答进度尚未接入练习记录。
 
 ### 题集详情与最近练习记录

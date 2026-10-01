@@ -33,14 +33,16 @@ function validateCurrentPassword() {
 
 function validateNewPassword() {
   if (!form.newPassword) errors.newPassword = '请输入新密码'
-  else if (!PASSWORD_PATTERN.test(form.newPassword)) errors.newPassword = '密码需为 6-20 位，且包含字母和数字'
+  else if (!PASSWORD_PATTERN.test(form.newPassword))
+    errors.newPassword = '密码需为 6-20 位，且包含字母和数字'
   else errors.newPassword = ''
   return !errors.newPassword
 }
 
 function validateConfirmPassword() {
   if (!form.confirmPassword) errors.confirmPassword = '请再次输入新密码'
-  else if (form.confirmPassword !== form.newPassword) errors.confirmPassword = '两次输入的密码不一致'
+  else if (form.confirmPassword !== form.newPassword)
+    errors.confirmPassword = '两次输入的密码不一致'
   else errors.confirmPassword = ''
   return !errors.confirmPassword
 }
@@ -77,7 +79,9 @@ watch(model, (open) => {
 
 async function submit() {
   submitted = true
-  const valid = Object.values(validators).map((validate) => validate()).every(Boolean)
+  const valid = Object.values(validators)
+    .map((validate) => validate())
+    .every(Boolean)
   if (!valid || submitting.value) return
 
   submitting.value = true

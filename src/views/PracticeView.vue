@@ -7,12 +7,10 @@ import {
   ClipboardCheck,
   ClipboardList,
   EyeOff,
-  Flame,
   GraduationCap,
   Hourglass,
   ListChecks,
   Settings2,
-  ShieldAlert,
   Sparkles,
   Target,
 } from '@lucide/vue'
@@ -28,6 +26,7 @@ import PracticeSettingsContent from '@/components/common/PracticeSettingsContent
 import { fetchPracticeEntries, fetchPracticePlan } from '@/api/practice'
 import { fetchMajorOptions, fetchSubjectOptions } from '@/api/catalog'
 import { ROUTE_NAMES } from '@/constants/app'
+import { BASELINE_CHILD_ICONS, BASELINE_CHILD_ICON_FALLBACKS } from '@/constants/practice'
 import { useAppStore } from '@/stores/app'
 import type {
   PracticeEntry,
@@ -159,8 +158,6 @@ const activeEntry = computed(
     entryRows.value.find((entry) => entry.type === expandedEntryKey.value) ?? entryRows.value[0],
 )
 
-const baselineChildIcons = [Target, Flame, ShieldAlert]
-
 const activeEntryChildren = computed(() => {
   const entry = activeEntry.value
   if (!entry) return []
@@ -168,7 +165,12 @@ const activeEntryChildren = computed(() => {
   const tone = entryToneStyles[entry.tone]
   return (entry.children ?? []).map((child, index) => ({
     ...child,
-    icon: entry.type === 'baseline' ? (baselineChildIcons[index] ?? Target) : entry.icon,
+    icon:
+      entry.type === 'baseline'
+        ? ((child.assessmentType ? BASELINE_CHILD_ICONS[child.assessmentType] : undefined) ??
+          BASELINE_CHILD_ICON_FALLBACKS[index] ??
+          Target)
+        : entry.icon,
     iconClass: tone.icon,
     progressClass: tone.progress,
     chevronClass: tone.chevron,

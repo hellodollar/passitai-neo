@@ -41,7 +41,8 @@ function validateEmail() {
 
 function validatePassword() {
   if (!form.password) errors.password = '请输入密码'
-  else if (!PASSWORD_PATTERN.test(form.password)) errors.password = '密码需为 6-20 位，且包含字母和数字'
+  else if (!PASSWORD_PATTERN.test(form.password))
+    errors.password = '密码需为 6-20 位，且包含字母和数字'
   else errors.password = ''
   return !errors.password
 }
@@ -84,7 +85,9 @@ watch(
 
 async function submit() {
   submitted = true
-  const valid = Object.values(validators).map((validate) => validate()).every(Boolean)
+  const valid = Object.values(validators)
+    .map((validate) => validate())
+    .every(Boolean)
   if (!valid) return
 
   // 接口失败时错误提示由请求层统一弹出，成功才进入首页
@@ -143,7 +146,10 @@ async function submit() {
         @blur="validateInviteCode"
       />
 
-      <button class="btn btn-primary h-12 w-full rounded-full text-sm font-semibold" :disabled="auth.loading">
+      <button
+        class="btn btn-primary h-12 w-full rounded-full text-sm font-semibold"
+        :disabled="auth.loading"
+      >
         <span v-if="auth.loading" class="loading loading-spinner loading-sm"></span>
         创建账号
       </button>
