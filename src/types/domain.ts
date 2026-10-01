@@ -172,6 +172,7 @@ export type PracticePaperDetail = {
     questionCount: number
     sections: PracticePaperSection[]
   }
+  favoriteQuestionIds: string[]
   latestRecord: {
     id: string
     recordStatus: DomainValue<'recordStatus'>

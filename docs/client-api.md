@@ -227,6 +227,7 @@ interface PracticePaperDetail {
     questionCount: number
     sections: PracticePaperSection[]
   }
+  favoriteQuestionIds: string[]
   latestRecord: {
     id: string
     recordStatus: 'notStarted' | 'inProgress' | 'completed'
@@ -265,6 +266,10 @@ Section 的所有题目都与 `questionType` 一致；缺失 `questionType` 表�
 不同题型。客户端不得把通用 Section 强制拆分或重新按题型排序，渲染题目时应使用每个 item 自身的
 `questionType`。
 
+`favoriteQuestionIds` 按题集中的题目顺序返回当前用户在该题集下仍有效的收藏题目 ID；仅包含本次
+`paper.sections[].items` 实际返回的题目。没有收藏时返回 `[]`，不受 `/api/favorites` 分页限制。
+收藏或取消收藏成功后，再次获取本接口会反映最新状态。
+
 题型和同类型 Section 的默认中文文案由 API `src/constants/question.ts` 的 `QuestionTypeLabels`
 维护，同步到 Neo/Dash 的 `src/generated/domain-values.ts`：`single`→`单选题`、
 `multiple`→`多选题`、`judge`→`判断题`、`nounExplain`→`名词解释`、
@@ -281,8 +286,8 @@ Section 的所有题目都与 `questionType` 一致；缺失 `questionType` 表�
 | Method   | Path                                                 | 说明             | 状态 |
 | -------- | ---------------------------------------------------- | ---------------- | ---- |
 | `GET`    | `/api/favorites?page=1&limit=20&subjectId=&paperId=` | 分页查询收藏题目 | 可用 |
-| `PUT`    | `/api/favorites/:questionId`                         | 收藏题目         | 可用 |
-| `DELETE` | `/api/favorites/:questionId`                         | 取消收藏         | 可用 |
+| `PUT`    | `/api/favorites`                                     | 收藏题目         | 可用 |
+| `DELETE` | `/api/favorites`                                     | 取消收藏         | 可用 |
 
 收藏采用一道题一条记录的扁平结构：
 
@@ -299,13 +304,14 @@ interface Favorite {
 }
 ```
 
-收藏请求体：
+收藏与取消收藏使用相同请求体：
 
 ```json
-{ "paperId": "pap_xxx" }
+{ "paperId": "pap_xxx", "subjectId": "sub_xxx", "questionId": "qst_xxx" }
 ```
 
-添加时校验题目、试卷、科目和试卷题目关系；重复添加或删除保持幂等。
+添加时校验题目、试卷、科目和试卷题目关系；取消时仅匹配当前用户和三个 ID 对应的收藏。
+重复添加或删除保持幂等。旧的 `/api/favorites/:questionId` 路径不再提供。
 
 ## 6. 错题模块
 
@@ -375,8 +381,8 @@ GET    /api/practice/entries
 GET    /api/practice/papers/:paperId
 
 GET    /api/favorites
-PUT    /api/favorites/:questionId
-DELETE /api/favorites/:questionId
+PUT    /api/favorites
+DELETE /api/favorites
 
 GET    /api/wrong-questions
 PUT    /api/wrong-questions/:questionId

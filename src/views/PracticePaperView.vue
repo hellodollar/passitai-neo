@@ -15,7 +15,7 @@ import { useRoute, useRouter } from 'vue-router'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
 import PracticeSettingsContent from '@/components/common/PracticeSettingsContent.vue'
-import { addFavorite, fetchFavorites, removeFavorite } from '@/api/favorites'
+import { addFavorite, removeFavorite } from '@/api/favorites'
 import { ROUTE_NAMES } from '@/constants/app'
 import { QUESTION_TYPE_LABELS } from '@/constants/domain'
 import { useAppStore } from '@/stores/app'
@@ -682,6 +682,7 @@ async function toggleFavorite() {
   const paperId = route.params.paperId
   if (!question || typeof paperId !== 'string' || !paperId) return
   if (pendingFavoriteQuestionIds.value.has(question.id)) return
+  const favoriteContext = { paperId, subjectId: question.subjectId, questionId: question.id }
 
   favoriteError.value = ''
   const wasFavorited = favoriteQuestionIds.value.has(question.id)
@@ -699,9 +700,9 @@ async function toggleFavorite() {
 
   try {
     if (wasFavorited) {
-      await removeFavorite(question.id)
+      await removeFavorite(favoriteContext)
     } else {
-      await addFavorite(question.id, paperId)
+      await addFavorite(favoriteContext)
     }
   } catch {
     const rollbackIds = new Set(favoriteQuestionIds.value)
@@ -831,7 +832,11 @@ async function loadSessionData() {
   }
 
   try {
-    const { paper, latestRecord } = await fetchPracticePaper(paperId)
+    const {
+      paper,
+      latestRecord,
+      favoriteQuestionIds: initialFavoriteQuestionIds,
+    } = await fetchPracticePaper(paperId)
 
     const questions: QuestionListItem[] = []
     const groups: QuestionSheetGroup[] = []
@@ -860,13 +865,7 @@ async function loadSessionData() {
     currentQuestions.value = questions
     questionSheetGroups.value = groups
     answerRecords.value = records
-    try {
-      // 文档无收藏状态批量接口，用当前试卷的收藏列表代替
-      const favoritesResult = await fetchFavorites({ paperId })
-      favoriteQuestionIds.value = new Set(favoritesResult.items.map((item) => item.questionId))
-    } catch {
-      favoriteQuestionIds.value = new Set()
-    }
+    favoriteQuestionIds.value = new Set(initialFavoriteQuestionIds)
     sessionLoadState.value = questions.length > 0 ? 'ready' : 'empty'
   } catch {
     currentQuestions.value = []

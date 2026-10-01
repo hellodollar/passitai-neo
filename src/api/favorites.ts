@@ -1,6 +1,8 @@
 import { normalizePagination, request } from '@/api/http'
 import type { Favorite, PaginationResult } from '@/types/domain'
 
+export type FavoriteContext = Pick<Favorite, 'paperId' | 'subjectId' | 'questionId'>
+
 /** 文档:GET /api/favorites?page=&limit=&subjectId=&paperId= */
 export async function fetchFavorites(
   query: { page?: number; limit?: number; subjectId?: string; paperId?: string } = {},
@@ -17,17 +19,18 @@ export async function fetchFavorites(
   return normalizePagination(data)
 }
 
-/** 文档:PUT /api/favorites/:questionId，body { paperId }，幂等 */
-export function addFavorite(questionId: string, paperId: string) {
-  return request<Favorite>(`/favorites/${questionId}`, {
+/** 文档:PUT /api/favorites，body { paperId, subjectId, questionId }，幂等 */
+export function addFavorite(context: FavoriteContext) {
+  return request<Favorite>('/favorites', {
     method: 'PUT',
-    body: { paperId },
+    body: context,
   })
 }
 
-/** 文档:DELETE /api/favorites/:questionId，幂等 */
-export function removeFavorite(questionId: string) {
-  return request<null>(`/favorites/${questionId}`, {
+/** 文档:DELETE /api/favorites，body { paperId, subjectId, questionId }，幂等 */
+export function removeFavorite(context: FavoriteContext) {
+  return request<null>('/favorites', {
     method: 'DELETE',
+    body: context,
   })
 }

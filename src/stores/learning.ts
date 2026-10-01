@@ -29,7 +29,13 @@ export const useLearningStore = defineStore('learning', () => {
   }
 
   async function removeFavorite(questionId: string) {
-    await removeFavoriteRequest(questionId)
+    const favorite = favorites.value.find((item) => item.questionId === questionId)
+    if (!favorite) return
+    await removeFavoriteRequest({
+      paperId: favorite.paperId,
+      subjectId: favorite.subjectId,
+      questionId: favorite.questionId,
+    })
     favorites.value = favorites.value.filter((fav) => fav.questionId !== questionId)
   }
 
