@@ -166,12 +166,14 @@ interface UpdatePracticePlanBody {
 - `record`：用户的一次练习记录。
 - `entries`：按科目获取的练习入口和可刷试卷列表。
 
-| Method  | Path                                      | 说明                           | 状态     |
-| ------- | ----------------------------------------- | ------------------------------ | -------- |
-| `GET`   | `/api/practice/settings`                  | 获取练习全局配置               | 可用     |
-| `PATCH` | `/api/practice/settings`                  | 修改练习全局配置               | 可用     |
-| `GET`   | `/api/practice/entries?subjectId=sub_xxx` | 获取该科目下的练习入口         | 部分可用 |
-| `GET`   | `/api/practice/papers/:paperId`           | 获取题集内容及最近真实练习记录 | 可用     |
+| Method  | Path                                                          | 说明                           | 状态     |
+| ------- | ------------------------------------------------------------- | ------------------------------ | -------- |
+| `GET`   | `/api/practice/settings`                                      | 获取练习全局配置               | 可用     |
+| `PATCH` | `/api/practice/settings`                                      | 修改练习全局配置               | 可用     |
+| `GET`   | `/api/practice/entries?subjectId=sub_xxx`                     | 获取该科目下的练习入口         | 部分可用 |
+| `GET`   | `/api/practice/papers/:paperId`                               | 获取题集内容及最近真实练习记录 | 可用     |
+| `POST`  | `/api/practice/papers/:paperId/submissions`                   | 交卷并创建练习记录             | 可用     |
+| `GET`   | `/api/practice/papers/:paperId/submissions/:submissionId`    | 获取本次交卷记录               | 可用     |
 
 ### 练习设置
 
@@ -276,10 +278,44 @@ Section 的所有题目都与 `questionType` 一致；缺失 `questionType` 表�
 `shortAnswer`→`简答题`、`essay`→`论述题`。这只是展示/输入建议；Section 的 `name`
 如已自定义，客户端须原样展示，不用默认文案覆盖。
 
-`latestRecord` 仅从当前用户、当前题集、未删除的真实记录中选创建时间最新的一条。无记录时为 `null`，
-页面以空答案 `{}` 初始化；有记录时，`userAnswers` 为按题目 ID 索引的已解析对象，而非数据库 JSON 字符串。
-`score` 未评分时为 `null`，不再伪造 `0`。当前不提供客户端记录创建、保存、提交或结果接口；页面本地
-结果预览不代表记录已持久化。旧 `/api/practice/answer-sheet` 及占位 `/api/practice/records/*` 已移除。
+`latestRecord` 仅从当前用户、当前题集、未删除的真实记录中选创建时间最新的一条。新一次进入题集
+始终从空答卷开始，不继承旧记录的作答。已有记录的 `userAnswers` 为按题目 ID 索引的已解析对象，
+而非数据库 JSON 字符串。`score` 未评分时为 `null`，不伪造 `0`。
+
+### 交卷与结果
+
+`POST /api/practice/papers/:paperId/submissions` 请求体：
+
+```ts
+interface SubmitPracticePaperBody {
+  submissionId: string // 客户端生成 rec_ + 12 位十六进制；同一次交卷重试保持不变
+  userAnswers: Record<string, string | string[]> // 只传已作答题目；多选为数组，其余为字符串
+  startTime?: string // ISO 时间；缺失或晚于交卷时间时使用服务端交卷时间
+}
+```
+
+服务端只接受当前用户可读取的启用题集，校验每道答案对应题集内的有效题目及选项。
+每次新交卷都在 0006 `practice_records` 表创建独立记录；相同 `submissionId`、题集、
+用户及答案的重试返回同一记录，不重复写入；同 ID 对应其他作答时返回 HTTP 409。
+请求校验失败不创建记录。
+`POST` 返回 HTTP 201，`GET /api/practice/papers/:paperId/submissions/:submissionId` 返回
+当前用户、当前题集的指定已完成记录：
+
+```ts
+interface PracticeSubmission {
+  id: string
+  paperId: string
+  recordStatus: 'completed'
+  userAnswers: Record<string, string | string[]>
+  score: number | null // 尚无服务端评分时为 null
+  startTime: string | null
+  endTime: string | null
+}
+```
+
+结果页必须按 `submissionId` 获取本次记录，不能用 `latestRecord` 代替。旧
+`/api/practice/answer-sheet`、`/api/practice/submit`、`/api/practice/result` 和
+`/api/practice/records/*` 均不提供，也不保留兼容。
 
 ## 5. 题目收藏模块
 

@@ -99,7 +99,7 @@ export type QuestionListItem = {
   createdAt: string
 }
 
-// ---- Practice placeholders ----
+// ---- Practice ----
 
 export type PracticePlanSubject = {
   name: string
@@ -183,6 +183,22 @@ export type PracticePaperDetail = {
   } | null
 }
 
+export type PracticeSubmission = {
+  id: string
+  paperId: string
+  recordStatus: 'completed'
+  userAnswers: Record<string, string | string[]>
+  score: number | null
+  startTime: string | null
+  endTime: string | null
+}
+
+export type SubmitPracticePaperBody = {
+  submissionId: string
+  userAnswers: Record<string, string | string[]>
+  startTime: string
+}
+
 export type PracticeSettings = {
   autoNext: boolean
   recordWrongQuestions: boolean
@@ -225,7 +241,6 @@ export type PracticeSubmissionResult = {
   elapsedSeconds?: number
   submittedAt?: string
   questions: PracticeResultQuestion[]
-  placeholder?: boolean
 }
 
 // ---- Answer sheets ----

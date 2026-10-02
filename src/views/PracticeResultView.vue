@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ArrowLeft, CheckCircle2, CircleAlert, Clock3, FileCheck2 } from '@lucide/vue'
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import { fetchPracticePaper } from '@/api/practice'
+import { fetchPracticePaper, fetchPracticeSubmission } from '@/api/practice'
 import BaseModal from '@/components/common/BaseModal.vue'
 import { ROUTE_NAMES } from '@/constants/app'
 import { QUESTION_TYPE_LABELS } from '@/constants/domain'
@@ -14,9 +14,9 @@ import type {
   PracticeResultQuestion,
   PracticeResultQuestionStatus,
   PracticeSubmissionResult,
+  PracticeSubmission,
   QuestionType,
 } from '@/types/domain'
-import { readPracticeResultSnapshot } from '@/utils/practice-result'
 
 const router = useRouter()
 const route = useRoute()
@@ -28,6 +28,10 @@ const loadError = ref(false)
 const detailOpen = ref(false)
 const selectedQuestion = ref<PracticeResultQuestion | null>(null)
 const resultFilter = ref<'all' | 'review'>('all')
+let loadRequestId = 0
+const hasGradedQuestions = computed(() =>
+  Boolean(result.value && result.value.correctCount + result.value.wrongCount > 0),
+)
 
 const paperId = computed(() =>
   typeof route.params.paperId === 'string' ? route.params.paperId : '',
@@ -53,6 +57,14 @@ const questionGroups = computed(() => {
 })
 
 const reportMessage = computed(() => {
+  if (!hasGradedQuestions.value) {
+    return {
+      icon: FileCheck2,
+      title: '已完成交卷',
+      description: '暂无可自动判分的题目，请查看作答明细。',
+      classes: 'bg-primary/10 text-primary',
+    }
+  }
   const accuracy = result.value?.accuracy ?? 0
   if (accuracy >= 80) {
     return {
@@ -87,6 +99,11 @@ const elapsedText = computed(() => {
 })
 
 function normalizeAnswer(answer: string, questionType: string) {
+  if (questionType === 'judge') {
+    const value = answer.trim().toUpperCase()
+    if (value === 'A' || value === 'TRUE' || value === '正确') return 'TRUE'
+    if (value === 'B' || value === 'FALSE' || value === '错误') return 'FALSE'
+  }
   if (
     ['single', 'multiple', 'judge'].includes(questionType) &&
     /^[A-F\s,，、;；]+$/i.test(answer)
@@ -107,6 +124,7 @@ function paperQuestionStatus(
   userAnswer: string,
 ): PracticeResultQuestionStatus {
   if (!userAnswer) return 'unanswered'
+  if (!['single', 'multiple', 'judge'].includes(item.questionType)) return 'pending'
   if (!item.correctAnswer) return 'pending'
   return normalizeAnswer(userAnswer, item.questionType) ===
     normalizeAnswer(item.correctAnswer, item.questionType)
@@ -114,12 +132,15 @@ function paperQuestionStatus(
     : 'wrong'
 }
 
-function buildFallbackResult(detail: PracticePaperDetail): PracticeSubmissionResult {
+function buildSubmissionResult(
+  detail: PracticePaperDetail,
+  submission: PracticeSubmission,
+): PracticeSubmissionResult {
   let index = 0
   const questions = detail.paper.sections.flatMap((group) =>
     group.items.map((item) => {
       index += 1
-      const answer = detail.latestRecord?.userAnswers[item.id]
+      const answer = submission.userAnswers[item.id]
       const userAnswer = Array.isArray(answer) ? answer.join('、') : (answer ?? '')
       return {
         id: item.id,
@@ -141,44 +162,54 @@ function buildFallbackResult(detail: PracticePaperDetail): PracticeSubmissionRes
   const gradedCount = correctCount + wrongCount
 
   return {
-    submissionId: submissionId.value || detail.latestRecord?.id || `preview_${paperId.value}`,
+    submissionId: submission.id,
     paperId: paperId.value,
     paperName: detail.paper.name,
     subjectName: typeof route.query.subject === 'string' ? route.query.subject : '',
-    score: detail.latestRecord?.score ?? null,
+    score: submission.score,
     totalCount,
     answeredCount: totalCount - unansweredCount,
     correctCount,
     wrongCount,
     unansweredCount,
     accuracy: gradedCount > 0 ? Math.round((correctCount / gradedCount) * 100) : 0,
-    submittedAt: detail.latestRecord?.endTime ?? undefined,
+    elapsedSeconds:
+      submission.startTime && submission.endTime
+        ? Math.max(
+            0,
+            Math.round(
+              (Date.parse(submission.endTime) - Date.parse(submission.startTime)) / 1000,
+            ),
+          )
+        : undefined,
+    submittedAt: submission.endTime ?? undefined,
     questions,
-    placeholder: detail.latestRecord?.recordStatus !== 'completed',
   }
 }
 
 async function loadResult() {
-  if (!paperId.value) {
+  const requestId = ++loadRequestId
+  loading.value = true
+  loadError.value = false
+  result.value = null
+  if (!paperId.value || !submissionId.value) {
     loadError.value = true
-    loading.value = false
-    return
-  }
-
-  const snapshot = readPracticeResultSnapshot(paperId.value)
-  if (snapshot) {
-    result.value = snapshot
     loading.value = false
     return
   }
 
   try {
-    const detail = await fetchPracticePaper(paperId.value)
-    result.value = buildFallbackResult(detail)
+    const [detail, submission] = await Promise.all([
+      fetchPracticePaper(paperId.value),
+      fetchPracticeSubmission(paperId.value, submissionId.value),
+    ])
+    if (requestId !== loadRequestId) return
+    result.value = buildSubmissionResult(detail, submission)
   } catch {
+    if (requestId !== loadRequestId) return
     loadError.value = true
   } finally {
-    loading.value = false
+    if (requestId === loadRequestId) loading.value = false
   }
 }
 
@@ -213,8 +244,15 @@ function returnToPractice() {
 
 onMounted(() => {
   app.setPracticeSessionActive(true)
-  void loadResult()
 })
+
+watch(
+  [paperId, submissionId],
+  () => {
+    void loadResult()
+  },
+  { immediate: true },
+)
 
 onBeforeUnmount(() => {
   app.endPracticeSession()
@@ -287,9 +325,9 @@ onBeforeUnmount(() => {
               >
                 <span class="text-center text-base-content">
                   <strong class="block text-2xl font-semibold tabular-nums">
-                    {{ result.accuracy }}%
+                    {{ hasGradedQuestions ? `${result.accuracy}%` : '—' }}
                   </strong>
-                  <span class="mt-0.5 block text-[11px] text-base-content/45">正确率</span>
+                  <span class="mt-0.5 block text-[11px] text-base-content/45">客观题正确率</span>
                 </span>
               </div>
 

@@ -19,14 +19,13 @@ import { addFavorite, removeFavorite } from '@/api/favorites'
 import { ROUTE_NAMES } from '@/constants/app'
 import { QUESTION_TYPE_LABELS } from '@/constants/domain'
 import { useAppStore } from '@/stores/app'
-import { fetchPracticePaper } from '@/api/practice'
+import { fetchPracticePaper, submitPracticePaper } from '@/api/practice'
 import type {
   PracticePaperItem,
-  PracticeSubmissionResult,
+  PracticeSubmission,
   QuestionListItem,
   QuestionType,
 } from '@/types/domain'
-import { writePracticeResultSnapshot } from '@/utils/practice-result'
 
 const router = useRouter()
 const route = useRoute()
@@ -88,13 +87,6 @@ type PracticeAnswerRecord = {
   values: string[]
 }
 
-type LocalSubmission = {
-  id: string
-  paperId: string
-  submittedAt: string
-  placeholder: true
-}
-
 type QuestionSheetGroup = {
   key: string
   label: string
@@ -111,6 +103,7 @@ const questionSheetOpen = ref(false)
 const submitConfirmOpen = ref(false)
 const submitting = ref(false)
 const submitError = ref('')
+const pendingSubmissionId = ref('')
 const sessionTitles = ref<string[]>([])
 const sessionStartedAt = Date.now()
 
@@ -226,11 +219,23 @@ const correctCount = computed(() => {
   let count = 0
   for (const record of Object.values(answerRecords.value)) {
     const question = currentQuestions.value.find((q) => q.id === record.questionId)
-    if (question && isAnswerCorrect(record, question)) count++
+    if (
+      question &&
+      ['single', 'multiple', 'judge'].includes(question.questionType) &&
+      isAnswerCorrect(record, question)
+    ) count++
   }
   return count
 })
-const wrongCount = computed(() => answeredCount.value - correctCount.value)
+const wrongCount = computed(() =>
+  Object.values(answerRecords.value).filter((record) => {
+    const question = currentQuestions.value.find((item) => item.id === record.questionId)
+    return question &&
+      ['single', 'multiple', 'judge'].includes(question.questionType) &&
+      Boolean(getReferenceAnswer(question)) &&
+      !isAnswerCorrect(record, question)
+  }).length,
+)
 
 function parseOptionLine(line: string): NormalizedQuestionOption | null {
   const match = line.trim().match(/^([A-Ha-h])\s*[.\u3001)\uff09:：]\s*(.+)$/)
@@ -406,6 +411,10 @@ function getCorrectOptionValues(
   if (!question) return []
 
   const expectedValues = new Set(parseChoiceAnswerValues(getReferenceAnswer(question)))
+  if (question.questionType === 'judge') {
+    if (expectedValues.has('TRUE') || expectedValues.has('正确')) expectedValues.add('A')
+    if (expectedValues.has('FALSE') || expectedValues.has('错误')) expectedValues.add('B')
+  }
   const availableOptions = options.length > 0 ? options : getPreviewOptions(question.questionType)
 
   return availableOptions
@@ -442,6 +451,12 @@ function isAnswerCorrect(record: PracticeAnswerRecord, question: QuestionListIte
 function questionResultClasses(question: QuestionListItem) {
   const record = answerRecords.value[question.id]
   if (!record) return 'border-base-300 bg-base-100 text-base-content/70'
+  if (
+    !['single', 'multiple', 'judge'].includes(question.questionType) ||
+    !getReferenceAnswer(question)
+  ) {
+    return 'border-warning/40 bg-warning/10 text-warning font-semibold'
+  }
 
   return isAnswerCorrect(record, question)
     ? 'border-success bg-success text-white font-semibold'
@@ -549,63 +564,10 @@ function submitCurrentAnswer(autoAdvance = false) {
       values,
     },
   }
+  pendingSubmissionId.value = ''
 
   if (autoAdvance) {
     scheduleAutoAdvance()
-  }
-}
-
-function buildResultSnapshot(
-  paperId: string,
-  submission: LocalSubmission,
-): PracticeSubmissionResult {
-  const questions = currentQuestions.value.map((question, index) => {
-    const record = answerRecords.value[question.id]
-    const correctAnswer = getReferenceAnswer(question)
-    const status = !record
-      ? ('unanswered' as const)
-      : !correctAnswer
-        ? ('pending' as const)
-        : isAnswerCorrect(record, question)
-          ? ('correct' as const)
-          : ('wrong' as const)
-
-    return {
-      id: question.id,
-      index: index + 1,
-      title: question.title,
-      questionType: question.questionType,
-      userAnswer: record?.text ?? '',
-      correctAnswer,
-      explanation: (question as RichQuestionListItem).explanation,
-      status,
-    }
-  })
-
-  const correct = questions.filter((question) => question.status === 'correct').length
-  const wrong = questions.filter((question) => question.status === 'wrong').length
-  const unanswered = questions.filter((question) => question.status === 'unanswered').length
-  const total = questions.length
-  const answered = total - unanswered
-  const graded = correct + wrong
-  const accuracy = graded > 0 ? Math.round((correct / graded) * 100) : 0
-
-  return {
-    submissionId: submission.id,
-    paperId,
-    paperName: currentSessionTitle.value,
-    subjectName: sessionSubjectName.value,
-    score: accuracy,
-    totalCount: total,
-    answeredCount: answered,
-    correctCount: correct,
-    wrongCount: wrong,
-    unansweredCount: unanswered,
-    accuracy,
-    elapsedSeconds: Math.max(0, Math.round((Date.now() - sessionStartedAt) / 1000)),
-    submittedAt: submission.submittedAt,
-    questions,
-    placeholder: submission.placeholder,
   }
 }
 
@@ -627,21 +589,40 @@ async function confirmSubmitSession() {
 
   submitting.value = true
   submitError.value = ''
+  if (!pendingSubmissionId.value) {
+    const randomBytes = crypto.getRandomValues(new Uint8Array(6))
+    pendingSubmissionId.value = `rec_${Array.from(randomBytes, (byte) =>
+      byte.toString(16).padStart(2, '0'),
+    ).join('')}`
+  }
+  const userAnswers = Object.fromEntries(
+    Object.values(answerRecords.value).map((record) => {
+      const question = currentQuestions.value.find((item) => item.id === record.questionId)
+      const isMultiple = question?.questionType === 'multiple'
+      const isChoice = question && ['single', 'multiple', 'judge'].includes(question.questionType)
+      return [
+        record.questionId,
+        isMultiple ? record.values : isChoice ? record.values[0] ?? '' : record.text,
+      ]
+    }),
+  )
 
-  // 记录提交协议尚未实现；结果仅存于当前浏览器会话，不伪装为远端记录。
-  const submission: LocalSubmission = {
-    id: `local_${Date.now()}`,
-    paperId,
-    submittedAt: new Date().toISOString(),
-    placeholder: true,
+  let submission: PracticeSubmission
+  try {
+    submission = await submitPracticePaper(paperId, {
+      submissionId: pendingSubmissionId.value,
+      userAnswers,
+      startTime: new Date(sessionStartedAt).toISOString(),
+    })
+  } catch (error) {
+    submitError.value = error instanceof Error ? error.message : '交卷失败，请重试。'
+    return
+  } finally {
+    submitting.value = false
   }
 
-  const result = buildResultSnapshot(paperId, submission)
-  writePracticeResultSnapshot(result)
-  submitting.value = false
   submitConfirmOpen.value = false
   app.endPracticeSession()
-
   await router.replace({
     name: ROUTE_NAMES.practicePaperResult,
     params: { paperId },
@@ -790,28 +771,6 @@ function toQuestionListItem(item: PracticePaperItem, subjectId: string): Questio
   return richQuestion
 }
 
-function buildAnswerRecord(
-  item: PracticePaperItem,
-  answer: string | string[] | undefined,
-): PracticeAnswerRecord | null {
-  if (answer === undefined) return null
-
-  const isChoice = ['single', 'multiple', 'judge'].includes(item.questionType)
-  const values = Array.isArray(answer)
-    ? answer
-    : isChoice
-      ? parseChoiceAnswerValues(answer)
-      : [answer]
-
-  if (values.length === 0) return null
-
-  return {
-    questionId: item.id,
-    text: Array.isArray(answer) ? answer.join('、') : answer,
-    values,
-  }
-}
-
 async function loadSessionData() {
   sessionLoadState.value = 'loading'
   currentIndex.value = 0
@@ -832,15 +791,11 @@ async function loadSessionData() {
   }
 
   try {
-    const {
-      paper,
-      latestRecord,
-      favoriteQuestionIds: initialFavoriteQuestionIds,
-    } = await fetchPracticePaper(paperId)
+    const { paper, favoriteQuestionIds: initialFavoriteQuestionIds } =
+      await fetchPracticePaper(paperId)
 
     const questions: QuestionListItem[] = []
     const groups: QuestionSheetGroup[] = []
-    const records: Record<string, PracticeAnswerRecord> = {}
 
     sessionTitles.value.push(paper.name)
     for (const [groupIndex, group] of paper.sections.entries()) {
@@ -856,15 +811,10 @@ async function loadSessionData() {
         questions: groupQuestions,
       })
       questions.push(...groupQuestions)
-      for (const item of group.items) {
-        const record = buildAnswerRecord(item, latestRecord?.userAnswers[item.id])
-        if (record) records[item.id] = record
-      }
     }
 
     currentQuestions.value = questions
     questionSheetGroups.value = groups
-    answerRecords.value = records
     favoriteQuestionIds.value = new Set(initialFavoriteQuestionIds)
     sessionLoadState.value = questions.length > 0 ? 'ready' : 'empty'
   } catch {

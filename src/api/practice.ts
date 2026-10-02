@@ -4,6 +4,8 @@ import type {
   PracticeEntry,
   PracticePlan,
   PracticeSettings,
+  PracticeSubmission,
+  SubmitPracticePaperBody,
   UpdatePracticePlanBody,
 } from '@/types/domain'
 
@@ -31,6 +33,21 @@ export function fetchPracticeEntries(subjectId: string) {
 /** 文档:GET /api/practice/papers/:paperId */
 export function fetchPracticePaper(paperId: string) {
   return request<PracticePaperDetail>(`/practice/papers/${paperId}`)
+}
+
+/** 文档:POST /api/practice/papers/:paperId/submissions */
+export function submitPracticePaper(paperId: string, payload: SubmitPracticePaperBody) {
+  return request<PracticeSubmission>(`/practice/papers/${paperId}/submissions`, {
+    method: 'POST',
+    body: payload,
+  })
+}
+
+/** 文档:GET /api/practice/papers/:paperId/submissions/:submissionId */
+export function fetchPracticeSubmission(paperId: string, submissionId: string) {
+  return request<PracticeSubmission>(
+    `/practice/papers/${paperId}/submissions/${submissionId}`,
+  )
 }
 
 /** 文档:GET /api/practice/settings */

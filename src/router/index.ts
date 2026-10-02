@@ -47,24 +47,6 @@ const router = createRouter({
           component: () => import('@/views/PracticeResultView.vue'),
         },
         {
-          path: 'practice/session/:paperId',
-          redirect: (to) => ({
-            name: ROUTE_NAMES.practicePaper,
-            params: { paperId: to.params.paperId },
-            query: to.query,
-            hash: to.hash,
-          }),
-        },
-        {
-          path: 'practice/session/:paperId/result',
-          redirect: (to) => ({
-            name: ROUTE_NAMES.practicePaperResult,
-            params: { paperId: to.params.paperId },
-            query: to.query,
-            hash: to.hash,
-          }),
-        },
-        {
           path: 'favorites',
           name: ROUTE_NAMES.favorites,
           component: () => import('@/views/FavoritesView.vue'),
