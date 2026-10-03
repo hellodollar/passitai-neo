@@ -5,7 +5,7 @@ import { fetchPracticeSettings, updatePracticeSettings } from '@/api/practice'
 import type { PracticeSettings } from '@/types/domain'
 
 /**
- * 练习设置缓存:首次使用时拉取一次,之后复用;
+ * 刷题设置缓存:首次使用时拉取一次,之后复用;
  * PATCH 成功后用响应回写缓存,登录态变化时清空。
  */
 export const usePracticeSettingsStore = defineStore('practiceSettings', () => {

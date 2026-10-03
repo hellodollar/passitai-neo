@@ -18,7 +18,7 @@ import AccountPasswordContent from '@/components/common/AccountPasswordContent.v
 import BaseModal from '@/components/common/BaseModal.vue'
 import NotificationSettingsContent from '@/components/common/NotificationSettingsContent.vue'
 import PracticePlanModal from '@/components/common/PracticePlanModal.vue'
-import PracticeSettingsContent from '@/components/common/PracticeSettingsContent.vue'
+import StudySettingsModal from '@/components/settings/StudySettingsModal.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useAppStore } from '@/stores/app'
 import type { PracticePlan, PracticeSettings, UserMe } from '@/types/domain'
@@ -289,9 +289,8 @@ onMounted(() => {
       @updated="onPlanUpdated"
     />
 
-    <PracticeSettingsContent
+    <StudySettingsModal
       v-model="practiceSettingsModalOpen"
-      external
       :settings="me?.preferences.practice"
       @saved="onPracticeSettingsSaved"
     />

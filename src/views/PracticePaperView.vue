@@ -14,7 +14,7 @@ import { useRoute, useRouter } from 'vue-router'
 
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
-import PracticeSettingsContent from '@/components/common/PracticeSettingsContent.vue'
+import StudySettingsModal from '@/components/settings/StudySettingsModal.vue'
 import { addFavorite, removeFavorite } from '@/api/favorites'
 import { addWrongQuestion } from '@/api/wrong-questions'
 import { ROUTE_NAMES } from '@/constants/app'
@@ -730,7 +730,7 @@ async function recordWrongAnswer(
   if (!settings) {
     if (!wrongRecordErrorShown) {
       wrongRecordErrorShown = true
-      showErrorToast('练习设置加载失败，错题未保存。')
+      showErrorToast('刷题设置加载失败，错题未保存。')
     }
     return
   }
@@ -1445,6 +1445,6 @@ watch(
       </template>
     </BaseDialog>
 
-    <PracticeSettingsContent v-model="settingsModalOpen" />
+    <StudySettingsModal v-model="settingsModalOpen" section="practice" />
   </section>
 </template>

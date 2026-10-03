@@ -22,7 +22,7 @@ import logoPassitai from '@/assets/icons/icon-passitai.svg'
 import BaseModal from '@/components/common/BaseModal.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import PracticePlanModal from '@/components/common/PracticePlanModal.vue'
-import PracticeSettingsContent from '@/components/common/PracticeSettingsContent.vue'
+import StudySettingsModal from '@/components/settings/StudySettingsModal.vue'
 import { fetchPracticeEntries, fetchPracticePlan } from '@/api/practice'
 import { fetchMajorOptions, fetchSubjectOptions } from '@/api/catalog'
 import { ROUTE_NAMES } from '@/constants/app'
@@ -427,11 +427,11 @@ watch(
           <button
             class="flex h-10 items-center justify-center gap-1.5 text-xs font-medium text-base-content/60 transition active:bg-base-200/50"
             type="button"
-            aria-label="练习设置"
+            aria-label="刷题设置"
             @click="settingsModalOpen = true"
           >
             <Settings2 :size="15" />
-            练习设置
+            刷题设置
           </button>
         </div>
       </section>
@@ -668,7 +668,7 @@ watch(
       </div>
     </BaseModal>
 
-    <PracticeSettingsContent v-model="settingsModalOpen" />
+    <StudySettingsModal v-model="settingsModalOpen" section="practice" />
 
     <PracticePlanModal v-model="planModalOpen" :plan="plan" @updated="handlePlanUpdated" />
   </section>

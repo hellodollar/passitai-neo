@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { Bookmark, BookOpenCheck, Play, Trash2 } from '@lucide/vue'
+import { Bookmark, BookOpenCheck, Play, SlidersHorizontal, Trash2 } from '@lucide/vue'
 import { onMounted, ref } from 'vue'
+
+import StudySettingsModal from '@/components/settings/StudySettingsModal.vue'
 import { RouterLink } from 'vue-router'
 
 import { fetchPracticePaper } from '@/api/practice'
@@ -10,6 +12,7 @@ import { useLearningStore } from '@/stores/learning'
 
 const learning = useLearningStore()
 const loaded = ref(false)
+const settingsModalOpen = ref(false)
 const questionDetails = ref<Record<string, { paperName: string; title: string }>>({})
 
 async function loadQuestionDetails() {
@@ -40,10 +43,24 @@ onMounted(async () => {
 
 <template>
   <section class="flex min-h-[calc(100vh-8rem)] flex-col space-y-5">
-    <div
-      v-if="loaded && learning.favorites.length === 0"
-      class="flex w-full flex-1 items-center justify-center"
-    >
+    <div v-if="loaded" class="mb-3 flex items-center justify-between">
+      <h2 class="text-lg font-semibold">收藏题目</h2>
+      <div class="flex items-center gap-2">
+        <span class="rounded-full bg-base-200 px-3 py-1.5 text-sm font-medium text-base-content/60">
+          共 {{ learning.favoritesTotal }} 道
+        </span>
+        <button
+          class="btn btn-square btn-ghost btn-sm text-primary"
+          type="button"
+          aria-label="收藏设置"
+          @click="settingsModalOpen = true"
+        >
+          <SlidersHorizontal :size="16" />
+        </button>
+      </div>
+    </div>
+
+    <div v-if="loaded && learning.favorites.length === 0" class="flex w-full flex-1 items-center justify-center">
       <EmptyState
         :icon="BookOpenCheck"
         title="暂无收藏"
@@ -54,12 +71,6 @@ onMounted(async () => {
     </div>
 
     <section v-else-if="loaded">
-      <div class="mb-3 flex items-center justify-between">
-        <h2 class="text-lg font-semibold">收藏题目</h2>
-        <span class="rounded-full bg-base-200 px-3 py-1.5 text-sm font-medium text-base-content/60">
-          共 {{ learning.favoritesTotal }} 道
-        </span>
-      </div>
 
       <div class="grid gap-3">
         <article
@@ -100,5 +111,7 @@ onMounted(async () => {
         </article>
       </div>
     </section>
+
+    <StudySettingsModal v-model="settingsModalOpen" section="favorites" />
   </section>
 </template>

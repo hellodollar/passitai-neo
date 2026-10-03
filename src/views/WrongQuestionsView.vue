@@ -1,14 +1,16 @@
 <script setup lang="ts">
-import { AlertCircle, Play, Trash2, XCircle } from '@lucide/vue'
+import { AlertCircle, Play, SlidersHorizontal, Trash2, XCircle } from '@lucide/vue'
 import { onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 
 import EmptyState from '@/components/common/EmptyState.vue'
+import StudySettingsModal from '@/components/settings/StudySettingsModal.vue'
 import { ROUTE_NAMES } from '@/constants/app'
 import { useLearningStore } from '@/stores/learning'
 import { showErrorToast } from '@/utils/toast'
 
 const learning = useLearningStore()
+const settingsModalOpen = ref(false)
 const loaded = ref(false)
 const loadError = ref(false)
 
@@ -37,6 +39,23 @@ onMounted(loadWrongQuestions)
 
 <template>
   <section class="flex min-h-[calc(100vh-8rem)] flex-col space-y-5">
+    <div v-if="loaded" class="mb-3 flex items-center justify-between">
+      <h2 class="text-lg font-semibold">错题本</h2>
+      <div class="flex items-center gap-2">
+        <span class="rounded-full bg-base-200 px-3 py-1.5 text-sm font-medium text-base-content/60">
+          共 {{ learning.wrongQuestionsTotal }} 道
+        </span>
+        <button
+          class="btn btn-square btn-ghost btn-sm text-primary"
+          type="button"
+          aria-label="错题设置"
+          @click="settingsModalOpen = true"
+        >
+          <SlidersHorizontal :size="16" />
+        </button>
+      </div>
+    </div>
+
     <div v-if="loaded && loadError" class="flex w-full flex-1 items-center justify-center">
       <EmptyState
         :icon="AlertCircle"
@@ -63,13 +82,6 @@ onMounted(loadWrongQuestions)
     </div>
 
     <section v-else-if="loaded">
-      <div class="mb-3 flex items-center justify-between">
-        <h2 class="text-lg font-semibold">错题本</h2>
-        <span class="rounded-full bg-base-200 px-3 py-1.5 text-sm font-medium text-base-content/60">
-          共 {{ learning.wrongQuestionsTotal }} 道
-        </span>
-      </div>
-
       <div class="grid gap-3">
         <article
           v-for="item in learning.wrongQuestions"
@@ -109,5 +121,7 @@ onMounted(loadWrongQuestions)
         </article>
       </div>
     </section>
+
+    <StudySettingsModal v-model="settingsModalOpen" section="wrongQuestions" />
   </section>
 </template>

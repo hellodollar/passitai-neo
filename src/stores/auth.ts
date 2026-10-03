@@ -32,7 +32,7 @@ export const useAuthStore = defineStore('auth', () => {
     session.value = nextSession
     user.value = nextSession.user
     writeStorage(STORAGE_KEYS.authSession, nextSession)
-    // 会话变化(登录/注册)后,练习设置缓存按新账号重新拉取
+    // 会话变化(登录/注册)后,刷题设置缓存按新账号重新拉取
     usePracticeSettingsStore().clear()
   }
 
