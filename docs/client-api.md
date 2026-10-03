@@ -355,26 +355,25 @@ interface Favorite {
 
 | Method   | Path                                                       | 说明         | 状态 |
 | -------- | ---------------------------------------------------------- | ------------ | ---- |
-| `GET`    | `/api/wrong-questions?page=1&limit=20&subjectId=&paperId=` | 分页查询错题 | 可用 |
-| `PUT`    | `/api/wrong-questions/:questionId`                         | 添加错题     | 可用 |
-| `DELETE` | `/api/wrong-questions/:questionId`                         | 移除错题     | 可用 |
+| `GET`    | `/api/wrong-questions?page=1&limit=20&subjectId=&paperId=` | 分页查询错题       | 可用 |
+| `POST`   | `/api/wrong-questions`                                      | 添加或更新错题     | 可用 |
+| `DELETE` | `/api/wrong-questions/:id`                                  | 按错题记录 ID 移除 | 可用 |
 
-错题与收藏使用相同的扁平字段：
+错题列表直接包含展示所需的题干和题集名称；题目或题集已删除时对应字段为 `null`：
 
 ```ts
 interface WrongQuestion {
   id: string
-  userId: string
   questionId: string
   subjectId: string
   paperId: string
+  title: string | null
+  paperName: string | null
   createdAt: string
-  updatedAt?: string | null
-  deletedAt?: string | null
 }
 ```
 
-添加错题请求体为 `{ "paperId": "pap_xxx" }`，添加和移除保持幂等。
+添加错题请求体为 `{ "questionId": "qst_xxx", "paperId": "pap_xxx", "subjectId": "sub_xxx" }`。科目 ID 必须与题目、题集一致。同一用户、同一题目重复添加保持幂等，并将题集上下文更新为最近一次发生错误的题集。移除按记录 ID 操作，重复移除保持幂等。旧的 `PUT /api/wrong-questions/:questionId` 和按题目 ID 删除接口不再提供。
 
 ## 7. 字典选项模块
 
@@ -421,8 +420,8 @@ PUT    /api/favorites
 DELETE /api/favorites
 
 GET    /api/wrong-questions
-PUT    /api/wrong-questions/:questionId
-DELETE /api/wrong-questions/:questionId
+POST   /api/wrong-questions
+DELETE /api/wrong-questions/:id
 
 GET    /api/options/majors
 GET    /api/options/subjects

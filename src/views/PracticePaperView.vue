@@ -16,10 +16,21 @@ import BaseDialog from '@/components/common/BaseDialog.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
 import PracticeSettingsContent from '@/components/common/PracticeSettingsContent.vue'
 import { addFavorite, removeFavorite } from '@/api/favorites'
+import { addWrongQuestion } from '@/api/wrong-questions'
 import { ROUTE_NAMES } from '@/constants/app'
 import { QUESTION_TYPE_LABELS } from '@/constants/domain'
 import { useAppStore } from '@/stores/app'
-import { fetchPracticePaper, submitPracticePaper } from '@/api/practice'
+import { useAuthStore } from '@/stores/auth'
+import { usePracticeSettingsStore } from '@/stores/practiceSettings'
+import { fetchPracticePaper, fetchPracticeSubmission, submitPracticePaper } from '@/api/practice'
+import {
+  questionFingerprint,
+  readPracticeDraft,
+  removePracticeDraft,
+  writePracticeDraft,
+  type PracticeDraftAnswer,
+} from '@/utils/practice-draft'
+import { showErrorToast } from '@/utils/toast'
 import type {
   PracticePaperItem,
   PracticeSubmission,
@@ -30,6 +41,8 @@ import type {
 const router = useRouter()
 const route = useRoute()
 const app = useAppStore()
+const auth = useAuthStore()
+const practiceSettings = usePracticeSettingsStore()
 
 type RawQuestionOption =
   | string
@@ -105,7 +118,7 @@ const submitting = ref(false)
 const submitError = ref('')
 const pendingSubmissionId = ref('')
 const sessionTitles = ref<string[]>([])
-const sessionStartedAt = Date.now()
+const sessionStartedAt = ref(Date.now())
 
 const currentQuestions = ref<QuestionListItem[]>([])
 const questionSheetGroups = ref<QuestionSheetGroup[]>([])
@@ -113,9 +126,18 @@ const currentIndex = ref(0)
 const selectedOptionValues = ref<Set<string>>(new Set())
 const textAnswer = ref('')
 const answerRecords = ref<Record<string, PracticeAnswerRecord>>({})
+const inputDrafts = ref<Record<string, PracticeDraftAnswer>>({})
+const questionFingerprints = ref<Record<string, string>>({})
+const draftUserId = ref('')
+const draftPaperId = ref('')
+const draftReady = ref(false)
+let draftSaveTimer: number | null = null
+let draftSaveWarningShown = false
+let loadSequence = 0
 const favoriteQuestionIds = ref<Set<string>>(new Set())
 const pendingFavoriteQuestionIds = ref<Set<string>>(new Set())
 const favoriteError = ref('')
+let wrongRecordErrorShown = false
 const touchStartX = ref(0)
 const touchStartY = ref(0)
 const autoAdvanceTimer = ref<number | null>(null)
@@ -223,18 +245,22 @@ const correctCount = computed(() => {
       question &&
       ['single', 'multiple', 'judge'].includes(question.questionType) &&
       isAnswerCorrect(record, question)
-    ) count++
+    )
+      count++
   }
   return count
 })
-const wrongCount = computed(() =>
-  Object.values(answerRecords.value).filter((record) => {
-    const question = currentQuestions.value.find((item) => item.id === record.questionId)
-    return question &&
-      ['single', 'multiple', 'judge'].includes(question.questionType) &&
-      Boolean(getReferenceAnswer(question)) &&
-      !isAnswerCorrect(record, question)
-  }).length,
+const wrongCount = computed(
+  () =>
+    Object.values(answerRecords.value).filter((record) => {
+      const question = currentQuestions.value.find((item) => item.id === record.questionId)
+      return (
+        question &&
+        ['single', 'multiple', 'judge'].includes(question.questionType) &&
+        Boolean(getReferenceAnswer(question)) &&
+        !isAnswerCorrect(record, question)
+      )
+    }).length,
 )
 
 function parseOptionLine(line: string): NormalizedQuestionOption | null {
@@ -463,6 +489,110 @@ function questionResultClasses(question: QuestionListItem) {
     : 'border-error bg-error text-white font-semibold'
 }
 
+function clearDraftSaveTimer() {
+  if (draftSaveTimer !== null) {
+    window.clearTimeout(draftSaveTimer)
+    draftSaveTimer = null
+  }
+}
+
+function saveDraftNow() {
+  clearDraftSaveTimer()
+  if (
+    !draftReady.value ||
+    !draftUserId.value ||
+    !draftPaperId.value ||
+    auth.session?.user.id !== draftUserId.value
+  )
+    return
+
+  const answers = Object.fromEntries(
+    Object.values(answerRecords.value).flatMap((record) => {
+      const fingerprint = questionFingerprints.value[record.questionId]
+      return fingerprint
+        ? [[record.questionId, { ...record, fingerprint } satisfies PracticeDraftAnswer]]
+        : []
+    }),
+  )
+  const saved = writePracticeDraft({
+    version: 1,
+    userId: draftUserId.value,
+    paperId: draftPaperId.value,
+    startedAt: sessionStartedAt.value,
+    currentQuestionId: currentQuestion.value?.id ?? '',
+    answers,
+    inputs: inputDrafts.value,
+    pendingSubmissionId: pendingSubmissionId.value,
+    savedAt: Date.now(),
+  })
+  if (!saved && !draftSaveWarningShown) {
+    draftSaveWarningShown = true
+    showErrorToast('本地保存失败，离开后可能无法恢复本次作答。')
+  }
+  if (saved) draftSaveWarningShown = false
+}
+
+function scheduleDraftSave() {
+  if (!draftReady.value) return
+  clearDraftSaveTimer()
+  draftSaveTimer = window.setTimeout(saveDraftNow, 250)
+}
+
+function saveCurrentInput() {
+  const question = currentQuestion.value
+  if (!question || currentAnswerRecord.value) return
+
+  const values = [...selectedOptionValues.value]
+  const text = textAnswer.value
+  const nextInputs = { ...inputDrafts.value }
+  if (values.length > 0 || text.length > 0) {
+    nextInputs[question.id] = {
+      questionId: question.id,
+      fingerprint: questionFingerprints.value[question.id] ?? '',
+      text,
+      values,
+    }
+  } else {
+    delete nextInputs[question.id]
+  }
+  inputDrafts.value = nextInputs
+  scheduleDraftSave()
+}
+
+function handleTextInput(event: Event) {
+  textAnswer.value = (event.target as HTMLTextAreaElement).value
+  saveCurrentInput()
+}
+
+function restoreDraftAnswer(
+  raw: PracticeDraftAnswer,
+  question: QuestionListItem,
+  fingerprint: string,
+  confirmed: boolean,
+): PracticeAnswerRecord | null {
+  if (raw.fingerprint !== fingerprint) return null
+
+  const choice = ['single', 'multiple', 'judge'].includes(question.questionType)
+  if (choice) {
+    const options = getQuestionOptions(question)
+    const allowed = new Set(
+      (options.length > 0 ? options : getPreviewOptions(question.questionType)).map(
+        (option) => option.value,
+      ),
+    )
+    if (
+      raw.values.some((value) => !allowed.has(value)) ||
+      (question.questionType !== 'multiple' && raw.values.length > 1) ||
+      (confirmed && raw.values.length === 0)
+    )
+      return null
+  } else if (raw.values.length > 0 || (confirmed && !raw.text.trim())) {
+    return null
+  }
+
+  return { questionId: question.id, text: raw.text, values: raw.values }
+}
+
 function syncCurrentDraft() {
   const question = currentQuestion.value
   if (!question) {
@@ -471,7 +601,7 @@ function syncCurrentDraft() {
     return
   }
 
-  const record = answerRecords.value[question.id]
+  const record = answerRecords.value[question.id] ?? inputDrafts.value[question.id]
   selectedOptionValues.value = new Set(record?.values ?? [])
   textAnswer.value = record?.text ?? ''
 }
@@ -544,6 +674,8 @@ function toggleOption(optionValue: string) {
 
   if (!isMultipleQuestion.value) {
     submitCurrentAnswer(true)
+  } else {
+    saveCurrentInput()
   }
 }
 
@@ -556,18 +688,61 @@ function submitCurrentAnswer(autoAdvance = false) {
     .filter((option) => values.includes(option.value))
     .map((option) => option.label)
 
+  const record: PracticeAnswerRecord = {
+    questionId: question.id,
+    text: isChoiceMode.value ? selectedLabels.join('、') : textAnswer.value.trim(),
+    values,
+  }
   answerRecords.value = {
     ...answerRecords.value,
-    [question.id]: {
-      questionId: question.id,
-      text: isChoiceMode.value ? selectedLabels.join('、') : textAnswer.value.trim(),
-      values,
-    },
+    [question.id]: record,
   }
+  const nextInputs = { ...inputDrafts.value }
+  delete nextInputs[question.id]
+  inputDrafts.value = nextInputs
   pendingSubmissionId.value = ''
+  saveDraftNow()
+  const paperId = route.params.paperId
+  if (typeof paperId === 'string' && paperId) {
+    void recordWrongAnswer(question, record, paperId)
+  }
 
   if (autoAdvance) {
     scheduleAutoAdvance()
+  }
+}
+
+async function recordWrongAnswer(
+  question: QuestionListItem,
+  record: PracticeAnswerRecord,
+  paperId: string,
+) {
+  if (
+    !['single', 'multiple', 'judge'].includes(question.questionType) ||
+    getCorrectOptionValues(question).length === 0 ||
+    isAnswerCorrect(record, question)
+  )
+    return
+
+  const userId = auth.session?.user.id
+  const settings = await practiceSettings.ensure()
+  if (!userId || auth.session?.user.id !== userId) return
+  if (!settings) {
+    if (!wrongRecordErrorShown) {
+      wrongRecordErrorShown = true
+      showErrorToast('练习设置加载失败，错题未保存。')
+    }
+    return
+  }
+  if (!settings.recordWrongQuestions) return
+
+  try {
+    await addWrongQuestion(question.id, paperId, question.subjectId)
+  } catch {
+    if (!wrongRecordErrorShown) {
+      wrongRecordErrorShown = true
+      showErrorToast('错题记录失败，请稍后重试。')
+    }
   }
 }
 
@@ -595,6 +770,7 @@ async function confirmSubmitSession() {
       byte.toString(16).padStart(2, '0'),
     ).join('')}`
   }
+  saveDraftNow()
   const userAnswers = Object.fromEntries(
     Object.values(answerRecords.value).map((record) => {
       const question = currentQuestions.value.find((item) => item.id === record.questionId)
@@ -602,7 +778,7 @@ async function confirmSubmitSession() {
       const isChoice = question && ['single', 'multiple', 'judge'].includes(question.questionType)
       return [
         record.questionId,
-        isMultiple ? record.values : isChoice ? record.values[0] ?? '' : record.text,
+        isMultiple ? record.values : isChoice ? (record.values[0] ?? '') : record.text,
       ]
     }),
   )
@@ -612,7 +788,7 @@ async function confirmSubmitSession() {
     submission = await submitPracticePaper(paperId, {
       submissionId: pendingSubmissionId.value,
       userAnswers,
-      startTime: new Date(sessionStartedAt).toISOString(),
+      startTime: new Date(sessionStartedAt.value).toISOString(),
     })
   } catch (error) {
     submitError.value = error instanceof Error ? error.message : '交卷失败，请重试。'
@@ -622,6 +798,9 @@ async function confirmSubmitSession() {
   }
 
   submitConfirmOpen.value = false
+  draftReady.value = false
+  clearDraftSaveTimer()
+  removePracticeDraft(draftUserId.value, draftPaperId.value)
   app.endPracticeSession()
   await router.replace({
     name: ROUTE_NAMES.practicePaperResult,
@@ -736,6 +915,7 @@ function prevQuestion() {
 }
 
 function exitSession() {
+  saveDraftNow()
   app.endPracticeSession()
   router.push({ name: ROUTE_NAMES.practice })
 }
@@ -772,6 +952,10 @@ function toQuestionListItem(item: PracticePaperItem, subjectId: string): Questio
 }
 
 async function loadSessionData() {
+  saveDraftNow()
+  draftReady.value = false
+  clearDraftSaveTimer()
+  const sequence = ++loadSequence
   sessionLoadState.value = 'loading'
   currentIndex.value = 0
   currentQuestions.value = []
@@ -779,12 +963,19 @@ async function loadSessionData() {
   selectedOptionValues.value = new Set()
   textAnswer.value = ''
   answerRecords.value = {}
+  inputDrafts.value = {}
+  questionFingerprints.value = {}
+  pendingSubmissionId.value = ''
+  sessionStartedAt.value = Date.now()
+  draftUserId.value = ''
+  draftPaperId.value = ''
   favoriteQuestionIds.value = new Set()
   pendingFavoriteQuestionIds.value = new Set()
   favoriteError.value = ''
   sessionTitles.value = []
 
   const paperId = route.params.paperId
+  const userId = auth.session?.user.id
   if (typeof paperId !== 'string' || !paperId) {
     sessionLoadState.value = 'missing'
     return
@@ -793,13 +984,18 @@ async function loadSessionData() {
   try {
     const { paper, favoriteQuestionIds: initialFavoriteQuestionIds } =
       await fetchPracticePaper(paperId)
+    if (sequence !== loadSequence) return
 
     const questions: QuestionListItem[] = []
     const groups: QuestionSheetGroup[] = []
+    const fingerprints: Record<string, string> = {}
 
     sessionTitles.value.push(paper.name)
     for (const [groupIndex, group] of paper.sections.entries()) {
       const groupQuestions = group.items.map((item) => toQuestionListItem(item, paper.subjectId))
+      group.items.forEach((item) => {
+        fingerprints[item.id] = questionFingerprint(item)
+      })
       groups.push({
         key: `${paper.id}-${groupIndex}`,
         label:
@@ -815,9 +1011,83 @@ async function loadSessionData() {
 
     currentQuestions.value = questions
     questionSheetGroups.value = groups
+    questionFingerprints.value = fingerprints
     favoriteQuestionIds.value = new Set(initialFavoriteQuestionIds)
-    sessionLoadState.value = questions.length > 0 ? 'ready' : 'empty'
+    if (questions.length === 0) {
+      sessionLoadState.value = 'empty'
+      return
+    }
+
+    if (!userId || auth.session?.user.id !== userId) {
+      sessionLoadState.value = 'ready'
+      return
+    }
+
+    draftUserId.value = userId
+    draftPaperId.value = paperId
+    const savedDraft = readPracticeDraft(userId, paperId)
+    if (savedDraft?.pendingSubmissionId) {
+      let submission: PracticeSubmission | null = null
+      try {
+        submission = await fetchPracticeSubmission(paperId, savedDraft.pendingSubmissionId)
+      } catch {
+        // A timed-out submit may still be pending or the network may be offline.
+        // Keep its idempotency ID so a retry cannot create a duplicate submission.
+      }
+      if (sequence !== loadSequence) return
+      if (submission) {
+        removePracticeDraft(userId, paperId)
+        app.endPracticeSession()
+        await router.replace({
+          name: ROUTE_NAMES.practicePaperResult,
+          params: { paperId },
+          query: {
+            submissionId: submission.id,
+            subject: sessionSubjectName.value || undefined,
+          },
+        })
+        return
+      }
+    }
+    if (sequence !== loadSequence) return
+
+    if (savedDraft) {
+      const restoredAnswers: Record<string, PracticeAnswerRecord> = {}
+      const restoredInputs: Record<string, PracticeDraftAnswer> = {}
+      const byId = new Map(questions.map((question) => [question.id, question]))
+
+      for (const [questionId, raw] of Object.entries(savedDraft.answers)) {
+        const question = byId.get(questionId)
+        if (!question) continue
+        const record = restoreDraftAnswer(raw, question, fingerprints[questionId] ?? '', true)
+        if (record) restoredAnswers[questionId] = record
+      }
+      for (const [questionId, raw] of Object.entries(savedDraft.inputs)) {
+        const question = byId.get(questionId)
+        if (!question || restoredAnswers[questionId]) continue
+        const record = restoreDraftAnswer(raw, question, fingerprints[questionId] ?? '', false)
+        if (record) restoredInputs[questionId] = raw
+      }
+
+      answerRecords.value = restoredAnswers
+      inputDrafts.value = restoredInputs
+      sessionStartedAt.value = savedDraft.startedAt
+      pendingSubmissionId.value =
+        Object.keys(restoredAnswers).length === Object.keys(savedDraft.answers).length
+          ? savedDraft.pendingSubmissionId
+          : ''
+      const savedIndex = questions.findIndex(
+        (question) => question.id === savedDraft.currentQuestionId,
+      )
+      currentIndex.value = savedIndex >= 0 ? savedIndex : 0
+    }
+
+    syncCurrentDraft()
+    sessionLoadState.value = 'ready'
+    draftReady.value = true
+    if (savedDraft) scheduleDraftSave()
   } catch {
+    if (sequence !== loadSequence) return
     currentQuestions.value = []
     questionSheetGroups.value = []
     sessionLoadState.value = 'error'
@@ -826,18 +1096,37 @@ async function loadSessionData() {
 
 onMounted(() => {
   app.setPracticeSessionActive(true)
+  void practiceSettings.ensure()
+  window.addEventListener('pagehide', saveDraftNow)
+  document.addEventListener('visibilitychange', saveDraftWhenHidden)
   loadSessionData()
 })
 
 onBeforeUnmount(() => {
+  saveDraftNow()
+  loadSequence++
+  window.removeEventListener('pagehide', saveDraftNow)
+  document.removeEventListener('visibilitychange', saveDraftWhenHidden)
   app.endPracticeSession()
   clearAutoAdvance()
 })
+
+function saveDraftWhenHidden() {
+  if (document.visibilityState === 'hidden') saveDraftNow()
+}
 
 watch(
   () => currentQuestion.value?.id,
   () => {
     syncCurrentDraft()
+    scheduleDraftSave()
+  },
+)
+
+watch(
+  () => route.params.paperId,
+  (paperId, previousPaperId) => {
+    if (paperId !== previousPaperId) loadSessionData()
   },
 )
 </script>
@@ -947,6 +1236,7 @@ watch(
       <section v-else class="grid gap-3 px-5 pt-3">
         <textarea
           v-model="textAnswer"
+          @input="handleTextInput"
           class="textarea min-h-[10rem] w-full resize-none rounded-xl border-base-200 bg-base-200/45 p-3.5 text-[15px] leading-relaxed focus:border-primary focus:bg-base-100 focus:outline-none"
           placeholder="在这里输入你的答案…"
           :disabled="Boolean(currentAnswerRecord)"

@@ -15,17 +15,17 @@ export function fetchWrongQuestions(
   }).then(normalizePagination)
 }
 
-/** 文档:PUT /api/wrong-questions/:questionId，body { paperId }，幂等 */
-export function addWrongQuestion(questionId: string, paperId: string) {
-  return request<WrongQuestion>(`/wrong-questions/${questionId}`, {
-    method: 'PUT',
-    body: { paperId },
+/** 文档:POST /api/wrong-questions，body { questionId, paperId, subjectId }，幂等 */
+export function addWrongQuestion(questionId: string, paperId: string, subjectId: string) {
+  return request<WrongQuestion>('/wrong-questions', {
+    method: 'POST',
+    body: { questionId, paperId, subjectId },
   })
 }
 
-/** 文档:DELETE /api/wrong-questions/:questionId，幂等 */
-export function removeWrongQuestion(questionId: string) {
-  return request<null>(`/wrong-questions/${questionId}`, {
+/** 文档:DELETE /api/wrong-questions/:id，按错题记录 ID 移除，幂等 */
+export function removeWrongQuestion(id: string) {
+  return request<null>(`/wrong-questions/${id}`, {
     method: 'DELETE',
   })
 }

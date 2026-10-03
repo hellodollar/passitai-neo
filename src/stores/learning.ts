@@ -42,18 +42,30 @@ export const useLearningStore = defineStore('learning', () => {
   async function loadWrongQuestions(subjectId?: string) {
     loading.value = true
     try {
-      const result = await fetchWrongQuestions({ subjectId })
-      wrongQuestions.value = result.items
-    } catch {
-      wrongQuestions.value = []
+      const items: WrongQuestion[] = []
+      const seen = new Set<string>()
+      let page = 1
+      while (true) {
+        const result = await fetchWrongQuestions({ subjectId, page, limit: 100 })
+        let added = 0
+        for (const item of result.items) {
+          if (seen.has(item.id)) continue
+          seen.add(item.id)
+          items.push(item)
+          added++
+        }
+        if (items.length >= result.total || result.items.length < 100 || added === 0) break
+        page++
+      }
+      wrongQuestions.value = items
     } finally {
       loading.value = false
     }
   }
 
-  async function removeWrongQuestion(questionId: string) {
-    await removeWrongQuestionRequest(questionId)
-    wrongQuestions.value = wrongQuestions.value.filter((item) => item.questionId !== questionId)
+  async function removeWrongQuestion(id: string) {
+    await removeWrongQuestionRequest(id)
+    wrongQuestions.value = wrongQuestions.value.filter((item) => item.id !== id)
   }
 
   return {

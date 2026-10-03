@@ -3,45 +3,53 @@ import { AlertCircle, Play, Trash2, XCircle } from '@lucide/vue'
 import { onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 
-import { fetchPracticePaper } from '@/api/practice'
 import EmptyState from '@/components/common/EmptyState.vue'
 import { ROUTE_NAMES } from '@/constants/app'
 import { useLearningStore } from '@/stores/learning'
+import { showErrorToast } from '@/utils/toast'
 
 const learning = useLearningStore()
 const loaded = ref(false)
-const questionDetails = ref<Record<string, { paperName: string; title: string }>>({})
+const loadError = ref(false)
 
-async function loadQuestionDetails() {
-  const paperIds = [...new Set(learning.wrongQuestions.map((item) => item.paperId))]
-  const results = await Promise.allSettled(paperIds.map(fetchPracticePaper))
-  const details: Record<string, { paperName: string; title: string }> = {}
-
-  for (const result of results) {
-    if (result.status !== 'fulfilled') continue
-    for (const section of result.value.paper.sections) {
-      for (const question of section.items) {
-        details[question.id] = { paperName: result.value.paper.name, title: question.title }
-      }
-    }
-  }
-  questionDetails.value = details
-}
-
-onMounted(async () => {
+async function loadWrongQuestions() {
+  loaded.value = false
+  loadError.value = false
   try {
     await learning.loadWrongQuestions()
-    await loadQuestionDetails()
+  } catch {
+    loadError.value = true
   } finally {
     loaded.value = true
   }
-})
+}
+
+async function removeWrongQuestion(id: string) {
+  try {
+    await learning.removeWrongQuestion(id)
+  } catch {
+    showErrorToast('移除错题失败，请稍后重试。')
+  }
+}
+
+onMounted(loadWrongQuestions)
 </script>
 
 <template>
   <section class="flex min-h-[calc(100vh-8rem)] flex-col space-y-5">
+    <div v-if="loaded && loadError" class="flex w-full flex-1 items-center justify-center">
+      <EmptyState
+        :icon="AlertCircle"
+        tone="error"
+        title="错题加载失败"
+        description="请检查网络后重试。"
+        action-label="重新加载"
+        @action="loadWrongQuestions"
+      />
+    </div>
+
     <div
-      v-if="loaded && learning.wrongQuestions.length === 0"
+      v-else-if="loaded && learning.wrongQuestions.length === 0"
       class="flex w-full flex-1 items-center justify-center"
     >
       <EmptyState
@@ -76,10 +84,10 @@ onMounted(async () => {
 
           <div class="min-w-0 flex-1">
             <p class="line-clamp-2 text-sm font-medium leading-relaxed">
-              {{ questionDetails[item.questionId]?.title ?? `题目 ${item.questionId}` }}
+              {{ item.title ?? `题目 ${item.questionId}` }}
             </p>
             <p class="mt-1 truncate text-xs text-base-content/45">
-              {{ questionDetails[item.questionId]?.paperName ?? `试卷 ${item.paperId}` }}
+              {{ item.paperName ?? `试卷 ${item.paperId}` }}
             </p>
           </div>
 
@@ -94,7 +102,7 @@ onMounted(async () => {
             class="btn btn-square btn-ghost btn-sm text-error"
             type="button"
             aria-label="移除错题"
-            @click="learning.removeWrongQuestion(item.questionId)"
+            @click="removeWrongQuestion(item.id)"
           >
             <Trash2 :size="16" />
           </button>

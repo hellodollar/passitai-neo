@@ -1,6 +1,6 @@
 import { FetchError, ofetch, type FetchOptions } from 'ofetch'
 
-import { STORAGE_KEYS } from '@/constants/app'
+import { AUTH_INVALIDATED_EVENT, STORAGE_KEYS } from '@/constants/app'
 import type { ApiEnvelope, AuthSession, PaginationResult } from '@/types/domain'
 import { readStorage, removeStorage } from '@/utils/storage'
 import { showErrorToast } from '@/utils/toast'
@@ -41,6 +41,7 @@ const http = ofetch.create({
   onResponse({ response }) {
     if (response.status === 401) {
       removeStorage(STORAGE_KEYS.authSession)
+      window.dispatchEvent(new Event(AUTH_INVALIDATED_EVENT))
     }
   },
   onResponseError({ response }) {

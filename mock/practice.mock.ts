@@ -13,8 +13,18 @@ type MockFavorite = {
   deletedAt: null
 }
 
+type MockWrongQuestion = {
+  id: string
+  questionId: string
+  subjectId: string
+  paperId: string
+  title: string | null
+  paperName: string | null
+  createdAt: string
+}
+
 const mockFavorites = new Map<string, MockFavorite>()
-const mockWrongQuestions = new Map<string, MockFavorite>()
+const mockWrongQuestions = new Map<string, MockWrongQuestion>()
 
 export default defineMock([
   // ── 学习计划:契约路径 /api/plan ──
@@ -105,7 +115,7 @@ export default defineMock([
       ]),
   },
 
-  // ── 收藏 / 错题:契约路径 /:questionId ──
+  // ── 收藏 / 错题 ──
   {
     url: '/api/favorites',
     method: 'GET',
@@ -154,22 +164,21 @@ export default defineMock([
   },
 
   {
-    url: '/api/wrong-questions/:questionId',
-    method: 'PUT',
+    url: '/api/wrong-questions',
+    method: 'POST',
     delay: 100,
-    body: ({ body, params }) => {
-      const questionId = String(params.questionId ?? '')
+    body: ({ body }) => {
+      const questionId = String(body?.questionId ?? '')
       const existing = mockWrongQuestions.get(questionId)
       const now = new Date().toISOString()
-      const wrongQuestion: MockFavorite = {
+      const wrongQuestion: MockWrongQuestion = {
         id: existing?.id ?? `wrq_${questionId.slice(-12)}`,
-        userId: 'usr_a1b2c3d4e5f6',
         questionId,
-        subjectId: mockSubjects[0]!.id,
+        subjectId: String(body?.subjectId ?? ''),
         paperId: String(body?.paperId ?? ''),
+        title: `题目 ${questionId}`,
+        paperName: `试卷 ${String(body?.paperId ?? '')}`,
         createdAt: existing?.createdAt ?? now,
-        updatedAt: existing ? now : null,
-        deletedAt: null,
       }
       mockWrongQuestions.set(questionId, wrongQuestion)
       return ok(wrongQuestion)
@@ -177,11 +186,14 @@ export default defineMock([
   },
 
   {
-    url: '/api/wrong-questions/:questionId',
+    url: '/api/wrong-questions/:id',
     method: 'DELETE',
     delay: 100,
     body: ({ params }) => {
-      mockWrongQuestions.delete(String(params.questionId ?? ''))
+      const id = String(params.id ?? '')
+      for (const [questionId, item] of mockWrongQuestions) {
+        if (item.id === id) mockWrongQuestions.delete(questionId)
+      }
       return ok(null)
     },
   },

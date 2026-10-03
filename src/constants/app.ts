@@ -2,6 +2,8 @@ export const APP_NAME = 'PassIt AI'
 
 export const APP_TAGLINE = '刷题更稳，复习更清楚。'
 
+export const AUTH_INVALIDATED_EVENT = 'passitai:auth-invalidated'
+
 export const STORAGE_KEYS = {
   authSession: 'passitai:auth-session',
   appPreferences: 'passitai:app-preferences',

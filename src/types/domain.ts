@@ -69,13 +69,12 @@ export type Favorite = {
 
 export type WrongQuestion = {
   id: string
-  userId: string
   questionId: string
   subjectId: string
   paperId: string
+  title: string | null
+  paperName: string | null
   createdAt: string
-  updatedAt?: string | null
-  deletedAt?: string | null
 }
 
 // ---- Catalog ----

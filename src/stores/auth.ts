@@ -2,9 +2,10 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 
 import { fetchMe, login, logout, register } from '@/api/auth'
-import { STORAGE_KEYS } from '@/constants/app'
+import { AUTH_INVALIDATED_EVENT, STORAGE_KEYS } from '@/constants/app'
 import { usePracticeSettingsStore } from '@/stores/practiceSettings'
 import type { AuthCredentials, AuthSession, RegisterCredentials, User } from '@/types/domain'
+import { clearUserPracticeDrafts } from '@/utils/practice-draft'
 import { readStorage, removeStorage, writeStorage } from '@/utils/storage'
 
 export const useAuthStore = defineStore('auth', () => {
@@ -15,6 +16,17 @@ export const useAuthStore = defineStore('auth', () => {
   const loading = ref(false)
 
   const isAuthenticated = computed(() => Boolean(session.value?.token))
+
+  function clearLocalSession() {
+    const userId = session.value?.user.id
+    if (userId) clearUserPracticeDrafts(userId)
+    session.value = null
+    user.value = null
+    removeStorage(STORAGE_KEYS.authSession)
+    usePracticeSettingsStore().clear()
+  }
+
+  window.addEventListener(AUTH_INVALIDATED_EVENT, clearLocalSession)
 
   function persistSession(nextSession: AuthSession) {
     session.value = nextSession
@@ -68,7 +80,7 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       user.value = await fetchMe()
     } catch {
-      signOut()
+      // Transient network errors must not sign the user out or erase local practice drafts.
     }
   }
 
@@ -79,11 +91,9 @@ export const useAuthStore = defineStore('auth', () => {
       }
     } catch {
       // ignore network errors on logout
+    } finally {
+      clearLocalSession()
     }
-    session.value = null
-    user.value = null
-    removeStorage(STORAGE_KEYS.authSession)
-    usePracticeSettingsStore().clear()
   }
 
   return {
