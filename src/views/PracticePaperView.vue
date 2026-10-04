@@ -1577,21 +1577,21 @@ watch(questionSheetRangeIndex, () => {
             ref="questionSheetContentRef"
             class="min-h-0 overflow-y-auto overscroll-contain px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-2 sm:pb-4"
           >
-            <section v-for="group in visibleQuestionSheetGroups" :key="group.key" class="pt-2">
-              <p class="mb-2 text-xs font-medium text-base-content/50">
+            <section v-for="group in visibleQuestionSheetGroups" :key="group.key" class="pt-1.5">
+              <p class="mb-1.5 text-xs font-medium text-base-content/50">
                 {{ group.label }} · {{ group.questions.length }}题
               </p>
               <div
-                class="grid grid-cols-6 justify-items-center gap-x-1 gap-y-2 min-[375px]:grid-cols-7 min-[375px]:gap-x-2 sm:grid-cols-8"
+                class="grid grid-cols-8 justify-items-center gap-x-1 gap-y-1.5 min-[375px]:grid-cols-9 sm:grid-cols-10"
               >
                 <button
                   v-for="(question, offset) in group.questions"
                   :key="group.startIndex + offset"
-                  class="flex size-10 items-center justify-center rounded-full border text-xs font-medium tabular-nums transition-colors active:opacity-70"
+                  class="flex size-8 items-center justify-center rounded-full border text-xs font-medium tabular-nums transition-colors active:opacity-70"
                   :class="[
                     questionResultClasses(question),
                     currentIndex === group.startIndex + offset
-                      ? 'ring-2 ring-primary/60 ring-offset-1 ring-offset-base-100'
+                      ? 'ring-1 ring-primary/70 ring-offset-1 ring-offset-base-100'
                       : '',
                   ]"
                   type="button"
