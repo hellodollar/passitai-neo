@@ -190,6 +190,10 @@ export type PracticePaperItem = {
   F: string | null
   correctAnswer: string
   explanation: string | null
+  /** 收藏/错题练习数据携带的收录记录上下文，用于取消收藏/移除错题与记错题 */
+  collectionRecordId?: string | null
+  subjectId?: string | null
+  paperId?: string | null
 }
 
 export type PracticePaperSection = {

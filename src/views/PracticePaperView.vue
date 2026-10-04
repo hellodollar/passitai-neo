@@ -15,7 +15,12 @@ import { useRoute, useRouter } from 'vue-router'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
 import StudySettingsModal from '@/components/settings/StudySettingsModal.vue'
-import { addFavorite, fetchFavoritePractice, removeFavorite } from '@/api/favorites'
+import {
+  addFavorite,
+  fetchFavoritePractice,
+  removeFavorite,
+  removeFavoriteByRecord,
+} from '@/api/favorites'
 import { addWrongQuestion, fetchWrongQuestionPractice } from '@/api/wrong-questions'
 import { ROUTE_NAMES } from '@/constants/app'
 import { QUESTION_TYPE_LABELS } from '@/constants/domain'
@@ -23,7 +28,6 @@ import { useAppStore } from '@/stores/app'
 import { useAuthStore } from '@/stores/auth'
 import { usePracticeSettingsStore } from '@/stores/practiceSettings'
 import { fetchPracticePaper, fetchPracticeSubmission, submitPracticePaper } from '@/api/practice'
-import { writeLocalPracticeResult } from '@/utils/practice-result'
 import {
   questionFingerprint,
   readPracticeDraft,
@@ -792,31 +796,6 @@ async function confirmSubmitSession() {
     }),
   )
 
-  if (collectionMode.value) {
-    // 收藏/错题练习不落服务端记录：本地判分写入会话快照后跳结果页
-    writeLocalPracticeResult({
-      paper: currentPaperSnapshot(),
-      userAnswers,
-      submittedAt: new Date().toISOString(),
-    })
-    submitting.value = false
-    submitConfirmOpen.value = false
-    draftReady.value = false
-    clearDraftSaveTimer()
-    removePracticeDraft(draftUserId.value, draftPaperId.value)
-    app.endPracticeSession()
-    await router.replace({
-      name: ROUTE_NAMES.practicePaperResult,
-      params: { paperId },
-      query: {
-        local: '1',
-        source: collectionSource.value,
-        subject: sessionSubjectName.value || undefined,
-      },
-    })
-    return
-  }
-
   let submission: PracticeSubmission
   try {
     submission = await submitPracticePaper(paperId, {
@@ -846,31 +825,26 @@ async function confirmSubmitSession() {
   })
 }
 
-/** 收藏/记错上下文;fav: 虚拟题集(收藏/错题练习)返回 null 跳过记录 */
+/** 收藏/记错上下文：真实题集取路由参数；fav: 虚拟题集取题目固化的收录上下文 */
 function collectionContext(questionId: string): CollectionContext | null {
-  const paperId = String(route.params.paperId ?? '')
-  if (!paperId.startsWith('pap_')) return null
-  const subjectId = currentQuestions.value[0]?.subjectId ?? ''
-  if (!subjectId) return null
-  return { questionId, subjectId, paperId }
+  const routePaperId = String(route.params.paperId ?? '')
+  if (routePaperId.startsWith('pap_')) {
+    const subjectId = currentQuestions.value[0]?.subjectId ?? ''
+    if (!subjectId) return null
+    return { questionId, subjectId, paperId: routePaperId }
+  }
+  // 收藏/错题练习：用服务端返回的收录上下文（记错题、再次收藏）
+  const item = paperItemsById.value.get(questionId)
+  if (!item?.subjectId || !item.paperId) return null
+  return { questionId, subjectId: item.subjectId, paperId: item.paperId }
 }
 
-/** 交卷快照用的当前题目结构（复用加载时的原始题目数据） */
-function currentPaperSnapshot() {
-  const sections = questionSheetGroups.value.map((group) => ({
-    name: group.label,
-    items: group.questions
-      .map((question) => paperItemsById.value.get(question.id))
-      .filter((item): item is PracticePaperItem => Boolean(item)),
-  }))
-  return {
-    id: String(route.params.paperId),
-    name: sessionTitles.value[0] ?? '',
-    subjectId: currentQuestions.value[0]?.subjectId ?? '',
-    questionCount: currentQuestions.value.length,
-    sections,
-  }
+/** 收录记录 ID（收藏训练页取消收藏用） */
+function collectionRecordOf(questionId: string): string | null {
+  return paperItemsById.value.get(questionId)?.collectionRecordId ?? null
 }
+
+
 
 function goToQuestion(index: number) {
   if (index < 0 || index >= currentQuestions.value.length) return
@@ -919,12 +893,17 @@ async function toggleFavorite() {
   pendingFavoriteQuestionIds.value = nextPendingIds
 
   const context = collectionContext(question.id)
-  if (!context) return
+  const recordId = collectionRecordOf(question.id)
 
   try {
     if (wasFavorited) {
-      await removeFavorite(context)
-    } else {
+      // 收藏训练页按记录 ID 取消；真实题集训练页按三元组取消
+      if (collectionMode.value && recordId) {
+        await removeFavoriteByRecord(recordId)
+      } else if (context) {
+        await removeFavorite(context)
+      }
+    } else if (context) {
       await addFavorite(context)
     }
   } catch {
@@ -1486,7 +1465,9 @@ watch(
       </div>
 
       <template #footer>
+        <!-- 收藏/错题训练为纯刷题，不提供交卷 -->
         <button
+          v-if="!collectionMode"
           class="btn btn-primary h-10 min-h-10 w-full rounded-xl text-sm"
           type="button"
           :disabled="currentQuestions.length === 0"

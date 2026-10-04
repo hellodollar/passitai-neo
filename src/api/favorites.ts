@@ -1,49 +1,23 @@
 import { request } from '@/api/http'
-import type {
-  CollectionAggregate,
-  CollectionContext,
-  CollectionPracticePaper,
-  Favorite,
-  PaginationResult,
-} from '@/types/domain'
+import type { CollectionAggregate, CollectionContext, CollectionPracticePaper } from '@/types/domain'
 
 export type CollectionGroupBy = 'subject' | 'paper'
 export type CollectionOrder = 'desc' | 'asc'
 
-export type FavoriteListQuery = {
-  page?: number
-  limit?: number
-  subjectId?: string
-  paperId?: string
-}
-
-/** GET /api/favorites?page=&limit=&subjectId=&paperId=，分页收藏列表 */
-export function fetchFavorites(query: FavoriteListQuery = {}) {
-  return request<PaginationResult<Favorite> | Favorite[]>('/favorites', {
-    query: {
-      page: query.page ?? 1,
-      limit: query.limit ?? 100,
-      subjectId: query.subjectId,
-      paperId: query.paperId,
-    },
-  })
-}
-
-// ── 聚合查询 / 清空 / 集合练习数据:后端端点暂缺,补充后启用 ──
-
+/** 文档:GET /api/favorites?groupBy=&order=，聚合查询收藏 */
 export function fetchFavoriteAggregate(params: { groupBy?: CollectionGroupBy; order?: CollectionOrder } = {}) {
   return request<CollectionAggregate>('/favorites', { query: params })
 }
 
-/** PUT /api/favorites，body { questionId, subjectId, paperId }，幂等 */
+/** 文档:PUT /api/favorites，body 三元组，幂等 */
 export function addFavorite(payload: CollectionContext) {
-  return request<Favorite | null>('/favorites', {
+  return request<null>('/favorites', {
     method: 'PUT',
     body: payload,
   })
 }
 
-/** DELETE /api/favorites，body { questionId, subjectId, paperId }，幂等 */
+/** 文档:DELETE /api/favorites，body 三元组，幂等（真实题集训练页） */
 export function removeFavorite(payload: CollectionContext) {
   return request<null>('/favorites', {
     method: 'DELETE',
@@ -51,12 +25,17 @@ export function removeFavorite(payload: CollectionContext) {
   })
 }
 
-// 后端端点暂缺
-export function clearFavorites() {
-  return request<null>('/favorites', { method: 'DELETE' })
+/** 文档:DELETE /api/favorites/:recordId，按收藏记录 ID 取消（收藏训练页），幂等 */
+export function removeFavoriteByRecord(recordId: string) {
+  return request<null>(`/favorites/${recordId}`, { method: 'DELETE' })
 }
 
-// 后端端点暂缺
+/** 文档:DELETE /api/favorites/all，清空收藏 */
+export function clearFavorites() {
+  return request<null>('/favorites/all', { method: 'DELETE' })
+}
+
+/** 文档:GET /api/favorites/practice?subjectId= 或 ?paperId= */
 export function fetchFavoritePractice(params: { subjectId?: string; paperId?: string }) {
   return request<CollectionPracticePaper>('/favorites/practice', { query: params })
 }
