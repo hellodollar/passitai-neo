@@ -139,7 +139,6 @@ watch(
   <section class="grid gap-2">
     <h4 v-if="showHeader" class="text-[13px] font-semibold text-base-content/60">刷题设置</h4>
 
-    <p class="px-0.5 text-xs text-base-content/45">作答行为</p>
     <SettingsToggleItem
       v-model="practiceSettings.autoNextOnCorrect"
       title="答题正确自动下一题"
@@ -151,14 +150,12 @@ watch(
       description="答完全部题目后自动提交"
     />
 
-    <p class="mt-2 px-0.5 text-xs text-base-content/45">练习方式</p>
     <SettingsToggleItem
       v-model="practiceSettings.loopPractice"
       title="循环练习"
       description="答完一遍后自动重新开始"
     />
 
-    <p class="mt-2 px-0.5 text-xs text-base-content/45">反馈与记录</p>
     <SettingsToggleItem
       v-model="practiceSettings.showAnalysis"
       title="答题后显示解析"

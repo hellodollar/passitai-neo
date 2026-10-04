@@ -342,8 +342,9 @@ interface PracticeSubmission {
 
 ```ts
 {
-  groupBy?: 'subject' | 'paper' // 默认 subject
-  order?: 'desc' | 'asc'        // 按题数排序，默认 desc
+  groupBy?: 'subject' | 'paper'  // 默认 subject
+  sort?: 'count' | 'recent'      // count 按题数（默认），recent 按收录时间
+  order?: 'desc' | 'asc'         // 排序方向，默认 desc（recent 的 asc 为最早在前）
 }
 ```
 

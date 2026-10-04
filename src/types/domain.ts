@@ -95,6 +95,8 @@ export type CollectionAggregateItem = {
   subjectId: string
   subjectName: string
   questionCount: number
+  /** 该组最近一次收录时间 */
+  lastCollectedAt: string
   /** 仅 groupBy=paper 时返回 */
   paperId?: string
   paperName?: string
