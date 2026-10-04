@@ -319,61 +319,69 @@ interface PracticeSubmission {
 
 ## 5. 题目收藏模块
 
-| Method   | Path                                                 | 说明             | 状态 |
-| -------- | ---------------------------------------------------- | ---------------- | ---- |
-| `GET`    | `/api/favorites?page=1&limit=20&subjectId=&paperId=` | 分页查询收藏题目 | 可用 |
-| `PUT`    | `/api/favorites`                                     | 收藏题目         | 可用 |
-| `DELETE` | `/api/favorites`                                     | 取消收藏         | 可用 |
+| Method   | Path                                                     | 说明                             | 状态 |
+| -------- | -------------------------------------------------------- | -------------------------------- | ---- |
+| `GET`    | `/api/favorites?groupBy=&order=`                         | 聚合查询收藏（默认按科目）       | 可用 |
+| `PUT`    | `/api/favorites/:questionId`                             | 收藏题目（幂等）                 | 可用 |
+| `DELETE` | `/api/favorites/:questionId`                             | 取消收藏（幂等）                 | 可用 |
+| `DELETE` | `/api/favorites`                                         | 清空当前用户全部收藏             | 可用 |
+| `GET`    | `/api/favorites/practice?subjectId=` / `?paperId=`       | 收藏练习数据（与练习题集同构）   | 可用 |
 
-收藏采用一道题一条记录的扁平结构：
+收藏是题目维度的事实：记录只存 `userId + questionId`，科目与题集上下文由服务端实时
+join 计算；同一道题在任何题集内都显示一致的收藏状态。
+
+聚合接口 query：
 
 ```ts
-interface Favorite {
-  id: string
-  userId: string
-  questionId: string
-  subjectId: string
-  paperId: string
-  createdAt: string
-  updatedAt?: string | null
-  deletedAt?: string | null
+{
+  groupBy?: 'subject' | 'paper' // 默认 subject
+  order?: 'desc' | 'asc'        // 按题数排序，默认 desc
 }
 ```
 
-收藏与取消收藏使用相同请求体：
+返回结构（只统计题目启用且可见、科目/题集启用未删的记录）：
 
-```json
-{ "paperId": "pap_xxx", "subjectId": "sub_xxx", "questionId": "qst_xxx" }
+```ts
+// groupBy=subject（默认）
+{ items: Array<{ subjectId: string; subjectName: string; questionCount: number }>, totalQuestionCount: number }
+
+// groupBy=paper：口径为"该题集内含多少道我的收藏题"，同一题在多个题集会被分别计入
+{ items: Array<{ paperId: string; paperName: string; subjectId: string; subjectName: string; questionCount: number }>, totalQuestionCount: number }
 ```
 
-添加时校验题目、试卷、科目和试卷题目关系；取消时仅匹配当前用户和三个 ID 对应的收藏。
-重复添加或删除保持幂等。旧的 `/api/favorites/:questionId` 路径不再提供。
+收藏/取消按题目 ID 操作，无请求体；题目不存在或不可见返回 404（`code 4001`）。
+
+练习接口 `subjectId` 与 `paperId` 二选一：按科目取该科目全部收藏题，按题集取该题集
+sections 内的收藏题；按题型重新分组，题目按收藏时间倒序。返回与
+`GET /api/practice/papers/:paperId` 的 `paper` 同构（无 `type`/`assessmentType`/
+`latestRecord`/`favoriteQuestionIds`），收藏练习不落服务端记录：
+
+```ts
+{
+  paper: {
+    id: string // "fav:<subjectId>" 或 "fav:<paperId>"
+    name: string // 按科目=科目名；按题集=题集名
+    subjectId: string // 归属科目（按题集模式为题集的科目）
+    questionCount: number
+    sections: Array<{ name: string; items: PracticePaperItem[] }>
+  }
+}
+```
 
 ## 6. 错题模块
 
-统一使用 `wrong-questions`，不使用语义不完整的 `/wrong`。
+统一使用 `wrong-questions`，不使用语义不完整的 `/wrong`。与收藏完全同构，仅添加语义
+为"发生了错误"，使用 `POST`：
 
-| Method   | Path                                                       | 说明         | 状态 |
-| -------- | ---------------------------------------------------------- | ------------ | ---- |
-| `GET`    | `/api/wrong-questions?page=1&limit=20&subjectId=&paperId=` | 分页查询错题       | 可用 |
-| `POST`   | `/api/wrong-questions`                                      | 添加或更新错题     | 可用 |
-| `DELETE` | `/api/wrong-questions/:id`                                  | 按错题记录 ID 移除 | 可用 |
+| Method   | Path                                                     | 说明                             | 状态 |
+| -------- | -------------------------------------------------------- | -------------------------------- | ---- |
+| `GET`    | `/api/wrong-questions?groupBy=&order=`                   | 聚合查询错题（默认按科目）       | 可用 |
+| `POST`   | `/api/wrong-questions/:questionId`                       | 记错题（幂等，保持原收录时间）   | 可用 |
+| `DELETE` | `/api/wrong-questions/:questionId`                       | 移除错题（幂等）                 | 可用 |
+| `DELETE` | `/api/wrong-questions`                                   | 清空当前用户全部错题             | 可用 |
+| `GET`    | `/api/wrong-questions/practice?subjectId=` / `?paperId=` | 错题练习数据（与练习题集同构）   | 可用 |
 
-错题列表直接包含展示所需的题干和题集名称；题目或题集已删除时对应字段为 `null`：
-
-```ts
-interface WrongQuestion {
-  id: string
-  questionId: string
-  subjectId: string
-  paperId: string
-  title: string | null
-  paperName: string | null
-  createdAt: string
-}
-```
-
-添加错题请求体为 `{ "questionId": "qst_xxx", "paperId": "pap_xxx", "subjectId": "sub_xxx" }`。科目 ID 必须与题目、题集一致。同一用户、同一题目重复添加保持幂等，并将题集上下文更新为最近一次发生错误的题集。移除按记录 ID 操作，重复移除保持幂等。旧的 `PUT /api/wrong-questions/:questionId` 和按题目 ID 删除接口不再提供。
+聚合、练习、清空的行为与收藏模块一致（见第 5 章）；错题练习同样不落服务端记录。
 
 ## 7. 字典选项模块
 
@@ -416,12 +424,16 @@ GET    /api/practice/entries
 GET    /api/practice/papers/:paperId
 
 GET    /api/favorites
-PUT    /api/favorites
+PUT    /api/favorites/:questionId
+DELETE /api/favorites/:questionId
 DELETE /api/favorites
+GET    /api/favorites/practice
 
 GET    /api/wrong-questions
-POST   /api/wrong-questions
-DELETE /api/wrong-questions/:id
+POST   /api/wrong-questions/:questionId
+DELETE /api/wrong-questions/:questionId
+DELETE /api/wrong-questions
+GET    /api/wrong-questions/practice
 
 GET    /api/options/majors
 GET    /api/options/subjects

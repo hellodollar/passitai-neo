@@ -15,14 +15,15 @@ import { useRoute, useRouter } from 'vue-router'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
 import StudySettingsModal from '@/components/settings/StudySettingsModal.vue'
-import { addFavorite, removeFavorite } from '@/api/favorites'
-import { addWrongQuestion } from '@/api/wrong-questions'
+import { addFavorite, fetchFavoritePractice, removeFavorite } from '@/api/favorites'
+import { addWrongQuestion, fetchWrongQuestionPractice } from '@/api/wrong-questions'
 import { ROUTE_NAMES } from '@/constants/app'
 import { QUESTION_TYPE_LABELS } from '@/constants/domain'
 import { useAppStore } from '@/stores/app'
 import { useAuthStore } from '@/stores/auth'
 import { usePracticeSettingsStore } from '@/stores/practiceSettings'
 import { fetchPracticePaper, fetchPracticeSubmission, submitPracticePaper } from '@/api/practice'
+import { writeLocalPracticeResult } from '@/utils/practice-result'
 import {
   questionFingerprint,
   readPracticeDraft,
@@ -31,6 +32,7 @@ import {
   type PracticeDraftAnswer,
 } from '@/utils/practice-draft'
 import { showErrorToast } from '@/utils/toast'
+import type { CollectionContext } from '@/types/domain'
 import type {
   PracticePaperItem,
   PracticeSubmission,
@@ -43,6 +45,16 @@ const route = useRoute()
 const app = useAppStore()
 const auth = useAuthStore()
 const practiceSettings = usePracticeSettingsStore()
+
+/** 收藏/错题练习模式：路由 paperId 形如 fav:<sub_xxx|pap_xxx>，query.source 指明集合 */
+const COLLECTION_PAPER_PREFIX = 'fav:'
+const collectionMode = computed(() => {
+  const paperId = route.params.paperId
+  return typeof paperId === 'string' && paperId.startsWith(COLLECTION_PAPER_PREFIX)
+})
+const collectionSource = computed(() =>
+  route.query.source === 'wrong-questions' ? 'wrong-questions' : 'favorites',
+)
 
 type RawQuestionOption =
   | string
@@ -135,6 +147,8 @@ let draftSaveTimer: number | null = null
 let draftSaveWarningShown = false
 let loadSequence = 0
 const favoriteQuestionIds = ref<Set<string>>(new Set())
+/** 加载时的原始题目数据（PracticePaperItem），供交卷本地快照使用 */
+const paperItemsById = ref<Map<string, PracticePaperItem>>(new Map())
 const pendingFavoriteQuestionIds = ref<Set<string>>(new Set())
 const favoriteError = ref('')
 let wrongRecordErrorShown = false
@@ -702,21 +716,14 @@ function submitCurrentAnswer(autoAdvance = false) {
   inputDrafts.value = nextInputs
   pendingSubmissionId.value = ''
   saveDraftNow()
-  const paperId = route.params.paperId
-  if (typeof paperId === 'string' && paperId) {
-    void recordWrongAnswer(question, record, paperId)
-  }
+  void recordWrongAnswer(question, record)
 
   if (autoAdvance) {
     scheduleAutoAdvance()
   }
 }
 
-async function recordWrongAnswer(
-  question: QuestionListItem,
-  record: PracticeAnswerRecord,
-  paperId: string,
-) {
+async function recordWrongAnswer(question: QuestionListItem, record: PracticeAnswerRecord) {
   if (
     !['single', 'multiple', 'judge'].includes(question.questionType) ||
     getCorrectOptionValues(question).length === 0 ||
@@ -735,9 +742,11 @@ async function recordWrongAnswer(
     return
   }
   if (!settings.recordWrongQuestions) return
+  const context = collectionContext(question.id)
+  if (!context) return
 
   try {
-    await addWrongQuestion(question.id, paperId, question.subjectId)
+    await addWrongQuestion(context)
   } catch {
     if (!wrongRecordErrorShown) {
       wrongRecordErrorShown = true
@@ -783,6 +792,31 @@ async function confirmSubmitSession() {
     }),
   )
 
+  if (collectionMode.value) {
+    // 收藏/错题练习不落服务端记录：本地判分写入会话快照后跳结果页
+    writeLocalPracticeResult({
+      paper: currentPaperSnapshot(),
+      userAnswers,
+      submittedAt: new Date().toISOString(),
+    })
+    submitting.value = false
+    submitConfirmOpen.value = false
+    draftReady.value = false
+    clearDraftSaveTimer()
+    removePracticeDraft(draftUserId.value, draftPaperId.value)
+    app.endPracticeSession()
+    await router.replace({
+      name: ROUTE_NAMES.practicePaperResult,
+      params: { paperId },
+      query: {
+        local: '1',
+        source: collectionSource.value,
+        subject: sessionSubjectName.value || undefined,
+      },
+    })
+    return
+  }
+
   let submission: PracticeSubmission
   try {
     submission = await submitPracticePaper(paperId, {
@@ -810,6 +844,32 @@ async function confirmSubmitSession() {
       subject: sessionSubjectName.value || undefined,
     },
   })
+}
+
+/** 收藏/记错上下文;fav: 虚拟题集(收藏/错题练习)返回 null 跳过记录 */
+function collectionContext(questionId: string): CollectionContext | null {
+  const paperId = String(route.params.paperId ?? '')
+  if (!paperId.startsWith('pap_')) return null
+  const subjectId = currentQuestions.value[0]?.subjectId ?? ''
+  if (!subjectId) return null
+  return { questionId, subjectId, paperId }
+}
+
+/** 交卷快照用的当前题目结构（复用加载时的原始题目数据） */
+function currentPaperSnapshot() {
+  const sections = questionSheetGroups.value.map((group) => ({
+    name: group.label,
+    items: group.questions
+      .map((question) => paperItemsById.value.get(question.id))
+      .filter((item): item is PracticePaperItem => Boolean(item)),
+  }))
+  return {
+    id: String(route.params.paperId),
+    name: sessionTitles.value[0] ?? '',
+    subjectId: currentQuestions.value[0]?.subjectId ?? '',
+    questionCount: currentQuestions.value.length,
+    sections,
+  }
 }
 
 function goToQuestion(index: number) {
@@ -842,7 +902,7 @@ async function toggleFavorite() {
   const paperId = route.params.paperId
   if (!question || typeof paperId !== 'string' || !paperId) return
   if (pendingFavoriteQuestionIds.value.has(question.id)) return
-  const favoriteContext = { paperId, subjectId: question.subjectId, questionId: question.id }
+  void paperId
 
   favoriteError.value = ''
   const wasFavorited = favoriteQuestionIds.value.has(question.id)
@@ -858,11 +918,14 @@ async function toggleFavorite() {
   nextPendingIds.add(question.id)
   pendingFavoriteQuestionIds.value = nextPendingIds
 
+  const context = collectionContext(question.id)
+  if (!context) return
+
   try {
     if (wasFavorited) {
-      await removeFavorite(favoriteContext)
+      await removeFavorite(context)
     } else {
-      await addFavorite(favoriteContext)
+      await addFavorite(context)
     }
   } catch {
     const rollbackIds = new Set(favoriteQuestionIds.value)
@@ -951,6 +1014,19 @@ function toQuestionListItem(item: PracticePaperItem, subjectId: string): Questio
   return richQuestion
 }
 
+/** 收藏/错题练习数据加载：fav:<sub_xxx> 按科目 / fav:<pap_xxx> 按题集 */
+async function loadCollectionPaper(paperId: string) {
+  const originId = paperId.slice(COLLECTION_PAPER_PREFIX.length)
+  const params = originId.startsWith('pap_')
+    ? { paperId: originId }
+    : { subjectId: originId }
+  const { paper } =
+    collectionSource.value === 'wrong-questions'
+      ? await fetchWrongQuestionPractice(params)
+      : await fetchFavoritePractice(params)
+  return { paper, favoriteQuestionIds: [] as string[] }
+}
+
 async function loadSessionData() {
   saveDraftNow()
   draftReady.value = false
@@ -970,6 +1046,7 @@ async function loadSessionData() {
   draftUserId.value = ''
   draftPaperId.value = ''
   favoriteQuestionIds.value = new Set()
+  paperItemsById.value = new Map()
   pendingFavoriteQuestionIds.value = new Set()
   favoriteError.value = ''
   sessionTitles.value = []
@@ -982,9 +1059,16 @@ async function loadSessionData() {
   }
 
   try {
-    const { paper, favoriteQuestionIds: initialFavoriteQuestionIds } =
-      await fetchPracticePaper(paperId)
+    const loaded = collectionMode.value
+      ? await loadCollectionPaper(paperId)
+      : await fetchPracticePaper(paperId)
     if (sequence !== loadSequence) return
+    const { paper } = loaded
+    // 收藏练习里全部题目本身就是收藏题；错题练习按常规收藏状态展示
+    const initialFavoriteQuestionIds =
+      collectionMode.value && collectionSource.value === 'favorites'
+        ? paper.sections.flatMap((section) => section.items.map((item) => item.id))
+        : loaded.favoriteQuestionIds
 
     const questions: QuestionListItem[] = []
     const groups: QuestionSheetGroup[] = []
@@ -1012,6 +1096,9 @@ async function loadSessionData() {
     currentQuestions.value = questions
     questionSheetGroups.value = groups
     questionFingerprints.value = fingerprints
+    paperItemsById.value = new Map(
+      paper.sections.flatMap((section) => section.items.map((item) => [item.id, item])),
+    )
     favoriteQuestionIds.value = new Set(initialFavoriteQuestionIds)
     if (questions.length === 0) {
       sessionLoadState.value = 'empty'
@@ -1026,7 +1113,7 @@ async function loadSessionData() {
     draftUserId.value = userId
     draftPaperId.value = paperId
     const savedDraft = readPracticeDraft(userId, paperId)
-    if (savedDraft?.pendingSubmissionId) {
+    if (savedDraft?.pendingSubmissionId && !collectionMode.value) {
       let submission: PracticeSubmission | null = null
       try {
         submission = await fetchPracticeSubmission(paperId, savedDraft.pendingSubmissionId)
@@ -1445,6 +1532,6 @@ watch(
       </template>
     </BaseDialog>
 
-    <StudySettingsModal v-model="settingsModalOpen" section="practice" />
+    <StudySettingsModal v-model="settingsModalOpen" />
   </section>
 </template>

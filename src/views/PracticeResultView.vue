@@ -4,12 +4,14 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { fetchPracticePaper, fetchPracticeSubmission } from '@/api/practice'
+import { readLocalPracticeResult } from '@/utils/practice-result'
 import BaseModal from '@/components/common/BaseModal.vue'
 import { ROUTE_NAMES } from '@/constants/app'
 import { QUESTION_TYPE_LABELS } from '@/constants/domain'
 import { useAppStore } from '@/stores/app'
 import type {
   PracticePaperDetail,
+
   PracticePaperItem,
   PracticeResultQuestion,
   PracticeResultQuestionStatus,
@@ -39,6 +41,8 @@ const paperId = computed(() =>
 const submissionId = computed(() =>
   typeof route.query.submissionId === 'string' ? route.query.submissionId : '',
 )
+/** 收藏/错题练习：结果来自会话快照（query.local=1），不请求服务端 */
+const isLocalResult = computed(() => route.query.local === '1')
 
 const filteredQuestions = computed(() => {
   const questions = result.value?.questions ?? []
@@ -187,13 +191,65 @@ function buildSubmissionResult(
   }
 }
 
+function buildLocalResult(): PracticeSubmissionResult | null {
+  const snapshot = readLocalPracticeResult()
+  if (!snapshot) return null
+
+  let index = 0
+  const questions = snapshot.paper.sections.flatMap((group) =>
+    group.items.map((item) => {
+      index += 1
+      const answer = snapshot.userAnswers[item.id]
+      const userAnswer = Array.isArray(answer) ? answer.join('、') : (answer ?? '')
+      return {
+        id: item.id,
+        index,
+        title: item.title,
+        questionType: item.questionType as QuestionType,
+        userAnswer,
+        correctAnswer: item.correctAnswer,
+        explanation: item.explanation ?? undefined,
+        status: paperQuestionStatus(item, userAnswer),
+      }
+    }),
+  )
+  const correctCount = questions.filter((question) => question.status === 'correct').length
+  const wrongCount = questions.filter((question) => question.status === 'wrong').length
+  const unansweredCount = questions.filter((question) => question.status === 'unanswered').length
+  const totalCount = questions.length
+  const gradedCount = correctCount + wrongCount
+
+  return {
+    submissionId: '',
+    paperId: paperId.value,
+    paperName: snapshot.paper.name,
+    subjectName: typeof route.query.subject === 'string' ? route.query.subject : '',
+    score: gradedCount > 0 ? Math.round((correctCount / gradedCount) * 100) : null,
+    totalCount,
+    answeredCount: totalCount - unansweredCount,
+    correctCount,
+    wrongCount,
+    unansweredCount,
+    accuracy: gradedCount > 0 ? Math.round((correctCount / gradedCount) * 100) : 0,
+    submittedAt: snapshot.submittedAt,
+    questions,
+  }
+}
+
 async function loadResult() {
   const requestId = ++loadRequestId
   loading.value = true
   loadError.value = false
   result.value = null
-  if (!paperId.value || !submissionId.value) {
+  if (!paperId.value || (!submissionId.value && !isLocalResult.value)) {
     loadError.value = true
+    loading.value = false
+    return
+  }
+
+  if (isLocalResult.value) {
+    result.value = buildLocalResult()
+    if (!result.value) loadError.value = true
     loading.value = false
     return
   }

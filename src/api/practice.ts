@@ -45,9 +45,7 @@ export function submitPracticePaper(paperId: string, payload: SubmitPracticePape
 
 /** 文档:GET /api/practice/papers/:paperId/submissions/:submissionId */
 export function fetchPracticeSubmission(paperId: string, submissionId: string) {
-  return request<PracticeSubmission>(
-    `/practice/papers/${paperId}/submissions/${submissionId}`,
-  )
+  return request<PracticeSubmission>(`/practice/papers/${paperId}/submissions/${submissionId}`)
 }
 
 /** 文档:GET /api/practice/settings */

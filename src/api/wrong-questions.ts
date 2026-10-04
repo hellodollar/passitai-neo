@@ -1,10 +1,22 @@
-import { normalizePagination, request } from '@/api/http'
-import type { PaginationResult, WrongQuestion } from '@/types/domain'
+import { request } from '@/api/http'
+import type {
+  CollectionAggregate,
+  CollectionContext,
+  CollectionPracticePaper,
+  PaginationResult,
+  WrongQuestion,
+} from '@/types/domain'
+import type { CollectionGroupBy, CollectionOrder } from '@/api/favorites'
 
-/** 文档:GET /api/wrong-questions?page=&limit=&subjectId=&paperId= */
-export function fetchWrongQuestions(
-  query: { page?: number; limit?: number; subjectId?: string; paperId?: string } = {},
-) {
+export type WrongQuestionListQuery = {
+  page?: number
+  limit?: number
+  subjectId?: string
+  paperId?: string
+}
+
+/** GET /api/wrong-questions?page=&limit=&subjectId=&paperId=，分页错题列表 */
+export function fetchWrongQuestions(query: WrongQuestionListQuery = {}) {
   return request<PaginationResult<WrongQuestion> | WrongQuestion[]>('/wrong-questions', {
     query: {
       page: query.page ?? 1,
@@ -12,20 +24,33 @@ export function fetchWrongQuestions(
       subjectId: query.subjectId,
       paperId: query.paperId,
     },
-  }).then(normalizePagination)
+  })
 }
 
-/** 文档:POST /api/wrong-questions，body { questionId, paperId, subjectId }，幂等 */
-export function addWrongQuestion(questionId: string, paperId: string, subjectId: string) {
-  return request<WrongQuestion>('/wrong-questions', {
+// ── 聚合查询 / 清空 / 集合练习数据:后端端点暂缺,补充后启用 ──
+export function fetchWrongQuestionAggregate(params: { groupBy?: CollectionGroupBy; order?: CollectionOrder } = {}) {
+  return request<CollectionAggregate>('/wrong-questions', { query: params })
+}
+
+/** POST /api/wrong-questions，body { questionId, subjectId, paperId }，幂等 */
+export function addWrongQuestion(payload: CollectionContext) {
+  return request<WrongQuestion | null>('/wrong-questions', {
     method: 'POST',
-    body: { questionId, paperId, subjectId },
+    body: payload,
   })
 }
 
-/** 文档:DELETE /api/wrong-questions/:id，按错题记录 ID 移除，幂等 */
+/** DELETE /api/wrong-questions/:id（wrq_ 记录 id），移除错题（幂等） */
 export function removeWrongQuestion(id: string) {
-  return request<null>(`/wrong-questions/${id}`, {
-    method: 'DELETE',
-  })
+  return request<null>(`/wrong-questions/${id}`, { method: 'DELETE' })
+}
+
+// 后端端点暂缺
+export function clearWrongQuestions() {
+  return request<null>('/wrong-questions', { method: 'DELETE' })
+}
+
+// 后端端点暂缺
+export function fetchWrongQuestionPractice(params: { subjectId?: string; paperId?: string }) {
+  return request<CollectionPracticePaper>('/wrong-questions/practice', { query: params })
 }

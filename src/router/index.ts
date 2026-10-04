@@ -49,12 +49,14 @@ const router = createRouter({
         {
           path: 'favorites',
           name: ROUTE_NAMES.favorites,
-          component: () => import('@/views/FavoritesView.vue'),
+          component: () => import('@/views/ReviewSubjectsView.vue'),
+          props: { source: 'favorites' },
         },
         {
           path: 'wrong-book',
           name: ROUTE_NAMES.wrongQuestions,
-          component: () => import('@/views/WrongQuestionsView.vue'),
+          component: () => import('@/views/ReviewSubjectsView.vue'),
+          props: { source: 'wrong-questions' },
         },
         {
           path: 'me',

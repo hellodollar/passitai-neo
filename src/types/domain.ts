@@ -52,8 +52,12 @@ export type UserMe = {
   }
 }
 
-// ---- Favorites ----
+// ---- Collection（收藏 / 错题）----
 
+/** 收藏或错题集合来源 */
+export type ReviewSource = 'favorites' | 'wrong-questions'
+
+/** 聚合查询结果：groupBy=subject 或 paper */
 export type Favorite = {
   id: string
   userId: string
@@ -65,8 +69,6 @@ export type Favorite = {
   deletedAt?: string | null
 }
 
-// ---- Wrong Questions ----
-
 export type WrongQuestion = {
   id: string
   questionId: string
@@ -75,6 +77,44 @@ export type WrongQuestion = {
   title: string | null
   paperName: string | null
   createdAt: string
+}
+
+/** 收藏/记错上下文:后端按 (questionId, subjectId, paperId) 幂等收录 */
+export type CollectionContext = {
+  questionId: string
+  subjectId: string
+  paperId: string
+}
+
+export type CollectionAggregate = {
+  items: CollectionAggregateItem[]
+  totalQuestionCount: number
+}
+
+export type CollectionAggregateItem = {
+  subjectId: string
+  subjectName: string
+  questionCount: number
+  /** 仅 groupBy=paper 时返回 */
+  paperId?: string
+  paperName?: string
+}
+
+/** 收藏/错题练习数据：与练习题集 paper 同构（无 type/assessmentType/latestRecord） */
+export type CollectionPracticePaper = {
+  paper: PracticePaperLite
+}
+
+export type PracticePaperLite = {
+  id: string
+  name: string
+  subjectId: string
+  questionCount: number
+  sections: Array<{
+    name: string
+    questionType?: QuestionType
+    items: PracticePaperItem[]
+  }>
 }
 
 // ---- Catalog ----

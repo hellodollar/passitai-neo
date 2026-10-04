@@ -668,7 +668,7 @@ watch(
       </div>
     </BaseModal>
 
-    <StudySettingsModal v-model="settingsModalOpen" section="practice" />
+    <StudySettingsModal v-model="settingsModalOpen" />
 
     <PracticePlanModal v-model="planModalOpen" :plan="plan" @updated="handlePlanUpdated" />
   </section>
