@@ -13,11 +13,14 @@ const props = withDefaults(
     settings?: PracticeSettings | null
     /** 聚合模式下是否显示分组标题 */
     showHeader?: boolean
+    /** 是否显示错题设置分组（答对自动移除错题），仅"我的-刷题设置"弹框开启 */
+    showMistakeSettings?: boolean
   }>(),
   {
     active: false,
     settings: null,
     showHeader: false,
+    showMistakeSettings: false,
   },
 )
 
@@ -34,6 +37,7 @@ const practiceSettings = ref({
   showAnalysis: true,
   loopPractice: false,
   autoSubmit: false,
+  removeMistakeOnCorrect: false,
 })
 const loaded = ref(false)
 
@@ -43,6 +47,7 @@ let lastValues = {
   showAnalysis: true,
   loopPractice: false,
   autoSubmit: false,
+  removeMistakeOnCorrect: false,
 }
 
 function applySettings(settings: PracticeSettings) {
@@ -52,6 +57,7 @@ function applySettings(settings: PracticeSettings) {
     showAnalysis: Boolean(settings.showExplanationAfterAnswer),
     loopPractice: Boolean(settings.loopAfterCompletion),
     autoSubmit: Boolean(settings.autoSubmitAfterCompletion),
+    removeMistakeOnCorrect: Boolean(settings.removeMistakeOnCorrect),
   }
   practiceSettings.value = next
   lastValues = { ...next }
@@ -99,6 +105,10 @@ watch(
       payload.autoSubmitAfterCompletion = settings.autoSubmit
       lastValues.autoSubmit = settings.autoSubmit
     }
+    if (settings.removeMistakeOnCorrect !== lastValues.removeMistakeOnCorrect) {
+      payload.removeMistakeOnCorrect = settings.removeMistakeOnCorrect
+      lastValues.removeMistakeOnCorrect = settings.removeMistakeOnCorrect
+    }
 
     if (Object.keys(payload).length === 0) return
 
@@ -112,6 +122,7 @@ watch(
           showExplanationAfterAnswer: s.showAnalysis,
           loopAfterCompletion: s.loopPractice,
           autoSubmitAfterCompletion: s.autoSubmit,
+          removeMistakeOnCorrect: s.removeMistakeOnCorrect,
         })
       })
       .catch(() => {})
@@ -166,5 +177,15 @@ watch(
       title="记录错题"
       description="自动收集答错的题目到错题本"
     />
+
+    <!-- 错题设置分组：仅"我的-刷题设置"弹框显示 -->
+    <template v-if="showMistakeSettings">
+      <h4 class="mt-2 text-[13px] font-semibold text-base-content/60">错题设置</h4>
+      <SettingsToggleItem
+        v-model="practiceSettings.removeMistakeOnCorrect"
+        title="答对自动移除错题"
+        description="再次答对已收录的错题时自动移出错题本"
+      />
+    </template>
   </section>
 </template>

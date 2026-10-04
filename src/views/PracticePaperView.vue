@@ -6,14 +6,12 @@ import {
   ClipboardCheck,
   ClipboardList,
   Grid2X2,
-  Send,
   Settings,
 } from '@lucide/vue'
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import BaseDialog from '@/components/common/BaseDialog.vue'
-import BaseModal from '@/components/common/BaseModal.vue'
 import StudySettingsModal from '@/components/settings/StudySettingsModal.vue'
 import {
   addFavorite,
@@ -21,7 +19,11 @@ import {
   removeFavorite,
   removeFavoriteByRecord,
 } from '@/api/favorites'
-import { addWrongQuestion, fetchWrongQuestionPractice } from '@/api/wrong-questions'
+import {
+  addWrongQuestion,
+  fetchWrongQuestionPractice,
+  removeWrongQuestionByContext,
+} from '@/api/wrong-questions'
 import { ROUTE_NAMES } from '@/constants/app'
 import { QUESTION_TYPE_LABELS } from '@/constants/domain'
 import { useAppStore } from '@/stores/app'
@@ -126,9 +128,14 @@ type QuestionSheetGroup = {
 type SessionLoadState = 'loading' | 'ready' | 'missing' | 'empty' | 'error'
 
 const OPTION_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
+const QUESTION_SHEET_RANGE_SIZE = 20
 
 const settingsModalOpen = ref(false)
 const questionSheetOpen = ref(false)
+const questionSheetRef = ref<HTMLElement | null>(null)
+const questionSheetRangeRef = ref<HTMLElement | null>(null)
+const questionSheetContentRef = ref<HTMLElement | null>(null)
+const questionSheetRangeIndex = ref(0)
 const submitConfirmOpen = ref(false)
 const submitting = ref(false)
 const submitError = ref('')
@@ -150,6 +157,7 @@ const draftReady = ref(false)
 let draftSaveTimer: number | null = null
 let draftSaveWarningShown = false
 let loadSequence = 0
+let previousBodyOverflow = ''
 const favoriteQuestionIds = ref<Set<string>>(new Set())
 /** 加载时的原始题目数据（PracticePaperItem），供交卷本地快照使用 */
 const paperItemsById = ref<Map<string, PracticePaperItem>>(new Map())
@@ -204,6 +212,36 @@ const unansweredCount = computed(() =>
 const currentQuestionPosition = computed(() =>
   currentQuestions.value.length === 0 ? 0 : currentIndex.value + 1,
 )
+const questionSheetRanges = computed(() =>
+  Array.from(
+    { length: Math.ceil(currentQuestions.value.length / QUESTION_SHEET_RANGE_SIZE) },
+    (_, index) => {
+      const start = index * QUESTION_SHEET_RANGE_SIZE
+      const end = Math.min(start + QUESTION_SHEET_RANGE_SIZE, currentQuestions.value.length)
+      return { index, label: `${start + 1}–${end}`, start, end }
+    },
+  ),
+)
+const visibleQuestionSheetGroups = computed(() => {
+  const start = questionSheetRangeIndex.value * QUESTION_SHEET_RANGE_SIZE
+  const end = Math.min(start + QUESTION_SHEET_RANGE_SIZE, currentQuestions.value.length)
+  return questionSheetGroups.value.flatMap((group) => {
+    const visibleStart = Math.max(start, group.startIndex)
+    const visibleEnd = Math.min(end, group.startIndex + group.questions.length)
+    if (visibleStart >= visibleEnd) return []
+    return [
+      {
+        key: group.key,
+        label: group.label,
+        startIndex: visibleStart,
+        questions: group.questions.slice(
+          visibleStart - group.startIndex,
+          visibleEnd - group.startIndex,
+        ),
+      },
+    ]
+  })
+})
 const currentQuestionFavorited = computed(() =>
   currentQuestion.value ? favoriteQuestionIds.value.has(currentQuestion.value.id) : false,
 )
@@ -721,9 +759,29 @@ function submitCurrentAnswer(autoAdvance = false) {
   pendingSubmissionId.value = ''
   saveDraftNow()
   void recordWrongAnswer(question, record)
+  void removeMistakeIfCorrect(question, record)
 
   if (autoAdvance) {
     scheduleAutoAdvance()
+  }
+}
+
+/** 答对自动移除错题：设置开启且答对时移出错题本（幂等，无记录时静默） */
+async function removeMistakeIfCorrect(question: QuestionListItem, record: PracticeAnswerRecord) {
+  if (!['single', 'multiple', 'judge'].includes(question.questionType)) return
+  if (!isAnswerCorrect(record, question)) return
+
+  const userId = auth.session?.user.id
+  const settings = await practiceSettings.ensure()
+  if (!userId || auth.session?.user.id !== userId || !settings?.removeMistakeOnCorrect) return
+
+  const context = collectionContext(question.id)
+  if (!context) return
+
+  try {
+    await removeWrongQuestionByContext(context)
+  } catch {
+    // 静默失败：不打断答题流程
   }
 }
 
@@ -1169,6 +1227,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  if (questionSheetOpen.value) document.body.style.overflow = previousBodyOverflow
   saveDraftNow()
   loadSequence++
   window.removeEventListener('pagehide', saveDraftNow)
@@ -1195,6 +1254,25 @@ watch(
     if (paperId !== previousPaperId) loadSessionData()
   },
 )
+
+watch(questionSheetOpen, async (open) => {
+  if (!open) {
+    document.body.style.overflow = previousBodyOverflow
+    return
+  }
+  questionSheetRangeIndex.value = Math.floor(currentIndex.value / QUESTION_SHEET_RANGE_SIZE)
+  previousBodyOverflow = document.body.style.overflow
+  document.body.style.overflow = 'hidden'
+  await nextTick()
+  questionSheetRef.value?.focus()
+  questionSheetRangeRef.value
+    ?.querySelector('[aria-pressed="true"]')
+    ?.scrollIntoView({ block: 'nearest', inline: 'center' })
+})
+
+watch(questionSheetRangeIndex, () => {
+  if (questionSheetContentRef.value) questionSheetContentRef.value.scrollTop = 0
+})
 </script>
 
 <template>
@@ -1429,55 +1507,106 @@ watch(
       </div>
     </section>
 
-    <BaseModal v-model="questionSheetOpen" title="答题卡" compact-footer>
-      <div class="mb-3 flex items-center gap-3 border-b border-base-200 pb-3 text-xs tabular-nums">
-        <span class="font-semibold text-base-content/70">
-          {{ answeredCount }}/{{ currentQuestions.length }} 已完成
-        </span>
-        <span class="text-success">{{ correctCount }} 正确</span>
-        <span class="text-error">{{ wrongCount }} 错误</span>
-      </div>
-
-      <div class="grid gap-2">
-        <div v-for="group in questionSheetGroups" :key="group.key">
-          <p class="mb-1.5 text-[13px] font-medium text-base-content/50">
-            {{ group.label }}（{{ group.questions.length }}题）
-          </p>
-          <div class="grid grid-cols-7 justify-items-center gap-1.5 sm:grid-cols-10">
+    <Teleport to="body">
+      <div
+        v-if="questionSheetOpen"
+        class="fixed inset-0 z-50 flex items-end justify-center bg-base-content/40 sm:items-center sm:px-4"
+        @click.self="questionSheetOpen = false"
+      >
+        <section
+          ref="questionSheetRef"
+          class="flex max-h-[min(60dvh,24rem)] w-full max-w-[32rem] flex-col overflow-hidden rounded-t-2xl border-t border-base-200 bg-base-100 sm:rounded-2xl sm:border"
+          role="dialog"
+          aria-modal="true"
+          aria-label="答题进度"
+          tabindex="-1"
+          @keydown.esc="questionSheetOpen = false"
+        >
+          <div class="flex h-13 shrink-0 items-center gap-3 border-b border-base-200 px-4">
+            <span class="shrink-0 text-[15px] font-semibold tabular-nums">
+              {{ answeredCount }}/{{ currentQuestions.length }}
+            </span>
+            <div class="flex min-w-0 flex-1 items-center gap-3 text-xs tabular-nums">
+              <span class="flex items-center gap-1 text-base-content/55">
+                <span class="size-1.5 rounded-full bg-success"></span>
+                对 {{ correctCount }}
+              </span>
+              <span class="flex items-center gap-1 text-base-content/55">
+                <span class="size-1.5 rounded-full bg-error"></span>
+                错 {{ wrongCount }}
+              </span>
+            </div>
+            <!-- 收藏/错题训练为纯刷题，不提供交卷。 -->
             <button
-              v-for="(question, offset) in group.questions"
-              :key="question.id"
-              class="flex size-9 items-center justify-center rounded-full border text-xs font-medium tabular-nums transition active:scale-90"
-              :class="[
-                questionResultClasses(question),
-                currentIndex === group.startIndex + offset
-                  ? 'ring-2 ring-base-content/20 ring-offset-1 ring-offset-base-100'
-                  : '',
-              ]"
+              v-if="!collectionMode"
+              class="h-9 shrink-0 rounded-lg border border-primary/30 px-3 text-[13px] font-medium text-primary transition-colors active:bg-primary/10"
               type="button"
-              :aria-current="currentIndex === group.startIndex + offset ? 'step' : undefined"
-              @click="goToQuestion(group.startIndex + offset)"
+              :disabled="currentQuestions.length === 0"
+              @click="requestSubmitSession"
             >
-              {{ group.startIndex + offset + 1 }}
+              交卷
             </button>
           </div>
-        </div>
-      </div>
 
-      <template #footer>
-        <!-- 收藏/错题训练为纯刷题，不提供交卷 -->
-        <button
-          v-if="!collectionMode"
-          class="btn btn-primary h-10 min-h-10 w-full rounded-xl text-sm"
-          type="button"
-          :disabled="currentQuestions.length === 0"
-          @click="requestSubmitSession"
-        >
-          <Send :size="15" />
-          交卷
-        </button>
-      </template>
-    </BaseModal>
+          <div
+            v-if="questionSheetRanges.length > 1"
+            ref="questionSheetRangeRef"
+            class="flex shrink-0 gap-1.5 overflow-x-auto border-b border-base-200 px-4 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            role="group"
+            aria-label="题号区间"
+          >
+            <button
+              v-for="range in questionSheetRanges"
+              :key="range.index"
+              class="shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-medium tabular-nums transition-colors"
+              :class="
+                questionSheetRangeIndex === range.index
+                  ? 'bg-primary/10 text-primary'
+                  : 'text-base-content/55 active:bg-base-200'
+              "
+              type="button"
+              :aria-label="`第 ${range.start + 1} 至 ${range.end} 题`"
+              :aria-pressed="questionSheetRangeIndex === range.index"
+              @click="questionSheetRangeIndex = range.index"
+            >
+              {{ range.label }}
+            </button>
+          </div>
+
+          <div
+            ref="questionSheetContentRef"
+            class="min-h-0 overflow-y-auto overscroll-contain px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-2 sm:pb-4"
+          >
+            <section v-for="group in visibleQuestionSheetGroups" :key="group.key" class="pt-2">
+              <p class="mb-2 text-xs font-medium text-base-content/50">
+                {{ group.label }} · {{ group.questions.length }}题
+              </p>
+              <div
+                class="grid grid-cols-6 justify-items-center gap-x-1 gap-y-2 min-[375px]:grid-cols-7 min-[375px]:gap-x-2 sm:grid-cols-8"
+              >
+                <button
+                  v-for="(question, offset) in group.questions"
+                  :key="group.startIndex + offset"
+                  class="flex size-10 items-center justify-center rounded-full border text-xs font-medium tabular-nums transition-colors active:opacity-70"
+                  :class="[
+                    questionResultClasses(question),
+                    currentIndex === group.startIndex + offset
+                      ? 'ring-2 ring-primary/60 ring-offset-1 ring-offset-base-100'
+                      : '',
+                  ]"
+                  type="button"
+                  :aria-label="`第 ${group.startIndex + offset + 1} 题`"
+                  :aria-current="currentIndex === group.startIndex + offset ? 'step' : undefined"
+                  @click="goToQuestion(group.startIndex + offset)"
+                >
+                  {{ group.startIndex + offset + 1 }}
+                </button>
+              </div>
+            </section>
+          </div>
+        </section>
+      </div>
+    </Teleport>
 
     <BaseDialog v-model="submitConfirmOpen" title="确认交卷" :close-on-backdrop="!submitting">
       <p

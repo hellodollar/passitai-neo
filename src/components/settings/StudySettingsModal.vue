@@ -9,9 +9,12 @@ const props = withDefaults(
   defineProps<{
     /** 外部聚合数据(如 /api/me 的 preferences.practice)。 */
     settings?: PracticeSettings | null
+    /** 是否显示错题设置分组，仅"我的-刷题设置"弹框开启 */
+    showMistakeSettings?: boolean
   }>(),
   {
     settings: null,
+    showMistakeSettings: false,
   },
 )
 
@@ -25,6 +28,7 @@ const emit = defineEmits<{
     <PracticeSettingsSection
       :active="model"
       :settings="props.settings"
+      :show-mistake-settings="props.showMistakeSettings"
       @saved="emit('saved', $event)"
     />
   </BaseModal>

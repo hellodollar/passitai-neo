@@ -250,6 +250,8 @@ export type PracticeSettings = {
   showExplanationAfterAnswer: boolean
   loopAfterCompletion: boolean
   autoSubmitAfterCompletion: boolean
+  /** 答对自动移除错题 */
+  removeMistakeOnCorrect: boolean
 }
 
 export type NotificationSettings = {

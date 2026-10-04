@@ -48,7 +48,7 @@ const sortField = ref<SortField>('recent')
 const sortOrder = ref<SortOrder>('desc')
 
 const isFavorites = computed(() => props.source === 'favorites')
-const pageTitle = computed(() => (isFavorites.value ? '收藏题目' : '错题本'))
+const pageTitle = computed(() => (isFavorites.value ? '我的收藏' : '我的错题'))
 const emptyTitle = computed(() => (isFavorites.value ? '暂无收藏' : '暂无错题'))
 const emptyDescription = computed(() =>
   isFavorites.value ? '练习时收藏的题目会出现在这里。' : '答错的题目会收集到这里。',

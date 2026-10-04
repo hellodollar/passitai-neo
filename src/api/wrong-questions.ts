@@ -21,6 +21,14 @@ export function addWrongQuestion(payload: CollectionContext) {
   })
 }
 
+/** 文档:DELETE /api/wrong-questions，body 三元组，答对自动移除错题（幂等） */
+export function removeWrongQuestionByContext(payload: CollectionContext) {
+  return request<null>('/wrong-questions', {
+    method: 'DELETE',
+    body: payload,
+  })
+}
+
 /** 文档:DELETE /api/wrong-questions/:recordId，按错题记录 ID 移除（错题训练页），幂等 */
 export function removeWrongQuestion(recordId: string) {
   return request<null>(`/wrong-questions/${recordId}`, { method: 'DELETE' })

@@ -184,6 +184,7 @@ interface PracticeSettings {
   showExplanationAfterAnswer: boolean
   loopAfterCompletion: boolean
   autoSubmitAfterCompletion: boolean
+  removeMistakeOnCorrect: boolean // 答对自动移除错题，默认 false
 }
 ```
 
@@ -394,11 +395,14 @@ sections 内的收藏题；按题型重新分组、按收藏时间倒序。返�
 | `GET`    | `/api/wrong-questions?groupBy=&order=`                   | 聚合查询错题（默认按科目）                 | 可用 |
 | `POST`   | `/api/wrong-questions`                                   | 记错题（幂等，更新最近错题题集上下文）     | 可用 |
 | `DELETE` | `/api/wrong-questions/:recordId`                         | 按错题记录 ID 移除（错题训练页）           | 可用 |
+| `DELETE` | `/api/wrong-questions`                                   | 按三元组移除错题（答对自动移除，幂等）     | 可用 |
 | `DELETE` | `/api/wrong-questions/all`                               | 清空当前用户全部错题                       | 可用 |
 | `GET`    | `/api/wrong-questions/practice?subjectId=` / `?paperId=` | 错题练习数据（与练习题集 paper 同构）      | 可用 |
 
 记错题请求体与收藏三元组相同；重复记错保持原收录时间并更新题集上下文为最近一次发生
-错误的题集。聚合、练习（`collectionRecordId` 为 `wrq_` 前缀）、清空的行为与收藏模块
+错误的题集。`DELETE /api/wrong-questions`（body 三元组）供"答对自动移除错题"设置使用：
+练习设置 `removeMistakeOnCorrect` 开启时，客户端在判对后按答题上下文调用，幂等。
+聚合、练习（`collectionRecordId` 为 `wrq_` 前缀）、清空的行为与收藏模块
 一致（见第 5 章）；错题练习同样不落服务端记录。
 
 ## 7. 字典选项模块
@@ -450,6 +454,7 @@ GET    /api/favorites/practice
 
 GET    /api/wrong-questions
 POST   /api/wrong-questions
+DELETE /api/wrong-questions
 DELETE /api/wrong-questions/:recordId
 DELETE /api/wrong-questions/all
 GET    /api/wrong-questions/practice

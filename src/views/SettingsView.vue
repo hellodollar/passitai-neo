@@ -292,6 +292,7 @@ onMounted(() => {
     <StudySettingsModal
       v-model="practiceSettingsModalOpen"
       :settings="me?.preferences.practice"
+      show-mistake-settings
       @saved="onPracticeSettingsSaved"
     />
 
