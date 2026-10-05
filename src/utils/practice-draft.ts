@@ -115,6 +115,41 @@ export function restoreDraftAnswer(
   return { questionId: question.id, text: raw.text, values: raw.values }
 }
 
+/** 仅恢复仍属于当前题集、且题目指纹未变化的作答与输入。 */
+export function restorePracticeDraft(
+  draft: PracticeDraft,
+  questions: QuestionListItem[],
+  fingerprints: Record<string, string>,
+) {
+  const answers: Record<string, PracticeAnswerRecord> = {}
+  const inputs: Record<string, PracticeDraftAnswer> = {}
+  const byId = new Map(questions.map((question) => [question.id, question]))
+
+  for (const [questionId, raw] of Object.entries(draft.answers)) {
+    const question = byId.get(questionId)
+    if (!question) continue
+    const record = restoreDraftAnswer(raw, question, fingerprints[questionId] ?? '', true)
+    if (record) answers[questionId] = record
+  }
+  for (const [questionId, raw] of Object.entries(draft.inputs)) {
+    const question = byId.get(questionId)
+    if (!question || answers[questionId]) continue
+    const record = restoreDraftAnswer(raw, question, fingerprints[questionId] ?? '', false)
+    if (record) inputs[questionId] = raw
+  }
+
+  const savedIndex = questions.findIndex((question) => question.id === draft.currentQuestionId)
+  return {
+    answers,
+    inputs,
+    currentIndex: savedIndex >= 0 ? savedIndex : 0,
+    pendingSubmissionId:
+      Object.keys(answers).length === Object.keys(draft.answers).length
+        ? draft.pendingSubmissionId
+        : '',
+  }
+}
+
 export function readPracticeDraft(userId: string, paperId: string): PracticeDraft | null {
   try {
     const raw = window.localStorage.getItem(draftKey(userId, paperId))

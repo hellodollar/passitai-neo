@@ -27,7 +27,7 @@ import { fetchPracticeEntries } from '@/api/practice'
 import { fetchPlan } from '@/api/plan'
 import { fetchMajorOptions, fetchSubjectOptions } from '@/api/options'
 import { ROUTE_NAMES } from '@/constants/app'
-import { BASELINE_CHILD_ICONS, BASELINE_CHILD_ICON_FALLBACKS } from '@/constants/practice'
+import { BASELINE_CHILD_ICONS } from '@/constants/practice'
 import { useAppStore } from '@/stores/app'
 import type {
   PracticeEntry,
@@ -164,12 +164,11 @@ const activeEntryChildren = computed(() => {
   if (!entry) return []
 
   const tone = entryToneStyles[entry.tone]
-  return (entry.children ?? []).map((child, index) => ({
+  return (entry.children ?? []).map((child) => ({
     ...child,
     icon:
       entry.type === 'baseline'
         ? ((child.assessmentType ? BASELINE_CHILD_ICONS[child.assessmentType] : undefined) ??
-          BASELINE_CHILD_ICON_FALLBACKS[index] ??
           Target)
         : entry.icon,
     iconClass: tone.icon,

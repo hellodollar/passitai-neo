@@ -134,10 +134,14 @@ export type QuestionListItem = {
   subjectId: string
   title: string
   questionType: QuestionType
-  questionCategory: string
-  status: string
-  createdBy: string
-  createdAt: string
+  A: string | null
+  B: string | null
+  C: string | null
+  D: string | null
+  E: string | null
+  F: string | null
+  correctAnswer: string
+  explanation: string | null
 }
 
 // ---- Study plan ----
@@ -185,7 +189,7 @@ export type PracticeEntry = {
 export type PracticePaperItem = {
   id: string
   title: string
-  questionType: string
+  questionType: QuestionType
   A: string | null
   B: string | null
   C: string | null

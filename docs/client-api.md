@@ -88,7 +88,7 @@ interface AuthResult {
 interface UserMe {
   user: AuthResult['user'] & { status: 'enabled' | 'disabled' }
   preferences: {
-    plan: StudyPlan
+    plan: StudyPlan | null
     practice: PracticeSettings
     notifications: NotificationSettings
   }
@@ -125,6 +125,8 @@ interface NotificationSettings {
 ```
 
 `PATCH` 接受以上字段的任意子集，并写入当前用户的 `preferences.notifications`。
+未设置时返回 `dailyReminder: false`、`reminderTime: ''`、`weeklyReport: false`；默认值以
+`src/services/client/user-preferences.ts` 为准。
 
 ## 3. 学习计划模块
 
@@ -185,11 +187,15 @@ interface PracticeSettings {
   showExplanationAfterAnswer: boolean
   loopAfterCompletion: boolean
   autoSubmitAfterCompletion: boolean
-  removeMistakeOnCorrect: boolean // 答对自动移除错题，默认 false
+  removeMistakeOnCorrect: boolean // 答对自动移除错题
 }
 ```
 
 `PATCH` 接受部分字段，并写入当前用户的 `preferences.practice`。
+未设置时返回 `autoNext: false`、`recordWrongQuestions: true`、
+`showExplanationAfterAnswer: true`、`loopAfterCompletion: false`、
+`autoSubmitAfterCompletion: false`、`removeMistakeOnCorrect: false`；默认值以
+`src/services/client/user-preferences.ts` 为准。
 
 ### 练习入口
 
@@ -200,8 +206,9 @@ interface PracticeSettings {
 或当前用户自己的题集。每个子项返回 `{ paperId, name, questionCount, answeredCount }`，其中
 `name` 直接取题集存储的名称（如 `2024年10月真题`），不拼接科目名称；
 `questionCount` 为题集 `sections` 内全部题目数之和，`answeredCount` 暂为 `0`；父项的
-`questionCount` 为全部子项之和。父项 `name`、`description` 和 `answeredCount` 保持现有固定值，
-没有匹配题集时 `children` 为 `[]`、`questionCount` 为 `0`。
+`questionCount` 为全部子项之和。父项 `name`、`description` 和 `answeredCount` 来自
+`src/constants/practice.ts` 的 `PracticeEntryPresets`（当前 `answeredCount` 依次为 0、75、12、0，
+尚非真实进度）。没有匹配题集时 `children` 为 `[]`、`questionCount` 为 `0`。
 
 `baseline`（专项训练）的 `children` 来自该科目 `type=baseline` 的题集。按以下
 `assessmentType` 顺序排列，同一类型内按题集创建时间倒序；每份题集对应一个子项，`name`

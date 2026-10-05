@@ -1,48 +1,9 @@
 import type { PracticePaperItem, QuestionListItem, QuestionType } from '@/types/domain'
 
-type RawQuestionOption =
-  | string
-  | {
-      id?: string
-      value?: string
-      label?: string
-      text?: string
-      content?: string
-      title?: string
-      name?: string
-    }
-
 export type NormalizedQuestionOption = {
   label: string
   text: string
   value: string
-}
-
-export type RichQuestionListItem = QuestionListItem & {
-  options?: RawQuestionOption[]
-  choices?: RawQuestionOption[]
-  optionList?: RawQuestionOption[]
-  optionA?: string
-  optionB?: string
-  optionC?: string
-  optionD?: string
-  optionE?: string
-  optionF?: string
-  optionG?: string
-  optionH?: string
-  option1?: string
-  option2?: string
-  option3?: string
-  option4?: string
-  option5?: string
-  option6?: string
-  option7?: string
-  option8?: string
-  answer?: string | string[]
-  correctAnswer?: string | string[]
-  referenceAnswer?: string | string[]
-  analysis?: string
-  explanation?: string
 }
 
 export type PracticeAnswerRecord = {
@@ -53,25 +14,20 @@ export type PracticeAnswerRecord = {
 
 /** 把 API 题目转换为练习页使用的题目视图模型。 */
 export function toQuestionListItem(item: PracticePaperItem, subjectId: string): QuestionListItem {
-  const richQuestion: RichQuestionListItem = {
+  return {
     id: item.id,
     subjectId,
     title: item.title,
-    questionType: item.questionType as QuestionType,
-    questionCategory: 'practice',
-    status: 'enabled',
-    createdBy: 'system',
-    createdAt: '',
-    optionA: item.A ?? undefined,
-    optionB: item.B ?? undefined,
-    optionC: item.C ?? undefined,
-    optionD: item.D ?? undefined,
-    optionE: item.E ?? undefined,
-    optionF: item.F ?? undefined,
+    questionType: item.questionType,
+    A: item.A,
+    B: item.B,
+    C: item.C,
+    D: item.D,
+    E: item.E,
+    F: item.F,
     correctAnswer: item.correctAnswer,
-    explanation: item.explanation ?? undefined,
+    explanation: item.explanation,
   }
-  return richQuestion
 }
 
 const OPTION_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
@@ -124,67 +80,31 @@ export function parseQuestionTitle(question: QuestionListItem | undefined) {
   return { title: titleLines.join('\n').trim() || title, options: parsedOptions }
 }
 
-function normalizeOption(option: RawQuestionOption, index: number): NormalizedQuestionOption | null {
+function normalizeOption(option: string, index: number): NormalizedQuestionOption | null {
   const fallbackLabel = OPTION_LETTERS[index] ?? String(index + 1)
-  if (typeof option === 'string') {
-    const parsedOption = parseOptionLine(option)
-    return parsedOption ?? { label: fallbackLabel, text: option.trim(), value: fallbackLabel }
-  }
-  const rawText = String(
-    option.text ?? option.content ?? option.title ?? option.name ?? option.value ?? '',
-  )
-  const parsedText = parseOptionLine(rawText)
-  const label = option.label ? String(option.label).trim() : (parsedText?.label ?? fallbackLabel)
-  const value = String(option.value ?? option.id ?? label)
-  const text = parsedText && !option.label ? parsedText.text : rawText.trim()
-  return text.trim() ? { label, text, value } : null
+  const parsed = parseOptionLine(option)
+  if (parsed) return parsed
+  const text = option.trim()
+  return text ? { label: fallbackLabel, text, value: fallbackLabel } : null
 }
 
 export function getQuestionOptions(question: QuestionListItem | undefined) {
   if (!question) return []
-  const richQuestion = question as RichQuestionListItem
-  const listedOptions = richQuestion.options ?? richQuestion.choices ?? richQuestion.optionList
-  if (Array.isArray(listedOptions)) {
-    const options = listedOptions
-      .map((option, index) => normalizeOption(option, index))
-      .filter((option): option is NormalizedQuestionOption => Boolean(option))
-    if (options.length > 0) return uniqueOptions(options)
-  }
   const letterOptions = [
-    richQuestion.optionA,
-    richQuestion.optionB,
-    richQuestion.optionC,
-    richQuestion.optionD,
-    richQuestion.optionE,
-    richQuestion.optionF,
-    richQuestion.optionG,
-    richQuestion.optionH,
+    question.A,
+    question.B,
+    question.C,
+    question.D,
+    question.E,
+    question.F,
   ]
     .map((option, index) => (option ? normalizeOption(option, index) : null))
     .filter((option): option is NormalizedQuestionOption => Boolean(option))
-  if (letterOptions.length > 0) return uniqueOptions(letterOptions)
-  const numberOptions = [
-    richQuestion.option1,
-    richQuestion.option2,
-    richQuestion.option3,
-    richQuestion.option4,
-    richQuestion.option5,
-    richQuestion.option6,
-    richQuestion.option7,
-    richQuestion.option8,
-  ]
-    .map((option, index) => (option ? normalizeOption(option, index) : null))
-    .filter((option): option is NormalizedQuestionOption => Boolean(option))
-  return numberOptions.length > 0 ? uniqueOptions(numberOptions) : parseQuestionTitle(question).options
+  return letterOptions.length > 0 ? uniqueOptions(letterOptions) : parseQuestionTitle(question).options
 }
 
-function formatAnswerValue(value: string | string[] | undefined) {
-  if (Array.isArray(value)) return value.join('、')
-  return value ?? ''
-}
-
-function parseChoiceAnswerValues(value: string | string[] | undefined) {
-  const tokens = formatAnswerValue(value)
+function parseChoiceAnswerValues(value: string | string[]) {
+  const tokens = (Array.isArray(value) ? value.join('、') : value)
     .trim()
     .toUpperCase()
     .split(/[\s,，、;；]/)
@@ -194,11 +114,7 @@ function parseChoiceAnswerValues(value: string | string[] | undefined) {
 }
 
 export function getReferenceAnswer(question: QuestionListItem | undefined) {
-  if (!question) return ''
-  const richQuestion = question as RichQuestionListItem
-  return formatAnswerValue(
-    richQuestion.correctAnswer ?? richQuestion.referenceAnswer ?? richQuestion.answer,
-  )
+  return question?.correctAnswer ?? ''
 }
 
 export function getCorrectOptionValues(

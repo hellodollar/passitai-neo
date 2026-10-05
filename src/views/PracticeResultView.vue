@@ -8,14 +8,11 @@ import BaseModal from '@/components/common/BaseModal.vue'
 import { ROUTE_NAMES } from '@/constants/app'
 import { QUESTION_TYPE_LABELS } from '@/constants/domain'
 import { useAppStore } from '@/stores/app'
+import { buildSubmissionResult } from '@/utils/practice-result'
 import type {
-  PracticePaperDetail,
-
-  PracticePaperItem,
   PracticeResultQuestion,
   PracticeResultQuestionStatus,
   PracticeSubmissionResult,
-  PracticeSubmission,
   QuestionType,
 } from '@/types/domain'
 
@@ -99,97 +96,6 @@ const elapsedText = computed(() => {
   return minutes > 0 ? `${minutes}分${restSeconds}秒` : `${restSeconds}秒`
 })
 
-function normalizeAnswer(answer: string, questionType: string) {
-  if (questionType === 'judge') {
-    const value = answer.trim().toUpperCase()
-    if (value === 'A' || value === 'TRUE' || value === '正确') return 'TRUE'
-    if (value === 'B' || value === 'FALSE' || value === '错误') return 'FALSE'
-  }
-  if (
-    ['single', 'multiple', 'judge'].includes(questionType) &&
-    /^[A-F\s,，、;；]+$/i.test(answer)
-  ) {
-    return [...new Set(answer.toUpperCase().match(/[A-F]/g) ?? [])].sort().join('')
-  }
-  return answer
-    .toUpperCase()
-    .split(/[\s,，、;；]/)
-    .map((value) => value.trim())
-    .filter(Boolean)
-    .sort()
-    .join(',')
-}
-
-function paperQuestionStatus(
-  item: PracticePaperItem,
-  userAnswer: string,
-): PracticeResultQuestionStatus {
-  if (!userAnswer) return 'unanswered'
-  if (!['single', 'multiple', 'judge'].includes(item.questionType)) return 'pending'
-  if (!item.correctAnswer) return 'pending'
-  return normalizeAnswer(userAnswer, item.questionType) ===
-    normalizeAnswer(item.correctAnswer, item.questionType)
-    ? 'correct'
-    : 'wrong'
-}
-
-function buildSubmissionResult(
-  detail: PracticePaperDetail,
-  submission: PracticeSubmission,
-): PracticeSubmissionResult {
-  let index = 0
-  const questions = detail.paper.sections.flatMap((group) =>
-    group.items.map((item) => {
-      index += 1
-      const answer = submission.userAnswers[item.id]
-      const userAnswer = Array.isArray(answer) ? answer.join('、') : (answer ?? '')
-      return {
-        id: item.id,
-        index,
-        title: item.title,
-        questionType: item.questionType as QuestionType,
-        userAnswer,
-        correctAnswer: item.correctAnswer,
-        explanation: item.explanation ?? undefined,
-        status: paperQuestionStatus(item, userAnswer),
-      }
-    }),
-  )
-
-  const correctCount = questions.filter((question) => question.status === 'correct').length
-  const wrongCount = questions.filter((question) => question.status === 'wrong').length
-  const unansweredCount = questions.filter((question) => question.status === 'unanswered').length
-  const totalCount = questions.length
-  const gradedCount = correctCount + wrongCount
-
-  return {
-    submissionId: submission.id,
-    paperId: paperId.value,
-    paperName: detail.paper.name,
-    subjectName: typeof route.query.subject === 'string' ? route.query.subject : '',
-    score: submission.score,
-    totalCount,
-    answeredCount: totalCount - unansweredCount,
-    correctCount,
-    wrongCount,
-    unansweredCount,
-    accuracy: gradedCount > 0 ? Math.round((correctCount / gradedCount) * 100) : 0,
-    elapsedSeconds:
-      submission.startTime && submission.endTime
-        ? Math.max(
-            0,
-            Math.round(
-              (Date.parse(submission.endTime) - Date.parse(submission.startTime)) / 1000,
-            ),
-          )
-        : undefined,
-    submittedAt: submission.endTime ?? undefined,
-    questions,
-  }
-}
-
-
-
 async function loadResult() {
   const requestId = ++loadRequestId
   loading.value = true
@@ -207,7 +113,12 @@ async function loadResult() {
       fetchPracticeSubmission(paperId.value, submissionId.value),
     ])
     if (requestId !== loadRequestId) return
-    result.value = buildSubmissionResult(detail, submission)
+    result.value = buildSubmissionResult(
+      detail,
+      submission,
+      paperId.value,
+      typeof route.query.subject === 'string' ? route.query.subject : '',
+    )
   } catch {
     if (requestId !== loadRequestId) return
     loadError.value = true

@@ -9,6 +9,3 @@ export const BASELINE_CHILD_ICONS: Record<string, typeof Target> = {
   highFrequency: Flame,
   errorProne: ShieldAlert,
 }
-
-/** 兜底顺序(旧数据缺 assessmentType 时按位置取) */
-export const BASELINE_CHILD_ICON_FALLBACKS = [Target, Flame, ShieldAlert] as const

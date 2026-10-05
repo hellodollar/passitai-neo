@@ -33,10 +33,9 @@ import { useAuthStore } from '@/stores/auth'
 import { usePracticeSettingsStore } from '@/stores/practiceSettings'
 import { fetchPracticePaper, fetchPracticeSubmission, submitPracticePaper } from '@/api/practice'
 import {
-  questionFingerprint,
   readPracticeDraft,
   removePracticeDraft,
-  restoreDraftAnswer,
+  restorePracticeDraft,
   writePracticeDraft,
   type PracticeDraftAnswer,
 } from '@/utils/practice-draft'
@@ -47,13 +46,16 @@ import {
   getReferenceAnswer,
   isAnswerCorrect,
   parseQuestionTitle,
-  toQuestionListItem,
   type PracticeAnswerRecord,
-  type RichQuestionListItem,
 } from '@/utils/practice-question'
+import {
+  preparePracticeSession,
+  toSubmissionAnswers,
+  type QuestionSheetGroup,
+} from '@/utils/practice-session'
 import { showErrorToast } from '@/utils/toast'
-import type { CollectionContext } from '@/types/domain'
 import type {
+  CollectionContext,
   PracticePaperItem,
   PracticeSubmission,
   QuestionListItem,
@@ -74,13 +76,6 @@ const collectionMode = computed(() => {
 const collectionSource = computed(() =>
   route.query.source === 'wrong-questions' ? 'wrong-questions' : 'favorites',
 )
-
-type QuestionSheetGroup = {
-  key: string
-  label: string
-  startIndex: number
-  questions: QuestionListItem[]
-}
 
 type SessionLoadState = 'loading' | 'ready' | 'missing' | 'empty' | 'error'
 
@@ -148,9 +143,7 @@ const isMultipleQuestion = computed(() => currentQuestion.value?.questionType ==
 const currentAnswerRecord = computed(() =>
   currentQuestion.value ? answerRecords.value[currentQuestion.value.id] : undefined,
 )
-const currentExplanation = computed(
-  () => (currentQuestion.value as RichQuestionListItem | undefined)?.explanation ?? '',
-)
+const currentExplanation = computed(() => currentQuestion.value?.explanation ?? '')
 const correctOptionValues = computed(
   () => new Set(getCorrectOptionValues(currentQuestion.value, resolvedQuestionOptions.value)),
 )
@@ -174,7 +167,7 @@ const currentCorrectAnswerText = computed(() => {
       .map((option) => option.label)
       .join('、')
   }
-  return (question as RichQuestionListItem).correctAnswer ?? ''
+  return question.correctAnswer
 })
 const currentUserAnswerText = computed(() => {
   const record = currentAnswerRecord.value
@@ -272,10 +265,13 @@ const canSubmitCurrentAnswer = computed(() => {
   if (expectsChoiceQuestion.value) return false
   return textAnswer.value.trim().length > 0
 })
+const questionsById = computed(
+  () => new Map(currentQuestions.value.map((question) => [question.id, question])),
+)
 const correctCount = computed(() => {
   let count = 0
   for (const record of Object.values(answerRecords.value)) {
-    const question = currentQuestions.value.find((q) => q.id === record.questionId)
+    const question = questionsById.value.get(record.questionId)
     if (
       question &&
       ['single', 'multiple', 'judge'].includes(question.questionType) &&
@@ -288,7 +284,7 @@ const correctCount = computed(() => {
 const wrongCount = computed(
   () =>
     Object.values(answerRecords.value).filter((record) => {
-      const question = currentQuestions.value.find((item) => item.id === record.questionId)
+      const question = questionsById.value.get(record.questionId)
       return (
         question &&
         ['single', 'multiple', 'judge'].includes(question.questionType) &&
@@ -592,17 +588,7 @@ async function confirmSubmitSession() {
     ).join('')}`
   }
   saveDraftNow()
-  const userAnswers = Object.fromEntries(
-    Object.values(answerRecords.value).map((record) => {
-      const question = currentQuestions.value.find((item) => item.id === record.questionId)
-      const isMultiple = question?.questionType === 'multiple'
-      const isChoice = question && ['single', 'multiple', 'judge'].includes(question.questionType)
-      return [
-        record.questionId,
-        isMultiple ? record.values : isChoice ? (record.values[0] ?? '') : record.text,
-      ]
-    }),
-  )
+  const userAnswers = toSubmissionAnswers(answerRecords.value, currentQuestions.value)
 
   let submission: PracticeSubmission
   try {
@@ -652,8 +638,6 @@ function collectionRecordOf(questionId: string): string | null {
   return paperItemsById.value.get(questionId)?.collectionRecordId ?? null
 }
 
-
-
 function goToQuestion(index: number) {
   if (index < 0 || index >= currentQuestions.value.length) return
   clearAutoAdvance()
@@ -681,13 +665,19 @@ function scheduleAutoAdvance() {
 
 async function toggleFavorite() {
   const question = currentQuestion.value
-  const paperId = route.params.paperId
-  if (!question || typeof paperId !== 'string' || !paperId) return
+  if (!question) return
   if (pendingFavoriteQuestionIds.value.has(question.id)) return
-  void paperId
+
+  const wasFavorited = favoriteQuestionIds.value.has(question.id)
+  const context = collectionContext(question.id)
+  const recordId = collectionRecordOf(question.id)
+  const removeByRecord = wasFavorited && collectionMode.value && Boolean(recordId)
+  if (!context && !removeByRecord) {
+    favoriteError.value = '当前题目缺少题集信息，无法更新收藏'
+    return
+  }
 
   favoriteError.value = ''
-  const wasFavorited = favoriteQuestionIds.value.has(question.id)
   const nextIds = new Set(favoriteQuestionIds.value)
   if (wasFavorited) {
     nextIds.delete(question.id)
@@ -700,13 +690,10 @@ async function toggleFavorite() {
   nextPendingIds.add(question.id)
   pendingFavoriteQuestionIds.value = nextPendingIds
 
-  const context = collectionContext(question.id)
-  const recordId = collectionRecordOf(question.id)
-
   try {
     if (wasFavorited) {
       // 收藏训练页按记录 ID 取消；真实题集训练页按三元组取消
-      if (collectionMode.value && recordId) {
+      if (removeByRecord && recordId) {
         await removeFavoriteByRecord(recordId)
       } else if (context) {
         await removeFavorite(context)
@@ -865,35 +852,13 @@ async function loadSessionData() {
         ? paper.sections.flatMap((section) => section.items.map((item) => item.id))
         : loaded.favoriteQuestionIds
 
-    const questions: QuestionListItem[] = []
-    const groups: QuestionSheetGroup[] = []
-    const fingerprints: Record<string, string> = {}
-
     sessionTitle.value = paper.name
-    for (const [groupIndex, group] of paper.sections.entries()) {
-      const groupQuestions = group.items.map((item) => toQuestionListItem(item, paper.subjectId))
-      group.items.forEach((item) => {
-        fingerprints[item.id] = questionFingerprint(item)
-      })
-      groups.push({
-        key: `${paper.id}-${groupIndex}`,
-        label:
-          group.name ||
-          (group.questionType
-            ? QUESTION_TYPE_LABELS[group.questionType]
-            : `Section ${groupIndex + 1}`),
-        startIndex: questions.length,
-        questions: groupQuestions,
-      })
-      questions.push(...groupQuestions)
-    }
+    const { questions, groups, fingerprints, itemsById } = preparePracticeSession(paper)
 
     currentQuestions.value = questions
     questionSheetGroups.value = groups
     questionFingerprints.value = fingerprints
-    paperItemsById.value = new Map(
-      paper.sections.flatMap((section) => section.items.map((item) => [item.id, item])),
-    )
+    paperItemsById.value = itemsById
     favoriteQuestionIds.value = new Set(initialFavoriteQuestionIds)
     if (questions.length === 0) {
       sessionLoadState.value = 'empty'
@@ -934,34 +899,12 @@ async function loadSessionData() {
     if (sequence !== loadSequence) return
 
     if (savedDraft) {
-      const restoredAnswers: Record<string, PracticeAnswerRecord> = {}
-      const restoredInputs: Record<string, PracticeDraftAnswer> = {}
-      const byId = new Map(questions.map((question) => [question.id, question]))
-
-      for (const [questionId, raw] of Object.entries(savedDraft.answers)) {
-        const question = byId.get(questionId)
-        if (!question) continue
-        const record = restoreDraftAnswer(raw, question, fingerprints[questionId] ?? '', true)
-        if (record) restoredAnswers[questionId] = record
-      }
-      for (const [questionId, raw] of Object.entries(savedDraft.inputs)) {
-        const question = byId.get(questionId)
-        if (!question || restoredAnswers[questionId]) continue
-        const record = restoreDraftAnswer(raw, question, fingerprints[questionId] ?? '', false)
-        if (record) restoredInputs[questionId] = raw
-      }
-
-      answerRecords.value = restoredAnswers
-      inputDrafts.value = restoredInputs
+      const restored = restorePracticeDraft(savedDraft, questions, fingerprints)
+      answerRecords.value = restored.answers
+      inputDrafts.value = restored.inputs
       sessionStartedAt.value = savedDraft.startedAt
-      pendingSubmissionId.value =
-        Object.keys(restoredAnswers).length === Object.keys(savedDraft.answers).length
-          ? savedDraft.pendingSubmissionId
-          : ''
-      const savedIndex = questions.findIndex(
-        (question) => question.id === savedDraft.currentQuestionId,
-      )
-      currentIndex.value = savedIndex >= 0 ? savedIndex : 0
+      pendingSubmissionId.value = restored.pendingSubmissionId
+      currentIndex.value = restored.currentIndex
     }
 
     syncCurrentDraft()
