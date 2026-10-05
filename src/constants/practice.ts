@@ -1,4 +1,12 @@
 import { Flame, ShieldAlert, Target } from '@lucide/vue'
+import type { DomainValue } from '@/generated/domain-values'
+
+export const PRACTICE_CATEGORY_LABELS: Record<DomainValue<'paperType'>, string> = {
+  baseline: '专项训练',
+  pastExam: '历年真题',
+  mock: '考前模拟',
+  ai: 'AI训练',
+}
 
 /**
  * baseline 子项(专项训练)视觉字典:assessmentType -> 图标。

@@ -2,6 +2,7 @@
 import {
   Bell,
   ChevronRight,
+  Eraser,
   GraduationCap,
   KeyRound,
   LogOut,
@@ -19,6 +20,7 @@ import BaseModal from '@/components/common/BaseModal.vue'
 import NotificationSettingsContent from '@/components/common/NotificationSettingsContent.vue'
 import StudyPlanModal from '@/components/common/StudyPlanModal.vue'
 import PracticeSettingsModal from '@/components/settings/PracticeSettingsModal.vue'
+import PracticeRecordsModal from '@/components/practice/PracticeRecordsModal.vue'
 import { useAuthStore } from '@/stores/auth'
 import type { StudyPlan, PracticeSettings, UserMe } from '@/types/domain'
 
@@ -31,9 +33,10 @@ const emailModalOpen = ref(false)
 const planModalOpen = ref(false)
 const practiceSettingsModalOpen = ref(false)
 const notificationModalOpen = ref(false)
+const recordsModalOpen = ref(false)
 const me = ref<UserMe | null>(null)
 
-type SettingsAction = 'account' | 'plan' | 'practice' | 'notification'
+type SettingsAction = 'account' | 'plan' | 'practice' | 'notification' | 'records'
 
 const displayName = computed(() => {
   const name = auth.user?.email.split('@')[0]
@@ -72,6 +75,13 @@ const menuItems = computed(() => {
       action: 'practice' as const,
     },
     {
+      title: '刷题记录',
+      subtitle: '按分类清理做题记录',
+      icon: Eraser,
+      iconClasses: 'bg-primary/10 text-primary',
+      action: 'records' as const,
+    },
+    {
       title: '通知',
       subtitle: notifications
         ? notifications.dailyReminder
@@ -86,6 +96,10 @@ const menuItems = computed(() => {
 })
 
 function openMenuItem(action: SettingsAction) {
+  if (action === 'records') {
+    recordsModalOpen.value = true
+    return
+  }
   if (action === 'account') {
     accountModalOpen.value = true
     return
@@ -294,5 +308,6 @@ onMounted(() => {
       v-model="notificationModalOpen"
       :notifications="me?.preferences.notifications"
     />
+    <PracticeRecordsModal v-model="recordsModalOpen" />
   </section>
 </template>
