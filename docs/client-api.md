@@ -154,8 +154,9 @@ interface UpdatePracticePlanBody {
 }
 ```
 
-计划存储在当前用户的 `preferences.plan`。`majorId` 必须指向存在且未删除的专业，否则返回资源不存在。
-`educationLevel`、`nextExamDate` 均从所选专业读取。
+计划存储在当前用户的 `preferences.plan`。`majorId` 必须指向启用且未删除的专业，否则返回资源不存在。
+提交的每个 `subjectId` 都必须属于该专业、启用且未删除；任一科目不符合时返回 HTTP 400、
+`code: 1002`，计划保持不变。`educationLevel`、`nextExamDate` 均从所选专业读取。
 
 用户未设置计划（新用户）、专业不存在或已删除时，`GET /api/plan` 返回 `data: null`，`/api/me` 的
 `preferences.plan` 同样为 `null`；需先调用 `PUT /api/plan` 手动设置计划。
@@ -197,25 +198,26 @@ interface PracticeSettings {
 
 `pastExam`、`mock`、`ai` 的 `children` 分别来自该科目下同类型、启用且未删除的题集，只包含平台题集
 或当前用户自己的题集。每个子项返回 `{ paperId, name, questionCount, answeredCount }`，其中
+`name` 直接取题集存储的名称（如 `2024年10月真题`），不拼接科目名称；
 `questionCount` 为题集 `sections` 内全部题目数之和，`answeredCount` 暂为 `0`；父项的
 `questionCount` 为全部子项之和。父项 `name`、`description` 和 `answeredCount` 保持现有固定值，
 没有匹配题集时 `children` 为 `[]`、`questionCount` 为 `0`。
 
-`baseline`（专项训练）的 `children` 来自该科目 `type=baseline` 的题集，按 `assessmentType`
-映射为固定子项（顺序固定，子项名取配置文案，`paperId` 为该组第一个题集）：
+`baseline`（专项训练）的 `children` 来自该科目 `type=baseline` 的题集。按以下
+`assessmentType` 顺序排列，同一类型内按题集创建时间倒序；每份题集对应一个子项，`name`
+取题集存储的名称（如 `考点通联`、`高频考点`、`易错强化`），`paperId` 指向该题集，
+`questionCount` 只统计该题集。父项题数为全部子项之和：
 
-| assessmentType  | 子项名   | 说明                           |
-| --------------- | -------- | ------------------------------ |
-| `overall`       | 考点通练 | 按大纲全面覆盖，逐考点建立基准 |
-| `highFrequency` | 高频考点 | 聚焦历年高频考点，优先突破重点 |
-| `errorProne`    | 易错强化 | 针对易错点定向强化，查漏补缺   |
+`overall` → `highFrequency` → `errorProne`。该顺序由 `PaperAssessmentPreset` 定义；
+`assessmentType` 只用于排序和客户端图标，不覆盖题集名称。
 
-baseline 子项额外返回 `assessmentType` 字段（取值见上表），供客户端做差异化展示；
-该科目缺少某 `assessmentType` 的 baseline 题集时跳过对应子项。四类入口的作答进度尚未接入练习记录。
+baseline 子项额外返回 `assessmentType` 字段（取值见上文），供客户端做差异化展示；
+该科目缺少某 `assessmentType` 的 baseline 题集时跳过对应类型。四类入口的作答进度尚未接入练习记录。
 
 ### 题集详情与最近练习记录
 
 `paperId` 为路径参数。只能读取启用且未删除的平台题集或当前用户自己的题集。返回结构：
+`paper.name` 与入口子项的 `name` 同源，直接展示题集名称，不拼接科目名。
 
 ```ts
 type QuestionType = 'single' | 'multiple' | 'judge' | 'nounExplain' | 'shortAnswer' | 'essay'
@@ -269,9 +271,11 @@ Section 的所有题目都与 `questionType` 一致；缺失 `questionType` 表�
 不同题型。客户端不得把通用 Section 强制拆分或重新按题型排序，渲染题目时应使用每个 item 自身的
 `questionType`。
 
-`favoriteQuestionIds` 按题集中的题目顺序返回当前用户在该题集下仍有效的收藏题目 ID；仅包含本次
-`paper.sections[].items` 实际返回的题目。没有收藏时返回 `[]`，不受 `/api/favorites` 分页限制。
-收藏或取消收藏成功后，再次获取本接口会反映最新状态。
+`favoriteQuestionIds` 按题集中的题目顺序返回当前用户已收藏、且本次
+`paper.sections[].items` 实际返回的题目 ID。收藏状态以 `userId + questionId` 为准；
+`favorites.paperId` 仅记录最近一次收藏发生的题集上下文，不限制此处的收藏状态。
+同一道题出现在其他题集时也显示为已收藏。没有收藏时返回 `[]`，不受 `/api/favorites`
+分页限制；收藏或取消收藏成功后，再次获取本接口会反映最新状态。
 
 题型和同类型 Section 的默认中文文案由 API `src/constants/question.ts` 的 `QuestionTypeLabels`
 维护，同步到 Neo/Dash 的 `src/generated/domain-values.ts`：`single`→`单选题`、
@@ -297,7 +301,8 @@ interface SubmitPracticePaperBody {
 
 服务端只接受当前用户可读取的启用题集，校验每道答案对应题集内的有效题目及选项。
 每次新交卷都在 0006 `practice_records` 表创建独立记录；相同 `submissionId`、题集、
-用户及答案的重试返回同一记录，不重复写入；同 ID 对应其他作答时返回 HTTP 409。
+用户及答案的重试返回同一记录，不重复写入；答案对象的字段顺序、多选答案顺序不影响重试判定。
+同 ID 对应其他作答时返回 HTTP 409。
 请求校验失败不创建记录。
 `POST` 返回 HTTP 201，`GET /api/practice/papers/:paperId/submissions/:submissionId` 返回
 当前用户、当前题集的指定已完成记录：
@@ -335,7 +340,8 @@ interface PracticeSubmission {
 { "questionId": "qst_xxx", "subjectId": "sub_xxx", "paperId": "pap_xxx" }
 ```
 
-题目、题集必须有效且题在题集中，否则 404（`code 4001`）；重复收藏更新题集上下文并保持
+题目、题集必须启用、未删除且属于平台或当前用户，题目须在题集中，否则 404（`code 4001`）；
+重复收藏更新题集上下文并保持
 原收藏时间。收藏训练页（practice 接口）里按返回的 `collectionRecordId` 取消，记录 ID
 唯一，无需其他上下文；重复取消保持幂等。
 
@@ -349,21 +355,23 @@ interface PracticeSubmission {
 }
 ```
 
-返回结构（只统计题目启用且可见、科目/题集启用未删的记录）：
+返回结构（只统计题目启用且可见、对应科目/题集启用未删的记录；
+`totalQuestionCount` 为当前分组下各组 `questionCount` 之和）：
 
 ```ts
 // groupBy=subject（默认）
-{ items: Array<{ subjectId: string; subjectName: string; questionCount: number }>, totalQuestionCount: number }
+{ items: Array<{ subjectId: string; subjectName: string; questionCount: number; lastCollectedAt: string }>, totalQuestionCount: number }
 
 // groupBy=paper：按记录固化的题集上下文分组
-{ items: Array<{ paperId: string; paperName: string; subjectId: string; subjectName: string; questionCount: number }>, totalQuestionCount: number }
+{ items: Array<{ paperId: string; paperName: string; subjectId: string; subjectName: string; questionCount: number; lastCollectedAt: string }>, totalQuestionCount: number }
 ```
 
 练习接口 `subjectId` 与 `paperId` 二选一：按科目取该科目全部收藏题，按题集取该题集
 sections 内的收藏题；按题型重新分组、按收藏时间倒序。返回与
 `GET /api/practice/papers/:paperId` 的 `paper` 同构（无 `type`/`assessmentType`/
 `latestRecord`/`favoriteQuestionIds`）。收藏训练为纯刷题：**不提供交卷**，不产生任何
-服务端记录；`items` 额外携带收录上下文供取消操作使用：
+服务端记录。分组默认名称使用统一题型文案（如 `single`→`单选题`、`multiple`→`多选题`）；
+`items` 额外携带收录上下文供取消操作使用：
 
 ```ts
 {
@@ -399,7 +407,7 @@ sections 内的收藏题；按题型重新分组、按收藏时间倒序。返�
 | `DELETE` | `/api/wrong-questions/all`                               | 清空当前用户全部错题                       | 可用 |
 | `GET`    | `/api/wrong-questions/practice?subjectId=` / `?paperId=` | 错题练习数据（与练习题集 paper 同构）      | 可用 |
 
-记错题请求体与收藏三元组相同；重复记错保持原收录时间并更新题集上下文为最近一次发生
+记错题请求体与收藏三元组相同，沿用题目、题集的可见性校验；重复记错保持原收录时间并更新题集上下文为最近一次发生
 错误的题集。`DELETE /api/wrong-questions`（body 三元组）供"答对自动移除错题"设置使用：
 练习设置 `removeMistakeOnCorrect` 开启时，客户端在判对后按答题上下文调用，幂等。
 聚合、练习（`collectionRecordId` 为 `wrq_` 前缀）、清空的行为与收藏模块

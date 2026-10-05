@@ -1,4 +1,9 @@
-import type { PracticePaperItem } from '@/types/domain'
+import type { PracticePaperItem, QuestionListItem } from '@/types/domain'
+import {
+  getPreviewOptions,
+  getQuestionOptions,
+  type PracticeAnswerRecord,
+} from '@/utils/practice-question'
 
 const DRAFT_PREFIX = 'passitai:practice-draft:v1:'
 const DRAFT_VERSION = 1
@@ -78,6 +83,36 @@ export function questionFingerprint(question: PracticePaperItem) {
     hash = Math.imul(hash ^ content.charCodeAt(index), 16777619)
   }
   return (hash >>> 0).toString(16).padStart(8, '0')
+}
+
+/** 恢复草稿时校验题目内容和选项，避免旧答案套用到已变化的题目。 */
+export function restoreDraftAnswer(
+  raw: PracticeDraftAnswer,
+  question: QuestionListItem,
+  fingerprint: string,
+  confirmed: boolean,
+): PracticeAnswerRecord | null {
+  if (raw.fingerprint !== fingerprint) return null
+
+  const choice = ['single', 'multiple', 'judge'].includes(question.questionType)
+  if (choice) {
+    const options = getQuestionOptions(question)
+    const allowed = new Set(
+      (options.length > 0 ? options : getPreviewOptions(question.questionType)).map(
+        (option) => option.value,
+      ),
+    )
+    if (
+      raw.values.some((value) => !allowed.has(value)) ||
+      (question.questionType !== 'multiple' && raw.values.length > 1) ||
+      (confirmed && raw.values.length === 0)
+    )
+      return null
+  } else if (raw.values.length > 0 || (confirmed && !raw.text.trim())) {
+    return null
+  }
+
+  return { questionId: question.id, text: raw.text, values: raw.values }
 }
 
 export function readPracticeDraft(userId: string, paperId: string): PracticeDraft | null {

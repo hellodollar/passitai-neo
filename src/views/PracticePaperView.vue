@@ -2,11 +2,13 @@
 import {
   ArrowLeft,
   Bookmark,
+  CheckCircle2,
   CircleAlert,
   ClipboardCheck,
   ClipboardList,
   Grid2X2,
   Settings,
+  XCircle,
 } from '@lucide/vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -34,16 +36,27 @@ import {
   questionFingerprint,
   readPracticeDraft,
   removePracticeDraft,
+  restoreDraftAnswer,
   writePracticeDraft,
   type PracticeDraftAnswer,
 } from '@/utils/practice-draft'
+import {
+  getCorrectOptionValues,
+  getPreviewOptions,
+  getQuestionOptions,
+  getReferenceAnswer,
+  isAnswerCorrect,
+  parseQuestionTitle,
+  toQuestionListItem,
+  type PracticeAnswerRecord,
+  type RichQuestionListItem,
+} from '@/utils/practice-question'
 import { showErrorToast } from '@/utils/toast'
 import type { CollectionContext } from '@/types/domain'
 import type {
   PracticePaperItem,
   PracticeSubmission,
   QuestionListItem,
-  QuestionType,
 } from '@/types/domain'
 
 const router = useRouter()
@@ -62,62 +75,6 @@ const collectionSource = computed(() =>
   route.query.source === 'wrong-questions' ? 'wrong-questions' : 'favorites',
 )
 
-type RawQuestionOption =
-  | string
-  | {
-      id?: string
-      value?: string
-      label?: string
-      text?: string
-      content?: string
-      title?: string
-      name?: string
-    }
-
-type NormalizedQuestionOption = {
-  label: string
-  text: string
-  value: string
-}
-
-type RichQuestionListItem = QuestionListItem & {
-  options?: RawQuestionOption[]
-  choices?: RawQuestionOption[]
-  optionList?: RawQuestionOption[]
-  optionA?: string
-  optionB?: string
-  optionC?: string
-  optionD?: string
-  optionE?: string
-  optionF?: string
-  optionG?: string
-  optionH?: string
-  option1?: string
-  option2?: string
-  option3?: string
-  option4?: string
-  option5?: string
-  option6?: string
-  option7?: string
-  option8?: string
-  answer?: string | string[]
-  correctAnswer?: string | string[]
-  referenceAnswer?: string | string[]
-  analysis?: string
-  explanation?: string
-}
-
-type ParsedQuestionTitle = {
-  title: string
-  options: NormalizedQuestionOption[]
-}
-
-type PracticeAnswerRecord = {
-  questionId: string
-  text: string
-  values: string[]
-}
-
 type QuestionSheetGroup = {
   key: string
   label: string
@@ -127,7 +84,6 @@ type QuestionSheetGroup = {
 
 type SessionLoadState = 'loading' | 'ready' | 'missing' | 'empty' | 'error'
 
-const OPTION_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
 const QUESTION_SHEET_RANGE_SIZE = 20
 
 const settingsModalOpen = ref(false)
@@ -140,7 +96,7 @@ const submitConfirmOpen = ref(false)
 const submitting = ref(false)
 const submitError = ref('')
 const pendingSubmissionId = ref('')
-const sessionTitles = ref<string[]>([])
+const sessionTitle = ref('')
 const sessionStartedAt = ref(Date.now())
 
 const currentQuestions = ref<QuestionListItem[]>([])
@@ -177,11 +133,7 @@ const resolvedQuestionOptions = computed(() => {
   if (currentQuestionOptions.value.length > 0) return currentQuestionOptions.value
   return getPreviewOptions(currentQuestion.value?.questionType)
 })
-const currentSessionTitle = computed(() => {
-  if (sessionTitles.value.length === 0) return '练习'
-  if (sessionTitles.value.length === 1) return sessionTitles.value[0]!
-  return `${sessionTitles.value[0]!} 等 ${sessionTitles.value.length} 套`
-})
+const currentSessionTitle = computed(() => sessionTitle.value || '练习')
 const sessionSubjectName = computed(() => {
   const subject = route.query.subject
   return typeof subject === 'string' ? subject : ''
@@ -205,10 +157,31 @@ const correctOptionValues = computed(
 const showOptionFeedback = computed(
   () => Boolean(currentAnswerRecord.value) && correctOptionValues.value.size > 0,
 )
+
+const currentAnswerCorrect = computed(() => {
+  const question = currentQuestion.value
+  const record = currentAnswerRecord.value
+  return Boolean(question && record && isAnswerCorrect(record, question))
+})
+
+/** 横幅里的正确答案文案:选择题取选项字母,其余取参考答案 */
+const currentCorrectAnswerText = computed(() => {
+  const question = currentQuestion.value
+  if (!question) return ''
+  if (correctOptionValues.value.size > 0) {
+    return resolvedQuestionOptions.value
+      .filter((option) => correctOptionValues.value.has(option.value))
+      .map((option) => option.label)
+      .join('、')
+  }
+  return (question as RichQuestionListItem).correctAnswer ?? ''
+})
 const answeredCount = computed(() => Object.keys(answerRecords.value).length)
 const unansweredCount = computed(() =>
   Math.max(0, currentQuestions.value.length - answeredCount.value),
 )
+const isLastQuestion = computed(() => currentIndex.value >= currentQuestions.value.length - 1)
+
 const currentQuestionPosition = computed(() =>
   currentQuestions.value.length === 0 ? 0 : currentIndex.value + 1,
 )
@@ -319,217 +292,6 @@ const wrongCount = computed(
     }).length,
 )
 
-function parseOptionLine(line: string): NormalizedQuestionOption | null {
-  const match = line.trim().match(/^([A-Ha-h])\s*[.\u3001)\uff09:：]\s*(.+)$/)
-  if (!match?.[1] || !match?.[2]?.trim()) return null
-
-  const label = match[1].toUpperCase()
-  return {
-    label,
-    text: match[2].trim(),
-    value: label,
-  }
-}
-
-function uniqueOptions(options: NormalizedQuestionOption[]) {
-  const seen = new Set<string>()
-  return options.filter((option) => {
-    const key = option.value || option.label
-    if (seen.has(key)) return false
-    seen.add(key)
-    return true
-  })
-}
-
-function getPreviewOptions(questionType: QuestionType | undefined): NormalizedQuestionOption[] {
-  if (questionType === 'judge') {
-    return [
-      { label: 'A', text: '正确', value: 'A' },
-      { label: 'B', text: '错误', value: 'B' },
-    ]
-  }
-
-  if (questionType === 'single' || questionType === 'multiple') {
-    return ['选项 A', '选项 B', '选项 C', '选项 D'].map((text, index) => {
-      const label = OPTION_LETTERS[index]!
-      return { label, text, value: label }
-    })
-  }
-
-  return []
-}
-
-function parseQuestionTitle(question: QuestionListItem | undefined): ParsedQuestionTitle {
-  const title = question?.title.trim() ?? ''
-  if (!title) return { title: '', options: [] }
-
-  const lines = title.split(/\r?\n/)
-  const parsedOptions = uniqueOptions(
-    lines
-      .map((line) => parseOptionLine(line))
-      .filter((option): option is NormalizedQuestionOption => Boolean(option)),
-  )
-
-  if (parsedOptions.length < 2) {
-    return { title, options: [] }
-  }
-
-  const firstOptionIndex = lines.findIndex((line) => Boolean(parseOptionLine(line)))
-  const titleLines = firstOptionIndex >= 0 ? lines.slice(0, firstOptionIndex) : lines
-  return {
-    title: titleLines.join('\n').trim() || title,
-    options: parsedOptions,
-  }
-}
-
-function normalizeOption(
-  option: RawQuestionOption,
-  index: number,
-): NormalizedQuestionOption | null {
-  const fallbackLabel = OPTION_LETTERS[index] ?? String(index + 1)
-
-  if (typeof option === 'string') {
-    const parsedOption = parseOptionLine(option)
-    if (parsedOption) return parsedOption
-
-    return {
-      label: fallbackLabel,
-      text: option.trim(),
-      value: fallbackLabel,
-    }
-  }
-
-  const rawText = String(
-    option.text ?? option.content ?? option.title ?? option.name ?? option.value ?? '',
-  )
-  const parsedText = parseOptionLine(rawText)
-  const label = option.label ? String(option.label).trim() : (parsedText?.label ?? fallbackLabel)
-  const value = String(option.value ?? option.id ?? label)
-  const text = parsedText && !option.label ? parsedText.text : rawText.trim()
-
-  if (!text.trim()) return null
-
-  return { label, text, value }
-}
-
-function getQuestionOptions(question: QuestionListItem | undefined) {
-  if (!question) return []
-
-  const richQuestion = question as RichQuestionListItem
-  const listedOptions = richQuestion.options ?? richQuestion.choices ?? richQuestion.optionList
-
-  if (Array.isArray(listedOptions)) {
-    const options = listedOptions
-      .map((option, index) => normalizeOption(option, index))
-      .filter((option): option is NormalizedQuestionOption => Boolean(option))
-    if (options.length > 0) return uniqueOptions(options)
-  }
-
-  const letterOptions = [
-    richQuestion.optionA,
-    richQuestion.optionB,
-    richQuestion.optionC,
-    richQuestion.optionD,
-    richQuestion.optionE,
-    richQuestion.optionF,
-    richQuestion.optionG,
-    richQuestion.optionH,
-  ]
-    .map((option, index) => (option ? normalizeOption(option, index) : null))
-    .filter((option): option is NormalizedQuestionOption => Boolean(option))
-
-  if (letterOptions.length > 0) return uniqueOptions(letterOptions)
-
-  const numberOptions = [
-    richQuestion.option1,
-    richQuestion.option2,
-    richQuestion.option3,
-    richQuestion.option4,
-    richQuestion.option5,
-    richQuestion.option6,
-    richQuestion.option7,
-    richQuestion.option8,
-  ]
-    .map((option, index) => (option ? normalizeOption(option, index) : null))
-    .filter((option): option is NormalizedQuestionOption => Boolean(option))
-
-  if (numberOptions.length > 0) return uniqueOptions(numberOptions)
-
-  return parseQuestionTitle(question).options
-}
-
-function formatAnswerValue(value: string | string[] | undefined) {
-  if (Array.isArray(value)) return value.join('、')
-  return value ?? ''
-}
-
-function parseChoiceAnswerValues(value: string | string[] | undefined) {
-  const tokens = formatAnswerValue(value)
-    .trim()
-    .toUpperCase()
-    .split(/[\s,，、;；]/)
-    .map((item) => item.trim())
-    .filter(Boolean)
-
-  if (tokens.length === 1 && /^[A-H]{2,8}$/.test(tokens[0]!)) {
-    return [...tokens[0]!]
-  }
-
-  return tokens
-}
-
-function getReferenceAnswer(question: QuestionListItem | undefined) {
-  if (!question) return ''
-  const richQuestion = question as RichQuestionListItem
-  return formatAnswerValue(
-    richQuestion.correctAnswer ?? richQuestion.referenceAnswer ?? richQuestion.answer,
-  )
-}
-
-function getCorrectOptionValues(
-  question: QuestionListItem | undefined,
-  options = getQuestionOptions(question),
-) {
-  if (!question) return []
-
-  const expectedValues = new Set(parseChoiceAnswerValues(getReferenceAnswer(question)))
-  if (question.questionType === 'judge') {
-    if (expectedValues.has('TRUE') || expectedValues.has('正确')) expectedValues.add('A')
-    if (expectedValues.has('FALSE') || expectedValues.has('错误')) expectedValues.add('B')
-  }
-  const availableOptions = options.length > 0 ? options : getPreviewOptions(question.questionType)
-
-  return availableOptions
-    .filter((option) =>
-      [option.value, option.label, option.text].some((value) =>
-        expectedValues.has(value.trim().toUpperCase()),
-      ),
-    )
-    .map((option) => option.value)
-}
-
-function isAnswerCorrect(record: PracticeAnswerRecord, question: QuestionListItem) {
-  const reference = getReferenceAnswer(question).trim()
-  if (!reference) return false
-
-  const isChoice = ['single', 'multiple', 'judge'].includes(question.questionType)
-  const expectedValues = isChoice ? getCorrectOptionValues(question) : [reference.toUpperCase()]
-  const actualValues = isChoice
-    ? parseChoiceAnswerValues(record.values)
-    : [record.text.trim().toUpperCase()]
-
-  const expected = expectedValues
-    .map((value) => value.toUpperCase())
-    .sort()
-    .join(',')
-  const actual = actualValues
-    .map((value) => value.toUpperCase())
-    .sort()
-    .join(',')
-
-  return actual === expected
-}
-
 function questionResultClasses(question: QuestionListItem) {
   const record = answerRecords.value[question.id]
   if (!record) return 'border-base-300 bg-base-100 text-base-content/70'
@@ -620,35 +382,6 @@ function handleTextInput(event: Event) {
   saveCurrentInput()
 }
 
-function restoreDraftAnswer(
-  raw: PracticeDraftAnswer,
-  question: QuestionListItem,
-  fingerprint: string,
-  confirmed: boolean,
-): PracticeAnswerRecord | null {
-  if (raw.fingerprint !== fingerprint) return null
-
-  const choice = ['single', 'multiple', 'judge'].includes(question.questionType)
-  if (choice) {
-    const options = getQuestionOptions(question)
-    const allowed = new Set(
-      (options.length > 0 ? options : getPreviewOptions(question.questionType)).map(
-        (option) => option.value,
-      ),
-    )
-    if (
-      raw.values.some((value) => !allowed.has(value)) ||
-      (question.questionType !== 'multiple' && raw.values.length > 1) ||
-      (confirmed && raw.values.length === 0)
-    )
-      return null
-  } else if (raw.values.length > 0 || (confirmed && !raw.text.trim())) {
-    return null
-  }
-
-  return { questionId: question.id, text: raw.text, values: raw.values }
-}
-
 function syncCurrentDraft() {
   const question = currentQuestion.value
   if (!question) {
@@ -729,13 +462,13 @@ function toggleOption(optionValue: string) {
   selectedOptionValues.value = nextValues
 
   if (!isMultipleQuestion.value) {
-    submitCurrentAnswer(true)
+    void submitCurrentAnswer()
   } else {
     saveCurrentInput()
   }
 }
 
-function submitCurrentAnswer(autoAdvance = false) {
+async function submitCurrentAnswer() {
   const question = currentQuestion.value
   if (!question || !canSubmitCurrentAnswer.value) return
 
@@ -761,8 +494,10 @@ function submitCurrentAnswer(autoAdvance = false) {
   void recordWrongAnswer(question, record)
   void removeMistakeIfCorrect(question, record)
 
-  if (autoAdvance) {
-    scheduleAutoAdvance()
+  // 仅「答对 + 开启自动下一题」时快进;答错停留展示正确答案与解析
+  if (isAnswerCorrect(record, question)) {
+    const settings = await practiceSettings.ensure()
+    if (settings?.autoNext) scheduleAutoAdvance()
   }
 }
 
@@ -926,7 +661,7 @@ function scheduleAutoAdvance() {
   autoAdvanceTimer.value = window.setTimeout(() => {
     nextQuestion()
     autoAdvanceTimer.value = null
-  }, 560)
+  }, 800)
 }
 
 async function toggleFavorite() {
@@ -1029,28 +764,6 @@ function handleSessionStateAction() {
   exitSession()
 }
 
-function toQuestionListItem(item: PracticePaperItem, subjectId: string): QuestionListItem {
-  const richQuestion: RichQuestionListItem = {
-    id: item.id,
-    subjectId,
-    title: item.title,
-    questionType: item.questionType as QuestionType,
-    questionCategory: 'practice',
-    status: 'enabled',
-    createdBy: 'system',
-    createdAt: '',
-    optionA: item.A ?? undefined,
-    optionB: item.B ?? undefined,
-    optionC: item.C ?? undefined,
-    optionD: item.D ?? undefined,
-    optionE: item.E ?? undefined,
-    optionF: item.F ?? undefined,
-    correctAnswer: item.correctAnswer,
-    explanation: item.explanation ?? undefined,
-  }
-  return richQuestion
-}
-
 /** 收藏/错题练习数据加载：fav:<sub_xxx> 按科目 / fav:<pap_xxx> 按题集 */
 async function loadCollectionPaper(paperId: string) {
   const originId = paperId.slice(COLLECTION_PAPER_PREFIX.length)
@@ -1086,7 +799,7 @@ async function loadSessionData() {
   paperItemsById.value = new Map()
   pendingFavoriteQuestionIds.value = new Set()
   favoriteError.value = ''
-  sessionTitles.value = []
+  sessionTitle.value = ''
 
   const paperId = route.params.paperId
   const userId = auth.session?.user.id
@@ -1111,7 +824,7 @@ async function loadSessionData() {
     const groups: QuestionSheetGroup[] = []
     const fingerprints: Record<string, string> = {}
 
-    sessionTitles.value.push(paper.name)
+    sessionTitle.value = paper.name
     for (const [groupIndex, group] of paper.sections.entries()) {
       const groupQuestions = group.items.map((item) => toQuestionListItem(item, paper.subjectId))
       group.items.forEach((item) => {
@@ -1291,7 +1004,7 @@ watch(questionSheetRangeIndex, () => {
         </button>
 
         <h1 class="truncate text-center text-[15px] font-semibold leading-tight">
-          {{ sessionSubjectName || currentSessionTitle }}
+          {{ currentSessionTitle }}
         </h1>
 
         <span aria-hidden="true"></span>
@@ -1327,9 +1040,9 @@ watch(questionSheetRangeIndex, () => {
           >
             {{ currentQuestionTypeLabel }}
           </span>
-          <span class="truncate text-xs font-medium text-base-content/45">{{
-            currentSessionTitle
-          }}</span>
+          <span v-if="sessionSubjectName" class="truncate text-xs font-medium text-base-content/45">
+            {{ sessionSubjectName }}
+          </span>
         </div>
 
         <h2 class="mt-2 whitespace-pre-line break-words text-base font-medium leading-[1.45]">
@@ -1339,13 +1052,13 @@ watch(questionSheetRangeIndex, () => {
 
       <section v-if="expectsChoiceQuestion" class="px-5 pt-3">
         <div
-          class="grid gap-1.5"
+          class="grid gap-2"
           :class="currentQuestion.questionType === 'judge' ? 'grid-cols-2' : 'grid-cols-1'"
         >
           <button
             v-for="option in resolvedQuestionOptions"
             :key="option.value"
-            class="group flex min-h-11 min-w-0 items-center gap-2.5 rounded-xl border px-2.5 py-2 text-left transition"
+            class="group flex min-h-[3.25rem] min-w-0 items-center gap-3 rounded-xl border px-3.5 py-2.5 text-left transition"
             :class="[optionClasses(option.value), currentAnswerRecord ? 'cursor-default' : '']"
             type="button"
             :aria-pressed="optionSelected(option.value)"
@@ -1371,7 +1084,7 @@ watch(questionSheetRangeIndex, () => {
           class="btn btn-primary mt-3 h-10 min-h-10 w-full rounded-xl text-sm"
           type="button"
           :disabled="!canSubmitCurrentAnswer"
-          @click="submitCurrentAnswer(true)"
+          @click="submitCurrentAnswer()"
         >
           确认答案
         </button>
@@ -1391,22 +1104,41 @@ watch(questionSheetRangeIndex, () => {
           class="btn btn-primary h-10 min-h-10 w-full rounded-xl text-sm"
           type="button"
           :disabled="!canSubmitCurrentAnswer"
-          @click="submitCurrentAnswer(true)"
+          @click="submitCurrentAnswer()"
         >
           确认答案
         </button>
       </section>
 
-      <section v-if="currentAnswerRecord" class="mx-5 mt-4 border-t border-base-200 pt-3">
-        <h3 class="text-sm font-semibold text-base-content">题目解析</h3>
-
-        <p
-          v-if="currentExplanation"
-          class="mt-1.5 break-words text-sm leading-[1.55] text-base-content/65"
+      <section v-if="currentAnswerRecord" class="mx-5 mt-4 space-y-3 border-t border-base-200 pt-3">
+        <div
+          class="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold"
+          :class="currentAnswerCorrect ? 'bg-success/10 text-success' : 'bg-error/10 text-error'"
+          role="status"
         >
-          {{ currentExplanation }}
-        </p>
-        <p v-else class="mt-2 text-sm text-base-content/40">暂无解析</p>
+          <CheckCircle2 v-if="currentAnswerCorrect" :size="17" />
+          <XCircle v-else :size="17" />
+          {{ currentAnswerCorrect ? '回答正确' : `回答错误 · 正确答案 ${currentCorrectAnswerText}` }}
+        </div>
+
+        <div>
+          <h3 class="text-sm font-semibold text-base-content">题目解析</h3>
+          <p
+            v-if="currentExplanation"
+            class="mt-1.5 break-words text-sm leading-[1.55] text-base-content/65"
+          >
+            {{ currentExplanation }}
+          </p>
+          <p v-else class="mt-2 text-sm text-base-content/40">暂无解析</p>
+        </div>
+
+        <button
+          class="btn btn-primary h-11 min-h-11 w-full rounded-full text-sm"
+          type="button"
+          @click="isLastQuestion ? (questionSheetOpen = true) : nextQuestion()"
+        >
+          {{ isLastQuestion ? '查看答题卡' : '下一题' }}
+        </button>
       </section>
     </article>
 
