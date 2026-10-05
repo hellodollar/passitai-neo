@@ -1,33 +1,23 @@
 export const APP_NAME = 'PassIt AI'
 
-export const APP_TAGLINE = '刷题更稳，复习更清楚。'
-
 export const AUTH_INVALIDATED_EVENT = 'passitai:auth-invalidated'
 
 export const STORAGE_KEYS = {
   authSession: 'passitai:auth-session',
   appPreferences: 'passitai:app-preferences',
-  subjectSelection: 'passitai:subject-selection',
 } as const
 
 export const ROUTE_NAMES = {
   login: 'login',
   register: 'register',
-  practice: 'practice',
+  practiceHome: 'practice-home',
   practicePaper: 'practice-paper',
   practicePaperResult: 'practice-paper-result',
   favorites: 'favorites',
   wrongQuestions: 'wrong-book',
-  settings: 'settings',
+  me: 'me',
 } as const
 
 export const DEFAULT_APP_PREFERENCES = {
   theme: 'neo',
-  sidebarCollapsed: false,
-  reducedMotion: false,
-} as const
-
-export const DEFAULT_SUBJECT_SELECTION = {
-  majorId: '',
-  subjectIds: [] as string[],
 } as const

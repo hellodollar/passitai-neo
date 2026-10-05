@@ -1,6 +1,6 @@
 # Neo 客户端 API
 
-本文是 Neo 客户端接入的唯一接口契约。基础路径为 `/api`，仅接受客户端登录签发的 `app` scope
+本文记录 Neo 客户端当前接入的接口契约；运行时以服务端实现为准，变更接口时需同步更新本文件、`src/api/` 与 `src/types/domain.ts`。基础路径为 `/api`，仅接受客户端登录签发的 `app` scope
 JWT。除注册、登录外，所有接口都需要：
 
 ```http
@@ -162,6 +162,7 @@ interface UpdatePlanBody {
 
 用户未设置计划（新用户）、专业不存在或已删除时，`GET /api/plan` 返回 `data: null`，`/api/me` 的
 `preferences.plan` 同样为 `null`；需先调用 `PUT /api/plan` 手动设置计划。
+当前科目对象只返回 `name`、`code`，不返回学分；客户端不展示学分占位值。
 
 ## 4. 练习模块
 

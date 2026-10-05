@@ -11,6 +11,7 @@ pnpm dev
 ```
 
 开发地址为 `http://localhost:5180`。浏览器请求 `/api/*`，Vite 将其代理到 `VITE_API_PROXY_TARGET`，默认 `http://127.0.0.1:8787`。
+客户端不内置种子数据或本地 mock；开发时需要启动后端并准备其本地数据库。数据与代码的归属见 [客户端维护约定](docs/client-maintenance.md)。
 
 ## Cloudflare Workers
 
@@ -31,5 +32,8 @@ Workers Builds 的构建命令为 `pnpm run build`，部署命令为 `npx wrangl
 ## 检查
 
 ```sh
+pnpm run type-check
+pnpm run test
+pnpm run lint
 VITE_API_BASE_URL=https://your-api.example/api pnpm run build
 ```

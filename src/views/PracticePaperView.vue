@@ -14,7 +14,8 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import BaseDialog from '@/components/common/BaseDialog.vue'
-import StudySettingsModal from '@/components/settings/StudySettingsModal.vue'
+import PracticeSettingsModal from '@/components/settings/PracticeSettingsModal.vue'
+import { usePracticeNavigation } from '@/composables/usePracticeNavigation'
 import {
   addFavorite,
   fetchFavoritePractice,
@@ -48,12 +49,14 @@ import {
   parseQuestionTitle,
   type PracticeAnswerRecord,
 } from '@/utils/practice-question'
+import { preparePracticeSession, type QuestionSheetGroup } from '@/utils/practice-session'
 import {
-  preparePracticeSession,
-  toSubmissionAnswers,
-  type QuestionSheetGroup,
-} from '@/utils/practice-session'
+  getQuestionSheetRanges,
+  getVisibleQuestionSheetGroups,
+  QUESTION_SHEET_RANGE_SIZE,
+} from '@/utils/question-sheet'
 import { showErrorToast } from '@/utils/toast'
+import { toSubmissionAnswers } from '@/utils/submission-answers'
 import type {
   CollectionContext,
   PracticePaperItem,
@@ -78,8 +81,6 @@ const collectionSource = computed(() =>
 )
 
 type SessionLoadState = 'loading' | 'ready' | 'missing' | 'empty' | 'error'
-
-const QUESTION_SHEET_RANGE_SIZE = 20
 
 const settingsModalOpen = ref(false)
 const questionSheetOpen = ref(false)
@@ -115,10 +116,22 @@ const paperItemsById = ref<Map<string, PracticePaperItem>>(new Map())
 const pendingFavoriteQuestionIds = ref<Set<string>>(new Set())
 const favoriteError = ref('')
 let wrongRecordErrorShown = false
-const touchStartX = ref(0)
-const touchStartY = ref(0)
-const autoAdvanceTimer = ref<number | null>(null)
 const sessionLoadState = ref<SessionLoadState>('loading')
+
+const {
+  clearAutoAdvance,
+  handleTouchEnd,
+  handleTouchStart,
+  scheduleAutoAdvance,
+} = usePracticeNavigation({
+  currentIndex,
+  questionCount: () => currentQuestions.value.length,
+  suspended: () =>
+    sessionLoadState.value !== 'ready' ||
+    questionSheetOpen.value ||
+    settingsModalOpen.value ||
+    submitConfirmOpen.value,
+})
 
 const currentQuestion = computed(() => currentQuestions.value[currentIndex.value])
 const parsedQuestionTitle = computed(() => parseQuestionTitle(currentQuestion.value))
@@ -184,36 +197,14 @@ const unansweredCount = computed(() =>
 const currentQuestionPosition = computed(() =>
   currentQuestions.value.length === 0 ? 0 : currentIndex.value + 1,
 )
-const questionSheetRanges = computed(() =>
-  Array.from(
-    { length: Math.ceil(currentQuestions.value.length / QUESTION_SHEET_RANGE_SIZE) },
-    (_, index) => {
-      const start = index * QUESTION_SHEET_RANGE_SIZE
-      const end = Math.min(start + QUESTION_SHEET_RANGE_SIZE, currentQuestions.value.length)
-      return { index, label: `${start + 1}–${end}`, start, end }
-    },
+const questionSheetRanges = computed(() => getQuestionSheetRanges(currentQuestions.value.length))
+const visibleQuestionSheetGroups = computed(() =>
+  getVisibleQuestionSheetGroups(
+    questionSheetGroups.value,
+    currentQuestions.value.length,
+    questionSheetRangeIndex.value,
   ),
 )
-const visibleQuestionSheetGroups = computed(() => {
-  const start = questionSheetRangeIndex.value * QUESTION_SHEET_RANGE_SIZE
-  const end = Math.min(start + QUESTION_SHEET_RANGE_SIZE, currentQuestions.value.length)
-  return questionSheetGroups.value.flatMap((group) => {
-    const visibleStart = Math.max(start, group.startIndex)
-    const visibleEnd = Math.min(end, group.startIndex + group.questions.length)
-    if (visibleStart >= visibleEnd) return []
-    return [
-      {
-        key: group.key,
-        label: group.label,
-        startIndex: visibleStart,
-        questions: group.questions.slice(
-          visibleStart - group.startIndex,
-          visibleEnd - group.startIndex,
-        ),
-      },
-    ]
-  })
-})
 const currentQuestionFavorited = computed(() =>
   currentQuestion.value ? favoriteQuestionIds.value.has(currentQuestion.value.id) : false,
 )
@@ -645,24 +636,6 @@ function goToQuestion(index: number) {
   questionSheetOpen.value = false
 }
 
-function clearAutoAdvance() {
-  if (autoAdvanceTimer.value) {
-    window.clearTimeout(autoAdvanceTimer.value)
-    autoAdvanceTimer.value = null
-  }
-}
-
-function scheduleAutoAdvance() {
-  clearAutoAdvance()
-
-  if (currentIndex.value >= currentQuestions.value.length - 1) return
-
-  autoAdvanceTimer.value = window.setTimeout(() => {
-    nextQuestion()
-    autoAdvanceTimer.value = null
-  }, 800)
-}
-
 async function toggleFavorite() {
   const question = currentQuestion.value
   if (!question) return
@@ -714,77 +687,10 @@ async function toggleFavorite() {
   }
 }
 
-function handleTouchStart(event: TouchEvent) {
-  const touch = event.touches[0]
-  if (!touch) return
-  touchStartX.value = touch.clientX
-  touchStartY.value = touch.clientY
-}
-
-function handleTouchEnd(event: TouchEvent) {
-  const touch = event.changedTouches[0]
-  if (!touch) return
-
-  const deltaX = touch.clientX - touchStartX.value
-  const deltaY = touch.clientY - touchStartY.value
-
-  if (Math.abs(deltaX) < 56 || Math.abs(deltaX) < Math.abs(deltaY) * 1.3) return
-
-  if (deltaX < 0) {
-    nextQuestion()
-  } else {
-    prevQuestion()
-  }
-}
-
-function handleNavigationKeydown(event: KeyboardEvent) {
-  if (
-    event.defaultPrevented ||
-    event.altKey ||
-    event.ctrlKey ||
-    event.metaKey ||
-    questionSheetOpen.value ||
-    settingsModalOpen.value ||
-    submitConfirmOpen.value ||
-    sessionLoadState.value !== 'ready'
-  ) {
-    return
-  }
-  const target = event.target
-  if (
-    target instanceof HTMLElement &&
-    (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
-  ) {
-    return
-  }
-
-  if (event.key === 'ArrowRight') {
-    event.preventDefault()
-    nextQuestion()
-  } else if (event.key === 'ArrowLeft') {
-    event.preventDefault()
-    prevQuestion()
-  }
-}
-
-function nextQuestion() {
-  if (currentIndex.value < currentQuestions.value.length - 1) {
-    clearAutoAdvance()
-    currentIndex.value++
-  }
-}
-
-function prevQuestion() {
-  if (currentIndex.value > 0) {
-    clearAutoAdvance()
-    currentIndex.value--
-  }
-}
-
 function exitSession() {
   saveDraftNow()
   app.endPracticeSession()
-  router.push({ name: ROUTE_NAMES.practice })
+  router.push({ name: ROUTE_NAMES.practiceHome })
 }
 
 function handleSessionStateAction() {
@@ -923,7 +829,6 @@ onMounted(() => {
   app.setPracticeSessionActive(true)
   void practiceSettings.ensure()
   window.addEventListener('pagehide', saveDraftNow)
-  window.addEventListener('keydown', handleNavigationKeydown)
   document.addEventListener('visibilitychange', saveDraftWhenHidden)
   loadSessionData()
 })
@@ -933,10 +838,8 @@ onBeforeUnmount(() => {
   saveDraftNow()
   loadSequence++
   window.removeEventListener('pagehide', saveDraftNow)
-  window.removeEventListener('keydown', handleNavigationKeydown)
   document.removeEventListener('visibilitychange', saveDraftWhenHidden)
   app.endPracticeSession()
-  clearAutoAdvance()
 })
 
 function saveDraftWhenHidden() {
@@ -1412,6 +1315,6 @@ watch(questionSheetRangeIndex, () => {
       </template>
     </BaseDialog>
 
-    <StudySettingsModal v-model="settingsModalOpen" />
+    <PracticeSettingsModal v-model="settingsModalOpen" />
   </section>
 </template>

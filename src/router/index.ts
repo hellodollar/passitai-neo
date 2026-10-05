@@ -25,13 +25,13 @@ const router = createRouter({
       children: [
         {
           path: '',
-          name: ROUTE_NAMES.practice,
-          component: () => import('@/views/PracticeView.vue'),
+          name: ROUTE_NAMES.practiceHome,
+          component: () => import('@/views/PracticeHomeView.vue'),
         },
         {
           path: 'practice',
           redirect: (to) => ({
-            name: ROUTE_NAMES.practice,
+            name: ROUTE_NAMES.practiceHome,
             query: to.query,
             hash: to.hash,
           }),
@@ -49,19 +49,19 @@ const router = createRouter({
         {
           path: 'favorites',
           name: ROUTE_NAMES.favorites,
-          component: () => import('@/views/ReviewSubjectsView.vue'),
+          component: () => import('@/views/CollectionOverviewView.vue'),
           props: { source: 'favorites' },
         },
         {
           path: 'wrong-book',
           name: ROUTE_NAMES.wrongQuestions,
-          component: () => import('@/views/ReviewSubjectsView.vue'),
+          component: () => import('@/views/CollectionOverviewView.vue'),
           props: { source: 'wrong-questions' },
         },
         {
           path: 'me',
-          name: ROUTE_NAMES.settings,
-          component: () => import('@/views/SettingsView.vue'),
+          name: ROUTE_NAMES.me,
+          component: () => import('@/views/MeView.vue'),
         },
       ],
     },
@@ -83,7 +83,7 @@ router.beforeEach((to) => {
   }
 
   if (to.meta.publicOnly && auth.isAuthenticated) {
-    return { name: ROUTE_NAMES.practice }
+    return { name: ROUTE_NAMES.practiceHome }
   }
 })
 

@@ -1,7 +1,7 @@
 import { FetchError, ofetch, type FetchOptions } from 'ofetch'
 
 import { AUTH_INVALIDATED_EVENT, STORAGE_KEYS } from '@/constants/app'
-import type { ApiEnvelope, AuthSession, PaginationResult } from '@/types/domain'
+import type { ApiEnvelope, AuthSession } from '@/types/domain'
 import { readStorage, removeStorage } from '@/utils/storage'
 import { showErrorToast } from '@/utils/toast'
 
@@ -68,20 +68,4 @@ export async function request<T>(url: string, options?: RequestOptions): Promise
     }
     throw error
   }
-}
-
-export function normalizePagination<T>(
-  value: PaginationResult<T> | T[] | null | undefined,
-): PaginationResult<T> {
-  if (Array.isArray(value)) {
-    return { items: value, total: value.length }
-  }
-
-  if (!value || typeof value !== 'object') {
-    return { items: [], total: 0 }
-  }
-
-  const items = Array.isArray(value.items) ? value.items : []
-  const total = typeof value.total === 'number' ? value.total : items.length
-  return { items, total }
 }

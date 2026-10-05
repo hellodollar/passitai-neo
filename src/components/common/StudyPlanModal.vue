@@ -19,7 +19,7 @@ const props = withDefaults(
 )
 
 const emit = defineEmits<{
-  updated: [plan: StudyPlan, selection: { majorId: string; subjectIds: string[] }]
+  updated: [plan: StudyPlan]
 }>()
 
 const majorOptions = ref<OptionItem[]>([])
@@ -116,10 +116,7 @@ async function save() {
     })
     // 接口失败时错误提示由请求层统一弹出，弹框保持打开
     showSuccessToast('刷题计划已更新')
-    emit('updated', updated, {
-      majorId: draftMajorId.value,
-      subjectIds: [...draftSubjectIds.value],
-    })
+    emit('updated', updated)
     model.value = false
   } catch {
     // keep modal open on failure

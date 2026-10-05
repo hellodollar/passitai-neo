@@ -56,6 +56,8 @@ export type UserMe = {
 
 /** 收藏或错题集合来源 */
 export type ReviewSource = 'favorites' | 'wrong-questions'
+export type CollectionGroupBy = 'subject' | 'paper'
+export type CollectionOrder = 'desc' | 'asc'
 
 /** 聚合查询结果：groupBy=subject 或 paper */
 export type Favorite = {
@@ -149,7 +151,6 @@ export type QuestionListItem = {
 export type StudyPlanSubject = {
   name: string
   code: string
-  credits?: number | null
 }
 
 export type StudyPlan = {
@@ -322,11 +323,4 @@ export type EmailChangeResult = {
 
 export type AppPreferences = {
   theme: string
-  sidebarCollapsed: boolean
-  reducedMotion: boolean
-}
-
-export type SubjectSelection = {
-  majorId: string
-  subjectIds: string[]
 }

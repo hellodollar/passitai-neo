@@ -18,13 +18,11 @@ import AccountPasswordContent from '@/components/common/AccountPasswordContent.v
 import BaseModal from '@/components/common/BaseModal.vue'
 import NotificationSettingsContent from '@/components/common/NotificationSettingsContent.vue'
 import StudyPlanModal from '@/components/common/StudyPlanModal.vue'
-import StudySettingsModal from '@/components/settings/StudySettingsModal.vue'
+import PracticeSettingsModal from '@/components/settings/PracticeSettingsModal.vue'
 import { useAuthStore } from '@/stores/auth'
-import { useAppStore } from '@/stores/app'
 import type { StudyPlan, PracticeSettings, UserMe } from '@/types/domain'
 
 const auth = useAuthStore()
-const app = useAppStore()
 const router = useRouter()
 const signingOut = ref(false)
 const accountModalOpen = ref(false)
@@ -114,14 +112,10 @@ async function loadMe() {
   }
 }
 
-function onPlanUpdated(plan: StudyPlan, selection: { majorId: string; subjectIds: string[] }) {
+function onPlanUpdated(plan: StudyPlan) {
   if (me.value) {
     me.value.preferences.plan = plan
   }
-  app.setSubjectSelection({
-    majorId: selection.majorId,
-    subjectIds: selection.subjectIds,
-  })
 }
 
 function onPracticeSettingsSaved(settings: PracticeSettings) {
@@ -289,7 +283,7 @@ onMounted(() => {
       @updated="onPlanUpdated"
     />
 
-    <StudySettingsModal
+    <PracticeSettingsModal
       v-model="practiceSettingsModalOpen"
       :settings="me?.preferences.practice"
       show-mistake-settings

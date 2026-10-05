@@ -2,9 +2,10 @@ import { request } from '@/api/http'
 import type {
   CollectionAggregate,
   CollectionContext,
+  CollectionGroupBy,
+  CollectionOrder,
   CollectionPracticePaper,
 } from '@/types/domain'
-import type { CollectionGroupBy, CollectionOrder } from '@/api/favorites'
 
 /** 文档:GET /api/wrong-questions?groupBy=&order=，聚合查询错题 */
 export function fetchWrongQuestionAggregate(

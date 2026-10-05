@@ -153,7 +153,7 @@ function openQuestion(question: PracticeResultQuestion) {
 }
 
 function returnToPractice() {
-  router.push({ name: ROUTE_NAMES.practice })
+  router.push({ name: ROUTE_NAMES.practiceHome })
 }
 
 onMounted(() => {

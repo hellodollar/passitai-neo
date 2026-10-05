@@ -3,7 +3,7 @@ import type { StudyPlan, UpdatePlanBody } from '@/types/domain'
 
 /** 文档:GET /api/plan */
 export function fetchPlan() {
-  return request<StudyPlan>('/plan')
+  return request<StudyPlan | null>('/plan')
 }
 
 /** 文档:PUT /api/plan */

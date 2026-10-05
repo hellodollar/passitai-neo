@@ -1,7 +1,8 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 
-import { fetchMe, login, logout, register } from '@/api/auth'
+import { login, logout, register } from '@/api/auth'
+import { fetchUserMe } from '@/api/me'
 import { AUTH_INVALIDATED_EVENT, STORAGE_KEYS } from '@/constants/app'
 import { usePracticeSettingsStore } from '@/stores/practiceSettings'
 import type { AuthCredentials, AuthSession, RegisterCredentials, User } from '@/types/domain'
@@ -78,7 +79,7 @@ export const useAuthStore = defineStore('auth', () => {
     if (!session.value?.token) return
 
     try {
-      user.value = await fetchMe()
+      user.value = (await fetchUserMe()).user
     } catch {
       // Transient network errors must not sign the user out or erase local practice drafts.
     }

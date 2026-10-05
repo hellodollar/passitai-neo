@@ -22,7 +22,7 @@ import logoPassitai from '@/assets/icons/icon-passitai.svg'
 import BaseModal from '@/components/common/BaseModal.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import StudyPlanModal from '@/components/common/StudyPlanModal.vue'
-import StudySettingsModal from '@/components/settings/StudySettingsModal.vue'
+import PracticeSettingsModal from '@/components/settings/PracticeSettingsModal.vue'
 import { fetchPracticeEntries } from '@/api/practice'
 import { fetchPlan } from '@/api/plan'
 import { fetchMajorOptions, fetchSubjectOptions } from '@/api/options'
@@ -33,7 +33,6 @@ import type {
   PracticeEntry,
   PracticeEntryChild,
   StudyPlan,
-  StudyPlanSubject,
 } from '@/types/domain'
 
 const router = useRouter()
@@ -46,7 +45,7 @@ const plan = ref<StudyPlan | null>(null)
 const planLoading = ref(false)
 
 const subjectOrder = ref<string[]>([])
-const hiddenSubjectIds = ref<Set<string>>(new Set())
+const hiddenSubjectCodes = ref<Set<string>>(new Set())
 const activeSubjectCode = ref('')
 const expandedEntryKey = ref('')
 
@@ -139,7 +138,7 @@ const orderedSubjects = computed(() => {
 })
 
 const visibleSubjects = computed(() =>
-  orderedSubjects.value.filter((subject) => !hiddenSubjectIds.value.has(subject.code)),
+  orderedSubjects.value.filter((subject) => !hiddenSubjectCodes.value.has(subject.code)),
 )
 
 const activeSubject = computed(
@@ -190,10 +189,6 @@ function selectSubject(code: string) {
   expandedEntryKey.value = ''
 }
 
-function subjectCreditsText(subject: StudyPlanSubject) {
-  return typeof subject.credits === 'number' ? `${subject.credits} 学分` : ''
-}
-
 function selectEntry(key: string) {
   expandedEntryKey.value = key
 }
@@ -205,13 +200,13 @@ function syncSubjectOrder() {
     ...codes.filter((code) => !subjectOrder.value.includes(code)),
   ]
 
-  hiddenSubjectIds.value = new Set(
-    [...hiddenSubjectIds.value].filter((code) => codes.includes(code)),
+  hiddenSubjectCodes.value = new Set(
+    [...hiddenSubjectCodes.value].filter((code) => codes.includes(code)),
   )
 
-  const visibleIds = subjectOrder.value.filter((code) => !hiddenSubjectIds.value.has(code))
-  if (!activeSubjectCode.value || !visibleIds.includes(activeSubjectCode.value)) {
-    activeSubjectCode.value = visibleIds[0] ?? ''
+  const visibleCodes = subjectOrder.value.filter((code) => !hiddenSubjectCodes.value.has(code))
+  if (!activeSubjectCode.value || !visibleCodes.includes(activeSubjectCode.value)) {
+    activeSubjectCode.value = visibleCodes[0] ?? ''
   }
 }
 
@@ -228,19 +223,19 @@ function moveSubject(code: string, direction: -1 | 1) {
 }
 
 function toggleSubjectVisibility(code: string) {
-  const nextIds = new Set(hiddenSubjectIds.value)
-  if (nextIds.has(code)) {
-    nextIds.delete(code)
+  const nextCodes = new Set(hiddenSubjectCodes.value)
+  if (nextCodes.has(code)) {
+    nextCodes.delete(code)
   } else {
-    nextIds.add(code)
+    nextCodes.add(code)
   }
-  hiddenSubjectIds.value = nextIds
+  hiddenSubjectCodes.value = nextCodes
   syncSubjectOrder()
 }
 
 function startEntryPaper(child: PracticeEntryChild) {
   if (!child.paperId) return
-  app.startPracticeSession([child.paperId])
+  app.startPracticeSession()
   router.push({
     name: ROUTE_NAMES.practicePaper,
     params: { paperId: child.paperId },
@@ -248,62 +243,72 @@ function startEntryPaper(child: PracticeEntryChild) {
   })
 }
 
-// 计划里的科目只有 code，练习入口接口需要真实 subjectId，
-// 通过字典接口解析 code -> id，并按专业缓存
-const subjectIdByCode = ref<Map<string, string>>(new Map())
-let subjectLookupMajorCode = ''
+// 计划只有科目 code；进入题集前按专业解析真实 subjectId。
+const subjectIdsByMajorCode = new Map<string, Map<string, string>>()
+let entryLoadSequence = 0
+let planLoadSequence = 0
 
-async function loadSubjectIdMap(majorCode: string) {
-  if (!majorCode || subjectLookupMajorCode === majorCode) return
-  try {
-    const majors = await fetchMajorOptions({ code: majorCode })
-    const majorId = majors.find((major) => major.code === majorCode)?.id
-    if (!majorId) return
-    const subjects = await fetchSubjectOptions(majorId)
-    subjectIdByCode.value = new Map(subjects.map((subject) => [subject.code, subject.id]))
-    subjectLookupMajorCode = majorCode
-  } catch {
-    // 字典获取失败时保持空映射，入口区按无内容展示
-  }
+async function getSubjectIdMap(majorCode: string) {
+  if (!majorCode) return null
+  const cached = subjectIdsByMajorCode.get(majorCode)
+  if (cached) return cached
+
+  const majors = await fetchMajorOptions({ code: majorCode })
+  const majorId = majors.find((major) => major.code === majorCode)?.id
+  if (!majorId) return null
+  const subjects = await fetchSubjectOptions(majorId)
+  const subjectIds = new Map(subjects.map((subject) => [subject.code, subject.id]))
+  subjectIdsByMajorCode.set(majorCode, subjectIds)
+  return subjectIds
 }
 
 async function loadEntries() {
+  const sequence = ++entryLoadSequence
   const subject = activeSubject.value
   if (!subject) {
     entries.value = []
+    entriesLoading.value = false
     return
   }
   entries.value = []
   entriesLoading.value = true
   try {
-    await loadSubjectIdMap(planMajorCode.value)
-    const subjectId = subjectIdByCode.value.get(subject.code)
+    const subjectIds = await getSubjectIdMap(planMajorCode.value)
+    if (sequence !== entryLoadSequence) return
+    const subjectId = subjectIds?.get(subject.code)
     if (!subjectId) return
 
-    entries.value = await fetchPracticeEntries(subjectId)
+    const loadedEntries = await fetchPracticeEntries(subjectId)
+    if (sequence !== entryLoadSequence) return
+    entries.value = loadedEntries
     if (!entries.value.some((entry) => entry.type === expandedEntryKey.value)) {
       expandedEntryKey.value = entries.value[0]?.type ?? ''
     }
   } catch {
+    if (sequence !== entryLoadSequence) return
     entries.value = []
     expandedEntryKey.value = ''
   } finally {
-    entriesLoading.value = false
+    if (sequence === entryLoadSequence) entriesLoading.value = false
   }
 }
 
 async function loadPlan() {
+  const sequence = ++planLoadSequence
   planLoading.value = true
   try {
-    plan.value = await fetchPlan()
+    const loadedPlan = await fetchPlan()
+    if (sequence === planLoadSequence) plan.value = loadedPlan
   } catch {
-    plan.value = null
+    if (sequence === planLoadSequence) plan.value = null
   } finally {
-    planLoading.value = false
+    if (sequence === planLoadSequence) planLoading.value = false
   }
 }
 
 function handlePlanUpdated(updated: StudyPlan) {
+  planLoadSequence++
+  planLoading.value = false
   plan.value = updated
 }
 
@@ -329,7 +334,7 @@ watch(
 )
 
 watch(
-  () => activeSubject.value?.code ?? '',
+  () => [planMajorCode.value, activeSubject.value?.code ?? ''],
   () => {
     expandedEntryKey.value = ''
     void loadEntries()
@@ -609,7 +614,7 @@ watch(
             <input
               type="checkbox"
               class="checkbox checkbox-xs checkbox-primary"
-              :checked="!hiddenSubjectIds.has(subject.code)"
+              :checked="!hiddenSubjectCodes.has(subject.code)"
               :aria-label="`${subject.name}显示状态`"
               @change="toggleSubjectVisibility(subject.code)"
             />
@@ -619,21 +624,17 @@ watch(
             class="min-w-0 flex-1 text-left"
             :class="[
               activeSubject?.code === subject.code ? 'text-primary' : '',
-              hiddenSubjectIds.has(subject.code) ? 'text-base-content/35' : '',
+              hiddenSubjectCodes.has(subject.code) ? 'text-base-content/35' : '',
             ]"
             type="button"
             @click="selectSubject(subject.code)"
           >
             <span class="block truncate text-sm font-medium">{{ subject.name }}</span>
             <span
-              v-if="subject.code || subjectCreditsText(subject)"
+              v-if="subject.code"
               class="mt-0.5 block truncate text-[11px] text-base-content/40"
             >
-              <template v-if="subject.code">{{ subject.code }}</template>
-              <template v-if="subject.code && subjectCreditsText(subject)"> · </template>
-              <template v-if="subjectCreditsText(subject)">
-                {{ subjectCreditsText(subject) }}
-              </template>
+              {{ subject.code }}
             </span>
           </button>
 
@@ -668,7 +669,7 @@ watch(
       </div>
     </BaseModal>
 
-    <StudySettingsModal v-model="settingsModalOpen" />
+    <PracticeSettingsModal v-model="settingsModalOpen" />
 
     <StudyPlanModal v-model="planModalOpen" :plan="plan" @updated="handlePlanUpdated" />
   </section>

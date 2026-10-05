@@ -2,7 +2,7 @@
 import { BookMarked, Home, UserRound, XCircle } from '@lucide/vue'
 import { RouterView } from 'vue-router'
 
-import NavRail from '@/components/NavRail.vue'
+import BottomTabBar from '@/components/BottomTabBar.vue'
 import { useAppStore } from '@/stores/app'
 
 const app = useAppStore()
@@ -27,10 +27,9 @@ const navItems = [
         <RouterView />
       </main>
 
-      <NavRail
+      <BottomTabBar
         v-if="!app.practiceSessionActive"
         class="fixed bottom-0 left-1/2 z-30 w-full max-w-[32rem] -translate-x-1/2 border-t border-base-200 bg-base-100/95 px-3 pb-[calc(0.45rem+env(safe-area-inset-bottom))] pt-1.5 backdrop-blur"
-        direction="tabs"
         :items="navItems"
       />
     </div>

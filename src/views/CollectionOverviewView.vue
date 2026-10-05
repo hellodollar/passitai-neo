@@ -20,12 +20,10 @@ import { clearWrongQuestions, fetchWrongQuestionAggregate } from '@/api/wrong-qu
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import { ROUTE_NAMES } from '@/constants/app'
-import type { CollectionAggregateItem, ReviewSource } from '@/types/domain'
+import type { CollectionAggregateItem, CollectionGroupBy, CollectionOrder, ReviewSource } from '@/types/domain'
 import { showErrorToast, showSuccessToast } from '@/utils/toast'
 
-type GroupMode = 'subject' | 'paper'
 type SortField = 'count' | 'recent'
-type SortOrder = 'desc' | 'asc'
 
 const props = defineProps<{ source: ReviewSource }>()
 const router = useRouter()
@@ -43,9 +41,9 @@ const sortMenuRef = ref<HTMLElement | null>(null)
 const actionsMenuRef = ref<HTMLElement | null>(null)
 let loadSequence = 0
 
-const groupMode = ref<GroupMode>('subject')
+const groupMode = ref<CollectionGroupBy>('subject')
 const sortField = ref<SortField>('recent')
-const sortOrder = ref<SortOrder>('desc')
+const sortOrder = ref<CollectionOrder>('desc')
 
 const isFavorites = computed(() => props.source === 'favorites')
 const pageTitle = computed(() => (isFavorites.value ? '我的收藏' : '我的错题'))
@@ -54,7 +52,7 @@ const emptyDescription = computed(() =>
   isFavorites.value ? '练习时收藏的题目会出现在这里。' : '答错的题目会收集到这里。',
 )
 
-const SORT_OPTIONS: Array<{ field: SortField; order: SortOrder; label: string }> = [
+const SORT_OPTIONS: Array<{ field: SortField; order: CollectionOrder; label: string }> = [
   { field: 'recent', order: 'desc', label: '最近收录' },
   { field: 'recent', order: 'asc', label: '最早收录' },
   { field: 'count', order: 'desc', label: '题目最多' },
@@ -104,14 +102,14 @@ async function loadSubjects() {
   }
 }
 
-function selectGroupMode(mode: GroupMode) {
+function selectGroupMode(mode: CollectionGroupBy) {
   if (groupMode.value === mode) return
   sortMenuOpen.value = false
   groupMode.value = mode
   void loadSubjects()
 }
 
-function selectSortOption(field: SortField, order: SortOrder) {
+function selectSortOption(field: SortField, order: CollectionOrder) {
   sortMenuOpen.value = false
   if (sortField.value === field && sortOrder.value === order) return
   sortField.value = field
@@ -253,7 +251,7 @@ watch(
           "
           type="button"
           :aria-pressed="groupMode === mode.value"
-          @click="selectGroupMode(mode.value as GroupMode)"
+          @click="selectGroupMode(mode.value as CollectionGroupBy)"
         >
           {{ mode.label }}
         </button>

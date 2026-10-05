@@ -1,8 +1,11 @@
 import { request } from '@/api/http'
-import type { CollectionAggregate, CollectionContext, CollectionPracticePaper } from '@/types/domain'
-
-export type CollectionGroupBy = 'subject' | 'paper'
-export type CollectionOrder = 'desc' | 'asc'
+import type {
+  CollectionAggregate,
+  CollectionContext,
+  CollectionGroupBy,
+  CollectionOrder,
+  CollectionPracticePaper,
+} from '@/types/domain'
 
 /** 文档:GET /api/favorites?groupBy=&order=，聚合查询收藏 */
 export function fetchFavoriteAggregate(
