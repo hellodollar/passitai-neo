@@ -2,26 +2,10 @@ import { request } from '@/api/http'
 import type {
   PracticePaperDetail,
   PracticeEntry,
-  PracticePlan,
   PracticeSettings,
   PracticeSubmission,
   SubmitPracticePaperBody,
-  UpdatePracticePlanBody,
 } from '@/types/domain'
-
-/** 文档:GET /api/plan */
-export function fetchPracticePlan() {
-  return request<PracticePlan>('/plan')
-}
-
-/** 文档:PUT /api/plan */
-export function updatePracticePlan(payload: UpdatePracticePlanBody) {
-  return request<PracticePlan>('/plan', {
-    method: 'PUT',
-    body: payload,
-    notify: true,
-  })
-}
 
 /** 文档:GET /api/practice/entries?subjectId= */
 export function fetchPracticeEntries(subjectId: string) {

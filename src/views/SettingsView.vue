@@ -17,11 +17,11 @@ import AccountEmailContent from '@/components/common/AccountEmailContent.vue'
 import AccountPasswordContent from '@/components/common/AccountPasswordContent.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
 import NotificationSettingsContent from '@/components/common/NotificationSettingsContent.vue'
-import PracticePlanModal from '@/components/common/PracticePlanModal.vue'
+import StudyPlanModal from '@/components/common/StudyPlanModal.vue'
 import StudySettingsModal from '@/components/settings/StudySettingsModal.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useAppStore } from '@/stores/app'
-import type { PracticePlan, PracticeSettings, UserMe } from '@/types/domain'
+import type { StudyPlan, PracticeSettings, UserMe } from '@/types/domain'
 
 const auth = useAuthStore()
 const app = useAppStore()
@@ -114,7 +114,7 @@ async function loadMe() {
   }
 }
 
-function onPlanUpdated(plan: PracticePlan, selection: { majorId: string; subjectIds: string[] }) {
+function onPlanUpdated(plan: StudyPlan, selection: { majorId: string; subjectIds: string[] }) {
   if (me.value) {
     me.value.preferences.plan = plan
   }
@@ -283,7 +283,7 @@ onMounted(() => {
       @updated="onEmailUpdated"
     />
 
-    <PracticePlanModal
+    <StudyPlanModal
       v-model="planModalOpen"
       :plan="me?.preferences.plan"
       @updated="onPlanUpdated"

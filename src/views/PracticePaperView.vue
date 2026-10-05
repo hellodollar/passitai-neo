@@ -176,12 +176,18 @@ const currentCorrectAnswerText = computed(() => {
   }
   return (question as RichQuestionListItem).correctAnswer ?? ''
 })
+const currentUserAnswerText = computed(() => {
+  const record = currentAnswerRecord.value
+  if (!record) return ''
+  return record.text || record.values.join('、')
+})
+const canGradeCurrentAnswer = computed(
+  () => isChoiceMode.value && correctOptionValues.value.size > 0,
+)
 const answeredCount = computed(() => Object.keys(answerRecords.value).length)
 const unansweredCount = computed(() =>
   Math.max(0, currentQuestions.value.length - answeredCount.value),
 )
-const isLastQuestion = computed(() => currentIndex.value >= currentQuestions.value.length - 1)
-
 const currentQuestionPosition = computed(() =>
   currentQuestions.value.length === 0 ? 0 : currentIndex.value + 1,
 )
@@ -471,6 +477,7 @@ function toggleOption(optionValue: string) {
 async function submitCurrentAnswer() {
   const question = currentQuestion.value
   if (!question || !canSubmitCurrentAnswer.value) return
+  const answeredIndex = currentIndex.value
 
   const values = [...selectedOptionValues.value]
   const selectedLabels = resolvedQuestionOptions.value
@@ -494,10 +501,18 @@ async function submitCurrentAnswer() {
   void recordWrongAnswer(question, record)
   void removeMistakeIfCorrect(question, record)
 
-  // 仅「答对 + 开启自动下一题」时快进;答错停留展示正确答案与解析
-  if (isAnswerCorrect(record, question)) {
+  // 仅「答对 + 开启自动切题」时前进；设置请求期间若用户已手动切题，不再跳过新题。
+  if (canGradeCurrentAnswer.value && isAnswerCorrect(record, question)) {
     const settings = await practiceSettings.ensure()
-    if (settings?.autoNext) scheduleAutoAdvance()
+    if (
+      settings?.autoNext &&
+      currentIndex.value === answeredIndex &&
+      !questionSheetOpen.value &&
+      !settingsModalOpen.value &&
+      !submitConfirmOpen.value
+    ) {
+      scheduleAutoAdvance()
+    }
   }
 }
 
@@ -735,6 +750,36 @@ function handleTouchEnd(event: TouchEvent) {
   }
 }
 
+function handleNavigationKeydown(event: KeyboardEvent) {
+  if (
+    event.defaultPrevented ||
+    event.altKey ||
+    event.ctrlKey ||
+    event.metaKey ||
+    questionSheetOpen.value ||
+    settingsModalOpen.value ||
+    submitConfirmOpen.value ||
+    sessionLoadState.value !== 'ready'
+  ) {
+    return
+  }
+  const target = event.target
+  if (
+    target instanceof HTMLElement &&
+    (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
+  ) {
+    return
+  }
+
+  if (event.key === 'ArrowRight') {
+    event.preventDefault()
+    nextQuestion()
+  } else if (event.key === 'ArrowLeft') {
+    event.preventDefault()
+    prevQuestion()
+  }
+}
+
 function nextQuestion() {
   if (currentIndex.value < currentQuestions.value.length - 1) {
     clearAutoAdvance()
@@ -935,6 +980,7 @@ onMounted(() => {
   app.setPracticeSessionActive(true)
   void practiceSettings.ensure()
   window.addEventListener('pagehide', saveDraftNow)
+  window.addEventListener('keydown', handleNavigationKeydown)
   document.addEventListener('visibilitychange', saveDraftWhenHidden)
   loadSessionData()
 })
@@ -944,6 +990,7 @@ onBeforeUnmount(() => {
   saveDraftNow()
   loadSequence++
   window.removeEventListener('pagehide', saveDraftNow)
+  window.removeEventListener('keydown', handleNavigationKeydown)
   document.removeEventListener('visibilitychange', saveDraftWhenHidden)
   app.endPracticeSession()
   clearAutoAdvance()
@@ -973,6 +1020,7 @@ watch(questionSheetOpen, async (open) => {
     document.body.style.overflow = previousBodyOverflow
     return
   }
+  clearAutoAdvance()
   questionSheetRangeIndex.value = Math.floor(currentIndex.value / QUESTION_SHEET_RANGE_SIZE)
   previousBodyOverflow = document.body.style.overflow
   document.body.style.overflow = 'hidden'
@@ -1029,7 +1077,7 @@ watch(questionSheetRangeIndex, () => {
 
     <article
       v-else-if="currentQuestion"
-      class="-mx-5 flex min-w-0 flex-1 flex-col pb-[calc(6.5rem+env(safe-area-inset-bottom))] pt-[calc(3.85rem+env(safe-area-inset-top))]"
+      class="-mx-5 flex min-w-0 flex-1 flex-col pb-[calc(5rem+env(safe-area-inset-bottom))] pt-[calc(3.85rem+env(safe-area-inset-top))]"
       @touchstart.passive="handleTouchStart"
       @touchend.passive="handleTouchEnd"
     >
@@ -1040,7 +1088,10 @@ watch(questionSheetRangeIndex, () => {
           >
             {{ currentQuestionTypeLabel }}
           </span>
-          <span v-if="sessionSubjectName" class="truncate text-xs font-medium text-base-content/45">
+          <span
+            v-if="sessionSubjectName"
+            class="min-w-0 flex-1 truncate text-right text-xs font-medium text-base-content/45"
+          >
             {{ sessionSubjectName }}
           </span>
         </div>
@@ -1050,22 +1101,22 @@ watch(questionSheetRangeIndex, () => {
         </h2>
       </section>
 
-      <section v-if="expectsChoiceQuestion" class="px-5 pt-3">
+      <section v-if="expectsChoiceQuestion" class="px-5 pt-2.5">
         <div
-          class="grid gap-2"
+          class="grid gap-1.5"
           :class="currentQuestion.questionType === 'judge' ? 'grid-cols-2' : 'grid-cols-1'"
         >
           <button
             v-for="option in resolvedQuestionOptions"
             :key="option.value"
-            class="group flex min-h-[3.25rem] min-w-0 items-center gap-3 rounded-xl border px-3.5 py-2.5 text-left transition"
+            class="group flex min-h-11 min-w-0 items-center gap-2.5 rounded-lg border px-3 py-2 text-left transition"
             :class="[optionClasses(option.value), currentAnswerRecord ? 'cursor-default' : '']"
             type="button"
             :aria-pressed="optionSelected(option.value)"
             @click="toggleOption(option.value)"
           >
             <span
-              class="flex size-7 shrink-0 items-center justify-center border text-xs font-bold transition"
+              class="flex size-6 shrink-0 items-center justify-center border text-[11px] font-bold transition"
               :class="[
                 isMultipleQuestion ? 'rounded-lg' : 'rounded-full',
                 optionMarkerClasses(option.value),
@@ -1073,7 +1124,7 @@ watch(questionSheetRangeIndex, () => {
             >
               {{ option.label }}
             </span>
-            <span class="min-w-0 flex-1 break-words text-[14px] leading-[1.55]">{{
+            <span class="min-w-0 flex-1 break-words text-[14px] leading-[1.4]">{{
               option.text
             }}</span>
           </button>
@@ -1081,7 +1132,7 @@ watch(questionSheetRangeIndex, () => {
 
         <button
           v-if="isMultipleQuestion && !currentAnswerRecord"
-          class="btn btn-primary mt-3 h-10 min-h-10 w-full rounded-xl text-sm"
+          class="btn btn-primary mt-2.5 h-10 min-h-10 w-full rounded-xl text-sm"
           type="button"
           :disabled="!canSubmitCurrentAnswer"
           @click="submitCurrentAnswer()"
@@ -1110,15 +1161,67 @@ watch(questionSheetRangeIndex, () => {
         </button>
       </section>
 
-      <section v-if="currentAnswerRecord" class="mx-5 mt-4 space-y-3 border-t border-base-200 pt-3">
+      <section
+        v-if="currentAnswerRecord"
+        class="mx-5 mt-3 space-y-3 border-t border-base-200 pt-2.5"
+      >
         <div
-          class="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold"
-          :class="currentAnswerCorrect ? 'bg-success/10 text-success' : 'bg-error/10 text-error'"
+          class="rounded-lg border px-3 py-2.5"
+          :class="
+            !canGradeCurrentAnswer
+              ? 'border-base-200 bg-base-200/40'
+              : currentAnswerCorrect
+                ? 'border-success/25 bg-success/[0.06]'
+                : 'border-error/25 bg-error/[0.06]'
+          "
           role="status"
         >
-          <CheckCircle2 v-if="currentAnswerCorrect" :size="17" />
-          <XCircle v-else :size="17" />
-          {{ currentAnswerCorrect ? '回答正确' : `回答错误 · 正确答案 ${currentCorrectAnswerText}` }}
+          <div
+            class="flex items-center gap-1.5 text-sm font-semibold"
+            :class="
+              !canGradeCurrentAnswer
+                ? 'text-base-content/70'
+                : currentAnswerCorrect
+                  ? 'text-success'
+                  : 'text-error'
+            "
+          >
+            <ClipboardCheck v-if="!canGradeCurrentAnswer" :size="16" />
+            <CheckCircle2 v-else-if="currentAnswerCorrect" :size="16" />
+            <XCircle v-else :size="16" />
+            {{ !canGradeCurrentAnswer ? '已作答' : currentAnswerCorrect ? '回答正确' : '回答错误' }}
+          </div>
+          <dl
+            class="mt-1.5 grid gap-x-3 gap-y-1 text-xs leading-5"
+            :class="isChoiceMode ? 'grid-cols-2' : 'grid-cols-1'"
+          >
+            <div class="min-w-0">
+              <dt class="inline text-base-content/50">我的答案 </dt>
+              <dd
+                class="inline break-words font-semibold"
+                :class="
+                  !canGradeCurrentAnswer
+                    ? 'text-base-content/80'
+                    : currentAnswerCorrect
+                      ? 'text-success'
+                      : 'text-error'
+                "
+              >
+                {{ currentUserAnswerText || '—' }}
+              </dd>
+            </div>
+            <div class="min-w-0">
+              <dt class="inline text-base-content/50">
+                {{ isChoiceMode ? '正确答案' : '参考答案' }}
+              </dt>
+              <dd
+                class="inline break-words font-semibold"
+                :class="isChoiceMode ? 'text-success' : 'text-base-content/80'"
+              >
+                {{ currentCorrectAnswerText || '暂无' }}
+              </dd>
+            </div>
+          </dl>
         </div>
 
         <div>
@@ -1131,14 +1234,6 @@ watch(questionSheetRangeIndex, () => {
           </p>
           <p v-else class="mt-2 text-sm text-base-content/40">暂无解析</p>
         </div>
-
-        <button
-          class="btn btn-primary h-11 min-h-11 w-full rounded-full text-sm"
-          type="button"
-          @click="isLastQuestion ? (questionSheetOpen = true) : nextQuestion()"
-        >
-          {{ isLastQuestion ? '查看答题卡' : '下一题' }}
-        </button>
       </section>
     </article>
 

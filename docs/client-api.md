@@ -88,7 +88,7 @@ interface AuthResult {
 interface UserMe {
   user: AuthResult['user'] & { status: 'enabled' | 'disabled' }
   preferences: {
-    plan: PracticePlan
+    plan: StudyPlan
     practice: PracticeSettings
     notifications: NotificationSettings
   }
@@ -136,7 +136,7 @@ interface NotificationSettings {
 | `PUT`  | `/api/plan` | 更新当前学习计划 | 可用 |
 
 ```ts
-interface PracticePlan {
+interface StudyPlan {
   majorName: string
   majorCode: string
   educationLevel: '本科' | '专科' // 来自 majors.educationLevel
@@ -147,7 +147,7 @@ interface PracticePlan {
   }[]
 }
 
-interface UpdatePracticePlanBody {
+interface UpdatePlanBody {
   majorId: string
   majorCode?: string
   subjectIds?: string[]

@@ -46,7 +46,7 @@ export type UserMe = {
   user: User & { status: string }
   preferences: {
     /** 未设置计划时为 null，需用户手动添加 */
-    plan: PracticePlan | null
+    plan: StudyPlan | null
     practice: PracticeSettings
     notifications: NotificationSettings
   }
@@ -140,27 +140,29 @@ export type QuestionListItem = {
   createdAt: string
 }
 
-// ---- Practice ----
+// ---- Study plan ----
 
-export type PracticePlanSubject = {
+export type StudyPlanSubject = {
   name: string
   code: string
   credits?: number | null
 }
 
-export type PracticePlan = {
+export type StudyPlan = {
   majorName: string
   majorCode: string
   educationLevel: DomainValue<'educationLevel'>
   nextExamDate: string | null
-  subjects: PracticePlanSubject[]
+  subjects: StudyPlanSubject[]
 }
 
-export type UpdatePracticePlanBody = {
+export type UpdatePlanBody = {
   majorId: string
   majorCode?: string
   subjectIds?: string[]
 }
+
+// ---- Practice ----
 
 export type PracticeEntryChild = {
   paperId: string

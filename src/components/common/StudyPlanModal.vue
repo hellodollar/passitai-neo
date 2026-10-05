@@ -2,16 +2,16 @@
 import { ref, watch } from 'vue'
 
 import BaseModal from '@/components/common/BaseModal.vue'
-import { fetchMajorOptions, fetchSubjectOptions } from '@/api/catalog'
-import { updatePracticePlan } from '@/api/practice'
+import { fetchMajorOptions, fetchSubjectOptions } from '@/api/options'
+import { updatePlan } from '@/api/plan'
 import { showSuccessToast } from '@/utils/toast'
-import type { OptionItem, PracticePlan } from '@/types/domain'
+import type { OptionItem, StudyPlan } from '@/types/domain'
 
 const model = defineModel<boolean>({ default: false })
 
 const props = withDefaults(
   defineProps<{
-    plan?: PracticePlan | null
+    plan?: StudyPlan | null
   }>(),
   {
     plan: null,
@@ -19,7 +19,7 @@ const props = withDefaults(
 )
 
 const emit = defineEmits<{
-  updated: [plan: PracticePlan, selection: { majorId: string; subjectIds: string[] }]
+  updated: [plan: StudyPlan, selection: { majorId: string; subjectIds: string[] }]
 }>()
 
 const majorOptions = ref<OptionItem[]>([])
@@ -109,7 +109,7 @@ async function save() {
   saving.value = true
   try {
     const major = majorOptions.value.find((item) => item.id === draftMajorId.value)
-    const updated = await updatePracticePlan({
+    const updated = await updatePlan({
       majorId: draftMajorId.value,
       majorCode: major?.code,
       subjectIds: [...draftSubjectIds.value],

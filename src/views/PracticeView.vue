@@ -21,18 +21,19 @@ import { useRouter } from 'vue-router'
 import logoPassitai from '@/assets/icons/icon-passitai.svg'
 import BaseModal from '@/components/common/BaseModal.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
-import PracticePlanModal from '@/components/common/PracticePlanModal.vue'
+import StudyPlanModal from '@/components/common/StudyPlanModal.vue'
 import StudySettingsModal from '@/components/settings/StudySettingsModal.vue'
-import { fetchPracticeEntries, fetchPracticePlan } from '@/api/practice'
-import { fetchMajorOptions, fetchSubjectOptions } from '@/api/catalog'
+import { fetchPracticeEntries } from '@/api/practice'
+import { fetchPlan } from '@/api/plan'
+import { fetchMajorOptions, fetchSubjectOptions } from '@/api/options'
 import { ROUTE_NAMES } from '@/constants/app'
 import { BASELINE_CHILD_ICONS, BASELINE_CHILD_ICON_FALLBACKS } from '@/constants/practice'
 import { useAppStore } from '@/stores/app'
 import type {
   PracticeEntry,
   PracticeEntryChild,
-  PracticePlan,
-  PracticePlanSubject,
+  StudyPlan,
+  StudyPlanSubject,
 } from '@/types/domain'
 
 const router = useRouter()
@@ -41,7 +42,7 @@ const app = useAppStore()
 const settingsModalOpen = ref(false)
 const subjectPanelOpen = ref(false)
 const planModalOpen = ref(false)
-const plan = ref<PracticePlan | null>(null)
+const plan = ref<StudyPlan | null>(null)
 const planLoading = ref(false)
 
 const subjectOrder = ref<string[]>([])
@@ -119,7 +120,7 @@ const nextExamDate = computed(() => {
   return Number.isNaN(parsedDate.getTime()) ? null : parsedDate
 })
 
-const hasPracticePlan = computed(() => planSubjects.value.length > 0)
+const hasStudyPlan = computed(() => planSubjects.value.length > 0)
 const daysUntilExam = computed(() => {
   if (!nextExamDate.value) return null
   return Math.max(0, differenceInCalendarDays(nextExamDate.value, new Date()))
@@ -190,7 +191,7 @@ function selectSubject(code: string) {
   expandedEntryKey.value = ''
 }
 
-function subjectCreditsText(subject: PracticePlanSubject) {
+function subjectCreditsText(subject: StudyPlanSubject) {
   return typeof subject.credits === 'number' ? `${subject.credits} 学分` : ''
 }
 
@@ -295,7 +296,7 @@ async function loadEntries() {
 async function loadPlan() {
   planLoading.value = true
   try {
-    plan.value = await fetchPracticePlan()
+    plan.value = await fetchPlan()
   } catch {
     plan.value = null
   } finally {
@@ -303,7 +304,7 @@ async function loadPlan() {
   }
 }
 
-function handlePlanUpdated(updated: PracticePlan) {
+function handlePlanUpdated(updated: StudyPlan) {
   plan.value = updated
 }
 
@@ -351,7 +352,7 @@ watch(
     </section>
 
     <section
-      v-else-if="!hasPracticePlan"
+      v-else-if="!hasStudyPlan"
       class="overflow-hidden rounded-2xl border border-base-200"
     >
       <EmptyState
@@ -670,6 +671,6 @@ watch(
 
     <StudySettingsModal v-model="settingsModalOpen" />
 
-    <PracticePlanModal v-model="planModalOpen" :plan="plan" @updated="handlePlanUpdated" />
+    <StudyPlanModal v-model="planModalOpen" :plan="plan" @updated="handlePlanUpdated" />
   </section>
 </template>

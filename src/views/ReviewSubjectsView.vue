@@ -150,11 +150,10 @@ onBeforeUnmount(() => {
 /** 进入收藏/错题练习：虚拟题集 id = fav:<subjectId|paperId>，query.source 区分集合 */
 function startPractice(item: CollectionAggregateItem) {
   const originId = groupMode.value === 'paper' ? item.paperId! : item.subjectId
-  const originName = groupMode.value === 'paper' ? item.paperName! : item.subjectName
   void router.push({
     name: ROUTE_NAMES.practicePaper,
     params: { paperId: `fav:${originId}` },
-    query: { source: props.source, subject: originName },
+    query: { source: props.source, subject: item.subjectName },
   })
 }
 

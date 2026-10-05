@@ -4,7 +4,7 @@ import { reactive, ref, watch } from 'vue'
 
 import AuthField from '@/components/auth/AuthField.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
-import { changePassword } from '@/api/profile'
+import { changePassword } from '@/api/user'
 import { showSuccessToast } from '@/utils/toast'
 
 const model = defineModel<boolean>({ default: false })
