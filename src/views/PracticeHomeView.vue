@@ -23,12 +23,16 @@ import BaseModal from '@/components/common/BaseModal.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import StudyPlanModal from '@/components/common/StudyPlanModal.vue'
 import PracticeSettingsModal from '@/components/settings/PracticeSettingsModal.vue'
+import { useLocalPracticeRecords } from '@/composables/useLocalPracticeRecords'
 import { fetchPracticeEntries } from '@/api/practice'
 import { fetchPlan } from '@/api/plan'
 import { fetchMajorOptions, fetchSubjectOptions } from '@/api/options'
 import { ROUTE_NAMES } from '@/constants/app'
 import { BASELINE_CHILD_ICONS } from '@/constants/practice'
 import { useAppStore } from '@/stores/app'
+import { useAuthStore } from '@/stores/auth'
+import { readPracticeRecord } from '@/utils/practice-record'
+import { applyLocalPracticeProgress } from '@/utils/practice-progress'
 import type {
   PracticeEntry,
   PracticeEntryChild,
@@ -37,6 +41,9 @@ import type {
 
 const router = useRouter()
 const app = useAppStore()
+const auth = useAuthStore()
+const { records, refresh: refreshLocalRecords } = useLocalPracticeRecords()
+const activeSubjectId = ref('')
 
 const settingsModalOpen = ref(false)
 const subjectPanelOpen = ref(false)
@@ -147,8 +154,16 @@ const activeSubject = computed(
     visibleSubjects.value[0],
 )
 
+const localEntries = computed(() =>
+  applyLocalPracticeProgress(
+    entries.value,
+    records.value,
+    auth.session?.user.id ?? '',
+    activeSubjectId.value,
+  ),
+)
 const entryRows = computed(() =>
-  entries.value.map((entry) => ({
+  localEntries.value.map((entry) => ({
     ...entry,
     ...entryStyle(entry.type),
   })),
@@ -157,7 +172,6 @@ const activeEntry = computed(
   () =>
     entryRows.value.find((entry) => entry.type === expandedEntryKey.value) ?? entryRows.value[0],
 )
-
 const activeEntryChildren = computed(() => {
   const entry = activeEntry.value
   if (!entry) return []
@@ -264,6 +278,8 @@ async function getSubjectIdMap(majorCode: string) {
 
 async function loadEntries() {
   const sequence = ++entryLoadSequence
+  const userId = auth.session?.user.id
+  activeSubjectId.value = ''
   const subject = activeSubject.value
   if (!subject) {
     entries.value = []
@@ -279,7 +295,23 @@ async function loadEntries() {
     if (!subjectId) return
 
     const loadedEntries = await fetchPracticeEntries(subjectId)
-    if (sequence !== entryLoadSequence) return
+    if (sequence !== entryLoadSequence || auth.session?.user.id !== userId) return
+    activeSubjectId.value = subjectId
+    // 目录已给出真实科目及分类，可迁移这些题集的旧记录；不额外拉取作答接口。
+    if (userId) {
+      for (const entry of loadedEntries) {
+        for (const child of entry.children ?? []) {
+          readPracticeRecord({
+            userId,
+            paperId: child.paperId,
+            source: 'practice',
+            subjectId,
+            paperType: entry.type,
+          })
+        }
+      }
+      refreshLocalRecords()
+    }
     entries.value = loadedEntries
     if (!entries.value.some((entry) => entry.type === expandedEntryKey.value)) {
       expandedEntryKey.value = entries.value[0]?.type ?? ''

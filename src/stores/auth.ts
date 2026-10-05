@@ -6,7 +6,7 @@ import { fetchUserMe } from '@/api/me'
 import { AUTH_INVALIDATED_EVENT, STORAGE_KEYS } from '@/constants/app'
 import { usePracticeSettingsStore } from '@/stores/practiceSettings'
 import type { AuthCredentials, AuthSession, RegisterCredentials, User } from '@/types/domain'
-import { clearUserPracticeDrafts } from '@/utils/practice-draft'
+import { clearUserPracticeRecords } from '@/utils/practice-record'
 import { readStorage, removeStorage, writeStorage } from '@/utils/storage'
 
 export const useAuthStore = defineStore('auth', () => {
@@ -20,7 +20,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   function clearLocalSession() {
     const userId = session.value?.user.id
-    if (userId) clearUserPracticeDrafts(userId)
+    if (userId) clearUserPracticeRecords(userId)
     session.value = null
     user.value = null
     removeStorage(STORAGE_KEYS.authSession)

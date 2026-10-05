@@ -7,6 +7,7 @@ import {
   ClipboardCheck,
   ClipboardList,
   Grid2X2,
+  Eraser,
   Settings,
   XCircle,
 } from '@lucide/vue'
@@ -14,6 +15,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import BaseDialog from '@/components/common/BaseDialog.vue'
+import ClearPracticeRecordsDialog from '@/components/practice/ClearPracticeRecordsDialog.vue'
 import PracticeSettingsModal from '@/components/settings/PracticeSettingsModal.vue'
 import { usePracticeNavigation } from '@/composables/usePracticeNavigation'
 import {
@@ -34,12 +36,22 @@ import { useAuthStore } from '@/stores/auth'
 import { usePracticeSettingsStore } from '@/stores/practiceSettings'
 import { fetchPracticePaper, fetchPracticeSubmission, submitPracticePaper } from '@/api/practice'
 import {
-  readPracticeDraft,
-  removePracticeDraft,
-  restorePracticeDraft,
-  writePracticeDraft,
-  type PracticeDraftAnswer,
-} from '@/utils/practice-draft'
+  createPracticeRecord,
+  readPracticeRecord,
+  restorePracticeRecord,
+  updatePracticeRecord,
+  writePracticeRecord,
+} from '@/utils/practice-record'
+import {
+  isPracticeRecordCurrent,
+  subscribePracticeRecordChanges,
+} from '@/utils/practice-record-control'
+import type {
+  PracticeRecord,
+  PracticeRecordAnswer,
+  PracticeRecordContext,
+  PracticeRecordSource,
+} from '@/types/practice-record'
 import {
   getCorrectOptionValues,
   getPreviewOptions,
@@ -57,6 +69,7 @@ import {
 } from '@/utils/question-sheet'
 import { showErrorToast } from '@/utils/toast'
 import { toSubmissionAnswers } from '@/utils/submission-answers'
+import { preparePracticeSubmission, settlePracticeSubmission } from '@/utils/practice-submission'
 import type {
   CollectionContext,
   PracticePaperItem,
@@ -89,6 +102,7 @@ const questionSheetRangeRef = ref<HTMLElement | null>(null)
 const questionSheetContentRef = ref<HTMLElement | null>(null)
 const questionSheetRangeIndex = ref(0)
 const submitConfirmOpen = ref(false)
+const clearRecordConfirmOpen = ref(false)
 const submitting = ref(false)
 const submitError = ref('')
 const pendingSubmissionId = ref('')
@@ -101,14 +115,15 @@ const currentIndex = ref(0)
 const selectedOptionValues = ref<Set<string>>(new Set())
 const textAnswer = ref('')
 const answerRecords = ref<Record<string, PracticeAnswerRecord>>({})
-const inputDrafts = ref<Record<string, PracticeDraftAnswer>>({})
+const inputDrafts = ref<Record<string, PracticeRecordAnswer>>({})
 const questionFingerprints = ref<Record<string, string>>({})
-const draftUserId = ref('')
-const draftPaperId = ref('')
-const draftReady = ref(false)
-let draftSaveTimer: number | null = null
-let draftSaveWarningShown = false
+const localRecord = ref<PracticeRecord | null>(null)
+const recordReady = ref(false)
+let recordSaveTimer: number | null = null
+let recordSaveWarningShown = false
+let recordWasSaved = false
 let loadSequence = 0
+let unsubscribeRecordChanges = () => {}
 let previousBodyOverflow = ''
 const favoriteQuestionIds = ref<Set<string>>(new Set())
 /** 加载时的原始题目数据（PracticePaperItem），供交卷本地快照使用 */
@@ -130,7 +145,8 @@ const {
     sessionLoadState.value !== 'ready' ||
     questionSheetOpen.value ||
     settingsModalOpen.value ||
-    submitConfirmOpen.value,
+    submitConfirmOpen.value ||
+    clearRecordConfirmOpen.value,
 })
 
 const currentQuestion = computed(() => currentQuestions.value[currentIndex.value])
@@ -300,53 +316,112 @@ function questionResultClasses(question: QuestionListItem) {
     : 'border-error bg-error text-white font-semibold'
 }
 
-function clearDraftSaveTimer() {
-  if (draftSaveTimer !== null) {
-    window.clearTimeout(draftSaveTimer)
-    draftSaveTimer = null
+function clearRecordSaveTimer() {
+  if (recordSaveTimer !== null) {
+    window.clearTimeout(recordSaveTimer)
+    recordSaveTimer = null
   }
 }
 
-function saveDraftNow() {
-  clearDraftSaveTimer()
+function saveRecordNow() {
+  clearRecordSaveTimer()
   if (
-    !draftReady.value ||
-    !draftUserId.value ||
-    !draftPaperId.value ||
-    auth.session?.user.id !== draftUserId.value
+    !recordReady.value ||
+    !localRecord.value ||
+    auth.session?.user.id !== localRecord.value.userId
   )
     return
+  if (!isPracticeRecordCurrent(localRecord.value)) {
+    resetClearedRecord()
+    return
+  }
 
   const answers = Object.fromEntries(
     Object.values(answerRecords.value).flatMap((record) => {
       const fingerprint = questionFingerprints.value[record.questionId]
       return fingerprint
-        ? [[record.questionId, { ...record, fingerprint } satisfies PracticeDraftAnswer]]
+        ? [[record.questionId, { ...record, fingerprint } satisfies PracticeRecordAnswer]]
         : []
     }),
   )
-  const saved = writePracticeDraft({
-    version: 1,
-    userId: draftUserId.value,
-    paperId: draftPaperId.value,
+  localRecord.value = updatePracticeRecord(localRecord.value, {
     startedAt: sessionStartedAt.value,
     currentQuestionId: currentQuestion.value?.id ?? '',
     answers,
     inputs: inputDrafts.value,
     pendingSubmissionId: pendingSubmissionId.value,
-    savedAt: Date.now(),
+    submissionAnswers: toSubmissionAnswers(answerRecords.value, currentQuestions.value),
   })
-  if (!saved && !draftSaveWarningShown) {
-    draftSaveWarningShown = true
+  pendingSubmissionId.value = localRecord.value.pendingSubmission?.submissionId ?? ''
+  // 清理后的空白首题无需立刻生成一份新记录，第一次输入、切题或交卷再保存。
+  if (!hasLocalRecordProgress.value && !recordWasSaved) return
+  const saved = writePracticeRecord(localRecord.value)
+  if (!saved && !recordSaveWarningShown) {
+    recordSaveWarningShown = true
     showErrorToast('本地保存失败，离开后可能无法恢复本次作答。')
   }
-  if (saved) draftSaveWarningShown = false
+  if (saved) {
+    recordWasSaved = true
+    recordSaveWarningShown = false
+  }
 }
 
-function scheduleDraftSave() {
-  if (!draftReady.value) return
-  clearDraftSaveTimer()
-  draftSaveTimer = window.setTimeout(saveDraftNow, 250)
+const hasLocalRecordProgress = computed(
+  () =>
+    Object.keys(answerRecords.value).length > 0 ||
+    Object.keys(inputDrafts.value).length > 0 ||
+    currentIndex.value > 0 ||
+    Boolean(localRecord.value?.pendingSubmission || localRecord.value?.lastSubmission),
+)
+const clearRecordScope = computed(() =>
+  localRecord.value
+    ? {
+        kind: 'paper' as const,
+        identity: {
+          userId: localRecord.value.userId,
+          paperId: localRecord.value.paperId,
+          source: localRecord.value.source,
+        },
+      }
+    : null,
+)
+
+function requestClearRecord() {
+  clearAutoAdvance()
+  questionSheetOpen.value = false
+  clearRecordConfirmOpen.value = true
+}
+
+function resetClearedRecord() {
+  const record = localRecord.value
+  if (!record || auth.session?.user.id !== record.userId) return
+  clearAutoAdvance()
+  clearRecordSaveTimer()
+  // 失效正在进行的提交/恢复请求，不再让旧响应登记到新一轮作答。
+  loadSequence++
+  answerRecords.value = {}
+  inputDrafts.value = {}
+  currentIndex.value = 0
+  sessionStartedAt.value = Date.now()
+  localRecord.value = createPracticeRecord(record, sessionStartedAt.value)
+  recordWasSaved = false
+  pendingSubmissionId.value = ''
+  submitConfirmOpen.value = false
+  clearRecordConfirmOpen.value = false
+  submitting.value = false
+  submitError.value = ''
+  questionSheetOpen.value = false
+  syncCurrentInput()
+}
+
+function handleRecordChanges() {
+  if (localRecord.value && !isPracticeRecordCurrent(localRecord.value)) resetClearedRecord()
+}
+
+function scheduleRecordSave() {
+  if (!recordReady.value) return
+  clearRecordSaveTimer()
+  recordSaveTimer = window.setTimeout(saveRecordNow, 250)
 }
 
 function saveCurrentInput() {
@@ -367,7 +442,7 @@ function saveCurrentInput() {
     delete nextInputs[question.id]
   }
   inputDrafts.value = nextInputs
-  scheduleDraftSave()
+  scheduleRecordSave()
 }
 
 function handleTextInput(event: Event) {
@@ -375,7 +450,7 @@ function handleTextInput(event: Event) {
   saveCurrentInput()
 }
 
-function syncCurrentDraft() {
+function syncCurrentInput() {
   const question = currentQuestion.value
   if (!question) {
     selectedOptionValues.value = new Set()
@@ -465,6 +540,7 @@ async function submitCurrentAnswer() {
   const question = currentQuestion.value
   if (!question || !canSubmitCurrentAnswer.value) return
   const answeredIndex = currentIndex.value
+  const sequence = loadSequence
 
   const values = [...selectedOptionValues.value]
   const selectedLabels = resolvedQuestionOptions.value
@@ -484,7 +560,7 @@ async function submitCurrentAnswer() {
   delete nextInputs[question.id]
   inputDrafts.value = nextInputs
   pendingSubmissionId.value = ''
-  saveDraftNow()
+  saveRecordNow()
   void recordWrongAnswer(question, record)
   void removeMistakeIfCorrect(question, record)
 
@@ -493,6 +569,7 @@ async function submitCurrentAnswer() {
     const settings = await practiceSettings.ensure()
     if (
       settings?.autoNext &&
+      sequence === loadSequence &&
       currentIndex.value === answeredIndex &&
       !questionSheetOpen.value &&
       !settingsModalOpen.value &&
@@ -565,49 +642,98 @@ async function confirmSubmitSession() {
   if (submitting.value) return
 
   const paperId = route.params.paperId
-  if (typeof paperId !== 'string' || !paperId) {
+  saveRecordNow()
+  const record = localRecord.value
+  if (
+    typeof paperId !== 'string' ||
+    !paperId ||
+    !recordReady.value ||
+    !record ||
+    record.paperId !== paperId ||
+    record.source !== 'practice' ||
+    auth.session?.user.id !== record.userId ||
+    currentQuestions.value.length === 0
+  ) {
     submitError.value = '当前练习信息已失效，请返回后重新进入。'
     return
   }
 
+  const sequence = loadSequence
+  const subjectName = sessionSubjectName.value
   submitting.value = true
   submitError.value = ''
-  if (!pendingSubmissionId.value) {
-    const randomBytes = crypto.getRandomValues(new Uint8Array(6))
-    pendingSubmissionId.value = `rec_${Array.from(randomBytes, (byte) =>
-      byte.toString(16).padStart(2, '0'),
-    ).join('')}`
-  }
-  saveDraftNow()
-  const userAnswers = toSubmissionAnswers(answerRecords.value, currentQuestions.value)
-
-  let submission: PracticeSubmission
   try {
-    submission = await submitPracticePaper(paperId, {
-      submissionId: pendingSubmissionId.value,
-      userAnswers,
-      startTime: new Date(sessionStartedAt.value).toISOString(),
+    const plan = preparePracticeSubmission(
+      record,
+      toSubmissionAnswers(answerRecords.value, currentQuestions.value),
+    )
+    let submissionId: string
+    if (plan.kind === 'report') {
+      submissionId = plan.submissionId
+    } else {
+      localRecord.value = plan.record
+      pendingSubmissionId.value = plan.pending.submissionId
+      // 请求发出前保存幂等 ID 和固定快照，超时或刷新后可继续重试。
+      saveRecordNow()
+      const submission = await submitPracticePaper(paperId, plan.pending.payload)
+      if (!isCurrentSubmissionContext(sequence, record)) return
+      saveRecordNow()
+      localRecord.value = settlePracticeSubmission(localRecord.value!, plan.record, submission)
+      pendingSubmissionId.value = localRecord.value.pendingSubmission?.submissionId ?? ''
+      saveRecordNow()
+      submissionId = submission.id
+    }
+
+    if (!isCurrentSubmissionContext(sequence, record)) return
+    submitConfirmOpen.value = false
+    app.endPracticeSession()
+    await router.replace({
+      name: ROUTE_NAMES.practicePaperResult,
+      params: { paperId },
+      query: { submissionId, subject: subjectName || undefined },
     })
   } catch (error) {
-    submitError.value = error instanceof Error ? error.message : '交卷失败，请重试。'
-    return
+    if (isCurrentSubmissionContext(sequence, record)) {
+      submitError.value = error instanceof Error ? error.message : '交卷失败，请重试。'
+    }
   } finally {
-    submitting.value = false
+    if (sequence === loadSequence) submitting.value = false
   }
+}
 
-  submitConfirmOpen.value = false
-  draftReady.value = false
-  clearDraftSaveTimer()
-  removePracticeDraft(draftUserId.value, draftPaperId.value)
-  app.endPracticeSession()
-  await router.replace({
-    name: ROUTE_NAMES.practicePaperResult,
-    params: { paperId },
-    query: {
-      submissionId: submission.id,
-      subject: sessionSubjectName.value || undefined,
-    },
-  })
+function isCurrentSubmissionContext(sequence: number, record: PracticeRecord) {
+  return (
+    sequence === loadSequence &&
+    recordReady.value &&
+    route.params.paperId === record.paperId &&
+    !collectionMode.value &&
+    isPracticeRecordCurrent(record) &&
+    auth.session?.user.id === record.userId &&
+    localRecord.value?.userId === record.userId &&
+    localRecord.value.paperId === record.paperId &&
+    localRecord.value.source === record.source
+  )
+}
+
+/** 超时请求可能已成功：后台核对元信息，不打断本地恢复、不自动跳报告。 */
+async function reconcilePendingSubmission(sequence: number, record: PracticeRecord) {
+  if (record.source !== 'practice' || !record.pendingSubmission) return
+  let submission: PracticeSubmission
+  try {
+    submission = await fetchPracticeSubmission(record.paperId, record.pendingSubmission.submissionId)
+  } catch {
+    // 尚未提交或网络不可用，保留快照，下一次交卷使用同一个 ID 重试。
+    return
+  }
+  if (!isCurrentSubmissionContext(sequence, record)) return
+  saveRecordNow()
+  try {
+    localRecord.value = settlePracticeSubmission(localRecord.value!, record, submission)
+    pendingSubmissionId.value = localRecord.value.pendingSubmission?.submissionId ?? ''
+    saveRecordNow()
+  } catch {
+    // 不可信或不匹配的响应不能改变本地答案及待提交状态。
+  }
 }
 
 /** 收藏/记错上下文：真实题集取路由参数；fav: 虚拟题集取题目固化的收录上下文 */
@@ -688,7 +814,7 @@ async function toggleFavorite() {
 }
 
 function exitSession() {
-  saveDraftNow()
+  saveRecordNow()
   app.endPracticeSession()
   router.push({ name: ROUTE_NAMES.practiceHome })
 }
@@ -712,14 +838,17 @@ async function loadCollectionPaper(paperId: string) {
     collectionSource.value === 'wrong-questions'
       ? await fetchWrongQuestionPractice(params)
       : await fetchFavoritePractice(params)
-  return { paper, favoriteQuestionIds: [] as string[] }
+  return { paper, paperType: null, favoriteQuestionIds: [] as string[] }
 }
 
 async function loadSessionData() {
-  saveDraftNow()
-  draftReady.value = false
-  clearDraftSaveTimer()
+  saveRecordNow()
+  recordReady.value = false
+  clearRecordSaveTimer()
   const sequence = ++loadSequence
+  submitting.value = false
+  submitConfirmOpen.value = false
+  submitError.value = ''
   sessionLoadState.value = 'loading'
   currentIndex.value = 0
   currentQuestions.value = []
@@ -731,8 +860,8 @@ async function loadSessionData() {
   questionFingerprints.value = {}
   pendingSubmissionId.value = ''
   sessionStartedAt.value = Date.now()
-  draftUserId.value = ''
-  draftPaperId.value = ''
+  localRecord.value = null
+  recordWasSaved = false
   favoriteQuestionIds.value = new Set()
   paperItemsById.value = new Map()
   pendingFavoriteQuestionIds.value = new Set()
@@ -741,20 +870,25 @@ async function loadSessionData() {
 
   const paperId = route.params.paperId
   const userId = auth.session?.user.id
+  const source: PracticeRecordSource = collectionMode.value ? collectionSource.value : 'practice'
   if (typeof paperId !== 'string' || !paperId) {
     sessionLoadState.value = 'missing'
     return
   }
 
   try {
-    const loaded = collectionMode.value
-      ? await loadCollectionPaper(paperId)
-      : await fetchPracticePaper(paperId)
+    const loaded =
+      source === 'practice'
+        ? await fetchPracticePaper(paperId).then((detail) => ({
+            ...detail,
+            paperType: detail.paper.type,
+          }))
+        : await loadCollectionPaper(paperId)
     if (sequence !== loadSequence) return
     const { paper } = loaded
     // 收藏练习里全部题目本身就是收藏题；错题练习按常规收藏状态展示
     const initialFavoriteQuestionIds =
-      collectionMode.value && collectionSource.value === 'favorites'
+      source === 'favorites'
         ? paper.sections.flatMap((section) => section.items.map((item) => item.id))
         : loaded.favoriteQuestionIds
 
@@ -776,47 +910,35 @@ async function loadSessionData() {
       return
     }
 
-    draftUserId.value = userId
-    draftPaperId.value = paperId
-    const savedDraft = readPracticeDraft(userId, paperId)
-    if (savedDraft?.pendingSubmissionId && !collectionMode.value) {
-      let submission: PracticeSubmission | null = null
-      try {
-        submission = await fetchPracticeSubmission(paperId, savedDraft.pendingSubmissionId)
-      } catch {
-        // A timed-out submit may still be pending or the network may be offline.
-        // Keep its idempotency ID so a retry cannot create a duplicate submission.
-      }
-      if (sequence !== loadSequence) return
-      if (submission) {
-        removePracticeDraft(userId, paperId)
-        app.endPracticeSession()
-        await router.replace({
-          name: ROUTE_NAMES.practicePaperResult,
-          params: { paperId },
-          query: {
-            submissionId: submission.id,
-            subject: sessionSubjectName.value || undefined,
-          },
-        })
-        return
-      }
+    const context: PracticeRecordContext = {
+      userId,
+      paperId,
+      source,
+      subjectId: paper.subjectId,
+      paperType: loaded.paperType,
     }
+    const savedRecord = readPracticeRecord(context)
+    recordWasSaved = Boolean(savedRecord)
+    localRecord.value = savedRecord ?? createPracticeRecord(context)
     if (sequence !== loadSequence) return
 
-    if (savedDraft) {
-      const restored = restorePracticeDraft(savedDraft, questions, fingerprints)
+    if (savedRecord) {
+      const restored = restorePracticeRecord(savedRecord, questions, fingerprints)
+      localRecord.value = restored.record
       answerRecords.value = restored.answers
       inputDrafts.value = restored.inputs
-      sessionStartedAt.value = savedDraft.startedAt
-      pendingSubmissionId.value = restored.pendingSubmissionId
+      sessionStartedAt.value = savedRecord.startedAt
+      pendingSubmissionId.value = restored.record.pendingSubmission?.submissionId ?? ''
       currentIndex.value = restored.currentIndex
     }
 
-    syncCurrentDraft()
+    syncCurrentInput()
     sessionLoadState.value = 'ready'
-    draftReady.value = true
-    if (savedDraft) scheduleDraftSave()
+    recordReady.value = true
+    if (savedRecord) {
+      saveRecordNow()
+      if (localRecord.value) void reconcilePendingSubmission(sequence, localRecord.value)
+    }
   } catch {
     if (sequence !== loadSequence) return
     currentQuestions.value = []
@@ -828,36 +950,38 @@ async function loadSessionData() {
 onMounted(() => {
   app.setPracticeSessionActive(true)
   void practiceSettings.ensure()
-  window.addEventListener('pagehide', saveDraftNow)
-  document.addEventListener('visibilitychange', saveDraftWhenHidden)
+  window.addEventListener('pagehide', saveRecordNow)
+  document.addEventListener('visibilitychange', saveRecordWhenHidden)
+  unsubscribeRecordChanges = subscribePracticeRecordChanges(handleRecordChanges)
   loadSessionData()
 })
 
 onBeforeUnmount(() => {
   if (questionSheetOpen.value) document.body.style.overflow = previousBodyOverflow
-  saveDraftNow()
+  saveRecordNow()
+  unsubscribeRecordChanges()
   loadSequence++
-  window.removeEventListener('pagehide', saveDraftNow)
-  document.removeEventListener('visibilitychange', saveDraftWhenHidden)
+  window.removeEventListener('pagehide', saveRecordNow)
+  document.removeEventListener('visibilitychange', saveRecordWhenHidden)
   app.endPracticeSession()
 })
 
-function saveDraftWhenHidden() {
-  if (document.visibilityState === 'hidden') saveDraftNow()
+function saveRecordWhenHidden() {
+  if (document.visibilityState === 'hidden') saveRecordNow()
 }
 
 watch(
   () => currentQuestion.value?.id,
   () => {
-    syncCurrentDraft()
-    scheduleDraftSave()
+    syncCurrentInput()
+    scheduleRecordSave()
   },
 )
 
 watch(
-  () => route.params.paperId,
-  (paperId, previousPaperId) => {
-    if (paperId !== previousPaperId) loadSessionData()
+  [() => route.params.paperId, () => (collectionMode.value ? collectionSource.value : 'practice')],
+  () => {
+    void loadSessionData()
   },
 )
 
@@ -1211,6 +1335,15 @@ watch(questionSheetRangeIndex, () => {
             </div>
             <!-- 收藏/错题训练为纯刷题，不提供交卷。 -->
             <button
+              class="flex size-8 shrink-0 items-center justify-center rounded-lg text-base-content/45 active:bg-base-200 disabled:opacity-30"
+              type="button"
+              aria-label="清除本题集做题记录"
+              :disabled="!hasLocalRecordProgress || submitting"
+              @click="requestClearRecord"
+            >
+              <Eraser :size="16" />
+            </button>
+            <button
               v-if="!collectionMode"
               class="h-9 shrink-0 rounded-lg border border-primary/30 px-3 text-[13px] font-medium text-primary transition-colors active:bg-primary/10"
               type="button"
@@ -1281,15 +1414,20 @@ watch(questionSheetRangeIndex, () => {
       </div>
     </Teleport>
 
-    <BaseDialog v-model="submitConfirmOpen" title="确认交卷" :close-on-backdrop="!submitting">
+    <BaseDialog
+      v-model="submitConfirmOpen"
+      title="确认交卷"
+      :close-on-backdrop="!submitting"
+      :close-on-escape="!submitting"
+    >
       <p
         class="text-sm leading-6"
         :class="unansweredCount > 0 ? 'text-warning' : 'text-base-content/55'"
       >
         <template v-if="unansweredCount > 0">
-          还有 {{ unansweredCount }} 题未答，交卷后不可修改。
+          还有 {{ unansweredCount }} 题未答，确定交卷？
         </template>
-        <template v-else>交卷后不可修改。</template>
+        <template v-else>确定交卷？</template>
       </p>
 
       <p v-if="submitError" class="mt-3 text-sm text-error" role="alert">{{ submitError }}</p>
@@ -1316,5 +1454,10 @@ watch(questionSheetRangeIndex, () => {
     </BaseDialog>
 
     <PracticeSettingsModal v-model="settingsModalOpen" />
+    <ClearPracticeRecordsDialog
+      v-model="clearRecordConfirmOpen"
+      :scope="clearRecordScope"
+      :label="`清除“${currentSessionTitle}”的本地做题记录？`"
+    />
   </section>
 </template>

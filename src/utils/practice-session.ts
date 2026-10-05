@@ -4,7 +4,7 @@ import type {
   PracticePaperLite,
   QuestionListItem,
 } from '@/types/domain'
-import { questionFingerprint } from '@/utils/practice-draft'
+import { questionFingerprint } from '@/utils/practice-record'
 import { toQuestionListItem } from '@/utils/practice-question'
 
 export type QuestionSheetGroup = {

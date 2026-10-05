@@ -63,7 +63,7 @@ const menuItems = computed(() => {
       action: 'plan' as const,
     },
     {
-      title: '练习设置',
+      title: '刷题设置',
       subtitle: practice
         ? `自动下一题 ${practice.autoNext ? '开' : '关'} · 解析 ${practice.showExplanationAfterAnswer ? '开' : '关'}`
         : '答题方式、错题记录、解析显示',

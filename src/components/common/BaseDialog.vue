@@ -8,10 +8,12 @@ const props = withDefaults(
   defineProps<{
     title: string
     closeOnBackdrop?: boolean
+    closeOnEscape?: boolean
     showClose?: boolean
   }>(),
   {
     closeOnBackdrop: true,
+    closeOnEscape: true,
     showClose: false,
   },
 )
@@ -24,6 +26,10 @@ function close() {
 
 function handleBackdropClick() {
   if (props.closeOnBackdrop) close()
+}
+
+function handleEscape() {
+  if (props.closeOnEscape) close()
 }
 
 watch(model, async (open) => {
@@ -44,7 +50,7 @@ watch(model, async (open) => {
       :aria-label="title"
       tabindex="-1"
       @click.self="handleBackdropClick"
-      @keydown.esc="close"
+      @keydown.esc.stop.prevent="handleEscape"
     >
       <div
         class="modal-box w-full max-w-sm overflow-hidden rounded-2xl border border-base-200 bg-base-100 p-0 shadow-none"
