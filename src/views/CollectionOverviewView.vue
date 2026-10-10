@@ -5,8 +5,7 @@ import {
   BookMarked,
   Check,
   ChevronRight,
-  Ellipsis,
-  FileText,
+  FileStack,
   Trash2,
   XCircle,
 } from '@lucide/vue'
@@ -36,9 +35,7 @@ const loadError = ref(false)
 const clearing = ref(false)
 const clearConfirmOpen = ref(false)
 const sortMenuOpen = ref(false)
-const actionsMenuOpen = ref(false)
 const sortMenuRef = ref<HTMLElement | null>(null)
-const actionsMenuRef = ref<HTMLElement | null>(null)
 let loadSequence = 0
 
 const groupMode = ref<CollectionGroupBy>('subject')
@@ -51,6 +48,7 @@ const emptyTitle = computed(() => (isFavorites.value ? '暂无收藏' : '暂无�
 const emptyDescription = computed(() =>
   isFavorites.value ? '练习时收藏的题目会出现在这里。' : '答错的题目会收集到这里。',
 )
+const groupLabel = computed(() => (groupMode.value === 'subject' ? '科目' : '题集'))
 
 const SORT_OPTIONS: Array<{ field: SortField; order: CollectionOrder; label: string }> = [
   { field: 'recent', order: 'desc', label: '最近收录' },
@@ -65,14 +63,11 @@ const activeSortLabel = computed(
     )?.label ?? '最近收录',
 )
 
-function collectionSummary(item: CollectionAggregateItem) {
+function collectedTimeText(item: CollectionAggregateItem) {
   const collectedAt = new Date(item.lastCollectedAt)
-  if (Number.isNaN(collectedAt.getTime())) return `${item.questionCount} 题`
-  const distance = formatDistanceToNow(collectedAt, {
-    addSuffix: true,
-    locale: zhCN,
-  })
-  return `${item.questionCount} 题 · ${distance}收录`
+  if (Number.isNaN(collectedAt.getTime())) return ''
+  const distance = formatDistanceToNow(collectedAt, { locale: zhCN })
+  return `${distance.replace(/^大约\s*/, '')}前`
 }
 
 async function loadSubjects() {
@@ -117,22 +112,15 @@ function selectSortOption(field: SortField, order: CollectionOrder) {
   void loadSubjects()
 }
 
-function openClearConfirmation() {
-  actionsMenuOpen.value = false
-  clearConfirmOpen.value = true
-}
-
 function handleOutsideClick(event: PointerEvent) {
   const target = event.target
   if (!(target instanceof Node)) return
   if (!sortMenuRef.value?.contains(target)) sortMenuOpen.value = false
-  if (!actionsMenuRef.value?.contains(target)) actionsMenuOpen.value = false
 }
 
 function handleEscape(event: KeyboardEvent) {
   if (event.key !== 'Escape') return
   sortMenuOpen.value = false
-  actionsMenuOpen.value = false
 }
 
 onMounted(() => {
@@ -181,7 +169,6 @@ watch(
     sortField.value = 'recent'
     sortOrder.value = 'desc'
     sortMenuOpen.value = false
-    actionsMenuOpen.value = false
     void loadSubjects()
   },
   { immediate: true },
@@ -190,64 +177,43 @@ watch(
 
 <template>
   <section class="flex min-h-[calc(100vh-8rem)] flex-col">
-    <header class="flex min-h-11 items-center justify-between gap-3">
-      <div class="flex min-w-0 items-baseline gap-2.5">
-        <h2 class="shrink-0 text-lg font-semibold">{{ pageTitle }}</h2>
-        <span v-if="loaded && !loadError" class="text-sm text-base-content/45">
-          {{ totalQuestionCount }} 道题
-        </span>
+    <header class="flex items-start justify-between gap-3">
+      <div class="min-w-0">
+        <h2 class="text-xl font-semibold leading-tight">{{ pageTitle }}</h2>
+        <p v-if="loaded && !loadError" class="mt-1 text-sm text-base-content/45">
+          共 {{ totalQuestionCount }} 道题 · {{ items.length }} 个{{ groupLabel }}
+        </p>
       </div>
-      <div
+
+      <button
         v-if="loaded && !loadError && totalQuestionCount > 0"
-        ref="actionsMenuRef"
-        class="relative shrink-0"
+        class="-mr-2 -mt-1 flex h-11 shrink-0 items-center gap-1.5 rounded-lg px-2 text-sm text-primary transition-colors hover:bg-primary/5 active:bg-primary/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        type="button"
+        :aria-label="`清空全部${isFavorites ? '收藏' : '错题'}`"
+        @click="clearConfirmOpen = true"
       >
-        <button
-          class="flex size-10 items-center justify-center rounded-xl text-base-content/60 transition-colors hover:bg-base-200 active:bg-base-200"
-          type="button"
-          aria-label="更多操作"
-          aria-haspopup="menu"
-          :aria-expanded="actionsMenuOpen"
-          @click="actionsMenuOpen = !actionsMenuOpen; sortMenuOpen = false"
-        >
-          <Ellipsis :size="20" />
-        </button>
-        <div
-          v-if="actionsMenuOpen"
-          class="absolute right-0 top-full z-20 mt-1 min-w-40 rounded-xl border border-base-200 bg-base-100 p-1 shadow-lg shadow-base-content/5"
-          role="menu"
-          aria-label="更多操作"
-        >
-          <button
-            class="flex h-10 w-full items-center gap-2 rounded-lg px-3 text-left text-sm text-error hover:bg-error/5"
-            type="button"
-            role="menuitem"
-            @click="openClearConfirmation"
-          >
-            <Trash2 :size="16" />
-            清空全部{{ isFavorites ? '收藏' : '错题' }}
-          </button>
-        </div>
-      </div>
+        <Trash2 :size="15" />
+        清空
+      </button>
     </header>
 
-    <!-- 分组是主要视图切换；排序收敛为单个选择入口。 -->
+    <!-- 分组切换 + 排序 -->
     <div
       v-if="loaded && !loadError && totalQuestionCount > 0"
-      class="mb-3 mt-3 flex items-end justify-between gap-2 border-b border-base-200"
+      class="mt-4 flex items-center justify-between gap-3"
     >
-      <div class="flex items-center gap-5" role="group" aria-label="题目分组">
+      <div class="flex shrink-0 rounded-full bg-base-200/70 p-1" role="group" aria-label="分组方式">
         <button
           v-for="mode in [
-            { value: 'subject', label: '科目' },
-            { value: 'paper', label: '题集' },
+            { value: 'subject', label: '按科目' },
+            { value: 'paper', label: '按题集' },
           ]"
           :key="mode.value"
-          class="-mb-px flex h-11 items-center border-b-2 px-1 text-sm font-medium transition-colors"
+          class="flex h-8 items-center rounded-full px-4 text-sm font-medium transition-colors"
           :class="
             groupMode === mode.value
-              ? 'border-primary text-primary'
-              : 'border-transparent text-base-content/55 hover:text-base-content'
+              ? 'bg-base-100 text-base-content shadow-sm'
+              : 'text-base-content/55 hover:text-base-content'
           "
           type="button"
           :aria-pressed="groupMode === mode.value"
@@ -259,19 +225,19 @@ watch(
 
       <div ref="sortMenuRef" class="relative shrink-0">
         <button
-          class="flex h-11 items-center gap-1.5 rounded-lg px-1 text-sm text-base-content/60 hover:text-base-content"
+          class="flex h-9 items-center gap-1.5 rounded-full border border-base-200 bg-base-100 px-3.5 text-sm text-base-content/70 transition-colors hover:border-base-300"
           type="button"
           aria-label="排序方式"
           aria-haspopup="menu"
           :aria-expanded="sortMenuOpen"
-          @click="sortMenuOpen = !sortMenuOpen; actionsMenuOpen = false"
+          @click="sortMenuOpen = !sortMenuOpen"
         >
           <ArrowDownUp :size="15" />
           {{ activeSortLabel }}
         </button>
         <div
           v-if="sortMenuOpen"
-          class="absolute right-0 top-full z-20 mt-1 min-w-36 rounded-xl border border-base-200 bg-base-100 p-1 shadow-lg shadow-base-content/5"
+          class="absolute right-0 top-full z-20 mt-1.5 min-w-36 rounded-xl border border-base-200 bg-base-100 p-1 shadow-lg shadow-base-content/5"
           role="menu"
           aria-label="排序方式"
         >
@@ -299,11 +265,11 @@ watch(
       </div>
     </div>
 
-    <div v-if="loading" class="flex flex-1 items-center justify-center">
+    <div v-if="loading" class="flex flex-1 items-center justify-center py-16">
       <span class="loading loading-spinner loading-md text-primary"></span>
     </div>
 
-    <div v-else-if="loadError" class="flex flex-1 items-center justify-center">
+    <div v-else-if="loadError" class="flex flex-1 items-center justify-center py-16">
       <EmptyState
         :icon="AlertCircle"
         tone="error"
@@ -314,7 +280,7 @@ watch(
       />
     </div>
 
-    <div v-else-if="items.length === 0" class="flex flex-1 items-center justify-center">
+    <div v-else-if="items.length === 0" class="flex flex-1 items-center justify-center py-16">
       <EmptyState
         :icon="isFavorites ? BookMarked : XCircle"
         :title="emptyTitle"
@@ -324,32 +290,38 @@ watch(
       />
     </div>
 
-    <div v-else class="grid content-start gap-2.5">
+    <div v-else class="mt-4 grid content-start gap-2.5">
       <button
         v-for="item in items"
         :key="groupMode === 'paper' ? item.paperId : item.subjectId"
-        class="flex w-full items-center gap-3 rounded-xl border border-base-200 bg-base-100 px-3.5 py-3 text-left transition-colors hover:border-base-300 active:bg-base-200/50"
+        class="flex w-full items-center gap-3 rounded-2xl border border-base-200 bg-base-100 px-4 py-3.5 text-left transition-colors hover:border-base-300 active:bg-base-200/50"
         type="button"
         :aria-label="`${groupMode === 'paper' ? item.paperName : item.subjectName}，${item.questionCount}题，开始练习`"
         @click="startPractice(item)"
       >
         <span
-          class="flex size-10 shrink-0 items-center justify-center rounded-lg"
-          :class="isFavorites ? 'bg-primary/10 text-primary' : 'bg-error/10 text-error'"
+          class="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"
         >
-          <FileText v-if="groupMode === 'paper'" :size="19" />
-          <BookMarked v-else-if="isFavorites" :size="19" />
-          <XCircle v-else :size="19" />
+          <FileStack :size="20" />
         </span>
+
         <span class="min-w-0 flex-1">
-          <span class="block truncate text-sm font-semibold">{{
-            groupMode === 'paper' ? item.paperName : item.subjectName
-          }}</span>
-          <span class="mt-0.5 block truncate text-xs text-base-content/50">
-            {{ groupMode === 'paper' ? `${item.subjectName} · ` : '' }}{{ collectionSummary(item) }}
+          <span class="block truncate text-[15px] font-semibold leading-tight">
+            {{ groupMode === 'paper' ? item.paperName : item.subjectName }}
+          </span>
+          <span class="mt-1 block truncate text-xs text-base-content/45">
+            <template v-if="groupMode === 'paper'">{{ item.subjectName }} · </template>
+            {{ collectedTimeText(item) || '最近收录' }}
           </span>
         </span>
-        <ChevronRight :size="18" class="text-base-content/40" />
+
+        <span
+          class="shrink-0 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold tabular-nums text-primary"
+        >
+          {{ item.questionCount }} 题
+        </span>
+
+        <ChevronRight :size="18" class="shrink-0 text-base-content/35" />
       </button>
     </div>
 

@@ -7,8 +7,9 @@ import {
   ClipboardCheck,
   ClipboardList,
   Grid2X2,
-  Eraser,
   Settings,
+  Trash2,
+  X,
   XCircle,
 } from '@lucide/vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
@@ -1212,7 +1213,7 @@ watch(questionSheetRangeIndex, () => {
       class="fixed bottom-0 left-1/2 z-40 w-full max-w-[32rem] -translate-x-1/2 border-t border-base-200/80 bg-base-100/95 px-3 pb-[calc(0.65rem+env(safe-area-inset-bottom))] pt-2.5 backdrop-blur-xl"
     >
       <p v-if="favoriteError" class="mb-2 text-center text-xs text-error">{{ favoriteError }}</p>
-      <div class="grid grid-cols-4 items-center gap-1">
+      <div class="grid grid-cols-5 items-center gap-1">
         <button
           class="flex h-12 min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-medium transition active:bg-base-200"
           :class="[
@@ -1251,6 +1252,17 @@ watch(questionSheetRangeIndex, () => {
         >
           <Grid2X2 :size="19" />
           <span>{{ currentQuestionPosition }}/{{ currentQuestions.length }}</span>
+        </button>
+
+        <button
+          class="flex h-12 min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-medium text-base-content/60 transition active:bg-base-200 disabled:opacity-40"
+          type="button"
+          aria-label="清除做题记录"
+          :disabled="!hasLocalRecordProgress || submitting"
+          @click="requestClearRecord"
+        >
+          <Trash2 :size="19" />
+          <span>清除</span>
         </button>
 
         <button
@@ -1312,59 +1324,58 @@ watch(questionSheetRangeIndex, () => {
       >
         <section
           ref="questionSheetRef"
-          class="flex max-h-[min(60dvh,24rem)] w-full max-w-[32rem] flex-col overflow-hidden rounded-t-2xl border-t border-base-200 bg-base-100 sm:rounded-2xl sm:border"
+          class="flex max-h-[min(78dvh,32rem)] w-full max-w-[32rem] flex-col overflow-hidden rounded-t-3xl border-t border-base-200 bg-base-100 sm:rounded-3xl sm:border"
           role="dialog"
           aria-modal="true"
           aria-label="答题进度"
           tabindex="-1"
           @keydown.esc="questionSheetOpen = false"
         >
-          <div class="flex h-13 shrink-0 items-center gap-3 border-b border-base-200 px-4">
-            <span class="shrink-0 text-[15px] font-semibold tabular-nums">
-              {{ answeredCount }}/{{ currentQuestions.length }}
-            </span>
-            <div class="flex min-w-0 flex-1 items-center gap-3 text-xs tabular-nums">
-              <span class="flex items-center gap-1 text-base-content/55">
-                <span class="size-1.5 rounded-full bg-success"></span>
-                对 {{ correctCount }}
-              </span>
-              <span class="flex items-center gap-1 text-base-content/55">
-                <span class="size-1.5 rounded-full bg-error"></span>
-                错 {{ wrongCount }}
-              </span>
+          <!-- 头部：标题 + 进度 + 关闭 -->
+          <div class="flex shrink-0 items-center gap-3 px-4 pb-2 pt-3.5">
+            <div class="min-w-0 flex-1">
+              <h2 class="text-base font-semibold leading-tight">答题卡</h2>
+              <p class="mt-0.5 text-xs tabular-nums text-base-content/45">
+                已答 {{ answeredCount }}/{{ currentQuestions.length }}
+              </p>
             </div>
-            <!-- 收藏/错题训练为纯刷题，不提供交卷。 -->
             <button
-              class="flex size-8 shrink-0 items-center justify-center rounded-lg text-base-content/45 active:bg-base-200 disabled:opacity-30"
+              class="flex size-8 shrink-0 items-center justify-center rounded-full text-base-content/45 transition active:bg-base-200"
               type="button"
-              aria-label="清除本题集做题记录"
-              :disabled="!hasLocalRecordProgress || submitting"
-              @click="requestClearRecord"
+              aria-label="关闭答题卡"
+              @click="questionSheetOpen = false"
             >
-              <Eraser :size="16" />
+              <X :size="18" />
             </button>
-            <button
-              v-if="!collectionMode"
-              class="h-9 shrink-0 rounded-lg border border-primary/30 px-3 text-[13px] font-medium text-primary transition-colors active:bg-primary/10"
-              type="button"
-              :disabled="currentQuestions.length === 0"
-              @click="requestSubmitSession"
-            >
-              交卷
-            </button>
+          </div>
+
+          <!-- 状态图例 -->
+          <div class="flex shrink-0 items-center gap-4 border-b border-base-200/70 px-4 py-2 text-xs tabular-nums text-base-content/55">
+            <span class="flex items-center gap-1.5">
+              <span class="size-2 rounded-full bg-success"></span>
+              对 {{ correctCount }}
+            </span>
+            <span class="flex items-center gap-1.5">
+              <span class="size-2 rounded-full bg-error"></span>
+              错 {{ wrongCount }}
+            </span>
+            <span class="flex items-center gap-1.5">
+              <span class="size-2 rounded-full border border-base-300 bg-base-100"></span>
+              未答 {{ unansweredCount }}
+            </span>
           </div>
 
           <div
             v-if="questionSheetRanges.length > 1"
             ref="questionSheetRangeRef"
-            class="flex shrink-0 gap-1.5 overflow-x-auto border-b border-base-200 px-4 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            class="flex shrink-0 gap-1.5 overflow-x-auto border-b border-base-200/70 px-4 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             role="group"
             aria-label="题号区间"
           >
             <button
               v-for="range in questionSheetRanges"
               :key="range.index"
-              class="shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-medium tabular-nums transition-colors"
+              class="shrink-0 rounded-full px-3 py-1.5 text-xs font-medium tabular-nums transition-colors"
               :class="
                 questionSheetRangeIndex === range.index
                   ? 'bg-primary/10 text-primary'
@@ -1381,14 +1392,14 @@ watch(questionSheetRangeIndex, () => {
 
           <div
             ref="questionSheetContentRef"
-            class="min-h-0 overflow-y-auto overscroll-contain px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-2 sm:pb-4"
+            class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3"
           >
-            <section v-for="group in visibleQuestionSheetGroups" :key="group.key" class="pt-1.5">
-              <p class="mb-1.5 text-xs font-medium text-base-content/50">
+            <section v-for="group in visibleQuestionSheetGroups" :key="group.key" class="pb-3">
+              <p class="mb-2 text-xs font-medium text-base-content/50">
                 {{ group.label }} · {{ group.questions.length }}题
               </p>
               <div
-                class="grid grid-cols-8 justify-items-center gap-x-1 gap-y-1.5 min-[375px]:grid-cols-9 sm:grid-cols-10"
+                class="grid grid-cols-8 justify-items-center gap-x-1 gap-y-2 min-[375px]:grid-cols-9 sm:grid-cols-10"
               >
                 <button
                   v-for="(question, offset) in group.questions"
@@ -1409,6 +1420,21 @@ watch(questionSheetRangeIndex, () => {
                 </button>
               </div>
             </section>
+          </div>
+
+          <!-- 底部操作：交卷（收藏/错题纯刷题模式不显示） -->
+          <div
+            v-if="!collectionMode"
+            class="flex shrink-0 gap-2 border-t border-base-200/80 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 sm:pb-4"
+          >
+            <button
+              class="btn btn-primary h-11 min-h-11 flex-1 rounded-xl text-sm"
+              type="button"
+              :disabled="currentQuestions.length === 0"
+              @click="requestSubmitSession"
+            >
+              交卷
+            </button>
           </div>
         </section>
       </div>
