@@ -31,7 +31,7 @@ function isItemActive(to: string) {
       :class="
         isItemActive(item.to)
           ? 'font-semibold text-base-content'
-          : 'text-base-content/60 hover:bg-base-200/80 hover:text-base-content'
+          : 'text-base-content/65 hover:bg-base-200/80 hover:text-base-content'
       "
     >
       <span

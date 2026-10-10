@@ -49,7 +49,7 @@ const toneClasses = computed(() => {
     <h2 class="mt-4 text-base font-semibold leading-tight">{{ title }}</h2>
     <p
       v-if="description"
-      class="mx-auto mt-1.5 max-w-sm text-sm leading-relaxed text-base-content/55"
+      class="mx-auto mt-1.5 max-w-sm text-sm leading-relaxed text-base-content/65"
     >
       {{ description }}
     </p>

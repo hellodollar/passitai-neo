@@ -20,7 +20,7 @@ withDefaults(
   >
     <span class="min-w-0">
       <span class="block text-sm font-medium">{{ title }}</span>
-      <span class="block truncate text-xs text-base-content/50">{{ description }}</span>
+      <span class="block truncate text-xs text-base-content/65">{{ description }}</span>
     </span>
     <input
       v-model="model"

@@ -348,7 +348,7 @@ watch(
         <h2 class="shrink-0 text-lg font-semibold leading-tight">{{ pageTitle }}</h2>
         <p
           v-if="loaded && (!loadError || totalQuestionCount > 0)"
-          class="text-xs leading-snug text-base-content/45"
+          class="text-xs leading-snug text-base-content/65"
         >
           {{ totalQuestionCount }} 道题 · {{ items.length }} 个{{ groupLabel }}
         </p>
@@ -356,7 +356,7 @@ watch(
 
       <button
         v-if="loaded && totalQuestionCount > 0"
-        class="flex h-10 items-center justify-self-end gap-1 rounded-lg pl-2 text-[13px] text-primary/75 transition-colors hover:text-primary active:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-40"
+        class="flex h-10 items-center justify-self-end gap-1 rounded-lg pl-2 text-[13px] text-primary transition-colors hover:text-primary active:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-40"
         type="button"
         :disabled="loading || clearing"
         :aria-label="`清空全部${isFavorites ? '收藏' : '错题'}`"
@@ -387,7 +387,7 @@ watch(
           :class="
             groupMode === mode.value
               ? 'bg-base-100 text-primary'
-              : 'text-base-content/55 hover:text-base-content'
+              : 'text-base-content/65 hover:text-base-content'
           "
           type="button"
           :aria-disabled="loading"
@@ -401,7 +401,7 @@ watch(
       <div ref="sortMenuRef" class="relative justify-self-end">
         <button
           ref="sortButtonRef"
-          class="flex h-10 items-center gap-1 rounded-lg pl-2 text-[13px] text-base-content/60 transition-colors hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary aria-disabled:cursor-wait"
+          class="flex h-10 items-center gap-1 rounded-lg pl-2 text-[13px] text-base-content/65 transition-colors hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary aria-disabled:cursor-wait"
           type="button"
           :aria-disabled="loading"
           :aria-label="`排序方式：${activeSortLabel}`"
@@ -487,7 +487,7 @@ watch(
     <div v-else class="mt-2 grid content-start gap-2">
       <div
         v-if="loadError"
-        class="flex flex-wrap items-center justify-between gap-2 text-xs text-base-content/60"
+        class="flex flex-wrap items-center justify-between gap-2 text-xs text-base-content/65"
         role="status"
       >
         <span>更新失败，已保留原列表。</span>
@@ -511,13 +511,13 @@ watch(
           <span class="line-clamp-2 break-words text-[15px] font-semibold leading-snug">
             {{ displayedGroupMode === 'paper' ? item.paperName : item.subjectName }}
           </span>
-          <span class="mt-1 block truncate text-xs leading-snug text-base-content/45">
+          <span class="mt-1 block truncate text-xs leading-snug text-base-content/65">
             <template v-if="displayedGroupMode === 'paper'">{{ item.subjectName }} · </template>
             {{ collectedTimeText(item) || '已收录' }}
           </span>
         </span>
 
-        <span class="shrink-0 text-sm font-medium tabular-nums text-base-content/60">
+        <span class="shrink-0 text-sm font-medium tabular-nums text-base-content/65">
           {{ item.questionCount }} 题
         </span>
 

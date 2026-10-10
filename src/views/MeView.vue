@@ -53,16 +53,14 @@ const menuItems = computed(() => {
   return [
     {
       title: '账户',
-      subtitle: profileEmail.value,
+      subtitle: '密码与邮箱',
       icon: UserRound,
-      iconClasses: 'bg-primary/10 text-primary',
       action: 'account' as const,
     },
     {
       title: '刷题计划',
       subtitle: plan ? `${plan.majorName} · ${plan.subjects.length} 个科目` : '专业和刷题科目',
       icon: GraduationCap,
-      iconClasses: 'bg-secondary/10 text-secondary',
       action: 'plan' as const,
     },
     {
@@ -71,14 +69,12 @@ const menuItems = computed(() => {
         ? `自动下一题 ${practice.autoNext ? '开' : '关'} · 解析 ${practice.showExplanationAfterAnswer ? '开' : '关'}`
         : '答题方式、错题记录、解析显示',
       icon: Settings2,
-      iconClasses: 'bg-accent/15 text-accent',
       action: 'practice' as const,
     },
     {
       title: '刷题记录',
       subtitle: '按分类清理做题记录',
       icon: Eraser,
-      iconClasses: 'bg-primary/10 text-primary',
       action: 'records' as const,
     },
     {
@@ -89,7 +85,6 @@ const menuItems = computed(() => {
           : '学习提醒已关闭'
         : '学习提醒、系统消息',
       icon: Bell,
-      iconClasses: 'bg-info/10 text-info',
       action: 'notification' as const,
     },
   ]
@@ -177,14 +172,10 @@ onMounted(() => {
     <header class="relative shrink-0 px-5 pb-5 pt-10">
       <section class="relative flex flex-col items-center px-4 text-center">
         <span
-          class="flex size-20 shrink-0 items-center justify-center rounded-full border-4 border-base-100 bg-base-100 text-primary"
+          class="flex size-20 shrink-0 items-center justify-center rounded-full border-4 border-base-100 bg-primary/10 text-primary"
           aria-hidden="true"
         >
-          <span
-            class="flex size-full items-center justify-center rounded-full bg-gradient-to-br from-primary/15 to-info/10"
-          >
-            <UserRound :size="34" stroke-width="1.8" />
-          </span>
+          <UserRound :size="34" stroke-width="1.8" />
         </span>
 
         <h1
@@ -192,7 +183,7 @@ onMounted(() => {
         >
           {{ displayName }}
         </h1>
-        <p class="mt-1.5 max-w-full truncate text-sm font-medium text-base-content/50">
+        <p class="mt-1.5 max-w-full truncate text-sm font-medium text-base-content/65">
           {{ profileEmail }}
         </p>
       </section>
@@ -210,8 +201,7 @@ onMounted(() => {
           @click="openMenuItem(item.action)"
         >
           <span
-            class="flex size-9 shrink-0 items-center justify-center rounded-xl"
-            :class="item.iconClasses"
+            class="flex size-9 shrink-0 items-center justify-center rounded-xl bg-base-200 text-base-content/70"
           >
             <component :is="item.icon" :size="17" stroke-width="2" />
           </span>
@@ -220,7 +210,7 @@ onMounted(() => {
             <span class="block truncate text-base font-semibold leading-tight text-base-content">
               {{ item.title }}
             </span>
-            <span class="mt-1 block truncate text-xs leading-tight text-base-content/45">
+            <span class="mt-1 block truncate text-xs leading-tight text-base-content/65">
               {{ item.subtitle }}
             </span>
           </span>
@@ -257,7 +247,7 @@ onMounted(() => {
           </span>
           <span class="min-w-0">
             <span class="block text-sm font-medium">修改密码</span>
-            <span class="mt-0.5 block truncate text-xs text-base-content/50"
+            <span class="mt-0.5 block truncate text-xs text-base-content/65"
               >定期更新密码更安全</span
             >
           </span>
@@ -274,7 +264,7 @@ onMounted(() => {
           </span>
           <span class="min-w-0">
             <span class="block text-sm font-medium">更换邮箱</span>
-            <span class="mt-0.5 block truncate text-xs text-base-content/50">{{
+            <span class="mt-0.5 block truncate text-xs text-base-content/65">{{
               profileEmail
             }}</span>
           </span>

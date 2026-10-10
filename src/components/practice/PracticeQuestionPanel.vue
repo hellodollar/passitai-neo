@@ -133,7 +133,7 @@ function optionMarkerClasses(optionValue: string) {
       </span>
       <span
         v-if="subjectName"
-        class="min-w-0 flex-1 truncate text-right text-xs font-medium text-base-content/45"
+        class="min-w-0 flex-1 truncate text-right text-xs font-medium text-base-content/65"
       >
         {{ subjectName }}
       </span>
@@ -228,7 +228,7 @@ function optionMarkerClasses(optionValue: string) {
         :class="isChoiceMode ? 'grid-cols-2' : 'grid-cols-1'"
       >
         <div class="min-w-0">
-          <dt class="inline text-base-content/50">我的答案</dt>
+          <dt class="inline text-base-content/65">我的答案</dt>
           <dd
             class="inline break-words font-semibold"
             :class="
@@ -239,7 +239,7 @@ function optionMarkerClasses(optionValue: string) {
           </dd>
         </div>
         <div class="min-w-0">
-          <dt class="inline text-base-content/50">
+          <dt class="inline text-base-content/65">
             {{ isChoiceMode ? '正确答案' : '参考答案' }}
           </dt>
           <dd
@@ -257,7 +257,7 @@ function optionMarkerClasses(optionValue: string) {
       <p v-if="explanation" class="mt-1.5 break-words text-sm leading-[1.55] text-base-content/65">
         {{ explanation }}
       </p>
-      <p v-else class="mt-2 text-sm text-base-content/40">暂无解析</p>
+      <p v-else class="mt-2 text-sm text-base-content/65">暂无解析</p>
     </div>
   </section>
 </template>

@@ -813,9 +813,9 @@ watch(questionSheetOpen, (open) => {
       <p v-if="favoriteError" class="mb-2 text-center text-xs text-error">{{ favoriteError }}</p>
       <div class="grid items-center gap-1 grid-cols-4">
         <button
-          class="flex h-12 min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-medium transition active:bg-base-200"
+          class="flex h-12 min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] font-medium transition active:bg-base-200"
           :class="[
-            currentQuestionFavorited ? 'text-primary' : 'text-base-content/60',
+            currentQuestionFavorited ? 'text-primary' : 'text-base-content/70',
             currentQuestionFavoritePending ? 'opacity-50' : '',
           ]"
           type="button"
@@ -831,19 +831,24 @@ watch(questionSheetOpen, (open) => {
         </button>
 
         <div
-          class="flex h-12 min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-medium tabular-nums text-base-content/60"
+          class="flex h-12 min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] font-medium tabular-nums text-base-content/70"
           :aria-label="`答对 ${correctCount} 题，答错 ${wrongCount} 题`"
         >
           <ClipboardCheck :size="19" />
-          <span>
-            <span class="text-success">对{{ correctCount }}</span>
-            <span class="mx-0.5 text-base-content/25">/</span>
-            <span class="text-error">错{{ wrongCount }}</span>
+          <span class="flex items-center gap-2">
+            <span class="flex items-center gap-1">
+              <span class="size-1.5 rounded-full bg-success" aria-hidden="true"></span>
+              对{{ correctCount }}
+            </span>
+            <span class="flex items-center gap-1">
+              <span class="size-1.5 rounded-full bg-error" aria-hidden="true"></span>
+              错{{ wrongCount }}
+            </span>
           </span>
         </div>
 
         <button
-          class="flex h-12 min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-medium tabular-nums text-base-content/60 transition active:bg-base-200"
+          class="flex h-12 min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] font-medium tabular-nums text-base-content/70 transition active:bg-base-200"
           type="button"
           aria-label="打开答题卡"
           @click="questionSheetOpen = true"
@@ -853,7 +858,7 @@ watch(questionSheetOpen, (open) => {
         </button>
 
         <button
-          class="flex h-12 min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-medium text-base-content/60 transition active:bg-base-200"
+          class="flex h-12 min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] font-medium text-base-content/70 transition active:bg-base-200"
           type="button"
           aria-label="答题设置"
           @click="settingsModalOpen = true"

@@ -104,17 +104,9 @@ onBeforeUnmount(() => {
         tabindex="-1"
         @keydown.esc="model = false"
       >
-        <!-- 头部：标题 + 进度 -->
-        <div class="shrink-0 px-4 pb-2 pt-3.5">
-          <h2 class="text-base font-semibold leading-tight">答题卡</h2>
-          <p class="mt-0.5 text-xs tabular-nums text-base-content/45">
-            已答 {{ answeredCount }}/{{ questions.length }}
-          </p>
-        </div>
-
-        <!-- 状态图例 -->
+        <!-- 状态图例：不带可见标题，弹层命名交给 aria-label；右侧放清除记录的安静入口 -->
         <div
-          class="flex shrink-0 items-center gap-4 border-b border-base-200/70 px-4 py-2 text-xs tabular-nums text-base-content/55"
+          class="flex shrink-0 items-center gap-4 border-b border-base-200/70 px-4 pb-2 pt-3 text-xs tabular-nums text-base-content/65"
         >
           <span class="flex items-center gap-1.5">
             <span class="size-2 rounded-full bg-success"></span>
@@ -128,6 +120,17 @@ onBeforeUnmount(() => {
             <span class="size-2 rounded-full border border-base-300 bg-base-100"></span>
             未答 {{ unansweredCount }}
           </span>
+          <button
+            v-if="showClear"
+            class="ml-auto flex h-8 shrink-0 items-center gap-1 rounded-lg px-2 text-xs font-medium text-base-content/45 transition-colors hover:bg-error/5 hover:text-error active:bg-error/10 disabled:pointer-events-none disabled:opacity-35"
+            type="button"
+            aria-label="清除本地做题记录"
+            :disabled="clearDisabled"
+            @click="emit('clear')"
+          >
+            <Trash2 :size="14" />
+            清除
+          </button>
         </div>
 
         <div
@@ -144,7 +147,7 @@ onBeforeUnmount(() => {
             :class="
               rangeIndex === range.index
                 ? 'bg-primary/10 text-primary'
-                : 'text-base-content/55 active:bg-base-200'
+                : 'text-base-content/65 active:bg-base-200'
             "
             type="button"
             :aria-label="`第 ${range.start + 1} 至 ${range.end} 题`"
@@ -157,7 +160,7 @@ onBeforeUnmount(() => {
 
         <div ref="contentRef" class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3">
           <section v-for="group in visibleGroups" :key="group.key" class="pb-3">
-            <p class="mb-2 text-xs font-medium text-base-content/50">
+            <p class="mb-2 text-xs font-medium text-base-content/65">
               {{ group.label }} · {{ group.questions.length }}题
             </p>
             <div
@@ -184,24 +187,13 @@ onBeforeUnmount(() => {
           </section>
         </div>
 
-        <!-- 底部操作：交卷（收藏/错题纯刷题模式不显示）；专项训练提供清除记录入口 -->
+        <!-- 底部操作：仅交卷（收藏/错题纯刷题模式不显示） -->
         <div
           v-if="showSubmit"
-          class="flex shrink-0 items-center gap-2 border-t border-base-200/80 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 sm:pb-4"
+          class="shrink-0 border-t border-base-200/80 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 sm:pb-4"
         >
           <button
-            v-if="showClear"
-            class="btn h-11 min-h-11 flex-none gap-1.5 rounded-xl border-base-200 bg-base-100 text-sm text-base-content/55 transition-colors hover:border-error/30 hover:bg-error/5 hover:text-error disabled:pointer-events-none disabled:opacity-40"
-            type="button"
-            aria-label="清除本地做题记录"
-            :disabled="clearDisabled"
-            @click="emit('clear')"
-          >
-            <Trash2 :size="16" />
-            清除记录
-          </button>
-          <button
-            class="btn btn-primary h-11 min-h-11 min-w-0 flex-1 rounded-xl text-sm"
+            class="btn btn-primary h-11 min-h-11 w-full rounded-xl text-sm"
             type="button"
             :disabled="questions.length === 0"
             @click="emit('submit')"

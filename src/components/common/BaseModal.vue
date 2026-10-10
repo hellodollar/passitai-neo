@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { nextTick, ref, watch } from 'vue'
+
 const model = defineModel<boolean>({ default: false })
 
 defineProps<{
@@ -6,14 +8,30 @@ defineProps<{
   compactFooter?: boolean
 }>()
 
+const overlayRef = ref<HTMLElement | null>(null)
+
 function close() {
   model.value = false
 }
+
+// 打开时聚焦容器，让 Esc 与后续键盘操作落在弹层内
+watch(model, async (open) => {
+  if (!open) return
+  await nextTick()
+  overlayRef.value?.focus()
+})
 </script>
 
 <template>
   <Teleport to="body">
-    <div v-if="model" class="modal modal-open modal-bottom sm:modal-middle" @click.self="close">
+    <div
+      v-if="model"
+      ref="overlayRef"
+      class="modal modal-open modal-bottom sm:modal-middle"
+      tabindex="-1"
+      @click.self="close"
+      @keydown.esc.stop.prevent="close"
+    >
       <div
         class="modal-box mx-0 mb-0 max-h-[88dvh] w-full max-w-none overflow-hidden rounded-b-none rounded-t-2xl border-t border-base-300 p-0 sm:mx-3 sm:max-h-[calc(100dvh-2rem)] sm:max-w-lg sm:rounded-2xl sm:border"
       >

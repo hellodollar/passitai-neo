@@ -493,7 +493,7 @@ watch(
                   {{ planEducationLevel }}
                 </span>
               </div>
-              <p v-if="planMajorCode" class="mt-1.5 text-xs text-base-content/45">
+              <p v-if="planMajorCode" class="mt-1.5 text-xs text-base-content/65">
                 专业代码 {{ planMajorCode }}
               </p>
             </div>
@@ -509,14 +509,14 @@ watch(
             class="mt-4 grid grid-cols-2 overflow-hidden rounded-xl bg-base-200/40"
           >
             <div class="border-r border-base-200 px-3 py-2.5">
-              <p class="flex items-center gap-1.5 text-[11px] text-base-content/45">
+              <p class="flex items-center gap-1.5 text-[11px] text-base-content/65">
                 <span class="size-1.5 rounded-full bg-info"></span>
                 考试时间
               </p>
               <p class="mt-1.5 text-sm font-semibold tabular-nums">{{ nextExamDateText }}</p>
             </div>
             <div class="px-3 py-2.5 text-right">
-              <p class="flex items-center justify-end gap-1.5 text-[11px] text-base-content/45">
+              <p class="flex items-center justify-end gap-1.5 text-[11px] text-base-content/65">
                 <span class="size-1.5 rounded-full bg-primary"></span>
                 距离考试
               </p>
@@ -555,7 +555,7 @@ watch(
       <div class="flex items-end justify-between gap-3 px-0.5">
         <div class="flex items-baseline gap-2">
           <h2 class="text-[17px] font-semibold leading-tight">刷题科目</h2>
-          <span class="text-xs text-base-content/45">{{ planSubjects.length }}个</span>
+          <span class="text-xs text-base-content/65">{{ planSubjects.length }}个</span>
         </div>
         <button
           class="flex shrink-0 items-center gap-0.5 text-sm font-medium text-primary transition-opacity active:opacity-70"
@@ -674,22 +674,20 @@ watch(
               <span class="min-w-0 flex-1">
                 <span class="flex min-w-0 items-center justify-between gap-2">
                   <span class="truncate text-sm font-medium">{{ child.name }}</span>
-                  <span class="shrink-0 text-[11px] text-base-content/45 tabular-nums">
+                  <span class="shrink-0 text-xs text-base-content/65 tabular-nums">
                     {{ child.answeredCount }}/{{ child.questionCount }}
                   </span>
                 </span>
-                <span class="mt-2 flex items-center gap-2">
-                  <span class="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-base-200">
+                <span class="mt-2 flex items-center">
+                  <span
+                    class="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-base-200"
+                    aria-hidden="true"
+                  >
                     <span
                       class="block h-full rounded-full transition-all"
                       :class="child.progressClass"
                       :style="{ width: `${child.progressPercent}%` }"
                     ></span>
-                  </span>
-                  <span
-                    class="w-7 shrink-0 text-right text-[10px] text-base-content/35 tabular-nums"
-                  >
-                    {{ child.progressPercent }}%
                   </span>
                 </span>
               </span>
@@ -712,7 +710,7 @@ watch(
 
     <BaseModal v-model="subjectPanelOpen" title="科目管理">
       <div>
-        <p class="text-xs text-base-content/45">勾选显示，使用箭头调整顺序</p>
+        <p class="text-xs text-base-content/65">勾选显示，使用箭头调整顺序</p>
       </div>
 
       <div class="mt-3 border-y border-base-200 divide-y divide-base-200">
@@ -751,7 +749,7 @@ watch(
 
           <div class="flex shrink-0 items-center gap-0.5">
             <button
-              class="btn btn-square btn-ghost btn-xs text-base-content/45"
+              class="btn btn-square btn-ghost btn-sm text-base-content/55"
               type="button"
               aria-label="上移科目"
               :disabled="index === 0"
@@ -760,7 +758,7 @@ watch(
               <ArrowUp :size="15" />
             </button>
             <button
-              class="btn btn-square btn-ghost btn-xs text-base-content/45"
+              class="btn btn-square btn-ghost btn-sm text-base-content/55"
               type="button"
               aria-label="下移科目"
               :disabled="index === orderedSubjects.length - 1"

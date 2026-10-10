@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowLeft, CheckCircle2, CircleAlert, Clock3, FileCheck2 } from '@lucide/vue'
+import { ArrowLeft, CircleAlert, Clock3 } from '@lucide/vue'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -30,12 +30,11 @@ let loadRequestId = 0
 const hasGradedQuestions = computed(() =>
   Boolean(result.value && result.value.correctCount + result.value.wrongCount > 0),
 )
-
-const paperId = computed(() =>
-  typeof route.params.paperId === 'string' ? route.params.paperId : '',
-)
 const submissionId = computed(() =>
   typeof route.query.submissionId === 'string' ? route.query.submissionId : '',
+)
+const paperId = computed(() =>
+  typeof route.params.paperId === 'string' ? route.params.paperId : '',
 )
 
 const filteredQuestions = computed(() => {
@@ -52,40 +51,6 @@ const questionGroups = computed(() => {
     groups.set(question.questionType, questions)
   }
   return [...groups.entries()]
-})
-
-const reportMessage = computed(() => {
-  if (!hasGradedQuestions.value) {
-    return {
-      icon: FileCheck2,
-      title: '已完成交卷',
-      description: '暂无可自动判分的题目，请查看作答明细。',
-      classes: 'bg-primary/10 text-primary',
-    }
-  }
-  const accuracy = result.value?.accuracy ?? 0
-  if (accuracy >= 80) {
-    return {
-      icon: CheckCircle2,
-      title: '本次掌握不错',
-      description: '基础较稳，可以继续推进下一组练习。',
-      classes: 'bg-success/10 text-success',
-    }
-  }
-  if (accuracy >= 60) {
-    return {
-      icon: FileCheck2,
-      title: '还有提升空间',
-      description: '建议优先复习错题，再进行一轮针对训练。',
-      classes: 'bg-primary/10 text-primary',
-    }
-  }
-  return {
-    icon: CircleAlert,
-    title: '建议先巩固薄弱点',
-    description: '本次错题较多，可以从错题解析开始复习。',
-    classes: 'bg-warning/15 text-warning',
-  }
 })
 
 const elapsedText = computed(() => {
@@ -205,7 +170,7 @@ onBeforeUnmount(() => {
             <CircleAlert :size="27" />
           </span>
           <h2 class="mt-4 text-lg font-semibold">报告加载失败</h2>
-          <p class="mt-2 text-sm leading-6 text-base-content/50">暂时无法获取本次作答结果。</p>
+          <p class="mt-2 text-sm leading-6 text-base-content/65">暂时无法获取本次作答结果。</p>
           <button
             class="btn btn-primary mt-5 h-10 min-h-10 rounded-xl px-6 text-sm"
             type="button"
@@ -218,68 +183,49 @@ onBeforeUnmount(() => {
 
       <template v-else>
         <section class="overflow-hidden rounded-2xl border border-base-200 bg-base-100">
-          <div class="px-4 pb-4 pt-4">
-            <p class="truncate text-xs font-medium text-base-content/45">
-              {{ result.subjectName || '本次练习' }}
-            </p>
-            <h2 class="mt-1 truncate text-lg font-semibold">{{ result.paperName }}</h2>
-
-            <div class="mt-4 flex items-center gap-5">
-              <div
-                class="radial-progress shrink-0 text-primary"
-                :style="{
-                  '--value': result.accuracy,
-                  '--size': '6.5rem',
-                  '--thickness': '0.5rem',
-                }"
-                role="progressbar"
-                :aria-valuenow="result.accuracy"
-                aria-valuemin="0"
-                aria-valuemax="100"
+          <div class="flex min-w-0 items-start justify-between gap-3 px-4 pb-3.5 pt-4">
+            <div class="min-w-0">
+              <h2 class="truncate text-lg font-semibold leading-tight">{{ result.paperName }}</h2>
+              <p
+                v-if="result.subjectName"
+                class="mt-1 truncate text-xs font-medium text-base-content/65"
               >
-                <span class="text-center text-base-content">
-                  <strong class="block text-2xl font-semibold tabular-nums">
-                    {{ hasGradedQuestions ? `${result.accuracy}%` : '—' }}
-                  </strong>
-                  <span class="mt-0.5 block text-[11px] text-base-content/45">客观题正确率</span>
-                </span>
-              </div>
+                {{ result.subjectName }}
+              </p>
+            </div>
 
-              <div class="min-w-0 flex-1">
-                <span
-                  class="flex size-9 items-center justify-center rounded-xl"
-                  :class="reportMessage.classes"
-                >
-                  <component :is="reportMessage.icon" :size="18" />
-                </span>
-                <h3 class="mt-2 text-base font-semibold">{{ reportMessage.title }}</h3>
-                <p class="mt-1 text-xs leading-5 text-base-content/50">
-                  {{ reportMessage.description }}
-                </p>
-              </div>
+            <div
+              v-if="hasGradedQuestions"
+              class="shrink-0 text-right"
+              :aria-label="`客观题正确率 ${result.accuracy}%`"
+            >
+              <p class="text-2xl font-semibold leading-none tabular-nums text-primary">
+                {{ result.accuracy }}%
+              </p>
+              <p class="mt-1 text-[11px] font-medium text-base-content/65">正确率</p>
             </div>
           </div>
 
           <dl class="grid grid-cols-4 divide-x divide-base-200 border-t border-base-200">
             <div class="px-2 py-3 text-center">
-              <dt class="text-[11px] text-base-content/40">总题数</dt>
+              <dt class="text-[11px] text-base-content/65">总题数</dt>
               <dd class="mt-1 text-base font-semibold tabular-nums">{{ result.totalCount }}</dd>
             </div>
             <div class="px-2 py-3 text-center">
-              <dt class="text-[11px] text-base-content/40">正确</dt>
+              <dt class="text-[11px] text-base-content/65">正确</dt>
               <dd class="mt-1 text-base font-semibold text-success tabular-nums">
                 {{ result.correctCount }}
               </dd>
             </div>
             <div class="px-2 py-3 text-center">
-              <dt class="text-[11px] text-base-content/40">错误</dt>
+              <dt class="text-[11px] text-base-content/65">错误</dt>
               <dd class="mt-1 text-base font-semibold text-error tabular-nums">
                 {{ result.wrongCount }}
               </dd>
             </div>
             <div class="px-2 py-3 text-center">
-              <dt class="text-[11px] text-base-content/40">未答</dt>
-              <dd class="mt-1 text-base font-semibold text-base-content/55 tabular-nums">
+              <dt class="text-[11px] text-base-content/65">未答</dt>
+              <dd class="mt-1 text-base font-semibold text-base-content/75 tabular-nums">
                 {{ result.unansweredCount }}
               </dd>
             </div>
@@ -287,7 +233,7 @@ onBeforeUnmount(() => {
 
           <div
             v-if="elapsedText"
-            class="flex items-center justify-center gap-1.5 border-t border-base-200 py-2.5 text-xs text-base-content/45"
+            class="flex items-center justify-center gap-1.5 border-t border-base-200 py-2.5 text-xs text-base-content/65"
           >
             <Clock3 :size="14" />
             本次用时 {{ elapsedText }}
@@ -298,13 +244,13 @@ onBeforeUnmount(() => {
           <div class="flex items-center justify-between gap-3 px-4 py-3.5">
             <div>
               <h2 class="text-base font-semibold">作答明细</h2>
-              <p class="mt-0.5 text-xs text-base-content/45">点击题号查看答案与解析</p>
+              <p class="mt-0.5 text-xs text-base-content/65">点击题号查看答案与解析</p>
             </div>
             <div class="flex rounded-lg bg-base-200/70 p-0.5 text-xs">
               <button
                 class="rounded-md px-2.5 py-1.5 font-medium transition"
                 :class="
-                  resultFilter === 'all' ? 'bg-base-100 text-primary' : 'text-base-content/45'
+                  resultFilter === 'all' ? 'bg-base-100 text-primary' : 'text-base-content/65'
                 "
                 type="button"
                 @click="resultFilter = 'all'"
@@ -314,7 +260,7 @@ onBeforeUnmount(() => {
               <button
                 class="rounded-md px-2.5 py-1.5 font-medium transition"
                 :class="
-                  resultFilter === 'review' ? 'bg-base-100 text-error' : 'text-base-content/45'
+                  resultFilter === 'review' ? 'bg-base-100 text-error' : 'text-base-content/65'
                 "
                 type="button"
                 @click="resultFilter = 'review'"
@@ -327,23 +273,23 @@ onBeforeUnmount(() => {
           <div
             class="flex flex-wrap gap-x-4 gap-y-1 border-y border-base-200 px-4 py-2 text-[11px]"
           >
-            <span class="flex items-center gap-1.5 text-base-content/50">
+            <span class="flex items-center gap-1.5 text-base-content/65">
               <span class="size-2 rounded-full bg-success"></span>正确
             </span>
-            <span class="flex items-center gap-1.5 text-base-content/50">
+            <span class="flex items-center gap-1.5 text-base-content/65">
               <span class="size-2 rounded-full bg-error"></span>错误
             </span>
-            <span class="flex items-center gap-1.5 text-base-content/50">
+            <span class="flex items-center gap-1.5 text-base-content/65">
               <span class="size-2 rounded-full border border-base-300 bg-base-100"></span>未答
             </span>
-            <span class="flex items-center gap-1.5 text-base-content/50">
+            <span class="flex items-center gap-1.5 text-base-content/65">
               <span class="size-2 rounded-full bg-warning/60"></span>待批阅
             </span>
           </div>
 
           <div v-if="questionGroups.length > 0" class="grid gap-4 p-4">
             <div v-for="[type, questions] in questionGroups" :key="type">
-              <p class="mb-2 text-xs font-medium text-base-content/45">
+              <p class="mb-2 text-xs font-medium text-base-content/65">
                 {{ QUESTION_TYPE_LABELS[type] }}（{{ questions.length }}题）
               </p>
               <div class="grid grid-cols-7 justify-items-center gap-2 sm:grid-cols-10">
@@ -362,7 +308,7 @@ onBeforeUnmount(() => {
             </div>
           </div>
 
-          <div v-else class="px-5 py-10 text-center text-sm text-base-content/45">
+          <div v-else class="px-5 py-10 text-center text-sm text-base-content/65">
             当前没有需要复习的题目
           </div>
         </section>
@@ -380,7 +326,7 @@ onBeforeUnmount(() => {
     <BaseModal v-model="detailOpen" title="题目详情">
       <template v-if="selectedQuestion">
         <div class="flex items-center justify-between gap-3">
-          <span class="text-xs font-medium text-base-content/45">
+          <span class="text-xs font-medium text-base-content/65">
             第 {{ selectedQuestion.index }} 题 ·
             {{ QUESTION_TYPE_LABELS[selectedQuestion.questionType] }}
           </span>
@@ -403,13 +349,13 @@ onBeforeUnmount(() => {
 
         <dl class="mt-4 overflow-hidden rounded-xl border border-base-200 divide-y divide-base-200">
           <div class="grid grid-cols-[5rem_minmax(0,1fr)] gap-3 px-3 py-2.5 text-sm">
-            <dt class="text-base-content/45">你的答案</dt>
+            <dt class="text-base-content/65">你的答案</dt>
             <dd :class="selectedQuestion.status === 'wrong' ? 'text-error' : ''">
               {{ selectedQuestion.userAnswer || '未作答' }}
             </dd>
           </div>
           <div class="grid grid-cols-[5rem_minmax(0,1fr)] gap-3 px-3 py-2.5 text-sm">
-            <dt class="text-base-content/45">正确答案</dt>
+            <dt class="text-base-content/65">正确答案</dt>
             <dd class="text-success">{{ selectedQuestion.correctAnswer || '待批阅' }}</dd>
           </div>
         </dl>
