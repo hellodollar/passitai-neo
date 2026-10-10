@@ -347,7 +347,7 @@ watch(
       <div class="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
         <h2 class="shrink-0 text-lg font-semibold leading-tight">{{ pageTitle }}</h2>
         <p
-          v-if="loaded && (!loadError || totalQuestionCount > 0)"
+          v-if="loaded && totalQuestionCount > 0"
           class="text-xs leading-snug text-base-content/65"
         >
           {{ totalQuestionCount }} 道题 · {{ items.length }} 个{{ groupLabel }}

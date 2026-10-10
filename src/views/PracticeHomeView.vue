@@ -8,7 +8,6 @@ import {
   ClipboardList,
   EyeOff,
   GraduationCap,
-  Hourglass,
   ListChecks,
   Settings2,
   Sparkles,
@@ -459,17 +458,23 @@ watch(
 
 <template>
   <section
-    class="flex min-h-[calc(100vh-8rem)] w-full min-w-0 max-w-full flex-col gap-4 overflow-x-hidden"
+    class="flex min-h-[calc(100dvh-8rem)] w-full min-w-0 max-w-full flex-col gap-4 overflow-x-hidden"
   >
     <header class="flex h-9 shrink-0 items-center">
       <img :src="logoPassitai" alt="Passitai" class="h-8 w-auto" />
     </header>
 
-    <section v-if="planLoading" class="overflow-hidden rounded-2xl border border-base-200">
-      <EmptyState :icon="Hourglass" title="加载中" description="正在获取练习计划…" />
+    <section
+      v-if="planLoading"
+      class="flex flex-1 flex-col items-center justify-center gap-3"
+      role="status"
+      aria-live="polite"
+    >
+      <span class="loading loading-spinner loading-md text-primary"></span>
+      <p class="text-sm font-medium text-base-content/65">正在获取练习计划…</p>
     </section>
 
-    <section v-else-if="!hasStudyPlan" class="overflow-hidden rounded-2xl border border-base-200">
+    <section v-else-if="!hasStudyPlan" class="flex flex-1 items-center justify-center">
       <EmptyState
         :icon="Target"
         title="暂无练习计划"
@@ -605,6 +610,7 @@ watch(
             title="所有科目已隐藏"
             description="在科目管理中恢复需要展示的科目。"
             action-label="管理科目"
+            embedded
             @action="subjectPanelOpen = true"
           />
         </div>
@@ -616,12 +622,11 @@ watch(
           <span class="loading loading-spinner loading-xs text-base-content/40"></span>
         </div>
 
-        <div v-else-if="entryRows.length === 0" class="border-t border-base-200">
-          <EmptyState
-            :icon="Target"
-            title="暂无练习入口"
-            :description="`${activeSubject.name} 暂无可用练习内容。`"
-          />
+        <div
+          v-else-if="entryRows.length === 0"
+          class="border-t border-base-200 px-4 py-8 text-center"
+        >
+          <p class="text-sm text-base-content/65">{{ activeSubject.name }} 暂无可用练习内容</p>
         </div>
 
         <template v-else>
@@ -774,6 +779,7 @@ watch(
           :icon="Target"
           title="暂无可管理科目"
           description="暂无练习计划科目。"
+          embedded
         />
       </div>
     </BaseModal>

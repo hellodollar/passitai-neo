@@ -11,12 +11,15 @@ const props = withDefaults(
     actionLabel?: string
     actionTo?: string
     tone?: 'primary' | 'success' | 'warning' | 'error'
+    /** 卡片内嵌使用：去掉虚线边框与底色，压缩留白 */
+    embedded?: boolean
   }>(),
   {
     actionLabel: '',
     actionTo: '',
     description: '',
     tone: 'primary',
+    embedded: false,
   },
 )
 
@@ -38,7 +41,8 @@ const toneClasses = computed(() => {
 
 <template>
   <section
-    class="w-full min-w-full rounded-2xl border border-dashed border-base-300 bg-base-100 px-5 py-10 text-center"
+    class="w-full min-w-full rounded-2xl px-5 text-center"
+    :class="embedded ? 'py-8' : 'border border-dashed border-base-300 bg-base-100 py-10'"
   >
     <span
       class="mx-auto flex size-12 items-center justify-center rounded-full"
