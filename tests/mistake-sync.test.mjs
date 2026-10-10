@@ -5,7 +5,7 @@ import { createPinia, setActivePinia } from 'pinia'
 
 import { loadSource } from './helpers/load-source.mjs'
 
-const { useWrongQuestionSync } = await loadSource('composables/useWrongQuestionSync.ts')
+const { useMistakeSync } = await loadSource('composables/useMistakeSync.ts')
 const { useAuthStore } = await loadSource('stores/auth.ts')
 const { usePracticeStore } = await loadSource('stores/practice.ts')
 const { useToasts } = await loadSource('utils/toast.ts')
@@ -65,7 +65,7 @@ function envelope(data, { code = 0, status = 200 } = {}) {
 /** 通过真实 API 模块与统一 HTTP 客户端发出请求，仅在 fetch 边界记录并应答。 */
 function installFetch({
   settings = DEFAULT_SETTINGS,
-  wrongQuestionStatus = 200,
+  mistakeStatus = 200,
   deferSettings = false,
 } = {}) {
   requests = []
@@ -82,7 +82,7 @@ function installFetch({
     }
     const method = (options.method ?? 'GET').toUpperCase()
     requests.push({ method, href, body: options.body ? JSON.parse(options.body) : undefined })
-    if (wrongQuestionStatus !== 200) return envelope(null, { status: wrongQuestionStatus })
+    if (mistakeStatus !== 200) return envelope(null, { status: mistakeStatus })
     return envelope(null)
   }
 }
@@ -118,7 +118,7 @@ function setup({
   const auth = useAuthStore()
   if (session) auth.session = session
   const settingsStore = usePracticeStore()
-  const sync = useWrongQuestionSync({ context })
+  const sync = useMistakeSync({ context })
   return { auth, settingsStore, sync }
 }
 
@@ -212,7 +212,7 @@ test('上下文按题隔离，各自携带真实题集与科目', async () => {
 })
 
 test('同步失败只提示一次，后续不再重复打扰', async () => {
-  const { sync } = setup({ wrongQuestionStatus: 500 })
+  const { sync } = setup({ mistakeStatus: 500 })
   await sync.syncOnAnswered(question(), answer('qst_one', ['B']))
   await sync.syncOnAnswered(question(), answer('qst_one', ['B']))
   assert.equal(requests.length, 2)

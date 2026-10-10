@@ -157,7 +157,7 @@ function returnToPractice() {
 }
 
 onMounted(() => {
-  practice.startSession()
+  practice.startPractice()
 })
 
 watch(
@@ -169,7 +169,7 @@ watch(
 )
 
 onBeforeUnmount(() => {
-  practice.endSession()
+  practice.endPractice()
 })
 </script>
 

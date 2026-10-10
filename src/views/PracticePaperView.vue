@@ -7,7 +7,6 @@ import {
   ClipboardList,
   Grid2X2,
   Settings,
-  Trash2,
 } from '@lucide/vue'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -19,16 +18,14 @@ import QuestionSheetModal from '@/components/practice/QuestionSheetModal.vue'
 import PracticeSettingsModal from '@/components/settings/PracticeSettingsModal.vue'
 import { usePracticeNavigation } from '@/composables/usePracticeNavigation'
 import { useQuestionFavorites } from '@/composables/useQuestionFavorites'
-import { useWrongQuestionSync } from '@/composables/useWrongQuestionSync'
+import { useMistakeSync } from '@/composables/useMistakeSync'
 import {
   addFavorite,
   fetchFavoritePractice,
   removeFavorite,
   removeFavoriteByRecord,
 } from '@/api/favorites'
-import {
-  fetchWrongQuestionPractice,
-} from '@/api/wrong-questions'
+import { fetchMistakePractice } from '@/api/wrong-questions'
 import { ROUTE_NAMES } from '@/constants/app'
 import { practiceReturnTarget, returnFromPractice } from '@/utils/browse-state'
 import { useAuthStore } from '@/stores/auth'
@@ -201,7 +198,11 @@ const correctCount = computed(() => {
   let count = 0
   for (const record of Object.values(answerRecords.value)) {
     const question = questionsById.value.get(record.questionId)
-    if (question && isChoiceQuestionType(question.questionType) && isAnswerCorrect(record, question))
+    if (
+      question &&
+      isChoiceQuestionType(question.questionType) &&
+      isAnswerCorrect(record, question)
+    )
       count++
   }
   return count
@@ -233,7 +234,7 @@ function collectionContext(questionId: string): CollectionContext | null {
   return { questionId, subjectId: item.subjectId, paperId: item.paperId }
 }
 
-const { syncOnAnswered } = useWrongQuestionSync({ context: collectionContext })
+const { syncOnAnswered } = useMistakeSync({ context: collectionContext })
 
 function clearRecordSaveTimer() {
   if (recordSaveTimer !== null) {
@@ -293,9 +294,7 @@ const hasLocalRecordProgress = computed(
     Boolean(localRecord.value?.pendingSubmission || localRecord.value?.lastSubmission),
 )
 // 仅专项训练提供页内记录清理；收藏、错题及其他题集模式不展示该入口。
-const canClearRecord = computed(
-  () => !collectionMode.value && paperType.value === 'baseline',
-)
+const canClearRecord = computed(() => !collectionMode.value && paperType.value === 'baseline')
 const clearRecordScope = computed(() =>
   localRecord.value
     ? {
@@ -517,7 +516,7 @@ async function confirmSubmitPaper() {
 
     if (!isCurrentSubmissionContext(sequence, record)) return
     submitConfirmOpen.value = false
-    practice.endSession()
+    practice.endPractice()
     await router.replace({
       name: ROUTE_NAMES.practicePaperResult,
       params: { paperId: paperIdParam },
@@ -583,7 +582,7 @@ function goToQuestion(index: number) {
 
 function exitPractice() {
   saveRecordNow()
-  practice.endSession()
+  practice.endPractice()
   returnFromPractice(router, practiceReturnTarget(route.query, collectionMode.value))
 }
 
@@ -602,7 +601,7 @@ async function loadCollectionPaper(paperId: string) {
   const params = originId.startsWith('pap_') ? { paperId: originId } : { subjectId: originId }
   const { paper } =
     collectionSource.value === 'wrong-questions'
-      ? await fetchWrongQuestionPractice(params)
+      ? await fetchMistakePractice(params)
       : await fetchFavoritePractice(params)
   return { paper, paperType: null, favoriteQuestionIds: [] as string[] }
 }
@@ -709,7 +708,7 @@ async function loadPaperData() {
 }
 
 onMounted(() => {
-  practice.startSession()
+  practice.startPractice()
   void practice.ensureSettings()
   window.addEventListener('pagehide', saveRecordNow)
   document.addEventListener('visibilitychange', saveRecordWhenHidden)
@@ -723,7 +722,7 @@ onBeforeUnmount(() => {
   loadSequence++
   window.removeEventListener('pagehide', saveRecordNow)
   document.removeEventListener('visibilitychange', saveRecordWhenHidden)
-  practice.endSession()
+  practice.endPractice()
 })
 
 function saveRecordWhenHidden() {
@@ -812,7 +811,7 @@ watch(questionSheetOpen, (open) => {
       class="fixed bottom-0 left-1/2 z-40 w-full max-w-[32rem] -translate-x-1/2 border-t border-base-200/80 bg-base-100/95 px-3 pb-[calc(0.65rem+env(safe-area-inset-bottom))] pt-2.5 backdrop-blur-xl"
     >
       <p v-if="favoriteError" class="mb-2 text-center text-xs text-error">{{ favoriteError }}</p>
-      <div class="grid items-center gap-1" :class="canClearRecord ? 'grid-cols-5' : 'grid-cols-4'">
+      <div class="grid items-center gap-1 grid-cols-4">
         <button
           class="flex h-12 min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-medium transition active:bg-base-200"
           :class="[
@@ -851,18 +850,6 @@ watch(questionSheetOpen, (open) => {
         >
           <Grid2X2 :size="19" />
           <span>{{ currentQuestionPosition }}/{{ currentQuestions.length }}</span>
-        </button>
-
-        <button
-          v-if="canClearRecord"
-          class="flex h-12 min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-medium text-base-content/60 transition active:bg-base-200 disabled:opacity-40"
-          type="button"
-          aria-label="清除做题记录"
-          :disabled="!hasLocalRecordProgress || submitting"
-          @click="requestClearRecord"
-        >
-          <Trash2 :size="19" />
-          <span>清除</span>
         </button>
 
         <button
@@ -926,8 +913,11 @@ watch(questionSheetOpen, (open) => {
       :correct-count="correctCount"
       :wrong-count="wrongCount"
       :show-submit="!collectionMode"
+      :show-clear="canClearRecord"
+      :clear-disabled="!hasLocalRecordProgress || submitting"
       @select="goToQuestion"
       @submit="requestSubmitPaper"
+      @clear="requestClearRecord"
     />
 
     <BaseDialog

@@ -48,7 +48,9 @@ function uniqueOptions(options: NormalizedQuestionOption[]) {
   })
 }
 
-export function getPreviewOptions(questionType: QuestionType | undefined): NormalizedQuestionOption[] {
+export function getPreviewOptions(
+  questionType: QuestionType | undefined,
+): NormalizedQuestionOption[] {
   if (questionType === 'judge') {
     return [
       { label: 'A', text: '正确', value: 'A' },
@@ -89,17 +91,12 @@ function normalizeOption(option: string, index: number): NormalizedQuestionOptio
 
 export function getQuestionOptions(question: QuestionListItem | undefined) {
   if (!question) return []
-  const letterOptions = [
-    question.A,
-    question.B,
-    question.C,
-    question.D,
-    question.E,
-    question.F,
-  ]
+  const letterOptions = [question.A, question.B, question.C, question.D, question.E, question.F]
     .map((option, index) => (option ? normalizeOption(option, index) : null))
     .filter((option): option is NormalizedQuestionOption => Boolean(option))
-  return letterOptions.length > 0 ? uniqueOptions(letterOptions) : parseQuestionTitle(question).options
+  return letterOptions.length > 0
+    ? uniqueOptions(letterOptions)
+    : parseQuestionTitle(question).options
 }
 
 function parseChoiceAnswerValues(value: string | string[]) {
@@ -149,7 +146,13 @@ export function isAnswerCorrect(record: PracticeAnswerRecord, question: Question
   const actualValues = isChoice
     ? parseChoiceAnswerValues(record.values)
     : [record.text.trim().toUpperCase()]
-  const expected = expectedValues.map((value) => value.toUpperCase()).sort().join(',')
-  const actual = actualValues.map((value) => value.toUpperCase()).sort().join(',')
+  const expected = expectedValues
+    .map((value) => value.toUpperCase())
+    .sort()
+    .join(',')
+  const actual = actualValues
+    .map((value) => value.toUpperCase())
+    .sort()
+    .join(',')
   return actual === expected
 }

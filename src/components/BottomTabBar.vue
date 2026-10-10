@@ -28,7 +28,11 @@ function isItemActive(to: string) {
       :key="item.to"
       :to="item.to"
       class="flex h-14 flex-col items-center justify-center gap-0.5 rounded-2xl text-[11px]"
-      :class="isItemActive(item.to) ? 'font-semibold text-base-content' : 'text-base-content/60 hover:bg-base-200/80 hover:text-base-content'"
+      :class="
+        isItemActive(item.to)
+          ? 'font-semibold text-base-content'
+          : 'text-base-content/60 hover:bg-base-200/80 hover:text-base-content'
+      "
     >
       <span
         class="flex h-7 min-w-12 items-center justify-center rounded-full"

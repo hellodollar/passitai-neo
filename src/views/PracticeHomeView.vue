@@ -282,7 +282,7 @@ function startEntryPaper(child: PracticeEntryChild) {
       entry: expandedEntryKey.value || 'baseline',
     },
   }).fullPath
-  practice.startSession()
+  practice.startPractice()
   router.push({
     name: ROUTE_NAMES.practicePaper,
     params: { paperId: child.paperId },

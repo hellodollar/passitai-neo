@@ -80,11 +80,11 @@ afterEach(() => {
 
 test('练习运行态开始与结束', () => {
   const store = practice()
-  assert.equal(store.sessionActive, false)
-  store.startSession()
-  assert.equal(store.sessionActive, true)
-  store.endSession()
-  assert.equal(store.sessionActive, false)
+  assert.equal(store.practiceActive, false)
+  store.startPractice()
+  assert.equal(store.practiceActive, true)
+  store.endPractice()
+  assert.equal(store.practiceActive, false)
 })
 
 test('设置 GET 缓存且并发去重', async () => {
@@ -210,9 +210,9 @@ test('新会话设置写入后旧 PATCH 返回不能覆盖新缓存', async () =
 
 test('clearSettings 只清设置缓存，不改变练习运行态', () => {
   const store = practice()
-  store.startSession()
+  store.startPractice()
   store.clearSettings()
-  assert.equal(store.sessionActive, true)
+  assert.equal(store.practiceActive, true)
   assert.equal(store.settings, null)
   assert.equal(store.settingsLoaded, false)
 })

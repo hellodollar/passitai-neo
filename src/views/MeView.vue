@@ -291,11 +291,7 @@ onMounted(() => {
       @updated="onEmailUpdated"
     />
 
-    <StudyPlanModal
-      v-model="planModalOpen"
-      :plan="me?.preferences.plan"
-      @updated="onPlanUpdated"
-    />
+    <StudyPlanModal v-model="planModalOpen" :plan="me?.preferences.plan" @updated="onPlanUpdated" />
 
     <PracticeSettingsModal
       v-model="practiceSettingsModalOpen"

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { X } from '@lucide/vue'
+import { Trash2 } from '@lucide/vue'
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 
 import type { PracticeAnswerRecord, QuestionListItem } from '@/types'
@@ -15,7 +15,7 @@ import {
   QUESTION_SHEET_RANGE_SIZE,
 } from '@/utils/question-sheet'
 
-/** 答题卡弹层：题号区间分页、作答状态图例与交卷入口。 */
+/** 答题卡弹层：题号区间分页、作答状态图例与交卷、清除记录入口。 */
 const props = defineProps<{
   questions: QuestionListItem[]
   groups: QuestionSheetGroup[]
@@ -26,11 +26,16 @@ const props = defineProps<{
   wrongCount: number
   /** 收藏/错题纯刷题模式不显示交卷按钮 */
   showSubmit: boolean
+  /** 仅专项训练显示清除本地记录入口 */
+  showClear: boolean
+  /** 无本地作答或交卷中时禁用清除 */
+  clearDisabled: boolean
 }>()
 
 const emit = defineEmits<{
   select: [index: number]
   submit: []
+  clear: []
 }>()
 
 const model = defineModel<boolean>({ default: false })
@@ -99,22 +104,12 @@ onBeforeUnmount(() => {
         tabindex="-1"
         @keydown.esc="model = false"
       >
-        <!-- 头部：标题 + 进度 + 关闭 -->
-        <div class="flex shrink-0 items-center gap-3 px-4 pb-2 pt-3.5">
-          <div class="min-w-0 flex-1">
-            <h2 class="text-base font-semibold leading-tight">答题卡</h2>
-            <p class="mt-0.5 text-xs tabular-nums text-base-content/45">
-              已答 {{ answeredCount }}/{{ questions.length }}
-            </p>
-          </div>
-          <button
-            class="flex size-8 shrink-0 items-center justify-center rounded-full text-base-content/45 transition active:bg-base-200"
-            type="button"
-            aria-label="关闭答题卡"
-            @click="model = false"
-          >
-            <X :size="18" />
-          </button>
+        <!-- 头部：标题 + 进度 -->
+        <div class="shrink-0 px-4 pb-2 pt-3.5">
+          <h2 class="text-base font-semibold leading-tight">答题卡</h2>
+          <p class="mt-0.5 text-xs tabular-nums text-base-content/45">
+            已答 {{ answeredCount }}/{{ questions.length }}
+          </p>
         </div>
 
         <!-- 状态图例 -->
@@ -160,10 +155,7 @@ onBeforeUnmount(() => {
           </button>
         </div>
 
-        <div
-          ref="contentRef"
-          class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3"
-        >
+        <div ref="contentRef" class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3">
           <section v-for="group in visibleGroups" :key="group.key" class="pb-3">
             <p class="mb-2 text-xs font-medium text-base-content/50">
               {{ group.label }} · {{ group.questions.length }}题
@@ -192,13 +184,24 @@ onBeforeUnmount(() => {
           </section>
         </div>
 
-        <!-- 底部操作：交卷（收藏/错题纯刷题模式不显示） -->
+        <!-- 底部操作：交卷（收藏/错题纯刷题模式不显示）；专项训练提供清除记录入口 -->
         <div
           v-if="showSubmit"
-          class="flex shrink-0 gap-2 border-t border-base-200/80 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 sm:pb-4"
+          class="flex shrink-0 items-center gap-2 border-t border-base-200/80 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 sm:pb-4"
         >
           <button
-            class="btn btn-primary h-11 min-h-11 flex-1 rounded-xl text-sm"
+            v-if="showClear"
+            class="btn h-11 min-h-11 flex-none gap-1.5 rounded-xl border-base-200 bg-base-100 text-sm text-base-content/55 transition-colors hover:border-error/30 hover:bg-error/5 hover:text-error disabled:pointer-events-none disabled:opacity-40"
+            type="button"
+            aria-label="清除本地做题记录"
+            :disabled="clearDisabled"
+            @click="emit('clear')"
+          >
+            <Trash2 :size="16" />
+            清除记录
+          </button>
+          <button
+            class="btn btn-primary h-11 min-h-11 min-w-0 flex-1 rounded-xl text-sm"
             type="button"
             :disabled="questions.length === 0"
             @click="emit('submit')"

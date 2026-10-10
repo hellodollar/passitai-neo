@@ -15,7 +15,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { clearFavorites, fetchFavoriteAggregate } from '@/api/favorites'
-import { clearWrongQuestions, fetchWrongQuestionAggregate } from '@/api/wrong-questions'
+import { clearMistakes, fetchMistakeAggregate } from '@/api/wrong-questions'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import { ROUTE_NAMES } from '@/constants/app'
@@ -104,7 +104,7 @@ async function loadSubjects() {
   loading.value = true
   loadError.value = false
   try {
-    const aggregate = isFavorites.value ? fetchFavoriteAggregate : fetchWrongQuestionAggregate
+    const aggregate = isFavorites.value ? fetchFavoriteAggregate : fetchMistakeAggregate
     const result = await aggregate({
       groupBy: requestedGroup,
       sort: requestedField,
@@ -290,7 +290,7 @@ async function confirmClear() {
   clearing.value = true
   try {
     if (isFavorites.value) await clearFavorites()
-    else await clearWrongQuestions()
+    else await clearMistakes()
     showSuccessToast(isFavorites.value ? '收藏已清空' : '错题已清空')
     clearConfirmOpen.value = false
     await loadSubjects()

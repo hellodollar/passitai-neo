@@ -167,9 +167,7 @@ function optionMarkerClasses(optionValue: string) {
         >
           {{ option.label }}
         </span>
-        <span class="min-w-0 flex-1 break-words text-[14px] leading-[1.4]">{{
-          option.text
-        }}</span>
+        <span class="min-w-0 flex-1 break-words text-[14px] leading-[1.4]">{{ option.text }}</span>
       </button>
     </div>
 
@@ -204,10 +202,7 @@ function optionMarkerClasses(optionValue: string) {
     </button>
   </section>
 
-  <section
-    v-if="answerRecord"
-    class="mx-5 mt-3 space-y-3 border-t border-base-200 pt-2.5"
-  >
+  <section v-if="answerRecord" class="mx-5 mt-3 space-y-3 border-t border-base-200 pt-2.5">
     <div
       class="rounded-lg border px-3 py-2.5"
       :class="
@@ -221,13 +216,7 @@ function optionMarkerClasses(optionValue: string) {
     >
       <div
         class="flex items-center gap-1.5 text-sm font-semibold"
-        :class="
-          !canGrade
-            ? 'text-base-content/70'
-            : answerCorrect
-              ? 'text-success'
-              : 'text-error'
-        "
+        :class="!canGrade ? 'text-base-content/70' : answerCorrect ? 'text-success' : 'text-error'"
       >
         <ClipboardCheck v-if="!canGrade" :size="16" />
         <CheckCircle2 v-else-if="answerCorrect" :size="16" />
@@ -243,11 +232,7 @@ function optionMarkerClasses(optionValue: string) {
           <dd
             class="inline break-words font-semibold"
             :class="
-              !canGrade
-                ? 'text-base-content/80'
-                : answerCorrect
-                  ? 'text-success'
-                  : 'text-error'
+              !canGrade ? 'text-base-content/80' : answerCorrect ? 'text-success' : 'text-error'
             "
           >
             {{ userAnswerText || '—' }}
@@ -269,10 +254,7 @@ function optionMarkerClasses(optionValue: string) {
 
     <div>
       <h3 class="text-sm font-semibold text-base-content">题目解析</h3>
-      <p
-        v-if="explanation"
-        class="mt-1.5 break-words text-sm leading-[1.55] text-base-content/65"
-      >
+      <p v-if="explanation" class="mt-1.5 break-words text-sm leading-[1.55] text-base-content/65">
         {{ explanation }}
       </p>
       <p v-else class="mt-2 text-sm text-base-content/40">暂无解析</p>

@@ -11,7 +11,11 @@ import type {
   QuestionListItem,
 } from '@/types'
 import { PRACTICE_RECORD_VERSION } from '@/constants/practice'
-import { getPreviewOptions, getQuestionOptions, isChoiceQuestionType } from '@/utils/practice-question'
+import {
+  getPreviewOptions,
+  getQuestionOptions,
+  isChoiceQuestionType,
+} from '@/utils/practice-question'
 import {
   RECORD_PREFIX,
   LEGACY_DRAFT_PREFIX,

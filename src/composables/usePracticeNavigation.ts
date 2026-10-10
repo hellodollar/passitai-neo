@@ -64,12 +64,14 @@ export function usePracticeNavigation(options: {
       event.ctrlKey ||
       event.metaKey ||
       options.suspended()
-    ) return
+    )
+      return
     const target = event.target
     if (
       target instanceof HTMLElement &&
       (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
-    ) return
+    )
+      return
 
     if (event.key === 'ArrowRight') {
       event.preventDefault()

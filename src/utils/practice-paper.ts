@@ -1,9 +1,5 @@
 import { QUESTION_TYPE_LABELS } from '@/constants/entity'
-import type {
-  PracticePaperItem,
-  PracticePaperLite,
-  QuestionListItem,
-} from '@/types'
+import type { PracticePaperItem, PracticePaperLite, QuestionListItem } from '@/types'
 import { questionFingerprint } from '@/utils/practice-record'
 import { toQuestionListItem } from '@/utils/practice-question'
 
@@ -29,9 +25,11 @@ export function preparePracticePaper(paper: PracticePaperLite) {
     }
     groups.push({
       key: `${paper.id ?? paper.subjectId}-${index}`,
-      label: section.name || (section.questionType
-        ? QUESTION_TYPE_LABELS[section.questionType]
-        : `Section ${index + 1}`),
+      label:
+        section.name ||
+        (section.questionType
+          ? QUESTION_TYPE_LABELS[section.questionType]
+          : `Section ${index + 1}`),
       startIndex: questions.length,
       questions: groupQuestions,
     })

@@ -13,7 +13,7 @@ import type { PracticeSettings } from '@/types'
 export const usePracticeStore = defineStore('practice', () => {
   const settings = ref<PracticeSettings | null>(null)
   const settingsLoaded = ref(false)
-  const sessionActive = ref(false)
+  const practiceActive = ref(false)
 
   let generation = 0
   let pending: { generation: number; promise: Promise<PracticeSettings | null> } | null = null
@@ -59,22 +59,22 @@ export const usePracticeStore = defineStore('practice', () => {
     settingsLoaded.value = false
   }
 
-  function startSession() {
-    sessionActive.value = true
+  function startPractice() {
+    practiceActive.value = true
   }
 
-  function endSession() {
-    sessionActive.value = false
+  function endPractice() {
+    practiceActive.value = false
   }
 
   return {
     settings,
     settingsLoaded,
-    sessionActive,
+    practiceActive,
     ensureSettings,
     patchSettings,
     clearSettings,
-    startSession,
-    endSession,
+    startPractice,
+    endPractice,
   }
 })

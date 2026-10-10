@@ -1,4 +1,4 @@
-import { addWrongQuestion, removeWrongQuestionByContext } from '@/api/wrong-questions'
+import { addMistake, removeMistakeByContext } from '@/api/wrong-questions'
 import { useAuthStore } from '@/stores/auth'
 import { usePracticeStore } from '@/stores/practice'
 import type { CollectionContext, PracticeAnswerRecord, QuestionListItem } from '@/types'
@@ -10,7 +10,7 @@ import {
 import { showErrorToast } from '@/utils/toast'
 
 /** 答题后与服务端同步错题：答错收录、答对按设置移除；失败提示一次，不打断作答。 */
-export function useWrongQuestionSync(options: {
+export function useMistakeSync(options: {
   context: (questionId: string) => CollectionContext | null
 }) {
   const auth = useAuthStore()
@@ -40,7 +40,7 @@ export function useWrongQuestionSync(options: {
       // 答对自动移除错题（幂等，无记录时静默）
       if (!settings?.removeMistakeOnCorrect) return
       try {
-        await removeWrongQuestionByContext(context)
+        await removeMistakeByContext(context)
       } catch {
         // 静默失败：不打断答题流程
       }
@@ -54,7 +54,7 @@ export function useWrongQuestionSync(options: {
     if (!settings.recordWrongQuestions) return
 
     try {
-      await addWrongQuestion(context)
+      await addMistake(context)
     } catch {
       showErrorOnce('错题记录失败，请稍后重试。')
     }

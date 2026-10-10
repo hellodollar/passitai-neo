@@ -1,6 +1,6 @@
 # Neo 客户端 API
 
-本文记录 Neo 客户端当前接入的接口契约；运行时以服务端实现为准，变更接口时需同步更新本文件、`src/api/` 与 `src/types/`（`api.ts` 信封、`auth.ts` 账号、`entity.ts` 共用领域类型、`practice.ts` 练习类型、`index.ts` 汇总）。基础路径为 `/api`，仅接受客户端登录签发的 `app` scope
+本文记录 Neo 客户端当前接入的接口契约；运行时以服务端实现为准，变更接口时需同步更新本文件、`src/api/` 与 `src/types/domain.ts`。基础路径为 `/api`，仅接受客户端登录签发的 `app` scope
 JWT。除注册、登录外，所有接口都需要：
 
 ```http
@@ -26,6 +26,10 @@ interface PaginationResult<T> {
 
 `code === 0` 表示成功。分页参数默认 `page=1&limit=20`，`limit` 最大为 `100`。
 
+接口结果以 **HTTP status** 判定：`2xx` 成功；`400` 参数/请求体校验失败或登录凭证错误；`401` 未登录
+或 token 失效；`403` 权限不足；`404` 资源不存在；`409` 唯一/状态冲突；`500` 服务端异常；`503`
+依赖服务不可用。`code` 仅作为随 envelope 返回的补充信息（`0` 表示成功），客户端不得维护业务码字典。
+
 接口只划分为以下六个模块。本文未列出的其他 `/api` 客户端路径均不存在，不应调用。标记为“占位”的
 接口只用于固定路径和基础入参，暂不执行真实业务写入。
 
@@ -40,8 +44,8 @@ interface PaginationResult<T> {
 | `GET`   | `/api/me`                          | 获取用户聚合信息   | 可用 |
 | `PUT`   | `/api/user/password`               | 修改密码           | 可用 |
 | `PUT`   | `/api/user/email`                  | 修改邮箱           | 可用 |
-| `GET`   | `/api/user/settings/notifications` | 获取通知开关配置   | 可用（客户端未接入，设置页为禁用占位） |
-| `PATCH` | `/api/user/settings/notifications` | 更新通知开关       | 可用（客户端未接入，设置页为禁用占位） |
+| `GET`   | `/api/user/settings/notifications` | 获取通知开关配置   | 可用 |
+| `PATCH` | `/api/user/settings/notifications` | 更新通知开关       | 可用 |
 
 ### 注册与登录
 
@@ -58,9 +62,12 @@ interface RegisterBody extends AuthBody {
 
 注册邀请码第一阶段固定为 `taikula`：
 
-- 未填写（缺失或为空）：通过参数校验，注册失败返回 `code: 2005`（邀请码无效）。
-- 填写但长度不在 6-8 位：参数校验失败返回 `code: 1002`（邀请码长度需在6-8位之间）。
-- 填写且长度合法但不为 `taikula`：注册失败返回 `code: 2005`（邀请码无效）。
+- 未填写（缺失或为空）：通过参数校验，注册失败返回 `HTTP 400`、`code: 2005`（邀请码无效）。
+- 填写但长度不在 6-8 位：参数校验失败返回 `HTTP 400`、`code: 1002`（邀请码长度需在6-8位之间）。
+- 填写且长度合法但不为 `taikula`：注册失败返回 `HTTP 400`、`code: 2005`（邀请码无效）。
+
+邮箱已被占用时注册失败返回 `HTTP 409`、`code: 2003`（账号已存在）；未预期的服务端错误返回
+`HTTP 500`、`code: 9001`。
 
 前端约定：不填写邀请码允许直接提交（由服务端返回 2005）；填写时前端先做 6-8 位长度校验。
 
@@ -77,6 +84,11 @@ interface AuthResult {
   }
 }
 ```
+
+`POST /api/login`、`POST /api/register` 为公开接口；`POST /api/logout` 需要携带当前
+`Authorization: Bearer <token>`，客户端应在清除本地会话之前用它调用一次完成服务端吊销，失败不阻塞
+本地登出。登录/注册/登出等认证动作接口应排除在后台会话失效广播之外：它们返回的 `401` 不代表当前
+会话失效，不应据此清除已有本地会话。
 
 ### 用户基础信息与聚合信息
 
@@ -110,9 +122,9 @@ interface ChangeEmailBody {
 ```
 
 - `PUT /api/user/password`：校验当前密码后更新为新密码，成功返回 `{ userId, changed: true }`。当前密码
-  错误返回 `code: 2001`；新密码与当前密码相同返回 `code: 1000`。
+  错误返回 `HTTP 400`、`code: 2001`；新密码与当前密码相同返回 `HTTP 400`、`code: 1000`。
 - `PUT /api/user/email`：校验登录密码并确保新邮箱未被占用后更新，成功返回 `{ userId, email }`。邮箱
-  已存在返回 `code: 2003`（HTTP 409）。
+  已被占用返回 `HTTP 409`、`code: 2003`；与新邮箱相同返回 `HTTP 409`、`code: 4003`。
 
 ### 通知开关
 
@@ -125,7 +137,7 @@ interface NotificationSettings {
 ```
 
 `PATCH` 接受以上字段的任意子集，并写入当前用户的 `preferences.notifications`。
-未设置时返回 `dailyReminder: false`、`reminderTime: ''`、`weeklyReport: false`；默认值以后端仓库
+未设置时返回 `dailyReminder: false`、`reminderTime: ''`、`weeklyReport: false`；默认值以
 `src/services/client/user-preferences.ts` 为准。
 
 ## 3. 学习计划模块
@@ -195,7 +207,7 @@ interface PracticeSettings {
 `PATCH` 接受部分字段，并写入当前用户的 `preferences.practice`。
 未设置时返回 `autoNext: false`、`recordWrongQuestions: true`、
 `showExplanationAfterAnswer: true`、`loopAfterCompletion: false`、
-`autoSubmitAfterCompletion: false`、`removeMistakeOnCorrect: false`；默认值以后端仓库
+`autoSubmitAfterCompletion: false`、`removeMistakeOnCorrect: false`；默认值以
 `src/services/client/user-preferences.ts` 为准。
 
 ### 练习入口
@@ -206,9 +218,10 @@ interface PracticeSettings {
 `pastExam`、`mock`、`ai` 的 `children` 分别来自该科目下同类型、启用且未删除的题集，只包含平台题集
 或当前用户自己的题集。每个子项返回 `{ paperId, name, questionCount, answeredCount }`，其中
 `name` 直接取题集存储的名称（如 `2024年10月真题`），不拼接科目名称；
-`questionCount` 为题集 `sections` 内全部题目数之和，`answeredCount` 恒为 `0`（客户端首页已答
-进度从本地做题记录回填，不使用该字段）；父项的 `questionCount` 为全部子项之和，父项的
-`name`、`description` 由接口固定返回。没有匹配题集时 `children` 为 `[]`、`questionCount` 为 `0`。
+`questionCount` 为题集 `sections` 内全部题目数之和，`answeredCount` 暂为 `0`；父项的
+`questionCount` 为全部子项之和。父项 `name`、`description` 和 `answeredCount` 来自
+`src/constants/practice.ts` 的 `PracticeEntryPresets`（当前 `answeredCount` 依次为 0、75、12、0，
+尚非真实进度）。没有匹配题集时 `children` 为 `[]`、`questionCount` 为 `0`。
 
 `baseline`（专项训练）的 `children` 来自该科目 `type=baseline` 的题集。按以下
 `assessmentType` 顺序排列，同一类型内按题集创建时间倒序；每份题集对应一个子项，`name`
@@ -284,8 +297,8 @@ Section 的所有题目都与 `questionType` 一致；缺失 `questionType` 表�
 同一道题出现在其他题集时不会带入该收藏状态。没有收藏时返回 `[]`，不受 `/api/favorites`
 分页限制；收藏或取消收藏成功后，再次获取本接口会反映最新状态。
 
-题型和同类型 Section 的默认中文文案由后端仓库 `src/constants/question.ts` 的 `QuestionTypeLabels`
-维护，同步到本仓库的 `src/generated/domain-values.ts`：`single`→`单选题`、
+题型和同类型 Section 的默认中文文案由 API `src/constants/question.ts` 的 `QuestionTypeLabels`
+维护，同步到 Neo/Dash 的 `src/generated/domain-values.ts`：`single`→`单选题`、
 `multiple`→`多选题`、`judge`→`判断题`、`nounExplain`→`名词解释`、
 `shortAnswer`→`简答题`、`essay`→`论述题`。这只是展示/输入建议；Section 的 `name`
 如已自定义，客户端须原样展示，不用默认文案覆盖。
@@ -334,7 +347,7 @@ interface PracticeSubmission {
 
 | Method   | Path                                               | 说明                                       | 状态 |
 | -------- | -------------------------------------------------- | ------------------------------------------ | ---- |
-| `GET`    | `/api/favorites?groupBy=&sort=&order=`            | 聚合查询收藏（默认按科目）                 | 可用 |
+| `GET`    | `/api/favorites?groupBy=&sort=&order=`             | 聚合查询收藏（默认按科目）                 | 可用 |
 | `PUT`    | `/api/favorites`                                   | 收藏题目（幂等）                           | 可用 |
 | `DELETE` | `/api/favorites`                                   | 按三元组取消收藏（幂等）                   | 可用 |
 | `DELETE` | `/api/favorites/:recordId`                         | 按收藏记录 ID 取消（收藏训练页）           | 可用 |
@@ -431,10 +444,10 @@ interface PracticeSubmission {
 
 ## 7. 字典选项模块
 
-| Method | Path                                    | 说明                 | 状态 |
-| ------ | --------------------------------------- | -------------------- | ---- |
-| `GET`  | `/api/options/majors?code=`             | 获取专业选项（`code` 选填） | 可用 |
-| `GET`  | `/api/options/subjects?majorId=maj_xxx` | 根据专业获取科目选项 | 可用 |
+| Method | Path                                     | 说明                     | 状态 |
+| ------ | ---------------------------------------- | ------------------------ | ---- |
+| `GET`  | `/api/options/majors?code=`              | 获取专业选项（code 选填） | 可用 |
+| `GET`  | `/api/options/subjects?majorId=maj_xxx`  | 根据专业获取科目选项     | 可用 |
 
 统一返回：
 
@@ -446,7 +459,8 @@ interface OptionItem {
 }
 ```
 
-仅返回启用且未删除的数据。
+仅返回启用且未删除的数据。`/api/options/majors` 支持 `code` 精确过滤；`/api/options/subjects`
+支持 `majorId` 过滤。
 
 ## 8. 接口总表
 

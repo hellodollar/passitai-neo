@@ -28,6 +28,7 @@
 - 数据库种子：属于后端仓库，不在客户端复制专业、科目或题集的固定数据。修改种子与执行数据库写入必须在后端单独验证，不能由客户端构建触发。
 - 客户端只维护 UI 映射，例如 `src/constants/practice-icons.ts` 的入口图标；真实科目、题集目录和题目总数由 API 返回。首页已答进度只从当前账号的本地做题记录读取，不使用接口的 `answeredCount` 或交卷记录回填。
 - 本地开发默认代理真实本地后端。已移除未接入且与当前接口不符的旧 mock；需要离线开发时，应从当前 API 契约重新建立可显式启用的测试数据。
+- 通知设置接口（`GET/PATCH /api/user/settings/notifications`）后端已可用，但客户端设置页目前为禁用占位、尚未接入。
 
 ## 改动后的最小验证
 
@@ -54,10 +55,11 @@
 - 基础题目字段集中在 `src/types/entity.ts` 的 `QuestionContent`，被 `QuestionListItem`（entity）与 `PracticePaperItem`（practice）复用。
 - 类型模块职责：`api.ts` 只放通用信封 `ApiEnvelope`；`auth.ts` 放账号与会话相关类型（`UserMe` 直接依赖 `./entity` 与 `./practice`）；`entity.ts` 放共用题目、集合、选项与非练习设置（`NotificationSettings`、`AppPreferences`）；`practice.ts` 放计划、入口、题集、提交、设置与报告等练习类型；`practice-record.ts` 放本地记录类型，内部只依赖 `./entity` 与 `./practice`，版本字段用 `typeof` 引用常量；`index.ts` 显式 `export type` 汇总全部类型（不含运行时常量），业务代码统一 `import type from '@/types'`。
 - 运行时值集中在 `src/constants/practice.ts`（`PRACTICE_CATEGORY_LABELS`、`DEFAULT_PRACTICE_SETTINGS`、`PRACTICE_RECORD_VERSION`）；图标映射单独放 `src/constants/practice-icons.ts`，避免基础常量与存储模块引入 UI 图标依赖；`QUESTION_TYPE_LABELS` 放在 `src/constants/entity.ts`。
-- 刷题设置缓存与练习运行态统一在 `src/stores/practice.ts`（Pinia id `practice`，`usePracticeStore`）。`clearSettings` 通过 generation 作废未完成的旧 GET/PATCH，旧响应不写回新会话，旧请求 `finally` 不影响新请求；并发 `ensureSettings` 去重，失败可重试；登录/退出/会话失效由 auth store 调用 `clearSettings`，不引入 practice→auth 循环。
+- 刷题设置缓存与练习运行态统一在 `src/stores/practice.ts`（Pinia id `practice`，`usePracticeStore`）。练习运行态字段为 `practiceActive`，由 `startPractice`/`endPractice` 切换，仅表示当前处于作答/报告等刷题运行态，与账号会话、持久化记录无关。`clearSettings` 通过 generation 作废未完成的旧 GET/PATCH，旧响应不写回新会话，旧请求 `finally` 不影响新请求；并发 `ensureSettings` 去重，失败可重试；登录/退出/会话失效由 auth store 调用 `clearSettings`，不引入 practice→auth 循环。
+- 错题业务内部统一用 Mistake 术语：答题后同步封装为 `src/composables/useMistakeSync.ts`（`useMistakeSync`），API 包装函数在 `src/api/wrong-questions.ts`（`fetchMistakeAggregate`/`addMistake`/`removeMistakeByContext`/`clearMistakes`/`fetchMistakePractice`）。文件名与 URL 仍保留端点字面量 `/wrong-questions`（路由 `/wrong-book` 不变），设置键 `recordWrongQuestions` 与线上字段 `wrongQuestionId` 不改；回归用例在 `tests/mistake-sync.test.mjs`。
 
 ## 待产品确认（不实现、不删）
 
 - 刷题设置中 `autoSubmitAfterCompletion`、`loopAfterCompletion`、`showExplanationAfterAnswer` 目前只保存未被消费，需产品确认后再决定是否实现。
-- API 404（`code 4001`）当前在作答页显示为通用“加载失败”，是否改为“练习已失效”待确认。
+- API 404（HTTP 404）当前在作答页显示为通用“加载失败”，是否改为“练习已失效”待确认。
 - 首页目录/科目加载失败当前静默显示空态，是否改为错误提示待确认。
