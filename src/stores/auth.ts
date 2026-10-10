@@ -4,8 +4,8 @@ import { defineStore } from 'pinia'
 import { login, logout, register } from '@/api/auth'
 import { fetchUserMe } from '@/api/me'
 import { AUTH_INVALIDATED_EVENT, STORAGE_KEYS } from '@/constants/app'
-import { usePracticeSettingsStore } from '@/stores/practiceSettings'
-import type { AuthCredentials, AuthSession, RegisterCredentials, User } from '@/types/domain'
+import { usePracticeStore } from '@/stores/practice'
+import type { AuthCredentials, AuthSession, RegisterCredentials, User } from '@/types'
 import { clearUserPracticeRecords } from '@/utils/practice-record'
 import { clearBrowseState } from '@/utils/browse-state'
 import { readStorage, removeStorage, writeStorage } from '@/utils/storage'
@@ -28,7 +28,7 @@ export const useAuthStore = defineStore('auth', () => {
     session.value = null
     user.value = null
     removeStorage(STORAGE_KEYS.authSession)
-    usePracticeSettingsStore().clear()
+    usePracticeStore().clearSettings()
   }
 
   window.addEventListener(AUTH_INVALIDATED_EVENT, clearLocalSession)
@@ -38,7 +38,7 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = nextSession.user
     writeStorage(STORAGE_KEYS.authSession, nextSession)
     // 会话变化(登录/注册)后,刷题设置缓存按新账号重新拉取
-    usePracticeSettingsStore().clear()
+    usePracticeStore().clearSettings()
   }
 
   async function signIn(payload: AuthCredentials): Promise<boolean> {

@@ -1,5 +1,9 @@
-import type { PracticeSubmission, SubmitPracticePaperBody } from '@/types/domain'
-import type { PracticePendingSubmission, PracticeRecord } from '@/types/practice-record'
+import type {
+  PracticePendingSubmission,
+  PracticeRecord,
+  PracticeSubmission,
+  SubmitPracticePaperBody,
+} from '@/types'
 import { isPracticeRecordCurrent } from '@/utils/practice-record-control'
 
 type SubmissionPlan =

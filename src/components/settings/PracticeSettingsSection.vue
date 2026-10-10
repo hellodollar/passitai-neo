@@ -2,8 +2,9 @@
 import { nextTick, ref, watch } from 'vue'
 
 import SettingsToggleItem from '@/components/common/SettingsToggleItem.vue'
-import { usePracticeSettingsStore } from '@/stores/practiceSettings'
-import type { PracticeSettings } from '@/types/domain'
+import { DEFAULT_PRACTICE_SETTINGS } from '@/constants/practice'
+import { usePracticeStore } from '@/stores/practice'
+import type { PracticeSettings } from '@/types'
 
 const props = withDefaults(
   defineProps<{
@@ -29,21 +30,12 @@ const emit = defineEmits<{
   saved: [settings: PracticeSettings]
 }>()
 
-const practiceSettingsStore = usePracticeSettingsStore()
+const practice = usePracticeStore()
 
-/** 字段名与 PracticeSettings 协议保持一致，避免来回翻译。 */
-const DEFAULT_SETTINGS: PracticeSettings = {
-  autoNext: false,
-  recordWrongQuestions: true,
-  showExplanationAfterAnswer: true,
-  loopAfterCompletion: false,
-  autoSubmitAfterCompletion: false,
-  removeMistakeOnCorrect: false,
-}
-
-const practiceSettings = ref<PracticeSettings>({ ...DEFAULT_SETTINGS })
+/** 默认值来自 constants/practice，克隆使用，避免共享可变对象。 */
+const practiceSettings = ref<PracticeSettings>({ ...DEFAULT_PRACTICE_SETTINGS })
 const loaded = ref(false)
-let lastValues: PracticeSettings = { ...DEFAULT_SETTINGS }
+let lastValues: PracticeSettings = { ...DEFAULT_PRACTICE_SETTINGS }
 
 function applySettings(settings: PracticeSettings) {
   practiceSettings.value = { ...settings }
@@ -59,7 +51,7 @@ async function loadPracticeSettings() {
     return
   }
 
-  const cached = await practiceSettingsStore.ensure()
+  const cached = await practice.ensureSettings()
   if (cached) applySettings(cached)
   await nextTick()
   loaded.value = true
@@ -80,8 +72,8 @@ watch(
     }
     if (Object.keys(payload).length === 0) return
 
-    void practiceSettingsStore
-      .patch(payload)
+    void practice
+      .patchSettings(payload)
       .then(() => {
         emit('saved', { ...practiceSettings.value })
       })

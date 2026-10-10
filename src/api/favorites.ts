@@ -6,7 +6,7 @@ import type {
   CollectionOrder,
   CollectionPracticePaper,
   FavoriteMutationResult,
-} from '@/types/domain'
+} from '@/types'
 
 /** 文档:GET /api/favorites?groupBy=&order=，聚合查询收藏 */
 export function fetchFavoriteAggregate(

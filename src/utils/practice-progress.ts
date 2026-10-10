@@ -1,5 +1,4 @@
-import type { PracticeEntry } from '@/types/domain'
-import type { PracticeRecord } from '@/types/practice-record'
+import type { PracticeEntry, PracticeRecord } from '@/types'
 
 /** 首页只以本地已确认答案回填进度，接口只提供题集目录与总题数。 */
 export function applyLocalPracticeProgress(

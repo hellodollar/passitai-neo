@@ -3,9 +3,9 @@ import { BookMarked, Home, UserRound, XCircle } from '@lucide/vue'
 import { RouterView } from 'vue-router'
 
 import BottomTabBar from '@/components/BottomTabBar.vue'
-import { useAppStore } from '@/stores/app'
+import { usePracticeStore } from '@/stores/practice'
 
-const app = useAppStore()
+const practice = usePracticeStore()
 
 const navItems = [
   { label: '首页', to: '/', icon: Home },
@@ -22,13 +22,13 @@ const navItems = [
     >
       <main
         class="overflow-x-hidden px-5"
-        :class="app.practiceSessionActive ? 'pb-0 pt-0' : 'pb-24 pt-5'"
+        :class="practice.sessionActive ? 'pb-0 pt-0' : 'pb-24 pt-5'"
       >
         <RouterView />
       </main>
 
       <BottomTabBar
-        v-if="!app.practiceSessionActive"
+        v-if="!practice.sessionActive"
         class="fixed bottom-0 left-1/2 z-30 w-full max-w-[32rem] -translate-x-1/2 border-t border-base-200 bg-base-100/95 px-3 pb-[calc(0.45rem+env(safe-area-inset-bottom))] pt-1.5 backdrop-blur"
         :items="navItems"
       />

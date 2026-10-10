@@ -1,0 +1,12 @@
+import { Flame, ShieldAlert, Target } from '@lucide/vue'
+
+/**
+ * baseline 子项(专项训练)视觉字典:assessmentType -> 图标。
+ * 与后端 PaperAssessmentPreset 取值对应；文案取题集名称，前端只配置展示形态。
+ * 独立成文件，避免基础常量/存储模块拉入 UI 图标依赖。
+ */
+export const BASELINE_CHILD_ICONS: Record<string, typeof Target> = {
+  overall: Target,
+  highFrequency: Flame,
+  errorProne: ShieldAlert,
+}

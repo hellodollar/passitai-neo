@@ -3,7 +3,7 @@ import type {
   PracticeRecordClearScope,
   PracticeRecordContext,
   PracticeRecordIdentity,
-} from '@/types/practice-record'
+} from '@/types'
 
 export const RECORD_PREFIX = 'passitai:practice-record:v2:'
 export const LEGACY_DRAFT_PREFIX = 'passitai:practice-draft:v1:'

@@ -1,9 +1,9 @@
-import { QUESTION_TYPE_LABELS } from '@/constants/domain'
+import { QUESTION_TYPE_LABELS } from '@/constants/entity'
 import type {
   PracticePaperItem,
   PracticePaperLite,
   QuestionListItem,
-} from '@/types/domain'
+} from '@/types'
 import { questionFingerprint } from '@/utils/practice-record'
 import { toQuestionListItem } from '@/utils/practice-question'
 

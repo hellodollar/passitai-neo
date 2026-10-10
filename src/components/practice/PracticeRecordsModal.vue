@@ -7,7 +7,7 @@ import ClearPracticeRecordsDialog from '@/components/practice/ClearPracticeRecor
 import { useLocalPracticeRecords } from '@/composables/useLocalPracticeRecords'
 import { PRACTICE_CATEGORY_LABELS } from '@/constants/practice'
 import { useAuthStore } from '@/stores/auth'
-import type { PracticeRecordClearScope } from '@/types/practice-record'
+import type { PracticeRecordClearScope } from '@/types'
 
 const model = defineModel<boolean>({ default: false })
 const auth = useAuthStore()

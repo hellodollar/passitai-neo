@@ -3,7 +3,7 @@ import type {
   AuthCredentials,
   AuthSession,
   RegisterCredentials,
-} from '@/types/domain'
+} from '@/types'
 
 export function login(payload: AuthCredentials) {
   return request<AuthSession>('/login', {

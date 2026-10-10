@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import BaseModal from '@/components/common/BaseModal.vue'
 import PracticeSettingsSection from '@/components/settings/PracticeSettingsSection.vue'
-import type { PracticeSettings } from '@/types/domain'
+import type { PracticeSettings } from '@/types'
 
 const model = defineModel<boolean>({ default: false })
 

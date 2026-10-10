@@ -5,7 +5,7 @@ import type {
   PracticeSettings,
   PracticeSubmission,
   SubmitPracticePaperBody,
-} from '@/types/domain'
+} from '@/types'
 
 /** 文档:GET /api/practice/entries?subjectId= */
 export function fetchPracticeEntries(subjectId: string) {

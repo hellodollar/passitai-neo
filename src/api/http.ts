@@ -1,7 +1,7 @@
 import { FetchError, ofetch, type FetchOptions } from 'ofetch'
 
 import { AUTH_INVALIDATED_EVENT, STORAGE_KEYS } from '@/constants/app'
-import type { ApiEnvelope, AuthSession } from '@/types/domain'
+import type { ApiEnvelope, AuthSession } from '@/types'
 import { readStorage, removeStorage } from '@/utils/storage'
 import { showErrorToast } from '@/utils/toast'
 

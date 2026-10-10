@@ -1,15 +1,16 @@
 import { domainValues } from '@/generated/domain-values'
-import type { PracticePaperItem, QuestionListItem } from '@/types/domain'
-import {
-  PRACTICE_RECORD_VERSION,
-  type PracticeAnswerRecord,
-  type PracticeRecord,
-  type PracticeRecordAnswer,
-  type PracticeRecordContext,
-  type PracticeRecordClearScope,
-  type PracticeRecordIdentity,
-  type PracticeRecordProgress,
-} from '@/types/practice-record'
+import type {
+  PracticeAnswerRecord,
+  PracticePaperItem,
+  PracticeRecord,
+  PracticeRecordAnswer,
+  PracticeRecordClearScope,
+  PracticeRecordContext,
+  PracticeRecordIdentity,
+  PracticeRecordProgress,
+  QuestionListItem,
+} from '@/types'
+import { PRACTICE_RECORD_VERSION } from '@/constants/practice'
 import { getPreviewOptions, getQuestionOptions, isChoiceQuestionType } from '@/utils/practice-question'
 import {
   RECORD_PREFIX,

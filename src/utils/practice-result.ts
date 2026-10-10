@@ -5,7 +5,7 @@ import type {
   PracticeSubmission,
   PracticeSubmissionResult,
   QuestionType,
-} from '@/types/domain'
+} from '@/types'
 import { isChoiceQuestionType } from '@/utils/practice-question'
 
 function normalizeAnswer(answer: string, questionType: QuestionType) {

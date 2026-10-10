@@ -5,7 +5,7 @@ import type {
   CollectionGroupBy,
   CollectionOrder,
   CollectionPracticePaper,
-} from '@/types/domain'
+} from '@/types'
 
 /** 文档:GET /api/wrong-questions?groupBy=&order=，聚合查询错题 */
 export function fetchWrongQuestionAggregate(

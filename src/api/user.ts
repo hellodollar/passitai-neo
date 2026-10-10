@@ -4,7 +4,7 @@ import type {
   EmailChangeResult,
   PasswordChangeBody,
   PasswordChangeResult,
-} from '@/types/domain'
+} from '@/types'
 
 export function changePassword(payload: PasswordChangeBody) {
   return request<PasswordChangeResult>('/user/password', {

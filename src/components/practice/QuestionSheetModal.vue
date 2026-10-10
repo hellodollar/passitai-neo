@@ -2,8 +2,7 @@
 import { X } from '@lucide/vue'
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 
-import type { QuestionListItem } from '@/types/domain'
-import type { PracticeAnswerRecord } from '@/types/practice-record'
+import type { PracticeAnswerRecord, QuestionListItem } from '@/types'
 import type { QuestionSheetGroup } from '@/utils/practice-paper'
 import {
   getReferenceAnswer,

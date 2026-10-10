@@ -1,5 +1,4 @@
-import type { QuestionListItem } from '@/types/domain'
-import type { PracticeAnswerRecord } from '@/types/practice-record'
+import type { PracticeAnswerRecord, QuestionListItem } from '@/types'
 
 /** 交卷请求只携带当前题集的作答值，不携带页面展示文本。 */
 export function toSubmissionAnswers(

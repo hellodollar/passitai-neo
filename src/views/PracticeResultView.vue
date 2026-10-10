@@ -6,19 +6,19 @@ import { useRoute, useRouter } from 'vue-router'
 import { fetchPracticePaper, fetchPracticeSubmission } from '@/api/practice'
 import BaseModal from '@/components/common/BaseModal.vue'
 import { practiceReturnTarget, returnFromPractice } from '@/utils/browse-state'
-import { QUESTION_TYPE_LABELS } from '@/constants/domain'
-import { useAppStore } from '@/stores/app'
+import { QUESTION_TYPE_LABELS } from '@/constants/entity'
+import { usePracticeStore } from '@/stores/practice'
 import { buildSubmissionResult } from '@/utils/practice-result'
 import type {
   PracticeResultQuestion,
   PracticeResultQuestionStatus,
   PracticeSubmissionResult,
   QuestionType,
-} from '@/types/domain'
+} from '@/types'
 
 const router = useRouter()
 const route = useRoute()
-const app = useAppStore()
+const practice = usePracticeStore()
 
 const result = ref<PracticeSubmissionResult | null>(null)
 const loading = ref(true)
@@ -157,7 +157,7 @@ function returnToPractice() {
 }
 
 onMounted(() => {
-  app.startPracticeSession()
+  practice.startSession()
 })
 
 watch(
@@ -169,7 +169,7 @@ watch(
 )
 
 onBeforeUnmount(() => {
-  app.endPracticeSession()
+  practice.endSession()
 })
 </script>
 

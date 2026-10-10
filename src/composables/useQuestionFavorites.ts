@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue'
 
-import type { CollectionContext, FavoriteMutationResult, PracticePaperItem } from '@/types/domain'
+import type { CollectionContext, FavoriteMutationResult, PracticePaperItem } from '@/types'
 
 type FavoriteOptions = {
   questionId: () => string | undefined

@@ -23,10 +23,10 @@
 
 ## 数据的唯一来源
 
-- API 路径及请求、响应结构：后端实现是运行时来源；客户端接入说明维护在 [`client-api.md`](client-api.md)，对应的请求封装放在 `src/api/`，共享数据类型放在 `src/types/domain.ts`。
+- API 路径及请求、响应结构：后端实现是运行时来源；客户端接入说明维护在 [`client-api.md`](client-api.md)，对应的请求封装放在 `src/api/`，共享数据类型按模块放在 `src/types/`。
 - 领域取值：由后端 `src/constants/` 定义，经后端 `scripts/sync-domain-values.mjs` 同步到 `src/generated/domain-values.ts`。不要手改生成文件；在后端执行 `pnpm check:domain-values` 可检查同步状态。
 - 数据库种子：属于后端仓库，不在客户端复制专业、科目或题集的固定数据。修改种子与执行数据库写入必须在后端单独验证，不能由客户端构建触发。
-- 客户端只维护 UI 映射，例如 `src/constants/practice.ts` 的入口图标；真实科目、题集目录和题目总数由 API 返回。首页已答进度只从当前账号的本地做题记录读取，不使用接口的 `answeredCount` 或交卷记录回填。
+- 客户端只维护 UI 映射，例如 `src/constants/practice-icons.ts` 的入口图标；真实科目、题集目录和题目总数由 API 返回。首页已答进度只从当前账号的本地做题记录读取，不使用接口的 `answeredCount` 或交卷记录回填。
 - 本地开发默认代理真实本地后端。已移除未接入且与当前接口不符的旧 mock；需要离线开发时，应从当前 API 契约重新建立可显式启用的测试数据。
 
 ## 改动后的最小验证
@@ -37,3 +37,27 @@
 2. 验证 `/`、`/practice`、`/me` 及题集深链可以直接打开和刷新。
 3. 验证登录、选择科目、答题、退出后恢复本地记录、交卷结果、收藏与错题入口。
 4. 改动本地记录结构时必须明确版本迁移或失效策略；不能只改字段名。
+
+## 组件目录职责
+
+- `src/components/common/`：与业务无关的基础 UI（`BaseModal`、`BaseDialog`、`EmptyState`、`AppToast`、`SettingsToggleItem`），不新增业务归属。
+- `src/components/auth/`：登录/注册与账户凭据内容（`AuthField`、`AuthFrame`、`AccountEmailContent`、`AccountPasswordContent`）。
+- `src/components/settings/`：设置相关（`PracticeSettingsModal`、`PracticeSettingsSection`、`NotificationSettingsContent`）。
+- `src/components/practice/`：作答与题集相关（含跨页复用的 `StudyPlanModal`）。
+- 移动组件只调整归属与 import，不改变组件内容、界面和交互。
+
+## 类型与契约对齐
+
+- 客户端 API 类型以服务端 schema 为准；发现类型与文档冲突时，先用只读方式核对后端实现，再决定是否收紧/放宽，不先改协议、请求或持久化含义。
+- 已核实（后端 `passitai-api`）：`SubmitPracticePaperBody.startTime` 可选；`UserMe.user.status` 为 `enabled | disabled`；`GET /api/options/majors` 支持 `code` 过滤；收藏/错题聚合支持 `sort`。集合练习 `sections` 恒带 `questionType`。
+- `ReviewSource` 定义在领域层 `src/types/entity.ts`，本地存储类型 `PracticeRecordSource` 依赖它，保持“存储依赖领域、领域不依赖存储”的方向。
+- 基础题目字段集中在 `src/types/entity.ts` 的 `QuestionContent`，被 `QuestionListItem`（entity）与 `PracticePaperItem`（practice）复用。
+- 类型模块职责：`api.ts` 只放通用信封 `ApiEnvelope`；`auth.ts` 放账号与会话相关类型（`UserMe` 直接依赖 `./entity` 与 `./practice`）；`entity.ts` 放共用题目、集合、选项与非练习设置（`NotificationSettings`、`AppPreferences`）；`practice.ts` 放计划、入口、题集、提交、设置与报告等练习类型；`practice-record.ts` 放本地记录类型，内部只依赖 `./entity` 与 `./practice`，版本字段用 `typeof` 引用常量；`index.ts` 显式 `export type` 汇总全部类型（不含运行时常量），业务代码统一 `import type from '@/types'`。
+- 运行时值集中在 `src/constants/practice.ts`（`PRACTICE_CATEGORY_LABELS`、`DEFAULT_PRACTICE_SETTINGS`、`PRACTICE_RECORD_VERSION`）；图标映射单独放 `src/constants/practice-icons.ts`，避免基础常量与存储模块引入 UI 图标依赖；`QUESTION_TYPE_LABELS` 放在 `src/constants/entity.ts`。
+- 刷题设置缓存与练习运行态统一在 `src/stores/practice.ts`（Pinia id `practice`，`usePracticeStore`）。`clearSettings` 通过 generation 作废未完成的旧 GET/PATCH，旧响应不写回新会话，旧请求 `finally` 不影响新请求；并发 `ensureSettings` 去重，失败可重试；登录/退出/会话失效由 auth store 调用 `clearSettings`，不引入 practice→auth 循环。
+
+## 待产品确认（不实现、不删）
+
+- 刷题设置中 `autoSubmitAfterCompletion`、`loopAfterCompletion`、`showExplanationAfterAnswer` 目前只保存未被消费，需产品确认后再决定是否实现。
+- API 404（`code 4001`）当前在作答页显示为通用“加载失败”，是否改为“练习已失效”待确认。
+- 首页目录/科目加载失败当前静默显示空态，是否改为错误提示待确认。

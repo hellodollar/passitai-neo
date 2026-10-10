@@ -14,15 +14,15 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { fetchUserMe } from '@/api/me'
-import AccountEmailContent from '@/components/common/AccountEmailContent.vue'
-import AccountPasswordContent from '@/components/common/AccountPasswordContent.vue'
+import AccountEmailContent from '@/components/auth/AccountEmailContent.vue'
+import AccountPasswordContent from '@/components/auth/AccountPasswordContent.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
-import NotificationSettingsContent from '@/components/common/NotificationSettingsContent.vue'
-import StudyPlanModal from '@/components/common/StudyPlanModal.vue'
+import NotificationSettingsContent from '@/components/settings/NotificationSettingsContent.vue'
+import StudyPlanModal from '@/components/practice/StudyPlanModal.vue'
 import PracticeSettingsModal from '@/components/settings/PracticeSettingsModal.vue'
 import PracticeRecordsModal from '@/components/practice/PracticeRecordsModal.vue'
 import { useAuthStore } from '@/stores/auth'
-import type { StudyPlan, PracticeSettings, UserMe } from '@/types/domain'
+import type { StudyPlan, PracticeSettings, UserMe } from '@/types'
 
 const auth = useAuthStore()
 const router = useRouter()

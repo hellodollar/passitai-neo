@@ -5,7 +5,7 @@ import BaseModal from '@/components/common/BaseModal.vue'
 import { fetchMajorOptions, fetchSubjectOptions } from '@/api/options'
 import { updatePlan } from '@/api/plan'
 import { showSuccessToast } from '@/utils/toast'
-import type { OptionItem, StudyPlan } from '@/types/domain'
+import type { OptionItem, StudyPlan } from '@/types'
 
 const model = defineModel<boolean>({ default: false })
 

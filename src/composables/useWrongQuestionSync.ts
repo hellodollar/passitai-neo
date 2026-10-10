@@ -1,8 +1,7 @@
 import { addWrongQuestion, removeWrongQuestionByContext } from '@/api/wrong-questions'
 import { useAuthStore } from '@/stores/auth'
-import { usePracticeSettingsStore } from '@/stores/practiceSettings'
-import type { CollectionContext, QuestionListItem } from '@/types/domain'
-import type { PracticeAnswerRecord } from '@/types/practice-record'
+import { usePracticeStore } from '@/stores/practice'
+import type { CollectionContext, PracticeAnswerRecord, QuestionListItem } from '@/types'
 import {
   getCorrectOptionValues,
   isAnswerCorrect,
@@ -15,7 +14,7 @@ export function useWrongQuestionSync(options: {
   context: (questionId: string) => CollectionContext | null
 }) {
   const auth = useAuthStore()
-  const practiceSettings = usePracticeSettingsStore()
+  const practice = usePracticeStore()
   let errorShown = false
 
   function showErrorOnce(message: string) {
@@ -31,7 +30,7 @@ export function useWrongQuestionSync(options: {
     if (!correct && getCorrectOptionValues(question).length === 0) return
 
     const userId = auth.session?.user.id
-    const settings = await practiceSettings.ensure()
+    const settings = await practice.ensureSettings()
     if (!userId || auth.session?.user.id !== userId) return
 
     const context = options.context(question.id)

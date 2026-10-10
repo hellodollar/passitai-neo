@@ -27,7 +27,7 @@ import type {
   CollectionGroupBy,
   CollectionOrder,
   ReviewSource,
-} from '@/types/domain'
+} from '@/types'
 import { showErrorToast, showSuccessToast } from '@/utils/toast'
 
 type SortField = 'count' | 'recent'

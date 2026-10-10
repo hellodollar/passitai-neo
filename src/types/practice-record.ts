@@ -1,9 +1,10 @@
+import type { PRACTICE_RECORD_VERSION } from '@/constants/practice'
 import type { DomainValue } from '@/generated/domain-values'
-import type { SubmitPracticePaperBody } from '@/types/domain'
+import type { ReviewSource } from './entity'
+import type { SubmitPracticePaperBody } from './practice'
 
-export const PRACTICE_RECORD_VERSION = 2
-
-export type PracticeRecordSource = 'practice' | 'favorites' | 'wrong-questions'
+/** 本地作答来源 = 普通刷题 + 两类集合来源；集合来源复用领域层定义。 */
+export type PracticeRecordSource = 'practice' | ReviewSource
 
 export type PracticeRecordIdentity = {
   userId: string

@@ -1,5 +1,5 @@
 import { request } from '@/api/http'
-import type { OptionItem } from '@/types/domain'
+import type { OptionItem } from '@/types'
 
 /** 文档:GET /api/options/majors（支持按 code 过滤） */
 export function fetchMajorOptions(query: { code?: string } = {}) {

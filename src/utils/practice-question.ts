@@ -1,5 +1,9 @@
-import type { PracticePaperItem, QuestionListItem, QuestionType } from '@/types/domain'
-import type { PracticeAnswerRecord } from '@/types/practice-record'
+import type {
+  PracticeAnswerRecord,
+  PracticePaperItem,
+  QuestionListItem,
+  QuestionType,
+} from '@/types'
 
 export type NormalizedQuestionOption = {
   label: string

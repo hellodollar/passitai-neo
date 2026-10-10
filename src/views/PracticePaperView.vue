@@ -31,9 +31,8 @@ import {
 } from '@/api/wrong-questions'
 import { ROUTE_NAMES } from '@/constants/app'
 import { practiceReturnTarget, returnFromPractice } from '@/utils/browse-state'
-import { useAppStore } from '@/stores/app'
 import { useAuthStore } from '@/stores/auth'
-import { usePracticeSettingsStore } from '@/stores/practiceSettings'
+import { usePracticeStore } from '@/stores/practice'
 import { fetchPracticePaper, fetchPracticeSubmission, submitPracticePaper } from '@/api/practice'
 import {
   createPracticeRecord,
@@ -47,12 +46,16 @@ import {
   subscribePracticeRecordChanges,
 } from '@/utils/practice-record-control'
 import type {
+  CollectionContext,
   PracticeAnswerRecord,
+  PracticePaperItem,
   PracticeRecord,
   PracticeRecordAnswer,
   PracticeRecordContext,
   PracticeRecordSource,
-} from '@/types/practice-record'
+  PracticeSubmission,
+  QuestionListItem,
+} from '@/types'
 import {
   getPreviewOptions,
   getQuestionOptions,
@@ -64,18 +67,11 @@ import { preparePracticePaper, type QuestionSheetGroup } from '@/utils/practice-
 import { showErrorToast } from '@/utils/toast'
 import { toSubmissionAnswers } from '@/utils/submission-answers'
 import { preparePracticeSubmission, settlePracticeSubmission } from '@/utils/practice-submission'
-import type {
-  CollectionContext,
-  PracticePaperItem,
-  PracticeSubmission,
-  QuestionListItem,
-} from '@/types/domain'
 
 const router = useRouter()
 const route = useRoute()
-const app = useAppStore()
 const auth = useAuthStore()
-const practiceSettings = usePracticeSettingsStore()
+const practice = usePracticeStore()
 
 /** 收藏/错题练习模式：路由 paperId 形如 fav:<sub_xxx|pap_xxx>，query.source 指明集合 */
 const COLLECTION_PAPER_PREFIX = 'fav:'
@@ -452,7 +448,7 @@ async function submitCurrentAnswer() {
 
   // 仅「答对 + 开启自动切题」时前进；设置请求期间若用户已手动切题，不再跳过新题。
   if (isChoiceQuestionType(question.questionType) && isAnswerCorrect(record, question)) {
-    const settings = await practiceSettings.ensure()
+    const settings = await practice.ensureSettings()
     if (
       settings?.autoNext &&
       sequence === loadSequence &&
@@ -521,7 +517,7 @@ async function confirmSubmitPaper() {
 
     if (!isCurrentSubmissionContext(sequence, record)) return
     submitConfirmOpen.value = false
-    app.endPracticeSession()
+    practice.endSession()
     await router.replace({
       name: ROUTE_NAMES.practicePaperResult,
       params: { paperId: paperIdParam },
@@ -587,7 +583,7 @@ function goToQuestion(index: number) {
 
 function exitPractice() {
   saveRecordNow()
-  app.endPracticeSession()
+  practice.endSession()
   returnFromPractice(router, practiceReturnTarget(route.query, collectionMode.value))
 }
 
@@ -713,8 +709,8 @@ async function loadPaperData() {
 }
 
 onMounted(() => {
-  app.startPracticeSession()
-  void practiceSettings.ensure()
+  practice.startSession()
+  void practice.ensureSettings()
   window.addEventListener('pagehide', saveRecordNow)
   document.addEventListener('visibilitychange', saveRecordWhenHidden)
   unsubscribeRecordChanges = subscribePracticeRecordChanges(handleRecordChanges)
@@ -727,7 +723,7 @@ onBeforeUnmount(() => {
   loadSequence++
   window.removeEventListener('pagehide', saveRecordNow)
   document.removeEventListener('visibilitychange', saveRecordWhenHidden)
-  app.endPracticeSession()
+  practice.endSession()
 })
 
 function saveRecordWhenHidden() {

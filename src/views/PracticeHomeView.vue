@@ -21,25 +21,25 @@ import { useRoute, useRouter } from 'vue-router'
 import logoPassitai from '@/assets/icons/icon-passitai.svg'
 import BaseModal from '@/components/common/BaseModal.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
-import StudyPlanModal from '@/components/common/StudyPlanModal.vue'
+import StudyPlanModal from '@/components/practice/StudyPlanModal.vue'
 import PracticeSettingsModal from '@/components/settings/PracticeSettingsModal.vue'
 import { useLocalPracticeRecords } from '@/composables/useLocalPracticeRecords'
 import { fetchPracticeEntries } from '@/api/practice'
 import { fetchPlan } from '@/api/plan'
 import { fetchMajorOptions, fetchSubjectOptions } from '@/api/options'
 import { ROUTE_NAMES } from '@/constants/app'
-import { BASELINE_CHILD_ICONS } from '@/constants/practice'
-import { useAppStore } from '@/stores/app'
+import { BASELINE_CHILD_ICONS } from '@/constants/practice-icons'
 import { useAuthStore } from '@/stores/auth'
+import { usePracticeStore } from '@/stores/practice'
 import { useBrowseScroll } from '@/composables/useBrowseScroll'
 import { homeSelection, readBrowseState, writeBrowseState } from '@/utils/browse-state'
 import { readPracticeRecord } from '@/utils/practice-record'
 import { applyLocalPracticeProgress } from '@/utils/practice-progress'
-import type { PracticeEntry, PracticeEntryChild, StudyPlan } from '@/types/domain'
+import type { PracticeEntry, PracticeEntryChild, StudyPlan } from '@/types'
 
 const router = useRouter()
 const route = useRoute()
-const app = useAppStore()
+const practice = usePracticeStore()
 const auth = useAuthStore()
 const browseScroll = useBrowseScroll(
   () => auth.session?.user.id ?? '',
@@ -282,7 +282,7 @@ function startEntryPaper(child: PracticeEntryChild) {
       entry: expandedEntryKey.value || 'baseline',
     },
   }).fullPath
-  app.startPracticeSession()
+  practice.startSession()
   router.push({
     name: ROUTE_NAMES.practicePaper,
     params: { paperId: child.paperId },

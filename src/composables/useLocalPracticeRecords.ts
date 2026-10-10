@@ -1,7 +1,7 @@
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import { useAuthStore } from '@/stores/auth'
-import type { PracticeRecord } from '@/types/practice-record'
+import type { PracticeRecord } from '@/types'
 import { countLegacyPracticeRecords, listPracticeRecords } from '@/utils/practice-record'
 import { subscribePracticeRecordChanges } from '@/utils/practice-record-control'
 

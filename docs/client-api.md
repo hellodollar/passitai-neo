@@ -1,6 +1,6 @@
 # Neo 客户端 API
 
-本文记录 Neo 客户端当前接入的接口契约；运行时以服务端实现为准，变更接口时需同步更新本文件、`src/api/` 与 `src/types/domain.ts`。基础路径为 `/api`，仅接受客户端登录签发的 `app` scope
+本文记录 Neo 客户端当前接入的接口契约；运行时以服务端实现为准，变更接口时需同步更新本文件、`src/api/` 与 `src/types/`（`api.ts` 信封、`auth.ts` 账号、`entity.ts` 共用领域类型、`practice.ts` 练习类型、`index.ts` 汇总）。基础路径为 `/api`，仅接受客户端登录签发的 `app` scope
 JWT。除注册、登录外，所有接口都需要：
 
 ```http
@@ -334,7 +334,7 @@ interface PracticeSubmission {
 
 | Method   | Path                                               | 说明                                       | 状态 |
 | -------- | -------------------------------------------------- | ------------------------------------------ | ---- |
-| `GET`    | `/api/favorites?groupBy=&order=`                   | 聚合查询收藏（默认按科目）                 | 可用 |
+| `GET`    | `/api/favorites?groupBy=&sort=&order=`            | 聚合查询收藏（默认按科目）                 | 可用 |
 | `PUT`    | `/api/favorites`                                   | 收藏题目（幂等）                           | 可用 |
 | `DELETE` | `/api/favorites`                                   | 按三元组取消收藏（幂等）                   | 可用 |
 | `DELETE` | `/api/favorites/:recordId`                         | 按收藏记录 ID 取消（收藏训练页）           | 可用 |
@@ -414,7 +414,7 @@ interface PracticeSubmission {
 
 | Method   | Path                                                     | 说明                                       | 状态 |
 | -------- | -------------------------------------------------------- | ------------------------------------------ | ---- |
-| `GET`    | `/api/wrong-questions?groupBy=&order=`                   | 聚合查询错题（默认按科目）                 | 可用 |
+| `GET`    | `/api/wrong-questions?groupBy=&sort=&order=`             | 聚合查询错题（默认按科目）                 | 可用 |
 | `POST`   | `/api/wrong-questions`                                   | 记错题（幂等，更新最近错题题集上下文）     | 可用 |
 | `DELETE` | `/api/wrong-questions/:recordId`                         | 按错题记录 ID 移除（错题训练页）           | 可用 |
 | `DELETE` | `/api/wrong-questions`                                   | 按三元组移除错题（答对自动移除，幂等）     | 可用 |
@@ -433,7 +433,7 @@ interface PracticeSubmission {
 
 | Method | Path                                    | 说明                 | 状态 |
 | ------ | --------------------------------------- | -------------------- | ---- |
-| `GET`  | `/api/options/majors`                   | 获取专业选项         | 可用 |
+| `GET`  | `/api/options/majors?code=`             | 获取专业选项（`code` 选填） | 可用 |
 | `GET`  | `/api/options/subjects?majorId=maj_xxx` | 根据专业获取科目选项 | 可用 |
 
 统一返回：

@@ -2,9 +2,8 @@
 import { CheckCircle2, ClipboardCheck, XCircle } from '@lucide/vue'
 import { computed } from 'vue'
 
-import { QUESTION_TYPE_LABELS } from '@/constants/domain'
-import type { QuestionListItem } from '@/types/domain'
-import type { PracticeAnswerRecord } from '@/types/practice-record'
+import { QUESTION_TYPE_LABELS } from '@/constants/entity'
+import type { PracticeAnswerRecord, QuestionListItem } from '@/types'
 import {
   getCorrectOptionValues,
   getPreviewOptions,

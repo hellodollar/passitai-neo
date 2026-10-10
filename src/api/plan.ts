@@ -1,5 +1,5 @@
 import { request } from '@/api/http'
-import type { StudyPlan, UpdatePlanBody } from '@/types/domain'
+import type { StudyPlan, UpdatePlanBody } from '@/types'
 
 /** 文档:GET /api/plan */
 export function fetchPlan() {
