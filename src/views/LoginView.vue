@@ -6,6 +6,7 @@ import { RouterLink, useRoute, useRouter } from 'vue-router'
 import AuthField from '@/components/auth/AuthField.vue'
 import AuthFrame from '@/components/auth/AuthFrame.vue'
 import { useAuthStore } from '@/stores/auth'
+import { EMAIL_PATTERN } from '@/utils/validation'
 
 const auth = useAuthStore()
 const route = useRoute()
@@ -20,8 +21,6 @@ const errors = reactive({
   email: '',
   password: '',
 })
-
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function validateEmail() {
   const value = form.email.trim()
@@ -55,6 +54,13 @@ watch(
   },
 )
 
+/** 登录后的回跳目标只允许站内路径，拒绝外链与协议相对地址。 */
+function safeRedirectTarget(value: unknown): string {
+  if (typeof value !== 'string' || !value.startsWith('/') || value.startsWith('//')) return '/'
+  if (value.includes('\\')) return '/'
+  return value
+}
+
 async function submit() {
   submitted = true
   const valid = Object.values(validators)
@@ -67,7 +73,7 @@ async function submit() {
     email: form.email.trim(),
     password: form.password,
   })
-  if (success) router.push((route.query.redirect as string) || '/')
+  if (success) router.push(safeRedirectTarget(route.query.redirect))
 }
 </script>
 

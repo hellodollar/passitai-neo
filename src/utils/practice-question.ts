@@ -1,15 +1,10 @@
 import type { PracticePaperItem, QuestionListItem, QuestionType } from '@/types/domain'
+import type { PracticeAnswerRecord } from '@/types/practice-record'
 
 export type NormalizedQuestionOption = {
   label: string
   text: string
   value: string
-}
-
-export type PracticeAnswerRecord = {
-  questionId: string
-  text: string
-  values: string[]
 }
 
 /** 把 API 题目转换为练习页使用的题目视图模型。 */
@@ -117,6 +112,11 @@ export function getReferenceAnswer(question: QuestionListItem | undefined) {
   return question?.correctAnswer ?? ''
 }
 
+/** 选择题（单选/多选/判断）可本地判分；其余题型交卷后待服务端批阅。 */
+export function isChoiceQuestionType(type: QuestionType | undefined): boolean {
+  return type === 'single' || type === 'multiple' || type === 'judge'
+}
+
 export function getCorrectOptionValues(
   question: QuestionListItem | undefined,
   options = getQuestionOptions(question),
@@ -140,7 +140,7 @@ export function getCorrectOptionValues(
 export function isAnswerCorrect(record: PracticeAnswerRecord, question: QuestionListItem) {
   const reference = getReferenceAnswer(question).trim()
   if (!reference) return false
-  const isChoice = ['single', 'multiple', 'judge'].includes(question.questionType)
+  const isChoice = isChoiceQuestionType(question.questionType)
   const expectedValues = isChoice ? getCorrectOptionValues(question) : [reference.toUpperCase()]
   const actualValues = isChoice
     ? parseChoiceAnswerValues(record.values)

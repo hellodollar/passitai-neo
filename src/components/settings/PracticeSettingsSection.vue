@@ -31,36 +31,23 @@ const emit = defineEmits<{
 
 const practiceSettingsStore = usePracticeSettingsStore()
 
-const practiceSettings = ref({
-  autoNextOnCorrect: false,
+/** 字段名与 PracticeSettings 协议保持一致，避免来回翻译。 */
+const DEFAULT_SETTINGS: PracticeSettings = {
+  autoNext: false,
   recordWrongQuestions: true,
-  showAnalysis: true,
-  loopPractice: false,
-  autoSubmit: false,
-  removeMistakeOnCorrect: false,
-})
-const loaded = ref(false)
-
-let lastValues = {
-  autoNextOnCorrect: false,
-  recordWrongQuestions: true,
-  showAnalysis: true,
-  loopPractice: false,
-  autoSubmit: false,
+  showExplanationAfterAnswer: true,
+  loopAfterCompletion: false,
+  autoSubmitAfterCompletion: false,
   removeMistakeOnCorrect: false,
 }
 
+const practiceSettings = ref<PracticeSettings>({ ...DEFAULT_SETTINGS })
+const loaded = ref(false)
+let lastValues: PracticeSettings = { ...DEFAULT_SETTINGS }
+
 function applySettings(settings: PracticeSettings) {
-  const next = {
-    autoNextOnCorrect: Boolean(settings.autoNext),
-    recordWrongQuestions: Boolean(settings.recordWrongQuestions),
-    showAnalysis: Boolean(settings.showExplanationAfterAnswer),
-    loopPractice: Boolean(settings.loopAfterCompletion),
-    autoSubmit: Boolean(settings.autoSubmitAfterCompletion),
-    removeMistakeOnCorrect: Boolean(settings.removeMistakeOnCorrect),
-  }
-  practiceSettings.value = next
-  lastValues = { ...next }
+  practiceSettings.value = { ...settings }
+  lastValues = { ...settings }
 }
 
 // 首次打开时才加载:优先用外部传入,缺失时走 store 缓存(无缓存才请求)
@@ -83,47 +70,20 @@ watch(
   (settings) => {
     if (!loaded.value) return
 
+    // 深度监听里找出真正变化的字段，只提交增量。
     const payload: Partial<PracticeSettings> = {}
-
-    if (settings.autoNextOnCorrect !== lastValues.autoNextOnCorrect) {
-      payload.autoNext = settings.autoNextOnCorrect
-      lastValues.autoNextOnCorrect = settings.autoNextOnCorrect
+    for (const key of Object.keys(settings) as Array<keyof PracticeSettings>) {
+      if (settings[key] !== lastValues[key]) {
+        payload[key] = settings[key]
+        lastValues[key] = settings[key]
+      }
     }
-    if (settings.recordWrongQuestions !== lastValues.recordWrongQuestions) {
-      payload.recordWrongQuestions = settings.recordWrongQuestions
-      lastValues.recordWrongQuestions = settings.recordWrongQuestions
-    }
-    if (settings.showAnalysis !== lastValues.showAnalysis) {
-      payload.showExplanationAfterAnswer = settings.showAnalysis
-      lastValues.showAnalysis = settings.showAnalysis
-    }
-    if (settings.loopPractice !== lastValues.loopPractice) {
-      payload.loopAfterCompletion = settings.loopPractice
-      lastValues.loopPractice = settings.loopPractice
-    }
-    if (settings.autoSubmit !== lastValues.autoSubmit) {
-      payload.autoSubmitAfterCompletion = settings.autoSubmit
-      lastValues.autoSubmit = settings.autoSubmit
-    }
-    if (settings.removeMistakeOnCorrect !== lastValues.removeMistakeOnCorrect) {
-      payload.removeMistakeOnCorrect = settings.removeMistakeOnCorrect
-      lastValues.removeMistakeOnCorrect = settings.removeMistakeOnCorrect
-    }
-
     if (Object.keys(payload).length === 0) return
 
     void practiceSettingsStore
       .patch(payload)
       .then(() => {
-        const s = practiceSettings.value
-        emit('saved', {
-          autoNext: s.autoNextOnCorrect,
-          recordWrongQuestions: s.recordWrongQuestions,
-          showExplanationAfterAnswer: s.showAnalysis,
-          loopAfterCompletion: s.loopPractice,
-          autoSubmitAfterCompletion: s.autoSubmit,
-          removeMistakeOnCorrect: s.removeMistakeOnCorrect,
-        })
+        emit('saved', { ...practiceSettings.value })
       })
       .catch(() => {})
   },
@@ -151,24 +111,24 @@ watch(
     <h4 v-if="showHeader" class="text-[13px] font-semibold text-base-content/60">刷题设置</h4>
 
     <SettingsToggleItem
-      v-model="practiceSettings.autoNextOnCorrect"
+      v-model="practiceSettings.autoNext"
       title="答题正确自动下一题"
       description="答对后自动跳转下一题"
     />
     <SettingsToggleItem
-      v-model="practiceSettings.autoSubmit"
+      v-model="practiceSettings.autoSubmitAfterCompletion"
       title="自动交卷"
       description="答完全部题目后自动提交"
     />
 
     <SettingsToggleItem
-      v-model="practiceSettings.loopPractice"
+      v-model="practiceSettings.loopAfterCompletion"
       title="循环练习"
       description="答完一遍后自动重新开始"
     />
 
     <SettingsToggleItem
-      v-model="practiceSettings.showAnalysis"
+      v-model="practiceSettings.showExplanationAfterAnswer"
       title="答题后显示解析"
       description="提交答案后立即展示题目解析"
     />

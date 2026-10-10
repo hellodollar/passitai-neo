@@ -94,7 +94,3 @@ svg {
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
-
-.uplot {
-  font-family: inherit;
-}

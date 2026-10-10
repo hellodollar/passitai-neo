@@ -157,7 +157,7 @@ function returnToPractice() {
 }
 
 onMounted(() => {
-  app.setPracticeSessionActive(true)
+  app.startPracticeSession()
 })
 
 watch(

@@ -2,6 +2,7 @@ import { domainValues } from '@/generated/domain-values'
 import type { PracticePaperItem, QuestionListItem } from '@/types/domain'
 import {
   PRACTICE_RECORD_VERSION,
+  type PracticeAnswerRecord,
   type PracticeRecord,
   type PracticeRecordAnswer,
   type PracticeRecordContext,
@@ -9,11 +10,7 @@ import {
   type PracticeRecordIdentity,
   type PracticeRecordProgress,
 } from '@/types/practice-record'
-import {
-  getPreviewOptions,
-  getQuestionOptions,
-  type PracticeAnswerRecord,
-} from '@/utils/practice-question'
+import { getPreviewOptions, getQuestionOptions, isChoiceQuestionType } from '@/utils/practice-question'
 import {
   RECORD_PREFIX,
   LEGACY_DRAFT_PREFIX,
@@ -370,7 +367,7 @@ function restoreRecordAnswer(
   confirmed: boolean,
 ): PracticeAnswerRecord | null {
   if (raw.fingerprint !== fingerprint) return null
-  if (['single', 'multiple', 'judge'].includes(question.questionType)) {
+  if (isChoiceQuestionType(question.questionType)) {
     const options = getQuestionOptions(question)
     const allowed = new Set(
       (options.length > 0 ? options : getPreviewOptions(question.questionType)).map(
@@ -428,10 +425,6 @@ export function restorePracticeRecord(
     pendingSubmission: changed ? null : record.pendingSubmission,
   }
   return { answers, inputs, currentIndex, record: restoredRecord }
-}
-
-export function removePracticeRecord(identity: PracticeRecordIdentity) {
-  return clearPracticeRecords({ kind: 'paper', identity })
 }
 
 /** 登出同时清理 v2 和尚未访问、尚未迁移的 v1，且只处理当前账号。 */

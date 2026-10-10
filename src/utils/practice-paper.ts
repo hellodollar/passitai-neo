@@ -14,8 +14,8 @@ export type QuestionSheetGroup = {
   questions: QuestionListItem[]
 }
 
-/** 将 API 题集按原 Section/题目顺序整理为练习页状态。 */
-export function preparePracticeSession(paper: PracticePaperLite) {
+/** 将 API 题集按原 Section/题目顺序整理为练习页所需的题目、分组与指纹。 */
+export function preparePracticePaper(paper: PracticePaperLite) {
   const questions: QuestionListItem[] = []
   const groups: QuestionSheetGroup[] = []
   const fingerprints: Record<string, string> = {}

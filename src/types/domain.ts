@@ -8,11 +8,6 @@ export type ApiEnvelope<T> = {
   data: T | null
 }
 
-export type PaginationResult<T> = {
-  items: T[]
-  total: number
-}
-
 // ---- Enums ----
 
 export type UserRole = DomainValue<'userRole'>
@@ -58,28 +53,6 @@ export type UserMe = {
 export type ReviewSource = 'favorites' | 'wrong-questions'
 export type CollectionGroupBy = 'subject' | 'paper'
 export type CollectionOrder = 'desc' | 'asc'
-
-/** 聚合查询结果：groupBy=subject 或 paper */
-export type Favorite = {
-  id: string
-  userId: string
-  questionId: string
-  subjectId: string
-  paperId: string
-  createdAt: string
-  updatedAt?: string | null
-  deletedAt?: string | null
-}
-
-export type WrongQuestion = {
-  id: string
-  questionId: string
-  subjectId: string
-  paperId: string
-  title: string | null
-  paperName: string | null
-  createdAt: string
-}
 
 /** 收藏/记错请求携带题目、科目及发生题集；同一用户同题只收录一条。 */
 export type CollectionContext = {

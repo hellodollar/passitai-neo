@@ -17,11 +17,16 @@ export type PracticeRecordContext = PracticeRecordIdentity & {
   paperType: DomainValue<'paperType'> | null
 }
 
-export type PracticeRecordAnswer = {
+/** 单题运行时作答；不含指纹，指纹在写入本地记录时按题目内容补充。 */
+export type PracticeAnswerRecord = {
   questionId: string
-  fingerprint: string
   text: string
   values: string[]
+}
+
+/** 本地记录里的单题存储形态：作答 + 题目指纹（题目变化时校验失效）。 */
+export type PracticeRecordAnswer = PracticeAnswerRecord & {
+  fingerprint: string
 }
 
 export type PracticePendingSubmission = {

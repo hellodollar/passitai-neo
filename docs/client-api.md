@@ -40,8 +40,8 @@ interface PaginationResult<T> {
 | `GET`   | `/api/me`                          | 获取用户聚合信息   | 可用 |
 | `PUT`   | `/api/user/password`               | 修改密码           | 可用 |
 | `PUT`   | `/api/user/email`                  | 修改邮箱           | 可用 |
-| `GET`   | `/api/user/settings/notifications` | 获取通知开关配置   | 可用 |
-| `PATCH` | `/api/user/settings/notifications` | 更新通知开关       | 可用 |
+| `GET`   | `/api/user/settings/notifications` | 获取通知开关配置   | 可用（客户端未接入，设置页为禁用占位） |
+| `PATCH` | `/api/user/settings/notifications` | 更新通知开关       | 可用（客户端未接入，设置页为禁用占位） |
 
 ### 注册与登录
 
@@ -125,7 +125,7 @@ interface NotificationSettings {
 ```
 
 `PATCH` 接受以上字段的任意子集，并写入当前用户的 `preferences.notifications`。
-未设置时返回 `dailyReminder: false`、`reminderTime: ''`、`weeklyReport: false`；默认值以
+未设置时返回 `dailyReminder: false`、`reminderTime: ''`、`weeklyReport: false`；默认值以后端仓库
 `src/services/client/user-preferences.ts` 为准。
 
 ## 3. 学习计划模块
@@ -195,7 +195,7 @@ interface PracticeSettings {
 `PATCH` 接受部分字段，并写入当前用户的 `preferences.practice`。
 未设置时返回 `autoNext: false`、`recordWrongQuestions: true`、
 `showExplanationAfterAnswer: true`、`loopAfterCompletion: false`、
-`autoSubmitAfterCompletion: false`、`removeMistakeOnCorrect: false`；默认值以
+`autoSubmitAfterCompletion: false`、`removeMistakeOnCorrect: false`；默认值以后端仓库
 `src/services/client/user-preferences.ts` 为准。
 
 ### 练习入口
@@ -206,10 +206,9 @@ interface PracticeSettings {
 `pastExam`、`mock`、`ai` 的 `children` 分别来自该科目下同类型、启用且未删除的题集，只包含平台题集
 或当前用户自己的题集。每个子项返回 `{ paperId, name, questionCount, answeredCount }`，其中
 `name` 直接取题集存储的名称（如 `2024年10月真题`），不拼接科目名称；
-`questionCount` 为题集 `sections` 内全部题目数之和，`answeredCount` 暂为 `0`；父项的
-`questionCount` 为全部子项之和。父项 `name`、`description` 和 `answeredCount` 来自
-`src/constants/practice.ts` 的 `PracticeEntryPresets`（当前 `answeredCount` 依次为 0、75、12、0，
-尚非真实进度）。没有匹配题集时 `children` 为 `[]`、`questionCount` 为 `0`。
+`questionCount` 为题集 `sections` 内全部题目数之和，`answeredCount` 恒为 `0`（客户端首页已答
+进度从本地做题记录回填，不使用该字段）；父项的 `questionCount` 为全部子项之和，父项的
+`name`、`description` 由接口固定返回。没有匹配题集时 `children` 为 `[]`、`questionCount` 为 `0`。
 
 `baseline`（专项训练）的 `children` 来自该科目 `type=baseline` 的题集。按以下
 `assessmentType` 顺序排列，同一类型内按题集创建时间倒序；每份题集对应一个子项，`name`
@@ -285,8 +284,8 @@ Section 的所有题目都与 `questionType` 一致；缺失 `questionType` 表�
 同一道题出现在其他题集时不会带入该收藏状态。没有收藏时返回 `[]`，不受 `/api/favorites`
 分页限制；收藏或取消收藏成功后，再次获取本接口会反映最新状态。
 
-题型和同类型 Section 的默认中文文案由 API `src/constants/question.ts` 的 `QuestionTypeLabels`
-维护，同步到 Neo/Dash 的 `src/generated/domain-values.ts`：`single`→`单选题`、
+题型和同类型 Section 的默认中文文案由后端仓库 `src/constants/question.ts` 的 `QuestionTypeLabels`
+维护，同步到本仓库的 `src/generated/domain-values.ts`：`single`→`单选题`、
 `multiple`→`多选题`、`judge`→`判断题`、`nounExplain`→`名词解释`、
 `shortAnswer`→`简答题`、`essay`→`论述题`。这只是展示/输入建议；Section 的 `name`
 如已自定义，客户端须原样展示，不用默认文案覆盖。

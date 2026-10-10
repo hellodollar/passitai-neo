@@ -6,6 +6,7 @@ import AuthField from '@/components/auth/AuthField.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
 import { changeEmail } from '@/api/user'
 import { showSuccessToast } from '@/utils/toast'
+import { EMAIL_PATTERN } from '@/utils/validation'
 
 const model = defineModel<boolean>({ default: false })
 
@@ -33,8 +34,6 @@ const errors = reactive({
 })
 
 const submitting = ref(false)
-
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function validatePassword() {
   errors.password = form.password ? '' : '请输入当前密码'

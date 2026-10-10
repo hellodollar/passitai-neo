@@ -6,6 +6,7 @@ import AuthField from '@/components/auth/AuthField.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
 import { changePassword } from '@/api/user'
 import { showSuccessToast } from '@/utils/toast'
+import { PASSWORD_PATTERN } from '@/utils/validation'
 
 const model = defineModel<boolean>({ default: false })
 
@@ -22,9 +23,6 @@ const errors = reactive({
 })
 
 const submitting = ref(false)
-
-// 密码规则与注册一致：6-20 位，须同时包含字母和数字
-const PASSWORD_PATTERN = /^(?=.*[A-Za-z])(?=.*\d).{6,20}$/
 
 function validateCurrentPassword() {
   errors.currentPassword = form.currentPassword ? '' : '请输入当前密码'

@@ -4,7 +4,7 @@ import test from 'node:test'
 import { loadSource } from './helpers/load-source.mjs'
 
 const { useQuestionFavorites } = await loadSource('composables/useQuestionFavorites.ts')
-const { preparePracticeSession } = await loadSource('utils/practice-session.ts')
+const { preparePracticePaper } = await loadSource('utils/practice-paper.ts')
 
 const question = {
   id: 'qst_one',
@@ -183,14 +183,14 @@ test('收藏成功迟到响应不能登记到新页面，缺少 favId 的响应�
 
 test('按科目无顶层 ID 的多题集聚合可以整理，逐题保留各自题集和 favId', () => {
   const second = { ...question, id: 'qst_two', paperId: 'pap_another', favId: 'fav_two' }
-  const session = preparePracticeSession({
+  const paper = preparePracticePaper({
     name: '科目',
     subjectId: 'sub_one',
     questionCount: 2,
     sections: [{ name: '单选题', questionType: 'single', items: [question, second] }],
   })
-  assert.equal(session.groups[0].key, 'sub_one-0')
-  assert.equal(session.itemsById.get('qst_one').paperId, 'pap_origin')
-  assert.equal(session.itemsById.get('qst_two').paperId, 'pap_another')
-  assert.equal(session.itemsById.get('qst_two').favId, 'fav_two')
+  assert.equal(paper.groups[0].key, 'sub_one-0')
+  assert.equal(paper.itemsById.get('qst_one').paperId, 'pap_origin')
+  assert.equal(paper.itemsById.get('qst_two').paperId, 'pap_another')
+  assert.equal(paper.itemsById.get('qst_two').favId, 'fav_two')
 })

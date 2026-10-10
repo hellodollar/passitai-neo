@@ -14,10 +14,6 @@ export const useAppStore = defineStore('app', () => {
     document.documentElement.setAttribute('data-theme', preferences.theme || DEFAULT_APP_PREFERENCES.theme)
   }
 
-  function setPracticeSessionActive(active: boolean) {
-    practiceSessionActive.value = active
-  }
-
   function startPracticeSession() {
     practiceSessionActive.value = true
   }
@@ -29,7 +25,6 @@ export const useAppStore = defineStore('app', () => {
   return {
     bootstrap,
     practiceSessionActive,
-    setPracticeSessionActive,
     startPracticeSession,
     endPracticeSession,
   }

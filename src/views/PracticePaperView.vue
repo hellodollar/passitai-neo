@@ -2,24 +2,24 @@
 import {
   ArrowLeft,
   Bookmark,
-  CheckCircle2,
   CircleAlert,
   ClipboardCheck,
   ClipboardList,
   Grid2X2,
   Settings,
   Trash2,
-  X,
-  XCircle,
 } from '@lucide/vue'
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import ClearPracticeRecordsDialog from '@/components/practice/ClearPracticeRecordsDialog.vue'
+import PracticeQuestionPanel from '@/components/practice/PracticeQuestionPanel.vue'
+import QuestionSheetModal from '@/components/practice/QuestionSheetModal.vue'
 import PracticeSettingsModal from '@/components/settings/PracticeSettingsModal.vue'
 import { usePracticeNavigation } from '@/composables/usePracticeNavigation'
 import { useQuestionFavorites } from '@/composables/useQuestionFavorites'
+import { useWrongQuestionSync } from '@/composables/useWrongQuestionSync'
 import {
   addFavorite,
   fetchFavoritePractice,
@@ -27,13 +27,10 @@ import {
   removeFavoriteByRecord,
 } from '@/api/favorites'
 import {
-  addWrongQuestion,
   fetchWrongQuestionPractice,
-  removeWrongQuestionByContext,
 } from '@/api/wrong-questions'
 import { ROUTE_NAMES } from '@/constants/app'
 import { practiceReturnTarget, returnFromPractice } from '@/utils/browse-state'
-import { QUESTION_TYPE_LABELS } from '@/constants/domain'
 import { useAppStore } from '@/stores/app'
 import { useAuthStore } from '@/stores/auth'
 import { usePracticeSettingsStore } from '@/stores/practiceSettings'
@@ -50,26 +47,20 @@ import {
   subscribePracticeRecordChanges,
 } from '@/utils/practice-record-control'
 import type {
+  PracticeAnswerRecord,
   PracticeRecord,
   PracticeRecordAnswer,
   PracticeRecordContext,
   PracticeRecordSource,
 } from '@/types/practice-record'
 import {
-  getCorrectOptionValues,
   getPreviewOptions,
   getQuestionOptions,
   getReferenceAnswer,
   isAnswerCorrect,
-  parseQuestionTitle,
-  type PracticeAnswerRecord,
+  isChoiceQuestionType,
 } from '@/utils/practice-question'
-import { preparePracticeSession, type QuestionSheetGroup } from '@/utils/practice-session'
-import {
-  getQuestionSheetRanges,
-  getVisibleQuestionSheetGroups,
-  QUESTION_SHEET_RANGE_SIZE,
-} from '@/utils/question-sheet'
+import { preparePracticePaper, type QuestionSheetGroup } from '@/utils/practice-paper'
 import { showErrorToast } from '@/utils/toast'
 import { toSubmissionAnswers } from '@/utils/submission-answers'
 import { preparePracticeSubmission, settlePracticeSubmission } from '@/utils/practice-submission'
@@ -96,22 +87,18 @@ const collectionSource = computed(() =>
   route.query.source === 'wrong-questions' ? 'wrong-questions' : 'favorites',
 )
 
-type SessionLoadState = 'loading' | 'ready' | 'missing' | 'empty' | 'error'
+type PaperLoadState = 'loading' | 'ready' | 'missing' | 'empty' | 'error'
 
 const settingsModalOpen = ref(false)
 const questionSheetOpen = ref(false)
-const questionSheetRef = ref<HTMLElement | null>(null)
-const questionSheetRangeRef = ref<HTMLElement | null>(null)
-const questionSheetContentRef = ref<HTMLElement | null>(null)
-const questionSheetRangeIndex = ref(0)
 const submitConfirmOpen = ref(false)
 const clearRecordConfirmOpen = ref(false)
 const submitting = ref(false)
 const submitError = ref('')
 const pendingSubmissionId = ref('')
-const sessionTitle = ref('')
-const sessionPaperType = ref<PracticeRecordContext['paperType']>(null)
-const sessionStartedAt = ref(Date.now())
+const paperTitle = ref('')
+const paperType = ref<PracticeRecordContext['paperType']>(null)
+const practiceStartedAt = ref(Date.now())
 
 const currentQuestions = ref<QuestionListItem[]>([])
 const questionSheetGroups = ref<QuestionSheetGroup[]>([])
@@ -128,18 +115,16 @@ let recordSaveWarningShown = false
 let recordWasSaved = false
 let loadSequence = 0
 let unsubscribeRecordChanges = () => {}
-let previousBodyOverflow = ''
 /** 加载时的原始题目数据（PracticePaperItem），供交卷本地快照使用 */
 const paperItemsById = ref<Map<string, PracticePaperItem>>(new Map())
-let wrongRecordErrorShown = false
-const sessionLoadState = ref<SessionLoadState>('loading')
+const paperLoadState = ref<PaperLoadState>('loading')
 
 const { clearAutoAdvance, handleTouchEnd, handleTouchStart, scheduleAutoAdvance } =
   usePracticeNavigation({
     currentIndex,
     questionCount: () => currentQuestions.value.length,
     suspended: () =>
-      sessionLoadState.value !== 'ready' ||
+      paperLoadState.value !== 'ready' ||
       questionSheetOpen.value ||
       settingsModalOpen.value ||
       submitConfirmOpen.value ||
@@ -147,61 +132,13 @@ const { clearAutoAdvance, handleTouchEnd, handleTouchStart, scheduleAutoAdvance 
   })
 
 const currentQuestion = computed(() => currentQuestions.value[currentIndex.value])
-const parsedQuestionTitle = computed(() => parseQuestionTitle(currentQuestion.value))
-const displayQuestionTitle = computed(() => parsedQuestionTitle.value.title)
-const currentQuestionOptions = computed(() => getQuestionOptions(currentQuestion.value))
-const resolvedQuestionOptions = computed(() => {
-  if (currentQuestionOptions.value.length > 0) return currentQuestionOptions.value
-  return getPreviewOptions(currentQuestion.value?.questionType)
-})
-const currentSessionTitle = computed(() => sessionTitle.value || '练习')
-const sessionSubjectName = computed(() => {
+const currentPaperTitle = computed(() => paperTitle.value || '练习')
+const paperSubjectName = computed(() => {
   const subject = route.query.subject
   return typeof subject === 'string' ? subject : ''
 })
-const expectsChoiceQuestion = computed(() =>
-  currentQuestion.value
-    ? ['judge', 'multiple', 'single'].includes(currentQuestion.value.questionType)
-    : false,
-)
-const isChoiceMode = computed(() => resolvedQuestionOptions.value.length > 0)
-const isMultipleQuestion = computed(() => currentQuestion.value?.questionType === 'multiple')
 const currentAnswerRecord = computed(() =>
   currentQuestion.value ? answerRecords.value[currentQuestion.value.id] : undefined,
-)
-const currentExplanation = computed(() => currentQuestion.value?.explanation ?? '')
-const correctOptionValues = computed(
-  () => new Set(getCorrectOptionValues(currentQuestion.value, resolvedQuestionOptions.value)),
-)
-const showOptionFeedback = computed(
-  () => Boolean(currentAnswerRecord.value) && correctOptionValues.value.size > 0,
-)
-
-const currentAnswerCorrect = computed(() => {
-  const question = currentQuestion.value
-  const record = currentAnswerRecord.value
-  return Boolean(question && record && isAnswerCorrect(record, question))
-})
-
-/** 横幅里的正确答案文案:选择题取选项字母,其余取参考答案 */
-const currentCorrectAnswerText = computed(() => {
-  const question = currentQuestion.value
-  if (!question) return ''
-  if (correctOptionValues.value.size > 0) {
-    return resolvedQuestionOptions.value
-      .filter((option) => correctOptionValues.value.has(option.value))
-      .map((option) => option.label)
-      .join('、')
-  }
-  return question.correctAnswer
-})
-const currentUserAnswerText = computed(() => {
-  const record = currentAnswerRecord.value
-  if (!record) return ''
-  return record.text || record.values.join('、')
-})
-const canGradeCurrentAnswer = computed(
-  () => isChoiceMode.value && correctOptionValues.value.size > 0,
 )
 const answeredCount = computed(() => Object.keys(answerRecords.value).length)
 const unansweredCount = computed(() =>
@@ -210,14 +147,10 @@ const unansweredCount = computed(() =>
 const currentQuestionPosition = computed(() =>
   currentQuestions.value.length === 0 ? 0 : currentIndex.value + 1,
 )
-const questionSheetRanges = computed(() => getQuestionSheetRanges(currentQuestions.value.length))
-const visibleQuestionSheetGroups = computed(() =>
-  getVisibleQuestionSheetGroups(
-    questionSheetGroups.value,
-    currentQuestions.value.length,
-    questionSheetRangeIndex.value,
-  ),
-)
+const progressPercent = computed(() => {
+  if (currentQuestions.value.length === 0) return 0
+  return (currentQuestionPosition.value / currentQuestions.value.length) * 100
+})
 const {
   currentQuestionFavorited,
   currentQuestionFavoritePending,
@@ -233,15 +166,8 @@ const {
   remove: removeFavorite,
   removeById: removeFavoriteByRecord,
 })
-const currentQuestionTypeLabel = computed(() =>
-  currentQuestion.value ? QUESTION_TYPE_LABELS[currentQuestion.value.questionType] : '',
-)
-const progressPercent = computed(() => {
-  if (currentQuestions.value.length === 0) return 0
-  return (currentQuestionPosition.value / currentQuestions.value.length) * 100
-})
-const sessionStateContent = computed(() => {
-  if (sessionLoadState.value === 'error') {
+const paperStateContent = computed(() => {
+  if (paperLoadState.value === 'error') {
     return {
       icon: CircleAlert,
       iconClasses: 'bg-error/10 text-error',
@@ -252,7 +178,7 @@ const sessionStateContent = computed(() => {
     }
   }
 
-  if (sessionLoadState.value === 'missing') {
+  if (paperLoadState.value === 'missing') {
     return {
       icon: ClipboardList,
       iconClasses: 'bg-warning/15 text-warning',
@@ -272,12 +198,6 @@ const sessionStateContent = computed(() => {
     showSecondaryAction: false,
   }
 })
-const canSubmitCurrentAnswer = computed(() => {
-  if (currentAnswerRecord.value) return false
-  if (isChoiceMode.value) return selectedOptionValues.value.size > 0
-  if (expectsChoiceQuestion.value) return false
-  return textAnswer.value.trim().length > 0
-})
 const questionsById = computed(
   () => new Map(currentQuestions.value.map((question) => [question.id, question])),
 )
@@ -285,11 +205,7 @@ const correctCount = computed(() => {
   let count = 0
   for (const record of Object.values(answerRecords.value)) {
     const question = questionsById.value.get(record.questionId)
-    if (
-      question &&
-      ['single', 'multiple', 'judge'].includes(question.questionType) &&
-      isAnswerCorrect(record, question)
-    )
+    if (question && isChoiceQuestionType(question.questionType) && isAnswerCorrect(record, question))
       count++
   }
   return count
@@ -300,27 +216,28 @@ const wrongCount = computed(
       const question = questionsById.value.get(record.questionId)
       return (
         question &&
-        ['single', 'multiple', 'judge'].includes(question.questionType) &&
+        isChoiceQuestionType(question.questionType) &&
         Boolean(getReferenceAnswer(question)) &&
         !isAnswerCorrect(record, question)
       )
     }).length,
 )
 
-function questionResultClasses(question: QuestionListItem) {
-  const record = answerRecords.value[question.id]
-  if (!record) return 'border-base-300 bg-base-100 text-base-content/70'
-  if (
-    !['single', 'multiple', 'judge'].includes(question.questionType) ||
-    !getReferenceAnswer(question)
-  ) {
-    return 'border-warning/40 bg-warning/10 text-warning font-semibold'
+/** 收藏/记错上下文：真实题集取路由参数；fav: 虚拟题集取题目固化的收录上下文 */
+function collectionContext(questionId: string): CollectionContext | null {
+  const routePaperId = String(route.params.paperId ?? '')
+  if (routePaperId.startsWith('pap_')) {
+    const subjectId = currentQuestions.value[0]?.subjectId ?? ''
+    if (!subjectId) return null
+    return { questionId, subjectId, paperId: routePaperId }
   }
-
-  return isAnswerCorrect(record, question)
-    ? 'border-success bg-success text-white font-semibold'
-    : 'border-error bg-error text-white font-semibold'
+  // 收藏/错题练习：用服务端返回的收录上下文（记错题、再次收藏）
+  const item = paperItemsById.value.get(questionId)
+  if (!item?.subjectId || !item.paperId) return null
+  return { questionId, subjectId: item.subjectId, paperId: item.paperId }
 }
+
+const { syncOnAnswered } = useWrongQuestionSync({ context: collectionContext })
 
 function clearRecordSaveTimer() {
   if (recordSaveTimer !== null) {
@@ -351,7 +268,7 @@ function saveRecordNow() {
     }),
   )
   localRecord.value = updatePracticeRecord(localRecord.value, {
-    startedAt: sessionStartedAt.value,
+    startedAt: practiceStartedAt.value,
     currentQuestionId: currentQuestion.value?.id ?? '',
     answers,
     inputs: inputDrafts.value,
@@ -381,7 +298,7 @@ const hasLocalRecordProgress = computed(
 )
 // 仅专项训练提供页内记录清理；收藏、错题及其他题集模式不展示该入口。
 const canClearRecord = computed(
-  () => !collectionMode.value && sessionPaperType.value === 'baseline',
+  () => !collectionMode.value && paperType.value === 'baseline',
 )
 const clearRecordScope = computed(() =>
   localRecord.value
@@ -413,8 +330,8 @@ function resetClearedRecord() {
   answerRecords.value = {}
   inputDrafts.value = {}
   currentIndex.value = 0
-  sessionStartedAt.value = Date.now()
-  localRecord.value = createPracticeRecord(record, sessionStartedAt.value)
+  practiceStartedAt.value = Date.now()
+  localRecord.value = createPracticeRecord(record, practiceStartedAt.value)
   recordWasSaved = false
   pendingSubmissionId.value = ''
   submitConfirmOpen.value = false
@@ -456,8 +373,8 @@ function saveCurrentInput() {
   scheduleRecordSave()
 }
 
-function handleTextInput(event: Event) {
-  textAnswer.value = (event.target as HTMLTextAreaElement).value
+function onTextAnswer(value: string) {
+  textAnswer.value = value
   saveCurrentInput()
 }
 
@@ -474,60 +391,12 @@ function syncCurrentInput() {
   textAnswer.value = record?.text ?? ''
 }
 
-function optionSelected(optionValue: string) {
-  return selectedOptionValues.value.has(optionValue)
-}
-
-function optionIsCorrect(optionValue: string) {
-  return correctOptionValues.value.has(optionValue)
-}
-
-function optionClasses(optionValue: string) {
-  const selected = optionSelected(optionValue)
-
-  if (!showOptionFeedback.value) {
-    return selected
-      ? 'border-primary bg-primary/[0.07] text-base-content'
-      : 'border-base-200 bg-base-100 text-base-content active:border-base-300 active:bg-base-200/60'
-  }
-
-  if (optionIsCorrect(optionValue)) {
-    return 'border-success bg-success/[0.06] text-base-content'
-  }
-
-  if (selected) {
-    return 'border-error bg-error/[0.06] text-base-content'
-  }
-
-  return 'border-base-200 bg-base-100 text-base-content/55'
-}
-
-function optionMarkerClasses(optionValue: string) {
-  const selected = optionSelected(optionValue)
-
-  if (!showOptionFeedback.value) {
-    return selected
-      ? 'border-primary bg-primary text-primary-content'
-      : 'border-base-300 bg-base-100 text-base-content/55'
-  }
-
-  if (optionIsCorrect(optionValue)) {
-    return 'border-success bg-success/10 text-success'
-  }
-
-  if (selected) {
-    return 'border-error bg-error/10 text-error'
-  }
-
-  return 'border-base-300 bg-base-100 text-base-content/40'
-}
-
 function toggleOption(optionValue: string) {
   if (currentAnswerRecord.value) return
 
   const nextValues = new Set(selectedOptionValues.value)
 
-  if (isMultipleQuestion.value) {
+  if (currentQuestion.value?.questionType === 'multiple') {
     if (nextValues.has(optionValue)) {
       nextValues.delete(optionValue)
     } else {
@@ -540,27 +409,34 @@ function toggleOption(optionValue: string) {
 
   selectedOptionValues.value = nextValues
 
-  if (!isMultipleQuestion.value) {
+  if (currentQuestion.value?.questionType !== 'multiple') {
     void submitCurrentAnswer()
   } else {
     saveCurrentInput()
   }
 }
 
+/** 选择题的作答文本取选项字母（与答后反馈展示一致）；主观题取输入内容。 */
+function answerTextFor(question: QuestionListItem, values: string[]) {
+  const options = getQuestionOptions(question)
+  const resolved = options.length > 0 ? options : getPreviewOptions(question.questionType)
+  if (resolved.length === 0) return textAnswer.value.trim()
+  return resolved
+    .filter((option) => values.includes(option.value))
+    .map((option) => option.label)
+    .join('、')
+}
+
 async function submitCurrentAnswer() {
   const question = currentQuestion.value
-  if (!question || !canSubmitCurrentAnswer.value) return
+  if (!question || currentAnswerRecord.value) return
   const answeredIndex = currentIndex.value
   const sequence = loadSequence
 
   const values = [...selectedOptionValues.value]
-  const selectedLabels = resolvedQuestionOptions.value
-    .filter((option) => values.includes(option.value))
-    .map((option) => option.label)
-
   const record: PracticeAnswerRecord = {
     questionId: question.id,
-    text: isChoiceMode.value ? selectedLabels.join('、') : textAnswer.value.trim(),
+    text: answerTextFor(question, values),
     values,
   }
   answerRecords.value = {
@@ -572,11 +448,10 @@ async function submitCurrentAnswer() {
   inputDrafts.value = nextInputs
   pendingSubmissionId.value = ''
   saveRecordNow()
-  void recordWrongAnswer(question, record)
-  void removeMistakeIfCorrect(question, record)
+  void syncOnAnswered(question, record)
 
   // 仅「答对 + 开启自动切题」时前进；设置请求期间若用户已手动切题，不再跳过新题。
-  if (canGradeCurrentAnswer.value && isAnswerCorrect(record, question)) {
+  if (isChoiceQuestionType(question.questionType) && isAnswerCorrect(record, question)) {
     const settings = await practiceSettings.ensure()
     if (
       settings?.autoNext &&
@@ -591,76 +466,25 @@ async function submitCurrentAnswer() {
   }
 }
 
-/** 答对自动移除错题：设置开启且答对时移出错题本（幂等，无记录时静默） */
-async function removeMistakeIfCorrect(question: QuestionListItem, record: PracticeAnswerRecord) {
-  if (!['single', 'multiple', 'judge'].includes(question.questionType)) return
-  if (!isAnswerCorrect(record, question)) return
-
-  const userId = auth.session?.user.id
-  const settings = await practiceSettings.ensure()
-  if (!userId || auth.session?.user.id !== userId || !settings?.removeMistakeOnCorrect) return
-
-  const context = collectionContext(question.id)
-  if (!context) return
-
-  try {
-    await removeWrongQuestionByContext(context)
-  } catch {
-    // 静默失败：不打断答题流程
-  }
-}
-
-async function recordWrongAnswer(question: QuestionListItem, record: PracticeAnswerRecord) {
-  if (
-    !['single', 'multiple', 'judge'].includes(question.questionType) ||
-    getCorrectOptionValues(question).length === 0 ||
-    isAnswerCorrect(record, question)
-  )
-    return
-
-  const userId = auth.session?.user.id
-  const settings = await practiceSettings.ensure()
-  if (!userId || auth.session?.user.id !== userId) return
-  if (!settings) {
-    if (!wrongRecordErrorShown) {
-      wrongRecordErrorShown = true
-      showErrorToast('刷题设置加载失败，错题未保存。')
-    }
-    return
-  }
-  if (!settings.recordWrongQuestions) return
-  const context = collectionContext(question.id)
-  if (!context) return
-
-  try {
-    await addWrongQuestion(context)
-  } catch {
-    if (!wrongRecordErrorShown) {
-      wrongRecordErrorShown = true
-      showErrorToast('错题记录失败，请稍后重试。')
-    }
-  }
-}
-
-function requestSubmitSession() {
+function requestSubmitPaper() {
   clearAutoAdvance()
   submitError.value = ''
   questionSheetOpen.value = false
   submitConfirmOpen.value = true
 }
 
-async function confirmSubmitSession() {
+async function confirmSubmitPaper() {
   if (submitting.value) return
 
-  const paperId = route.params.paperId
+  const paperIdParam = route.params.paperId
   saveRecordNow()
   const record = localRecord.value
   if (
-    typeof paperId !== 'string' ||
-    !paperId ||
+    typeof paperIdParam !== 'string' ||
+    !paperIdParam ||
     !recordReady.value ||
     !record ||
-    record.paperId !== paperId ||
+    record.paperId !== paperIdParam ||
     record.source !== 'practice' ||
     auth.session?.user.id !== record.userId ||
     currentQuestions.value.length === 0
@@ -670,7 +494,7 @@ async function confirmSubmitSession() {
   }
 
   const sequence = loadSequence
-  const subjectName = sessionSubjectName.value
+  const subjectName = paperSubjectName.value
   submitting.value = true
   submitError.value = ''
   try {
@@ -686,7 +510,7 @@ async function confirmSubmitSession() {
       pendingSubmissionId.value = plan.pending.submissionId
       // 请求发出前保存幂等 ID 和固定快照，超时或刷新后可继续重试。
       saveRecordNow()
-      const submission = await submitPracticePaper(paperId, plan.pending.payload)
+      const submission = await submitPracticePaper(paperIdParam, plan.pending.payload)
       if (!isCurrentSubmissionContext(sequence, record)) return
       saveRecordNow()
       localRecord.value = settlePracticeSubmission(localRecord.value!, plan.record, submission)
@@ -700,7 +524,7 @@ async function confirmSubmitSession() {
     app.endPracticeSession()
     await router.replace({
       name: ROUTE_NAMES.practicePaperResult,
-      params: { paperId },
+      params: { paperId: paperIdParam },
       query: {
         submissionId,
         subject: subjectName || undefined,
@@ -754,20 +578,6 @@ async function reconcilePendingSubmission(sequence: number, record: PracticeReco
   }
 }
 
-/** 收藏/记错上下文：真实题集取路由参数；fav: 虚拟题集取题目固化的收录上下文 */
-function collectionContext(questionId: string): CollectionContext | null {
-  const routePaperId = String(route.params.paperId ?? '')
-  if (routePaperId.startsWith('pap_')) {
-    const subjectId = currentQuestions.value[0]?.subjectId ?? ''
-    if (!subjectId) return null
-    return { questionId, subjectId, paperId: routePaperId }
-  }
-  // 收藏/错题练习：用服务端返回的收录上下文（记错题、再次收藏）
-  const item = paperItemsById.value.get(questionId)
-  if (!item?.subjectId || !item.paperId) return null
-  return { questionId, subjectId: item.subjectId, paperId: item.paperId }
-}
-
 function goToQuestion(index: number) {
   if (index < 0 || index >= currentQuestions.value.length) return
   clearAutoAdvance()
@@ -775,19 +585,19 @@ function goToQuestion(index: number) {
   questionSheetOpen.value = false
 }
 
-function exitSession() {
+function exitPractice() {
   saveRecordNow()
   app.endPracticeSession()
   returnFromPractice(router, practiceReturnTarget(route.query, collectionMode.value))
 }
 
-function handleSessionStateAction() {
-  if (sessionLoadState.value === 'error') {
-    loadSessionData()
+function handlePaperStateAction() {
+  if (paperLoadState.value === 'error') {
+    loadPaperData()
     return
   }
 
-  exitSession()
+  exitPractice()
 }
 
 /** 收藏/错题练习数据加载：fav:<sub_xxx> 按科目 / fav:<pap_xxx> 按题集 */
@@ -801,7 +611,7 @@ async function loadCollectionPaper(paperId: string) {
   return { paper, paperType: null, favoriteQuestionIds: [] as string[] }
 }
 
-async function loadSessionData() {
+async function loadPaperData() {
   saveRecordNow()
   recordReady.value = false
   clearRecordSaveTimer()
@@ -809,7 +619,7 @@ async function loadSessionData() {
   submitting.value = false
   submitConfirmOpen.value = false
   submitError.value = ''
-  sessionLoadState.value = 'loading'
+  paperLoadState.value = 'loading'
   currentIndex.value = 0
   currentQuestions.value = []
   questionSheetGroups.value = []
@@ -819,36 +629,36 @@ async function loadSessionData() {
   inputDrafts.value = {}
   questionFingerprints.value = {}
   pendingSubmissionId.value = ''
-  sessionStartedAt.value = Date.now()
+  practiceStartedAt.value = Date.now()
   localRecord.value = null
   recordWasSaved = false
   resetFavorites()
   paperItemsById.value = new Map()
-  sessionTitle.value = ''
-  sessionPaperType.value = null
+  paperTitle.value = ''
+  paperType.value = null
   clearRecordConfirmOpen.value = false
 
-  const paperId = route.params.paperId
+  const paperIdParam = route.params.paperId
   const userId = auth.session?.user.id
   const source: PracticeRecordSource = collectionMode.value ? collectionSource.value : 'practice'
-  if (typeof paperId !== 'string' || !paperId) {
-    sessionLoadState.value = 'missing'
+  if (typeof paperIdParam !== 'string' || !paperIdParam) {
+    paperLoadState.value = 'missing'
     return
   }
 
   try {
     const loaded =
       source === 'practice'
-        ? await fetchPracticePaper(paperId).then((detail) => ({
+        ? await fetchPracticePaper(paperIdParam).then((detail) => ({
             ...detail,
             paperType: detail.paper.type,
           }))
-        : await loadCollectionPaper(paperId)
+        : await loadCollectionPaper(paperIdParam)
     if (sequence !== loadSequence) return
     const { paper } = loaded
-    sessionPaperType.value = loaded.paperType
-    sessionTitle.value = paper.name
-    const { questions, groups, fingerprints, itemsById } = preparePracticeSession(paper)
+    paperType.value = loaded.paperType
+    paperTitle.value = paper.name
+    const { questions, groups, fingerprints, itemsById } = preparePracticePaper(paper)
 
     currentQuestions.value = questions
     questionSheetGroups.value = groups
@@ -856,18 +666,18 @@ async function loadSessionData() {
     paperItemsById.value = itemsById
     resetFavorites(loaded.favoriteQuestionIds, [...itemsById.values()])
     if (questions.length === 0) {
-      sessionLoadState.value = 'empty'
+      paperLoadState.value = 'empty'
       return
     }
 
     if (!userId || auth.session?.user.id !== userId) {
-      sessionLoadState.value = 'ready'
+      paperLoadState.value = 'ready'
       return
     }
 
     const context: PracticeRecordContext = {
       userId,
-      paperId,
+      paperId: paperIdParam,
       source,
       subjectId: paper.subjectId,
       paperType: loaded.paperType,
@@ -882,13 +692,13 @@ async function loadSessionData() {
       localRecord.value = restored.record
       answerRecords.value = restored.answers
       inputDrafts.value = restored.inputs
-      sessionStartedAt.value = savedRecord.startedAt
+      practiceStartedAt.value = savedRecord.startedAt
       pendingSubmissionId.value = restored.record.pendingSubmission?.submissionId ?? ''
       currentIndex.value = restored.currentIndex
     }
 
     syncCurrentInput()
-    sessionLoadState.value = 'ready'
+    paperLoadState.value = 'ready'
     recordReady.value = true
     if (savedRecord) {
       saveRecordNow()
@@ -898,21 +708,20 @@ async function loadSessionData() {
     if (sequence !== loadSequence) return
     currentQuestions.value = []
     questionSheetGroups.value = []
-    sessionLoadState.value = 'error'
+    paperLoadState.value = 'error'
   }
 }
 
 onMounted(() => {
-  app.setPracticeSessionActive(true)
+  app.startPracticeSession()
   void practiceSettings.ensure()
   window.addEventListener('pagehide', saveRecordNow)
   document.addEventListener('visibilitychange', saveRecordWhenHidden)
   unsubscribeRecordChanges = subscribePracticeRecordChanges(handleRecordChanges)
-  loadSessionData()
+  loadPaperData()
 })
 
 onBeforeUnmount(() => {
-  if (questionSheetOpen.value) document.body.style.overflow = previousBodyOverflow
   saveRecordNow()
   unsubscribeRecordChanges()
   loadSequence++
@@ -936,28 +745,12 @@ watch(
 watch(
   [() => route.params.paperId, () => (collectionMode.value ? collectionSource.value : 'practice')],
   () => {
-    void loadSessionData()
+    void loadPaperData()
   },
 )
 
-watch(questionSheetOpen, async (open) => {
-  if (!open) {
-    document.body.style.overflow = previousBodyOverflow
-    return
-  }
-  clearAutoAdvance()
-  questionSheetRangeIndex.value = Math.floor(currentIndex.value / QUESTION_SHEET_RANGE_SIZE)
-  previousBodyOverflow = document.body.style.overflow
-  document.body.style.overflow = 'hidden'
-  await nextTick()
-  questionSheetRef.value?.focus()
-  questionSheetRangeRef.value
-    ?.querySelector('[aria-pressed="true"]')
-    ?.scrollIntoView({ block: 'nearest', inline: 'center' })
-})
-
-watch(questionSheetRangeIndex, () => {
-  if (questionSheetContentRef.value) questionSheetContentRef.value.scrollTop = 0
+watch(questionSheetOpen, (open) => {
+  if (open) clearAutoAdvance()
 })
 </script>
 
@@ -971,13 +764,13 @@ watch(questionSheetRangeIndex, () => {
           class="flex size-10 items-center justify-center rounded-full text-base-content transition active:bg-base-200"
           type="button"
           aria-label="退出练习"
-          @click="exitSession"
+          @click="exitPractice"
         >
           <ArrowLeft :size="21" />
         </button>
 
         <h1 class="truncate text-center text-[15px] font-semibold leading-tight">
-          {{ currentSessionTitle }}
+          {{ currentPaperTitle }}
         </h1>
 
         <span aria-hidden="true"></span>
@@ -991,7 +784,7 @@ watch(questionSheetRangeIndex, () => {
     </header>
 
     <section
-      v-if="sessionLoadState === 'loading'"
+      v-if="paperLoadState === 'loading'"
       class="-mx-5 flex flex-1 items-center justify-center px-6 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-[calc(5rem+env(safe-area-inset-top))]"
     >
       <div class="text-center" role="status" aria-live="polite">
@@ -1006,160 +799,16 @@ watch(questionSheetRangeIndex, () => {
       @touchstart.passive="handleTouchStart"
       @touchend.passive="handleTouchEnd"
     >
-      <section class="min-w-0 px-5 pt-2">
-        <div class="flex items-center justify-between gap-3">
-          <span
-            class="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary"
-          >
-            {{ currentQuestionTypeLabel }}
-          </span>
-          <span
-            v-if="sessionSubjectName"
-            class="min-w-0 flex-1 truncate text-right text-xs font-medium text-base-content/45"
-          >
-            {{ sessionSubjectName }}
-          </span>
-        </div>
-
-        <h2 class="mt-2 whitespace-pre-line break-words text-base font-medium leading-[1.45]">
-          {{ displayQuestionTitle }}
-        </h2>
-      </section>
-
-      <section v-if="expectsChoiceQuestion" class="px-5 pt-2.5">
-        <div
-          class="grid gap-1.5"
-          :class="currentQuestion.questionType === 'judge' ? 'grid-cols-2' : 'grid-cols-1'"
-        >
-          <button
-            v-for="option in resolvedQuestionOptions"
-            :key="option.value"
-            class="group flex min-h-11 min-w-0 items-center gap-2.5 rounded-lg border px-3 py-2 text-left transition"
-            :class="[optionClasses(option.value), currentAnswerRecord ? 'cursor-default' : '']"
-            type="button"
-            :aria-pressed="optionSelected(option.value)"
-            @click="toggleOption(option.value)"
-          >
-            <span
-              class="flex size-6 shrink-0 items-center justify-center border text-[11px] font-bold transition"
-              :class="[
-                isMultipleQuestion ? 'rounded-lg' : 'rounded-full',
-                optionMarkerClasses(option.value),
-              ]"
-            >
-              {{ option.label }}
-            </span>
-            <span class="min-w-0 flex-1 break-words text-[14px] leading-[1.4]">{{
-              option.text
-            }}</span>
-          </button>
-        </div>
-
-        <button
-          v-if="isMultipleQuestion && !currentAnswerRecord"
-          class="btn btn-primary mt-2.5 h-10 min-h-10 w-full rounded-xl text-sm"
-          type="button"
-          :disabled="!canSubmitCurrentAnswer"
-          @click="submitCurrentAnswer()"
-        >
-          确认答案
-        </button>
-      </section>
-
-      <section v-else class="grid gap-3 px-5 pt-3">
-        <textarea
-          v-model="textAnswer"
-          @input="handleTextInput"
-          class="textarea min-h-[10rem] w-full resize-none rounded-xl border-base-200 bg-base-200/45 p-3.5 text-[15px] leading-relaxed focus:border-primary focus:bg-base-100 focus:outline-none"
-          placeholder="在这里输入你的答案…"
-          :disabled="Boolean(currentAnswerRecord)"
-        ></textarea>
-
-        <button
-          v-if="!currentAnswerRecord"
-          class="btn btn-primary h-10 min-h-10 w-full rounded-xl text-sm"
-          type="button"
-          :disabled="!canSubmitCurrentAnswer"
-          @click="submitCurrentAnswer()"
-        >
-          确认答案
-        </button>
-      </section>
-
-      <section
-        v-if="currentAnswerRecord"
-        class="mx-5 mt-3 space-y-3 border-t border-base-200 pt-2.5"
-      >
-        <div
-          class="rounded-lg border px-3 py-2.5"
-          :class="
-            !canGradeCurrentAnswer
-              ? 'border-base-200 bg-base-200/40'
-              : currentAnswerCorrect
-                ? 'border-success/25 bg-success/[0.06]'
-                : 'border-error/25 bg-error/[0.06]'
-          "
-          role="status"
-        >
-          <div
-            class="flex items-center gap-1.5 text-sm font-semibold"
-            :class="
-              !canGradeCurrentAnswer
-                ? 'text-base-content/70'
-                : currentAnswerCorrect
-                  ? 'text-success'
-                  : 'text-error'
-            "
-          >
-            <ClipboardCheck v-if="!canGradeCurrentAnswer" :size="16" />
-            <CheckCircle2 v-else-if="currentAnswerCorrect" :size="16" />
-            <XCircle v-else :size="16" />
-            {{ !canGradeCurrentAnswer ? '已作答' : currentAnswerCorrect ? '回答正确' : '回答错误' }}
-          </div>
-          <dl
-            class="mt-1.5 grid gap-x-3 gap-y-1 text-xs leading-5"
-            :class="isChoiceMode ? 'grid-cols-2' : 'grid-cols-1'"
-          >
-            <div class="min-w-0">
-              <dt class="inline text-base-content/50">我的答案</dt>
-              <dd
-                class="inline break-words font-semibold"
-                :class="
-                  !canGradeCurrentAnswer
-                    ? 'text-base-content/80'
-                    : currentAnswerCorrect
-                      ? 'text-success'
-                      : 'text-error'
-                "
-              >
-                {{ currentUserAnswerText || '—' }}
-              </dd>
-            </div>
-            <div class="min-w-0">
-              <dt class="inline text-base-content/50">
-                {{ isChoiceMode ? '正确答案' : '参考答案' }}
-              </dt>
-              <dd
-                class="inline break-words font-semibold"
-                :class="isChoiceMode ? 'text-success' : 'text-base-content/80'"
-              >
-                {{ currentCorrectAnswerText || '暂无' }}
-              </dd>
-            </div>
-          </dl>
-        </div>
-
-        <div>
-          <h3 class="text-sm font-semibold text-base-content">题目解析</h3>
-          <p
-            v-if="currentExplanation"
-            class="mt-1.5 break-words text-sm leading-[1.55] text-base-content/65"
-          >
-            {{ currentExplanation }}
-          </p>
-          <p v-else class="mt-2 text-sm text-base-content/40">暂无解析</p>
-        </div>
-      </section>
+      <PracticeQuestionPanel
+        :question="currentQuestion"
+        :subject-name="paperSubjectName"
+        :selected-values="selectedOptionValues"
+        :text-answer="textAnswer"
+        :answer-record="currentAnswerRecord"
+        @toggle-option="toggleOption"
+        @confirm-answer="submitCurrentAnswer()"
+        @update:text-answer="onTextAnswer"
+      />
     </article>
 
     <div
@@ -1233,37 +882,37 @@ watch(questionSheetRangeIndex, () => {
     </div>
 
     <section
-      v-else-if="sessionLoadState !== 'ready'"
+      v-else-if="paperLoadState !== 'ready'"
       class="-mx-5 flex flex-1 items-center justify-center px-7 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-[calc(5rem+env(safe-area-inset-top))]"
     >
       <div class="w-full max-w-sm text-center">
         <span
           class="mx-auto flex size-14 items-center justify-center rounded-full"
-          :class="sessionStateContent.iconClasses"
+          :class="paperStateContent.iconClasses"
         >
-          <component :is="sessionStateContent.icon" :size="24" />
+          <component :is="paperStateContent.icon" :size="24" />
         </span>
 
         <h2 class="mt-4 text-base font-semibold text-base-content">
-          {{ sessionStateContent.title }}
+          {{ paperStateContent.title }}
         </h2>
         <p class="mt-1.5 text-sm leading-relaxed text-base-content/55">
-          {{ sessionStateContent.description }}
+          {{ paperStateContent.description }}
         </p>
 
         <div class="mx-auto mt-5 grid max-w-[15rem] gap-2.5">
           <button
             class="btn btn-primary h-11 min-h-11 rounded-full px-6 text-sm"
             type="button"
-            @click="handleSessionStateAction"
+            @click="handlePaperStateAction"
           >
-            {{ sessionStateContent.primaryLabel }}
+            {{ paperStateContent.primaryLabel }}
           </button>
           <button
-            v-if="sessionStateContent.showSecondaryAction"
+            v-if="paperStateContent.showSecondaryAction"
             class="btn btn-ghost h-10 min-h-10 rounded-full text-sm text-base-content/55"
             type="button"
-            @click="exitSession"
+            @click="exitPractice"
           >
             返回练习
           </button>
@@ -1271,131 +920,19 @@ watch(questionSheetRangeIndex, () => {
       </div>
     </section>
 
-    <Teleport to="body">
-      <div
-        v-if="questionSheetOpen"
-        class="fixed inset-0 z-50 flex items-end justify-center bg-base-content/40 sm:items-center sm:px-4"
-        @click.self="questionSheetOpen = false"
-      >
-        <section
-          ref="questionSheetRef"
-          class="flex max-h-[min(78dvh,32rem)] w-full max-w-[32rem] flex-col overflow-hidden rounded-t-3xl border-t border-base-200 bg-base-100 sm:rounded-3xl sm:border"
-          role="dialog"
-          aria-modal="true"
-          aria-label="答题进度"
-          tabindex="-1"
-          @keydown.esc="questionSheetOpen = false"
-        >
-          <!-- 头部：标题 + 进度 + 关闭 -->
-          <div class="flex shrink-0 items-center gap-3 px-4 pb-2 pt-3.5">
-            <div class="min-w-0 flex-1">
-              <h2 class="text-base font-semibold leading-tight">答题卡</h2>
-              <p class="mt-0.5 text-xs tabular-nums text-base-content/45">
-                已答 {{ answeredCount }}/{{ currentQuestions.length }}
-              </p>
-            </div>
-            <button
-              class="flex size-8 shrink-0 items-center justify-center rounded-full text-base-content/45 transition active:bg-base-200"
-              type="button"
-              aria-label="关闭答题卡"
-              @click="questionSheetOpen = false"
-            >
-              <X :size="18" />
-            </button>
-          </div>
-
-          <!-- 状态图例 -->
-          <div
-            class="flex shrink-0 items-center gap-4 border-b border-base-200/70 px-4 py-2 text-xs tabular-nums text-base-content/55"
-          >
-            <span class="flex items-center gap-1.5">
-              <span class="size-2 rounded-full bg-success"></span>
-              对 {{ correctCount }}
-            </span>
-            <span class="flex items-center gap-1.5">
-              <span class="size-2 rounded-full bg-error"></span>
-              错 {{ wrongCount }}
-            </span>
-            <span class="flex items-center gap-1.5">
-              <span class="size-2 rounded-full border border-base-300 bg-base-100"></span>
-              未答 {{ unansweredCount }}
-            </span>
-          </div>
-
-          <div
-            v-if="questionSheetRanges.length > 1"
-            ref="questionSheetRangeRef"
-            class="flex shrink-0 gap-1.5 overflow-x-auto border-b border-base-200/70 px-4 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-            role="group"
-            aria-label="题号区间"
-          >
-            <button
-              v-for="range in questionSheetRanges"
-              :key="range.index"
-              class="shrink-0 rounded-full px-3 py-1.5 text-xs font-medium tabular-nums transition-colors"
-              :class="
-                questionSheetRangeIndex === range.index
-                  ? 'bg-primary/10 text-primary'
-                  : 'text-base-content/55 active:bg-base-200'
-              "
-              type="button"
-              :aria-label="`第 ${range.start + 1} 至 ${range.end} 题`"
-              :aria-pressed="questionSheetRangeIndex === range.index"
-              @click="questionSheetRangeIndex = range.index"
-            >
-              {{ range.label }}
-            </button>
-          </div>
-
-          <div
-            ref="questionSheetContentRef"
-            class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3"
-          >
-            <section v-for="group in visibleQuestionSheetGroups" :key="group.key" class="pb-3">
-              <p class="mb-2 text-xs font-medium text-base-content/50">
-                {{ group.label }} · {{ group.questions.length }}题
-              </p>
-              <div
-                class="grid grid-cols-8 justify-items-center gap-x-1 gap-y-2 min-[375px]:grid-cols-9 sm:grid-cols-10"
-              >
-                <button
-                  v-for="(question, offset) in group.questions"
-                  :key="group.startIndex + offset"
-                  class="flex size-8 items-center justify-center rounded-full border text-xs font-medium tabular-nums transition-colors active:opacity-70"
-                  :class="[
-                    questionResultClasses(question),
-                    currentIndex === group.startIndex + offset
-                      ? 'ring-1 ring-primary/70 ring-offset-1 ring-offset-base-100'
-                      : '',
-                  ]"
-                  type="button"
-                  :aria-label="`第 ${group.startIndex + offset + 1} 题`"
-                  :aria-current="currentIndex === group.startIndex + offset ? 'step' : undefined"
-                  @click="goToQuestion(group.startIndex + offset)"
-                >
-                  {{ group.startIndex + offset + 1 }}
-                </button>
-              </div>
-            </section>
-          </div>
-
-          <!-- 底部操作：交卷（收藏/错题纯刷题模式不显示） -->
-          <div
-            v-if="!collectionMode"
-            class="flex shrink-0 gap-2 border-t border-base-200/80 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 sm:pb-4"
-          >
-            <button
-              class="btn btn-primary h-11 min-h-11 flex-1 rounded-xl text-sm"
-              type="button"
-              :disabled="currentQuestions.length === 0"
-              @click="requestSubmitSession"
-            >
-              交卷
-            </button>
-          </div>
-        </section>
-      </div>
-    </Teleport>
+    <QuestionSheetModal
+      v-model="questionSheetOpen"
+      :questions="currentQuestions"
+      :groups="questionSheetGroups"
+      :current-index="currentIndex"
+      :answer-records="answerRecords"
+      :answered-count="answeredCount"
+      :correct-count="correctCount"
+      :wrong-count="wrongCount"
+      :show-submit="!collectionMode"
+      @select="goToQuestion"
+      @submit="requestSubmitPaper"
+    />
 
     <BaseDialog
       v-model="submitConfirmOpen"
@@ -1428,7 +965,7 @@ watch(questionSheetRangeIndex, () => {
           class="btn btn-primary h-10 min-h-10 flex-1 rounded-xl text-sm"
           type="button"
           :disabled="submitting"
-          @click="confirmSubmitSession"
+          @click="confirmSubmitPaper"
         >
           <span v-if="submitting" class="loading loading-spinner loading-xs"></span>
           {{ submitting ? '提交中' : '确定' }}
@@ -1441,7 +978,7 @@ watch(questionSheetRangeIndex, () => {
       v-if="canClearRecord"
       v-model="clearRecordConfirmOpen"
       :scope="clearRecordScope"
-      :label="`清除“${currentSessionTitle}”的本地做题记录？`"
+      :label="`清除“${currentPaperTitle}”的本地做题记录？`"
     />
   </section>
 </template>

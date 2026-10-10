@@ -6,6 +6,7 @@ import { RouterLink, useRouter } from 'vue-router'
 import AuthField from '@/components/auth/AuthField.vue'
 import AuthFrame from '@/components/auth/AuthFrame.vue'
 import { useAuthStore } from '@/stores/auth'
+import { EMAIL_PATTERN, PASSWORD_PATTERN } from '@/utils/validation'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -24,9 +25,6 @@ const errors = reactive({
   inviteCode: '',
 })
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-// 简单密码规则：6-20 位，须同时包含字母和数字
-const PASSWORD_PATTERN = /^(?=.*[A-Za-z])(?=.*\d).{6,20}$/
 // 邀请码非必填：不填写可直接提交（由服务端判定），填写了则校验长度
 const INVITE_CODE_MIN = 6
 const INVITE_CODE_MAX = 8

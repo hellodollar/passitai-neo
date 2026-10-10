@@ -1,4 +1,4 @@
-import type { QuestionSheetGroup } from '@/utils/practice-session'
+import type { QuestionSheetGroup } from '@/utils/practice-paper'
 
 export const QUESTION_SHEET_RANGE_SIZE = 20
 

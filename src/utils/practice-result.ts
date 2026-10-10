@@ -4,18 +4,17 @@ import type {
   PracticeResultQuestionStatus,
   PracticeSubmission,
   PracticeSubmissionResult,
+  QuestionType,
 } from '@/types/domain'
+import { isChoiceQuestionType } from '@/utils/practice-question'
 
-function normalizeAnswer(answer: string, questionType: string) {
+function normalizeAnswer(answer: string, questionType: QuestionType) {
   if (questionType === 'judge') {
     const value = answer.trim().toUpperCase()
     if (value === 'A' || value === 'TRUE' || value === '正确') return 'TRUE'
     if (value === 'B' || value === 'FALSE' || value === '错误') return 'FALSE'
   }
-  if (
-    ['single', 'multiple', 'judge'].includes(questionType) &&
-    /^[A-F\s,，、;；]+$/i.test(answer)
-  ) {
+  if (isChoiceQuestionType(questionType) && /^[A-F\s,，、;；]+$/i.test(answer)) {
     return [...new Set(answer.toUpperCase().match(/[A-F]/g) ?? [])].sort().join('')
   }
   return answer
@@ -29,7 +28,7 @@ function normalizeAnswer(answer: string, questionType: string) {
 
 function questionStatus(item: PracticePaperItem, userAnswer: string): PracticeResultQuestionStatus {
   if (!userAnswer) return 'unanswered'
-  if (!['single', 'multiple', 'judge'].includes(item.questionType)) return 'pending'
+  if (!isChoiceQuestionType(item.questionType)) return 'pending'
   if (!item.correctAnswer) return 'pending'
   return normalizeAnswer(userAnswer, item.questionType) ===
     normalizeAnswer(item.correctAnswer, item.questionType)

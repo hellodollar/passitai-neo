@@ -4,10 +4,10 @@ import { afterEach, beforeEach, test } from 'node:test'
 import { loadSource } from './helpers/load-source.mjs'
 
 const {
+  clearPracticeRecords,
   clearUserPracticeRecords,
   createPracticeRecord,
   readPracticeRecord,
-  removePracticeRecord,
   restorePracticeRecord,
   updatePracticeRecord,
   writePracticeRecord,
@@ -191,7 +191,7 @@ test('新记录按用户、题集和训练来源隔离，包括相同 fav: ID', 
   identities.forEach((identity, index) =>
     assert.equal(readPracticeRecord(identity).currentQuestionId, `que_${index}`),
   )
-  removePracticeRecord(identities[0])
+  clearPracticeRecords({ kind: 'paper', identity: identities[0] })
   assert.equal(readPracticeRecord(identities[0]), null)
   assert.ok(readPracticeRecord(identities[1]))
 })
@@ -366,6 +366,6 @@ test('Storage 不可用时读写清理均不阻断页面流程', () => {
   })
   assert.equal(readPracticeRecord(context), null)
   assert.equal(writePracticeRecord(createPracticeRecord(context, now)), false)
-  assert.doesNotThrow(() => removePracticeRecord(context))
+  assert.doesNotThrow(() => clearPracticeRecords({ kind: 'paper', identity: context }))
   assert.doesNotThrow(() => clearUserPracticeRecords(context.userId))
 })

@@ -30,11 +30,6 @@ export function removeWrongQuestionByContext(payload: CollectionContext) {
   })
 }
 
-/** 文档:DELETE /api/wrong-questions/:recordId，按错题记录 ID 移除（错题训练页），幂等 */
-export function removeWrongQuestion(recordId: string) {
-  return request<null>(`/wrong-questions/${recordId}`, { method: 'DELETE' })
-}
-
 /** 文档:DELETE /api/wrong-questions/all，清空错题 */
 export function clearWrongQuestions() {
   return request<null>('/wrong-questions/all', { method: 'DELETE' })
