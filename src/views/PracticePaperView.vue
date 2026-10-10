@@ -19,6 +19,7 @@ import BaseDialog from '@/components/common/BaseDialog.vue'
 import ClearPracticeRecordsDialog from '@/components/practice/ClearPracticeRecordsDialog.vue'
 import PracticeSettingsModal from '@/components/settings/PracticeSettingsModal.vue'
 import { usePracticeNavigation } from '@/composables/usePracticeNavigation'
+import { useQuestionFavorites } from '@/composables/useQuestionFavorites'
 import {
   addFavorite,
   fetchFavoritePractice,
@@ -31,6 +32,7 @@ import {
   removeWrongQuestionByContext,
 } from '@/api/wrong-questions'
 import { ROUTE_NAMES } from '@/constants/app'
+import { practiceReturnTarget, returnFromPractice } from '@/utils/browse-state'
 import { QUESTION_TYPE_LABELS } from '@/constants/domain'
 import { useAppStore } from '@/stores/app'
 import { useAuthStore } from '@/stores/auth'
@@ -108,6 +110,7 @@ const submitting = ref(false)
 const submitError = ref('')
 const pendingSubmissionId = ref('')
 const sessionTitle = ref('')
+const sessionPaperType = ref<PracticeRecordContext['paperType']>(null)
 const sessionStartedAt = ref(Date.now())
 
 const currentQuestions = ref<QuestionListItem[]>([])
@@ -126,29 +129,22 @@ let recordWasSaved = false
 let loadSequence = 0
 let unsubscribeRecordChanges = () => {}
 let previousBodyOverflow = ''
-const favoriteQuestionIds = ref<Set<string>>(new Set())
 /** 加载时的原始题目数据（PracticePaperItem），供交卷本地快照使用 */
 const paperItemsById = ref<Map<string, PracticePaperItem>>(new Map())
-const pendingFavoriteQuestionIds = ref<Set<string>>(new Set())
-const favoriteError = ref('')
 let wrongRecordErrorShown = false
 const sessionLoadState = ref<SessionLoadState>('loading')
 
-const {
-  clearAutoAdvance,
-  handleTouchEnd,
-  handleTouchStart,
-  scheduleAutoAdvance,
-} = usePracticeNavigation({
-  currentIndex,
-  questionCount: () => currentQuestions.value.length,
-  suspended: () =>
-    sessionLoadState.value !== 'ready' ||
-    questionSheetOpen.value ||
-    settingsModalOpen.value ||
-    submitConfirmOpen.value ||
-    clearRecordConfirmOpen.value,
-})
+const { clearAutoAdvance, handleTouchEnd, handleTouchStart, scheduleAutoAdvance } =
+  usePracticeNavigation({
+    currentIndex,
+    questionCount: () => currentQuestions.value.length,
+    suspended: () =>
+      sessionLoadState.value !== 'ready' ||
+      questionSheetOpen.value ||
+      settingsModalOpen.value ||
+      submitConfirmOpen.value ||
+      clearRecordConfirmOpen.value,
+  })
 
 const currentQuestion = computed(() => currentQuestions.value[currentIndex.value])
 const parsedQuestionTitle = computed(() => parseQuestionTitle(currentQuestion.value))
@@ -222,12 +218,21 @@ const visibleQuestionSheetGroups = computed(() =>
     questionSheetRangeIndex.value,
   ),
 )
-const currentQuestionFavorited = computed(() =>
-  currentQuestion.value ? favoriteQuestionIds.value.has(currentQuestion.value.id) : false,
-)
-const currentQuestionFavoritePending = computed(() =>
-  currentQuestion.value ? pendingFavoriteQuestionIds.value.has(currentQuestion.value.id) : false,
-)
+const {
+  currentQuestionFavorited,
+  currentQuestionFavoritePending,
+  favoriteError,
+  resetFavorites,
+  toggleFavorite,
+} = useQuestionFavorites({
+  questionId: () => currentQuestion.value?.id,
+  collectionMode: () => collectionMode.value,
+  context: collectionContext,
+  scopeKey: () => `${loadSequence}:${auth.session?.user.id ?? ''}`,
+  add: addFavorite,
+  remove: removeFavorite,
+  removeById: removeFavoriteByRecord,
+})
 const currentQuestionTypeLabel = computed(() =>
   currentQuestion.value ? QUESTION_TYPE_LABELS[currentQuestion.value.questionType] : '',
 )
@@ -374,6 +379,10 @@ const hasLocalRecordProgress = computed(
     currentIndex.value > 0 ||
     Boolean(localRecord.value?.pendingSubmission || localRecord.value?.lastSubmission),
 )
+// 仅专项训练提供页内记录清理；收藏、错题及其他题集模式不展示该入口。
+const canClearRecord = computed(
+  () => !collectionMode.value && sessionPaperType.value === 'baseline',
+)
 const clearRecordScope = computed(() =>
   localRecord.value
     ? {
@@ -388,6 +397,7 @@ const clearRecordScope = computed(() =>
 )
 
 function requestClearRecord() {
+  if (!canClearRecord.value || !hasLocalRecordProgress.value || submitting.value) return
   clearAutoAdvance()
   questionSheetOpen.value = false
   clearRecordConfirmOpen.value = true
@@ -691,7 +701,11 @@ async function confirmSubmitSession() {
     await router.replace({
       name: ROUTE_NAMES.practicePaperResult,
       params: { paperId },
-      query: { submissionId, subject: subjectName || undefined },
+      query: {
+        submissionId,
+        subject: subjectName || undefined,
+        returnTo: practiceReturnTarget(route.query, false),
+      },
     })
   } catch (error) {
     if (isCurrentSubmissionContext(sequence, record)) {
@@ -721,7 +735,10 @@ async function reconcilePendingSubmission(sequence: number, record: PracticeReco
   if (record.source !== 'practice' || !record.pendingSubmission) return
   let submission: PracticeSubmission
   try {
-    submission = await fetchPracticeSubmission(record.paperId, record.pendingSubmission.submissionId)
+    submission = await fetchPracticeSubmission(
+      record.paperId,
+      record.pendingSubmission.submissionId,
+    )
   } catch {
     // 尚未提交或网络不可用，保留快照，下一次交卷使用同一个 ID 重试。
     return
@@ -751,11 +768,6 @@ function collectionContext(questionId: string): CollectionContext | null {
   return { questionId, subjectId: item.subjectId, paperId: item.paperId }
 }
 
-/** 收录记录 ID（收藏训练页取消收藏用） */
-function collectionRecordOf(questionId: string): string | null {
-  return paperItemsById.value.get(questionId)?.collectionRecordId ?? null
-}
-
 function goToQuestion(index: number) {
   if (index < 0 || index >= currentQuestions.value.length) return
   clearAutoAdvance()
@@ -763,61 +775,10 @@ function goToQuestion(index: number) {
   questionSheetOpen.value = false
 }
 
-async function toggleFavorite() {
-  const question = currentQuestion.value
-  if (!question) return
-  if (pendingFavoriteQuestionIds.value.has(question.id)) return
-
-  const wasFavorited = favoriteQuestionIds.value.has(question.id)
-  const context = collectionContext(question.id)
-  const recordId = collectionRecordOf(question.id)
-  const removeByRecord = wasFavorited && collectionMode.value && Boolean(recordId)
-  if (!context && !removeByRecord) {
-    favoriteError.value = '当前题目缺少题集信息，无法更新收藏'
-    return
-  }
-
-  favoriteError.value = ''
-  const nextIds = new Set(favoriteQuestionIds.value)
-  if (wasFavorited) {
-    nextIds.delete(question.id)
-  } else {
-    nextIds.add(question.id)
-  }
-  favoriteQuestionIds.value = nextIds
-
-  const nextPendingIds = new Set(pendingFavoriteQuestionIds.value)
-  nextPendingIds.add(question.id)
-  pendingFavoriteQuestionIds.value = nextPendingIds
-
-  try {
-    if (wasFavorited) {
-      // 收藏训练页按记录 ID 取消；真实题集训练页按三元组取消
-      if (removeByRecord && recordId) {
-        await removeFavoriteByRecord(recordId)
-      } else if (context) {
-        await removeFavorite(context)
-      }
-    } else if (context) {
-      await addFavorite(context)
-    }
-  } catch {
-    const rollbackIds = new Set(favoriteQuestionIds.value)
-    if (wasFavorited) rollbackIds.add(question.id)
-    else rollbackIds.delete(question.id)
-    favoriteQuestionIds.value = rollbackIds
-    favoriteError.value = '收藏状态更新失败，请稍后重试'
-  } finally {
-    const settledPendingIds = new Set(pendingFavoriteQuestionIds.value)
-    settledPendingIds.delete(question.id)
-    pendingFavoriteQuestionIds.value = settledPendingIds
-  }
-}
-
 function exitSession() {
   saveRecordNow()
   app.endPracticeSession()
-  router.push({ name: ROUTE_NAMES.practiceHome })
+  returnFromPractice(router, practiceReturnTarget(route.query, collectionMode.value))
 }
 
 function handleSessionStateAction() {
@@ -832,9 +793,7 @@ function handleSessionStateAction() {
 /** 收藏/错题练习数据加载：fav:<sub_xxx> 按科目 / fav:<pap_xxx> 按题集 */
 async function loadCollectionPaper(paperId: string) {
   const originId = paperId.slice(COLLECTION_PAPER_PREFIX.length)
-  const params = originId.startsWith('pap_')
-    ? { paperId: originId }
-    : { subjectId: originId }
+  const params = originId.startsWith('pap_') ? { paperId: originId } : { subjectId: originId }
   const { paper } =
     collectionSource.value === 'wrong-questions'
       ? await fetchWrongQuestionPractice(params)
@@ -863,11 +822,11 @@ async function loadSessionData() {
   sessionStartedAt.value = Date.now()
   localRecord.value = null
   recordWasSaved = false
-  favoriteQuestionIds.value = new Set()
+  resetFavorites()
   paperItemsById.value = new Map()
-  pendingFavoriteQuestionIds.value = new Set()
-  favoriteError.value = ''
   sessionTitle.value = ''
+  sessionPaperType.value = null
+  clearRecordConfirmOpen.value = false
 
   const paperId = route.params.paperId
   const userId = auth.session?.user.id
@@ -887,12 +846,7 @@ async function loadSessionData() {
         : await loadCollectionPaper(paperId)
     if (sequence !== loadSequence) return
     const { paper } = loaded
-    // 收藏练习里全部题目本身就是收藏题；错题练习按常规收藏状态展示
-    const initialFavoriteQuestionIds =
-      source === 'favorites'
-        ? paper.sections.flatMap((section) => section.items.map((item) => item.id))
-        : loaded.favoriteQuestionIds
-
+    sessionPaperType.value = loaded.paperType
     sessionTitle.value = paper.name
     const { questions, groups, fingerprints, itemsById } = preparePracticeSession(paper)
 
@@ -900,7 +854,7 @@ async function loadSessionData() {
     questionSheetGroups.value = groups
     questionFingerprints.value = fingerprints
     paperItemsById.value = itemsById
-    favoriteQuestionIds.value = new Set(initialFavoriteQuestionIds)
+    resetFavorites(loaded.favoriteQuestionIds, [...itemsById.values()])
     if (questions.length === 0) {
       sessionLoadState.value = 'empty'
       return
@@ -1167,7 +1121,7 @@ watch(questionSheetRangeIndex, () => {
             :class="isChoiceMode ? 'grid-cols-2' : 'grid-cols-1'"
           >
             <div class="min-w-0">
-              <dt class="inline text-base-content/50">我的答案 </dt>
+              <dt class="inline text-base-content/50">我的答案</dt>
               <dd
                 class="inline break-words font-semibold"
                 :class="
@@ -1213,7 +1167,7 @@ watch(questionSheetRangeIndex, () => {
       class="fixed bottom-0 left-1/2 z-40 w-full max-w-[32rem] -translate-x-1/2 border-t border-base-200/80 bg-base-100/95 px-3 pb-[calc(0.65rem+env(safe-area-inset-bottom))] pt-2.5 backdrop-blur-xl"
     >
       <p v-if="favoriteError" class="mb-2 text-center text-xs text-error">{{ favoriteError }}</p>
-      <div class="grid grid-cols-5 items-center gap-1">
+      <div class="grid items-center gap-1" :class="canClearRecord ? 'grid-cols-5' : 'grid-cols-4'">
         <button
           class="flex h-12 min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-medium transition active:bg-base-200"
           :class="[
@@ -1255,6 +1209,7 @@ watch(questionSheetRangeIndex, () => {
         </button>
 
         <button
+          v-if="canClearRecord"
           class="flex h-12 min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-medium text-base-content/60 transition active:bg-base-200 disabled:opacity-40"
           type="button"
           aria-label="清除做题记录"
@@ -1350,7 +1305,9 @@ watch(questionSheetRangeIndex, () => {
           </div>
 
           <!-- 状态图例 -->
-          <div class="flex shrink-0 items-center gap-4 border-b border-base-200/70 px-4 py-2 text-xs tabular-nums text-base-content/55">
+          <div
+            class="flex shrink-0 items-center gap-4 border-b border-base-200/70 px-4 py-2 text-xs tabular-nums text-base-content/55"
+          >
             <span class="flex items-center gap-1.5">
               <span class="size-2 rounded-full bg-success"></span>
               对 {{ correctCount }}
@@ -1481,6 +1438,7 @@ watch(questionSheetRangeIndex, () => {
 
     <PracticeSettingsModal v-model="settingsModalOpen" />
     <ClearPracticeRecordsDialog
+      v-if="canClearRecord"
       v-model="clearRecordConfirmOpen"
       :scope="clearRecordScope"
       :label="`清除“${currentSessionTitle}”的本地做题记录？`"

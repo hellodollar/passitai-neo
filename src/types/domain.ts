@@ -81,11 +81,16 @@ export type WrongQuestion = {
   createdAt: string
 }
 
-/** 收藏/记错上下文:后端按 (questionId, subjectId, paperId) 幂等收录 */
+/** 收藏/记错请求携带题目、科目及发生题集；同一用户同题只收录一条。 */
 export type CollectionContext = {
   questionId: string
   subjectId: string
   paperId: string
+}
+
+/** 收藏成功返回当前有效记录 ID，重新收藏后不能沿用已删除的 ID。 */
+export type FavoriteMutationResult = {
+  favId: string
 }
 
 export type CollectionAggregate = {
@@ -110,7 +115,8 @@ export type CollectionPracticePaper = {
 }
 
 export type PracticePaperLite = {
-  id: string
+  /** 真实题集 ID；按科目聚合时没有题集 ID。 */
+  id?: string
   name: string
   subjectId: string
   questionCount: number
@@ -199,8 +205,10 @@ export type PracticePaperItem = {
   F: string | null
   correctAnswer: string
   explanation: string | null
-  /** 收藏/错题练习数据携带的收录记录上下文，用于取消收藏/移除错题与记错题 */
-  collectionRecordId?: string | null
+  /** 收藏记录 ID，与错题记录 ID 分开；未收藏时为 null。 */
+  favId?: string | null
+  /** 错题记录 ID，只用于移除错题，不可用于取消收藏。 */
+  wrongQuestionId?: string | null
   subjectId?: string | null
   paperId?: string | null
 }

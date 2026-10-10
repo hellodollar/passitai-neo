@@ -213,7 +213,7 @@ interface PracticeSettings {
 
 `baseline`（专项训练）的 `children` 来自该科目 `type=baseline` 的题集。按以下
 `assessmentType` 顺序排列，同一类型内按题集创建时间倒序；每份题集对应一个子项，`name`
-取题集存储的名称（如 `考点通联`、`高频考点`、`易错强化`），`paperId` 指向该题集，
+取题集存储的名称（如 `考点通练`、`高频考点`、`易错强化`），`paperId` 指向该题集，
 `questionCount` 只统计该题集。父项题数为全部子项之和：
 
 `overall` → `highFrequency` → `errorProne`。该顺序由 `PaperAssessmentPreset` 定义；
@@ -280,9 +280,9 @@ Section 的所有题目都与 `questionType` 一致；缺失 `questionType` 表�
 `questionType`。
 
 `favoriteQuestionIds` 按题集中的题目顺序返回当前用户已收藏、且本次
-`paper.sections[].items` 实际返回的题目 ID。收藏状态以 `userId + questionId` 为准；
-`favorites.paperId` 仅记录最近一次收藏发生的题集上下文，不限制此处的收藏状态。
-同一道题出现在其他题集时也显示为已收藏。没有收藏时返回 `[]`，不受 `/api/favorites`
+`paper.sections[].items` 实际返回的题目 ID。查询同时限定当前用户、科目和题集；
+只有收藏记录的 `subjectId`、`paperId` 与当前题集一致时才显示已收藏，
+同一道题出现在其他题集时不会带入该收藏状态。没有收藏时返回 `[]`，不受 `/api/favorites`
 分页限制；收藏或取消收藏成功后，再次获取本接口会反映最新状态。
 
 题型和同类型 Section 的默认中文文案由 API `src/constants/question.ts` 的 `QuestionTypeLabels`
@@ -350,8 +350,11 @@ interface PracticeSubmission {
 
 题目、题集必须启用、未删除且属于平台或当前用户，题目须在题集中，否则 404（`code 4001`）；
 重复收藏更新题集上下文并保持
-原收藏时间。收藏训练页（practice 接口）里按返回的 `collectionRecordId` 取消，记录 ID
-唯一，无需其他上下文；重复取消保持幂等。
+原收藏时间。`PUT /api/favorites` 成功返回 `{ favId: string }`，包含本次实际收藏记录 ID；
+重复收藏返回已有 ID，取消后重新收藏返回新 ID，客户端必须更新而不能沿用旧 ID。
+收藏和错题训练页统一按 `favId` 调用记录 ID 删除接口取消收藏；普通刷题页仍使用三元组取消。
+普通刷题页取消时同时匹配当前用户、题目、科目及题集，不删除其他题集的收藏。
+记录 ID 唯一，无需其他上下文；重复取消保持幂等。
 
 聚合接口 query：
 
@@ -374,17 +377,20 @@ interface PracticeSubmission {
 { items: Array<{ paperId: string; paperName: string; subjectId: string; subjectName: string; questionCount: number; lastCollectedAt: string }>, totalQuestionCount: number }
 ```
 
-练习接口 `subjectId` 与 `paperId` 二选一：按科目取该科目全部收藏题，按题集取该题集
-sections 内的收藏题；按题型重新分组、按收藏时间倒序。返回与
+练习接口 `subjectId` 与 `paperId` 二选一：按科目取该科目全部收藏题；按题集只取收录记录的
+`paperId` 与目标题集一致、且仍在该题集 sections 内的收藏题，不混入其他题集收录的共享题目。
+按题型重新分组、按收藏时间倒序。返回与
 `GET /api/practice/papers/:paperId` 的 `paper` 同构（无 `type`/`assessmentType`/
 `latestRecord`/`favoriteQuestionIds`）。收藏训练为纯刷题：**不提供交卷**，不产生任何
 服务端记录。分组默认名称使用统一题型文案（如 `single`→`单选题`、`multiple`→`多选题`）；
-`items` 额外携带收录上下文供取消操作使用：
+按科目聚合不返回顶层 `paper.id`；按题集返回真实题集 ID，不再返回 `fav:` 虚拟 ID。
+每道题的 `paperId` 保留原收录题集上下文，不因按科目进入而丢失。取消后重新收藏仍提交该题的三元组。
+`items` 额外携带收藏/错题 ID 及收录上下文：
 
 ```ts
 {
   paper: {
-    id: string // "fav:<subjectId>" 或 "fav:<paperId>"
+    id?: string // 仅按题集返回真实 paperId；按科目不返回此字段
     name: string // 按科目=科目名；按题集=题集名
     subjectId: string
     questionCount: number
@@ -392,7 +398,8 @@ sections 内的收藏题；按题型重新分组、按收藏时间倒序。返�
       name: string // 题型中文名
       questionType: QuestionType
       items: Array<PracticePaperItem & {
-        collectionRecordId: string | null // 收藏记录 ID（fav_）
+        favId: string | null // 当前用户收藏记录 ID（fav_），未收藏为 null
+        wrongQuestionId: string | null // 错题练习中的错题记录 ID（wrq_）；收藏练习为 null
         subjectId: string | null
         paperId: string | null // 收藏发生时的题集
       }>
@@ -418,8 +425,10 @@ sections 内的收藏题；按题型重新分组、按收藏时间倒序。返�
 记错题请求体与收藏三元组相同，沿用题目、题集的可见性校验；重复记错保持原收录时间并更新题集上下文为最近一次发生
 错误的题集。`DELETE /api/wrong-questions`（body 三元组）供"答对自动移除错题"设置使用：
 练习设置 `removeMistakeOnCorrect` 开启时，客户端在判对后按答题上下文调用，幂等。
-聚合、练习（`collectionRecordId` 为 `wrq_` 前缀）、清空的行为与收藏模块
-一致（见第 5 章）；错题练习同样不落服务端记录。
+聚合、练习、清空的行为与收藏模块一致（见第 5 章）；错题练习同样不落服务端记录。
+错题练习每道题分别返回 `wrongQuestionId`（错题记录 ID）和 `favId`（当前用户实际收藏 ID，
+未收藏为 null）；两者不可混用。收藏状态由 `favId` 初始化，取消收藏使用 `favId`，
+移除错题使用 `wrongQuestionId`。按科目不返回顶层 `paper.id`，按题集返回真实题集 ID。
 
 ## 7. 字典选项模块
 

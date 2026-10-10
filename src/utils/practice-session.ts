@@ -28,7 +28,7 @@ export function preparePracticeSession(paper: PracticePaperLite) {
       itemsById.set(item.id, item)
     }
     groups.push({
-      key: `${paper.id}-${index}`,
+      key: `${paper.id ?? paper.subjectId}-${index}`,
       label: section.name || (section.questionType
         ? QUESTION_TYPE_LABELS[section.questionType]
         : `Section ${index + 1}`),

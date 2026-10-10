@@ -2,9 +2,14 @@ import { createRouter, createWebHistory } from 'vue-router'
 
 import { ROUTE_NAMES } from '@/constants/app'
 import { useAuthStore } from '@/stores/auth'
+import { isBrowseRoute } from '@/utils/browse-state'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
+  scrollBehavior(to, from, savedPosition) {
+    if (isBrowseRoute(to.name) || to.path === from.path) return false
+    return savedPosition ?? { left: 0, top: 0 }
+  },
   routes: [
     {
       path: '/login',

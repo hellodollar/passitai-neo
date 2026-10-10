@@ -15,8 +15,8 @@ import {
   Target,
 } from '@lucide/vue'
 import { differenceInCalendarDays, format } from 'date-fns'
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
 import logoPassitai from '@/assets/icons/icon-passitai.svg'
 import BaseModal from '@/components/common/BaseModal.vue'
@@ -31,17 +31,22 @@ import { ROUTE_NAMES } from '@/constants/app'
 import { BASELINE_CHILD_ICONS } from '@/constants/practice'
 import { useAppStore } from '@/stores/app'
 import { useAuthStore } from '@/stores/auth'
+import { useBrowseScroll } from '@/composables/useBrowseScroll'
+import { homeSelection, readBrowseState, writeBrowseState } from '@/utils/browse-state'
 import { readPracticeRecord } from '@/utils/practice-record'
 import { applyLocalPracticeProgress } from '@/utils/practice-progress'
-import type {
-  PracticeEntry,
-  PracticeEntryChild,
-  StudyPlan,
-} from '@/types/domain'
+import type { PracticeEntry, PracticeEntryChild, StudyPlan } from '@/types/domain'
 
 const router = useRouter()
+const route = useRoute()
 const app = useAppStore()
 const auth = useAuthStore()
+const browseScroll = useBrowseScroll(
+  () => auth.session?.user.id ?? '',
+  () => 'home',
+)
+const initialBrowse = readBrowseState(auth.session?.user.id ?? '', 'home')
+const initialSelection = homeSelection(route.query, initialBrowse)
 const { records, refresh: refreshLocalRecords } = useLocalPracticeRecords()
 const activeSubjectId = ref('')
 
@@ -51,10 +56,10 @@ const planModalOpen = ref(false)
 const plan = ref<StudyPlan | null>(null)
 const planLoading = ref(false)
 
-const subjectOrder = ref<string[]>([])
-const hiddenSubjectCodes = ref<Set<string>>(new Set())
-const activeSubjectCode = ref('')
-const expandedEntryKey = ref('')
+const subjectOrder = ref<string[]>(initialBrowse.subjectOrder)
+const hiddenSubjectCodes = ref<Set<string>>(new Set(initialBrowse.hiddenSubjectCodes))
+const activeSubjectCode = ref(initialSelection.subjectCode)
+const expandedEntryKey = ref(initialSelection.entry)
 
 const entries = ref<PracticeEntry[]>([])
 const entriesLoading = ref(false)
@@ -200,14 +205,32 @@ function entryToneClasses(tone: EntryTone) {
 
 function selectSubject(code: string) {
   activeSubjectCode.value = code
-  expandedEntryKey.value = ''
+  expandedEntryKey.value = 'baseline'
+  persistHomeSelection()
 }
 
 function selectEntry(key: string) {
   expandedEntryKey.value = key
+  persistHomeSelection()
+}
+
+function persistHomeSelection() {
+  if (route.name !== ROUTE_NAMES.practiceHome) return
+  const subjectCode = activeSubject.value?.code ?? ''
+  const entry = expandedEntryKey.value || 'baseline'
+  writeBrowseState(auth.session?.user.id ?? '', 'home', {
+    subjectCode,
+    entry,
+    subjectOrder: subjectOrder.value,
+    hiddenSubjectCodes: [...hiddenSubjectCodes.value],
+  })
+  if (route.query.subjectCode !== (subjectCode || undefined) || route.query.entry !== entry) {
+    void router.replace({ query: { ...route.query, subjectCode: subjectCode || undefined, entry } })
+  }
 }
 
 function syncSubjectOrder() {
+  if (!plan.value) return
   const codes = planSubjects.value.map((subject) => subject.code)
   subjectOrder.value = [
     ...subjectOrder.value.filter((code) => codes.includes(code)),
@@ -234,6 +257,7 @@ function moveSubject(code: string, direction: -1 | 1) {
   if (!current) return
   codes.splice(nextIndex, 0, current)
   subjectOrder.value = codes
+  persistHomeSelection()
 }
 
 function toggleSubjectVisibility(code: string) {
@@ -245,15 +269,24 @@ function toggleSubjectVisibility(code: string) {
   }
   hiddenSubjectCodes.value = nextCodes
   syncSubjectOrder()
+  persistHomeSelection()
 }
 
 function startEntryPaper(child: PracticeEntryChild) {
-  if (!child.paperId) return
+  if (!child.paperId || entriesLoading.value) return
+  const returnTo = router.resolve({
+    path: route.path,
+    query: {
+      ...route.query,
+      subjectCode: activeSubject.value?.code || undefined,
+      entry: expandedEntryKey.value || 'baseline',
+    },
+  }).fullPath
   app.startPracticeSession()
   router.push({
     name: ROUTE_NAMES.practicePaper,
     params: { paperId: child.paperId },
-    query: { subject: activeSubject.value?.name ?? '' },
+    query: { subject: activeSubject.value?.name ?? '', returnTo },
   })
 }
 
@@ -284,6 +317,7 @@ async function loadEntries() {
   if (!subject) {
     entries.value = []
     entriesLoading.value = false
+    if (plan.value && !planLoading.value) void browseScroll.restore()
     return
   }
   entries.value = []
@@ -316,12 +350,24 @@ async function loadEntries() {
     if (!entries.value.some((entry) => entry.type === expandedEntryKey.value)) {
       expandedEntryKey.value = entries.value[0]?.type ?? ''
     }
+    persistHomeSelection()
   } catch {
     if (sequence !== entryLoadSequence) return
     entries.value = []
-    expandedEntryKey.value = ''
   } finally {
-    if (sequence === entryLoadSequence) entriesLoading.value = false
+    if (sequence === entryLoadSequence) {
+      entriesLoading.value = false
+      await nextTick()
+      const selected = chipsRow.value?.querySelector<HTMLElement>('[aria-pressed="true"]')
+      if (selected && chipsRow.value) {
+        chipsRow.value.scrollLeft = Math.max(
+          0,
+          selected.offsetLeft - chipsRow.value.offsetLeft - 16,
+        )
+      }
+      updateChipsScrollHint()
+      void browseScroll.restore()
+    }
   }
 }
 
@@ -334,7 +380,10 @@ async function loadPlan() {
   } catch {
     if (sequence === planLoadSequence) plan.value = null
   } finally {
-    if (sequence === planLoadSequence) planLoading.value = false
+    if (sequence === planLoadSequence) {
+      planLoading.value = false
+      if (!hasStudyPlan.value) void browseScroll.restore()
+    }
   }
 }
 
@@ -347,6 +396,40 @@ function handlePlanUpdated(updated: StudyPlan) {
 onMounted(() => {
   void loadPlan()
 })
+
+onBeforeUnmount(() => {
+  planLoadSequence++
+  entryLoadSequence++
+})
+
+watch([() => route.query.subjectCode, () => route.query.entry], () => {
+  const selection = homeSelection(route.query, readBrowseState(auth.session?.user.id ?? '', 'home'))
+  activeSubjectCode.value = selection.subjectCode
+  expandedEntryKey.value = selection.entry
+  syncSubjectOrder()
+})
+
+watch(
+  () => auth.session?.user.id,
+  (userId) => {
+    planLoadSequence++
+    entryLoadSequence++
+    const state = readBrowseState(userId ?? '', 'home')
+    const selection = homeSelection({}, state)
+    browseScroll.reset()
+    plan.value = null
+    planLoading.value = false
+    entries.value = []
+    entriesLoading.value = false
+    activeSubjectId.value = ''
+    subjectIdsByMajorCode.clear()
+    subjectOrder.value = state.subjectOrder
+    hiddenSubjectCodes.value = new Set(state.hiddenSubjectCodes)
+    activeSubjectCode.value = selection.subjectCode
+    expandedEntryKey.value = selection.entry
+    if (userId) void loadPlan()
+  },
+)
 
 watch(
   () => planSubjects.value.map((subject) => subject.code).join('|'),
@@ -368,7 +451,6 @@ watch(
 watch(
   () => [planMajorCode.value, activeSubject.value?.code ?? ''],
   () => {
-    expandedEntryKey.value = ''
     void loadEntries()
   },
   { immediate: true },
@@ -387,10 +469,7 @@ watch(
       <EmptyState :icon="Hourglass" title="加载中" description="正在获取练习计划…" />
     </section>
 
-    <section
-      v-else-if="!hasStudyPlan"
-      class="overflow-hidden rounded-2xl border border-base-200"
-    >
+    <section v-else-if="!hasStudyPlan" class="overflow-hidden rounded-2xl border border-base-200">
       <EmptyState
         :icon="Target"
         title="暂无练习计划"

@@ -5,7 +5,7 @@ import { useRoute, useRouter } from 'vue-router'
 
 import { fetchPracticePaper, fetchPracticeSubmission } from '@/api/practice'
 import BaseModal from '@/components/common/BaseModal.vue'
-import { ROUTE_NAMES } from '@/constants/app'
+import { practiceReturnTarget, returnFromPractice } from '@/utils/browse-state'
 import { QUESTION_TYPE_LABELS } from '@/constants/domain'
 import { useAppStore } from '@/stores/app'
 import { buildSubmissionResult } from '@/utils/practice-result'
@@ -153,7 +153,7 @@ function openQuestion(question: PracticeResultQuestion) {
 }
 
 function returnToPractice() {
-  router.push({ name: ROUTE_NAMES.practiceHome })
+  returnFromPractice(router, practiceReturnTarget(route.query, false))
 }
 
 onMounted(() => {

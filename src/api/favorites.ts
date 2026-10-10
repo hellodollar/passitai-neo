@@ -5,6 +5,7 @@ import type {
   CollectionGroupBy,
   CollectionOrder,
   CollectionPracticePaper,
+  FavoriteMutationResult,
 } from '@/types/domain'
 
 /** 文档:GET /api/favorites?groupBy=&order=，聚合查询收藏 */
@@ -16,7 +17,7 @@ export function fetchFavoriteAggregate(
 
 /** 文档:PUT /api/favorites，body 三元组，幂等 */
 export function addFavorite(payload: CollectionContext) {
-  return request<null>('/favorites', {
+  return request<FavoriteMutationResult>('/favorites', {
     method: 'PUT',
     body: payload,
   })
