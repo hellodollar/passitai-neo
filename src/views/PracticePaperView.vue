@@ -940,10 +940,7 @@ watch(questionSheetOpen, (open) => {
       :close-on-backdrop="!submitting"
       :close-on-escape="!submitting"
     >
-      <p
-        class="text-sm leading-6"
-        :class="unansweredCount > 0 ? 'text-warning' : 'text-base-content/55'"
-      >
+      <p class="text-sm leading-6 text-base-content/70">
         <template v-if="unansweredCount > 0">
           还有 {{ unansweredCount }} 题未答，确定交卷？
         </template>
@@ -968,7 +965,7 @@ watch(questionSheetOpen, (open) => {
           @click="confirmSubmitPaper"
         >
           <span v-if="submitting" class="loading loading-spinner loading-xs"></span>
-          {{ submitting ? '提交中' : '确定' }}
+          {{ submitting ? '提交中' : '交卷' }}
         </button>
       </template>
     </BaseDialog>
@@ -978,7 +975,7 @@ watch(questionSheetOpen, (open) => {
       v-if="canClearRecord"
       v-model="clearRecordConfirmOpen"
       :scope="clearRecordScope"
-      :label="`清除“${currentPaperTitle}”的本地做题记录？`"
+      :label="`“${currentPaperTitle}”的本地做题记录`"
     />
   </section>
 </template>

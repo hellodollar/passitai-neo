@@ -30,9 +30,8 @@ function confirmClear() {
 
 <template>
   <BaseDialog v-model="model" title="清除做题记录">
-    <p class="text-sm leading-6">{{ label }}</p>
-    <p class="mt-1.5 text-xs leading-5 text-base-content/50">
-      本地答案和进度无法恢复，不影响收藏、错题和已交卷报告。
+    <p class="text-sm leading-6 text-base-content/70">
+      将清除{{ label }}，操作不可恢复。不影响收藏、错题和交卷报告。
     </p>
     <template #footer>
       <button
@@ -47,7 +46,7 @@ function confirmClear() {
         type="button"
         @click="confirmClear"
       >
-        确定
+        清除
       </button>
     </template>
   </BaseDialog>

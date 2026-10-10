@@ -86,11 +86,12 @@ const activeSortLabel = computed(
     )?.label ?? '最近收录',
 )
 
+/** 时间距离文案：如“3小时前收录”。 */
 function collectedTimeText(item: CollectionAggregateItem) {
   const collectedAt = new Date(item.lastCollectedAt)
   if (Number.isNaN(collectedAt.getTime())) return ''
   const distance = formatDistanceToNow(collectedAt, { locale: zhCN })
-  return `${distance.replace(/^大约\s*/, '')}前`
+  return `${distance.replace(/^大约\s*/, '').replace(/\s+/g, '')}前收录`
 }
 
 async function loadSubjects() {
@@ -512,7 +513,7 @@ watch(
           </span>
           <span class="mt-1 block truncate text-xs leading-snug text-base-content/45">
             <template v-if="displayedGroupMode === 'paper'">{{ item.subjectName }} · </template>
-            {{ collectedTimeText(item) ? `最近收录 · ${collectedTimeText(item)}` : '最近收录' }}
+            {{ collectedTimeText(item) || '已收录' }}
           </span>
         </span>
 

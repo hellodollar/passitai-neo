@@ -38,8 +38,8 @@ function requestClear(type?: keyof typeof PRACTICE_CATEGORY_LABELS) {
   if (!userId) return
   clearScope.value = type ? { kind: 'category', userId, paperType: type } : { kind: 'all', userId }
   clearLabel.value = type
-    ? `清除全部科目的${PRACTICE_CATEGORY_LABELS[type]}做题记录？`
-    : '清除当前账号全部本地做题记录？'
+    ? `全部科目的${PRACTICE_CATEGORY_LABELS[type]}做题记录`
+    : '当前账号的全部本地做题记录'
   model.value = false
   clearOpen.value = true
 }
