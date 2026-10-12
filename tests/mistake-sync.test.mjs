@@ -52,9 +52,10 @@ const previousFetch = globalThis.fetch
 let requests
 let resolveSettings
 
-function envelope(data, { code = 0, status = 200 } = {}) {
+function envelope(data, { status = 200 } = {}) {
   return new Response(
-    JSON.stringify({ code, message: code === 0 ? 'success' : '资源不存在', data }),
+    JSON.stringify({ ok: status >= 200 && status < 300,
+      message: status < 400 ? 'success' : '资源不存在', data }),
     {
       status,
       headers: { 'content-type': 'application/json' },

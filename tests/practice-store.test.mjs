@@ -39,9 +39,10 @@ class MemoryStorage {
   }
 }
 
-function envelope(data, { code = 0, status = 200 } = {}) {
+function envelope(data, { status = 200 } = {}) {
   return new Response(
-    JSON.stringify({ code, message: code === 0 ? 'success' : '请求失败', data }),
+    JSON.stringify({ ok: status >= 200 && status < 300,
+      message: status < 400 ? 'success' : '请求失败', data }),
     { status, headers: { 'content-type': 'application/json' } },
   )
 }

@@ -1,7 +1,7 @@
 // ---- API envelope ----
 
 export type ApiEnvelope<T> = {
-  code: number
+  ok: boolean
   message: string
   data: T | null
 }

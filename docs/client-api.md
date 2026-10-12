@@ -13,7 +13,7 @@ Authorization: Bearer <app-token>
 
 ```ts
 interface ApiResponse<T> {
-  code: number
+  ok: boolean
   message: string
   data: T | null
 }
@@ -24,11 +24,15 @@ interface PaginationResult<T> {
 }
 ```
 
-`code === 0` 表示成功。分页参数默认 `page=1&limit=20`，`limit` 最大为 `100`。
+HTTP 2xx、`ok: true` 表示成功；HTTP 4xx/5xx、`ok: false` 表示失败，失败时 `data: null`。
+分页参数默认 `page=1&limit=20`，`limit` 最大为 `100`。
 
-接口结果以 **HTTP status** 判定：`2xx` 成功；`400` 参数/请求体校验失败或登录凭证错误；`401` 未登录
+接口结果以 **HTTP status** 判定：`2xx` 成功；`400` 参数/请求体校验失败；`401` 登录凭证错误、未登录
 或 token 失效；`403` 权限不足；`404` 资源不存在；`409` 唯一/状态冲突；`500` 服务端异常；`503`
-依赖服务不可用。`code` 仅作为随 envelope 返回的补充信息（`0` 表示成功），客户端不得维护业务码字典。
+依赖服务不可用。统一响应为 `{ ok, message, data }`，不返回顶层 `code`，客户端不维护业务错误码字典。
+`ok` 是布尔值，必须与 HTTP 状态一致，不使用 HTTP 200 包装失败。请求入口校验成功正文的
+`ok === true`，鉴权、重试和错误分类依据 HTTP 状态；`message` 只用于展示，不用于程序分支。
+答错题、空列表等业务结果不等于请求失败，接口处理成功仍返回 `ok: true`。
 
 接口只划分为以下六个模块。本文未列出的其他 `/api` 客户端路径均不存在，不应调用。标记为“占位”的
 接口只用于固定路径和基础入参，暂不执行真实业务写入。
@@ -56,20 +60,20 @@ interface AuthBody {
 }
 
 interface RegisterBody extends AuthBody {
-  inviteCode?: string // 选填；填写时须 6-8 位，否则 1002
+  inviteCode?: string // 选填；填写时须 6-8 位，否则 HTTP 400
 }
 ```
 
 注册邀请码第一阶段固定为 `taikula`：
 
-- 未填写（缺失或为空）：通过参数校验，注册失败返回 `HTTP 400`、`code: 2005`（邀请码无效）。
-- 填写但长度不在 6-8 位：参数校验失败返回 `HTTP 400`、`code: 1002`（邀请码长度需在6-8位之间）。
-- 填写且长度合法但不为 `taikula`：注册失败返回 `HTTP 400`、`code: 2005`（邀请码无效）。
+- 未填写（缺失或为空）：通过参数校验，注册失败返回 `HTTP 400`（邀请码无效）。
+- 填写但长度不在 6-8 位：参数校验失败返回 `HTTP 400`（邀请码长度需在6-8位之间）。
+- 填写且长度合法但不为 `taikula`：注册失败返回 `HTTP 400`（邀请码无效）。
 
-邮箱已被占用时注册失败返回 `HTTP 409`、`code: 2003`（账号已存在）；未预期的服务端错误返回
-`HTTP 500`、`code: 9001`。
+邮箱已被占用时注册失败返回 `HTTP 409`（账号已存在）；未预期的服务端错误返回
+`HTTP 500`。
 
-前端约定：不填写邀请码允许直接提交（由服务端返回 2005）；填写时前端先做 6-8 位长度校验。
+前端约定：不填写邀请码允许直接提交（由服务端返回 HTTP 400 和“邀请码无效”）；填写时前端先做 6-8 位长度校验。
 
 注册与登录成功返回：
 
@@ -122,9 +126,9 @@ interface ChangeEmailBody {
 ```
 
 - `PUT /api/user/password`：校验当前密码后更新为新密码，成功返回 `{ userId, changed: true }`。当前密码
-  错误返回 `HTTP 400`、`code: 2001`；新密码与当前密码相同返回 `HTTP 400`、`code: 1000`。
+  错误返回 `HTTP 400`；新密码与当前密码相同返回 `HTTP 400`。
 - `PUT /api/user/email`：校验登录密码并确保新邮箱未被占用后更新，成功返回 `{ userId, email }`。邮箱
-  已被占用返回 `HTTP 409`、`code: 2003`；与新邮箱相同返回 `HTTP 409`、`code: 4003`。
+  已被占用返回 `HTTP 409`；与新邮箱相同返回 `HTTP 409`。
 
 ### 通知开关
 
@@ -169,8 +173,8 @@ interface UpdatePlanBody {
 ```
 
 计划存储在当前用户的 `preferences.plan`。`majorId` 必须指向启用且未删除的专业，否则返回资源不存在。
-提交的每个 `subjectId` 都必须属于该专业、启用且未删除；任一科目不符合时返回 HTTP 400、
-`code: 1002`，计划保持不变。`educationLevel`、`nextExamDate` 均从所选专业读取。
+提交的每个 `subjectId` 都必须属于该专业、启用且未删除；任一科目不符合时返回 HTTP 400，
+计划保持不变。`educationLevel`、`nextExamDate` 均从所选专业读取。
 
 用户未设置计划（新用户）、专业不存在或已删除时，`GET /api/plan` 返回 `data: null`，`/api/me` 的
 `preferences.plan` 同样为 `null`；需先调用 `PUT /api/plan` 手动设置计划。
@@ -360,7 +364,7 @@ interface PracticeSubmission {
 { "questionId": "qst_xxx", "subjectId": "sub_xxx", "paperId": "pap_xxx" }
 ```
 
-题目、题集必须启用、未删除且属于平台或当前用户，题目须在题集中，否则 404（`code 4001`）；
+题目、题集必须启用、未删除且属于平台或当前用户，题目须在题集中，否则 HTTP 404；
 重复收藏更新题集上下文并保持
 原收藏时间。`PUT /api/favorites` 成功返回 `{ favId: string }`，包含本次实际收藏记录 ID；
 重复收藏返回已有 ID，取消后重新收藏返回新 ID，客户端必须更新而不能沿用旧 ID。

@@ -28,8 +28,8 @@ class MemoryStorage {
   }
 }
 
-function envelope(data, { code = 0, message = 'success', status = 200 } = {}) {
-  return new Response(JSON.stringify({ code, message, data }), {
+function envelope(data, { message = 'success', status = 200 } = {}) {
+  return new Response(JSON.stringify({ ok: status >= 200 && status < 300, message, data }), {
     status,
     headers: { 'content-type': 'application/json' },
   })
@@ -94,8 +94,8 @@ test('业务成功返回 data', async () => {
   assert.deepEqual(await request('/thing'), { value: 1 })
 })
 
-test('HTTP 2xx 成功时业务码被动，不参与成败判定', async () => {
-  handler = () => envelope({ value: 1 }, { code: 9999, message: 'legacy' })
+test('HTTP 2xx 接收 ok: true 的标准响应', async () => {
+  handler = () => envelope({ value: 1 }, { message: '操作完成' })
   assert.deepEqual(await request('/thing'), { value: 1 })
 })
 
@@ -124,10 +124,48 @@ test('网络失败抛出网络文案且 status 为 null', async () => {
   })
 })
 
+test('成功响应缺少文案或文案类型错误时拒绝不完整协议', async () => {
+  for (const body of [{ ok: true, data: {} }, { ok: true, message: 123, data: {} }]) {
+    handler = () => Response.json(body)
+    await assert.rejects(request('/thing'), ApiError)
+  }
+})
+
+test('HTTP 200 缺少 ok、ok 类型错误或 ok: false 时拒绝协议且不清会话', async () => {
+  persist('tok_existing')
+  const invalidations = countInvalidations()
+  const bodies = [{ message: 'success', data: {} },
+    ...[false, 0, 1, 'true', null].map((ok) => ({ ok, message: 'success', data: {} }))]
+  for (const body of bodies) {
+    handler = () => Response.json(body)
+    await assert.rejects(request('/thing'), (error) =>
+      error instanceof ApiError && error.status === null)
+  }
+  assert.equal(storedSession().token, 'tok_existing')
+  assert.equal(invalidations(), 0)
+})
+
+test('业务数据中的 false 不影响接口成功，包括答错题', async () => {
+  handler = () => envelope({ isCorrect: false })
+  assert.deepEqual(await request('/practice/records/rec_fixture/submit', { method: 'POST' }),
+    { isCorrect: false })
+})
+
+test('上游非 JSON 的 502 响应保留 HTTP 状态，不误清用户会话', async () => {
+  persist('tok_user')
+  const invalidations = countInvalidations()
+  handler = () => new Response('<html>upstream unavailable</html>', {
+    status: 502, headers: { 'content-type': 'text/html' },
+  })
+  await assert.rejects(request('/thing'), (error) => error.status === 502)
+  assert.equal(storedSession().token, 'tok_user')
+  assert.equal(invalidations(), 0)
+})
+
 test('受保护接口 401 清除会话并派发一次失效事件', async () => {
   persist('tok_1')
   const invalidations = countInvalidations()
-  handler = () => envelope(null, { code: 2102, message: '登录已过期，请重新登录', status: 401 })
+  handler = () => envelope(null, { message: '登录已过期，请重新登录', status: 401 })
 
   await assert.rejects(request('/me'), (error) => {
     assert.ok(error instanceof ApiError)
