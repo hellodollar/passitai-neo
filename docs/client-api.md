@@ -14,7 +14,7 @@ Authorization: Bearer <app-token>
 ```ts
 interface ApiResponse<T> {
   ok: boolean
-  message: string
+  message?: string // 成功可省略，失败必填
   data: T | null
 }
 
@@ -25,11 +25,14 @@ interface PaginationResult<T> {
 ```
 
 HTTP 2xx、`ok: true` 表示成功；HTTP 4xx/5xx、`ok: false` 表示失败，失败时 `data: null`。
+成功默认只返回 `{ ok: true, data }`，不返回固定的 `"success"` 或空字符串。
+失败返回 `{ ok: false, message, data: null }`，`message` 必填。
+仅明确需要服务端动态提示时，成功响应才可携带字符串 `message`；普通成功提示由前端按操作场景展示。
 分页参数默认 `page=1&limit=20`，`limit` 最大为 `100`。
 
 接口结果以 **HTTP status** 判定：`2xx` 成功；`400` 参数/请求体校验失败；`401` 登录凭证错误、未登录
 或 token 失效；`403` 权限不足；`404` 资源不存在；`409` 唯一/状态冲突；`500` 服务端异常；`503`
-依赖服务不可用。统一响应为 `{ ok, message, data }`，不返回顶层 `code`，客户端不维护业务错误码字典。
+依赖服务不可用。不返回顶层 `code`，客户端不维护业务错误码字典。
 `ok` 是布尔值，必须与 HTTP 状态一致，不使用 HTTP 200 包装失败。请求入口校验成功正文的
 `ok === true`，鉴权、重试和错误分类依据 HTTP 状态；`message` 只用于展示，不用于程序分支。
 答错题、空列表等业务结果不等于请求失败，接口处理成功仍返回 `ok: true`。

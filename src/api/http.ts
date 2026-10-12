@@ -93,9 +93,10 @@ export async function request<T>(url: string, options?: RequestOptions): Promise
   try {
     const result = await http<ApiEnvelope<T>>(url, fetchOptions)
 
-    // HTTP 状态负责鉴权与错误分类；成功正文必须符合 { ok: true, message, data }。
+    // 成功正文为 { ok: true, data }；message 可省略，携带时必须是字符串。
     if (!result || typeof result !== 'object' || !('data' in result)
-      || result.ok !== true || typeof result.message !== 'string') {
+      || result.ok !== true
+      || (result.message !== undefined && typeof result.message !== 'string')) {
       throw new ApiError(FALLBACK_MESSAGE)
     }
 

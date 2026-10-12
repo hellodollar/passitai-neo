@@ -40,9 +40,9 @@ class MemoryStorage {
 }
 
 function envelope(data, { status = 200 } = {}) {
+  const ok = status >= 200 && status < 300
   return new Response(
-    JSON.stringify({ ok: status >= 200 && status < 300,
-      message: status < 400 ? 'success' : '请求失败', data }),
+    JSON.stringify(ok ? { ok, data } : { ok, message: '请求失败', data }),
     { status, headers: { 'content-type': 'application/json' } },
   )
 }

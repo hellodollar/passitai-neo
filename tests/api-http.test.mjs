@@ -28,8 +28,12 @@ class MemoryStorage {
   }
 }
 
-function envelope(data, { message = 'success', status = 200 } = {}) {
-  return new Response(JSON.stringify({ ok: status >= 200 && status < 300, message, data }), {
+function envelope(data, { message, status = 200 } = {}) {
+  const ok = status >= 200 && status < 300
+  const body = { ok, data }
+  if (message !== undefined) body.message = message
+  else if (!ok) body.message = '请求失败'
+  return new Response(JSON.stringify(body), {
     status,
     headers: { 'content-type': 'application/json' },
   })
@@ -89,7 +93,7 @@ function countInvalidations() {
   return () => events
 }
 
-test('业务成功返回 data', async () => {
+test('业务成功不带 message，仍正常返回 data', async () => {
   handler = () => envelope({ value: 1 })
   assert.deepEqual(await request('/thing'), { value: 1 })
 })
@@ -124,11 +128,17 @@ test('网络失败抛出网络文案且 status 为 null', async () => {
   })
 })
 
-test('成功响应缺少文案或文案类型错误时拒绝不完整协议', async () => {
-  for (const body of [{ ok: true, data: {} }, { ok: true, message: 123, data: {} }]) {
+test('成功响应的可选 message 类型错误时拒绝协议', async () => {
+  for (const message of [123, null, false, {}]) {
+    const body = { ok: true, message, data: {} }
     handler = () => Response.json(body)
     await assert.rejects(request('/thing'), ApiError)
   }
+})
+
+test('成功无数据时接受 data: null，不要求 message', async () => {
+  handler = () => envelope(null)
+  assert.equal(await request('/logout', { method: 'POST' }), null)
 })
 
 test('HTTP 200 缺少 ok、ok 类型错误或 ok: false 时拒绝协议且不清会话', async () => {

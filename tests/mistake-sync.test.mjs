@@ -53,9 +53,9 @@ let requests
 let resolveSettings
 
 function envelope(data, { status = 200 } = {}) {
+  const ok = status >= 200 && status < 300
   return new Response(
-    JSON.stringify({ ok: status >= 200 && status < 300,
-      message: status < 400 ? 'success' : '资源不存在', data }),
+    JSON.stringify(ok ? { ok, data } : { ok, message: '资源不存在', data }),
     {
       status,
       headers: { 'content-type': 'application/json' },
