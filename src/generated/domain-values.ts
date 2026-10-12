@@ -10,12 +10,6 @@ export const domainValues = {
   questionType: ['single', 'multiple', 'judge', 'nounExplain', 'shortAnswer', 'essay'],
   paperType: ['baseline', 'mock', 'pastExam', 'ai'],
   paperAssessmentPreset: ['overall', 'highFrequency', 'errorProne'],
-  taskType: ['biguo_sync'],
-  taskStatus: ['pending', 'running', 'completed', 'failed'],
-  runnerType: ['biguo_sync'],
-  runnerConnectionStatus: ['online', 'offline'],
-  runnerWorkStatus: ['idle', 'busy'],
-  runnerActivityStatus: ['idle', 'running', 'error'],
 } as const
 
 export const questionTypeLabels = {
