@@ -42,5 +42,6 @@ export function updatePracticeSettings(payload: Partial<PracticeSettings>) {
   return request<PracticeSettings>('/practice/settings', {
     method: 'PATCH',
     body: payload,
+    notify: true,
   })
 }

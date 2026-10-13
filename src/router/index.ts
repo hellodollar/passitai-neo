@@ -1,8 +1,9 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
-import { ROUTE_NAMES } from '@/constants/app'
+import { AUTH_INVALIDATED_EVENT, ROUTE_NAMES } from '@/constants/app'
 import { useAuthStore } from '@/stores/auth'
 import { isBrowseRoute } from '@/utils/browse-state'
+import { showErrorToast } from '@/utils/toast'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -90,6 +91,22 @@ router.beforeEach((to) => {
   if (to.meta.publicOnly && auth.isAuthenticated) {
     return { name: ROUTE_NAMES.practiceHome }
   }
+})
+
+// 后台 401 会话失效：清理本地会话并带回跳跳转登录页，避免用户停留在加载失败的页面。
+// 必须在同一监听器里先清理再跳转，否则 publicOnly 守卫会把仍视为已登录的跳转弹回首页。
+window.addEventListener(AUTH_INVALIDATED_EVENT, () => {
+  const auth = useAuthStore()
+  auth.clearLocalSession()
+
+  const current = router.currentRoute.value
+  if (!current.meta.requiresAuth) return
+
+  showErrorToast('登录状态已失效，请重新登录')
+  void router.replace({
+    name: ROUTE_NAMES.login,
+    query: { redirect: current.fullPath },
+  })
 })
 
 export default router

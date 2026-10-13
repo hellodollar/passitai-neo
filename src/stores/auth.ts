@@ -3,7 +3,7 @@ import { defineStore } from 'pinia'
 
 import { login, logout, register } from '@/api/auth'
 import { fetchUserMe } from '@/api/me'
-import { AUTH_INVALIDATED_EVENT, STORAGE_KEYS } from '@/constants/app'
+import { STORAGE_KEYS } from '@/constants/app'
 import { usePracticeStore } from '@/stores/practice'
 import type { AuthCredentials, AuthSession, RegisterCredentials, User } from '@/types'
 import { clearUserPracticeRecords } from '@/utils/practice-record'
@@ -31,7 +31,7 @@ export const useAuthStore = defineStore('auth', () => {
     usePracticeStore().clearSettings()
   }
 
-  window.addEventListener(AUTH_INVALIDATED_EVENT, clearLocalSession)
+  // 401 会话失效的监听与登录跳转统一放在路由模块，保证跳转前会话已清理。
 
   function persistSession(nextSession: AuthSession) {
     session.value = nextSession
@@ -102,6 +102,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   return {
+    clearLocalSession,
     hydrate,
     isAuthenticated,
     loading,

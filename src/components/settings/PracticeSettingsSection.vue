@@ -62,6 +62,9 @@ watch(
   (settings) => {
     if (!loaded.value) return
 
+    // 快照改动前的值，保存失败时按此回滚。
+    const previous: PracticeSettings = { ...lastValues }
+
     // 深度监听里找出真正变化的字段，只提交增量。
     const payload: Partial<PracticeSettings> = {}
     for (const key of Object.keys(settings) as Array<keyof PracticeSettings>) {
@@ -77,7 +80,15 @@ watch(
       .then(() => {
         emit('saved', { ...practiceSettings.value })
       })
-      .catch(() => {})
+      .catch(() => {
+        // 保存失败时只回滚本次提交的字段，让开关回到服务端当前状态；错误提示由请求层统一弹出。
+        const restored = { ...practiceSettings.value }
+        for (const key of Object.keys(payload) as Array<keyof PracticeSettings>) {
+          restored[key] = previous[key]
+          lastValues[key] = previous[key]
+        }
+        practiceSettings.value = restored
+      })
   },
   { deep: true },
 )
