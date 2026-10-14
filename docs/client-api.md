@@ -12,11 +12,9 @@ Authorization: Bearer <app-token>
 统一返回体：
 
 ```ts
-interface ApiResponse<T> {
-  ok: boolean
-  message?: string // 成功可省略，失败必填
-  data: T | null
-}
+type ApiResponse<T> =
+  | { ok: true; data: T; message?: string }
+  | { ok: false; data: null; message: string }
 
 interface PaginationResult<T> {
   items: T[]
@@ -29,6 +27,11 @@ HTTP 2xx、`ok: true` 表示成功；HTTP 4xx/5xx、`ok: false` 表示失败，�
 失败返回 `{ ok: false, message, data: null }`，`message` 必填。
 仅明确需要服务端动态提示时，成功响应才可携带字符串 `message`；普通成功提示由前端按操作场景展示。
 分页参数默认 `page=1&limit=20`，`limit` 最大为 `100`。
+
+所有 `/api/*` 请求正文上限为 **1 MiB（1,048,576 字节）**，按 UTF-8 字节计，
+包括没有 Content-Length 的流式请求；超限在鉴权和 JSON 校验之前返回
+`HTTP 413`、`{ ok: false, message: "请求体不能超过 1 MiB", data: null }`。
+正文大小限制不代替各接口的字段校验，也不是请求频率限制。
 
 接口结果以 **HTTP status** 判定：`2xx` 成功；`400` 参数/请求体校验失败；`401` 登录凭证错误、未登录
 或 token 失效；`403` 权限不足；`404` 资源不存在；`409` 唯一/状态冲突；`500` 服务端异常；`503`
