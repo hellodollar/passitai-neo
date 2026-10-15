@@ -1,4 +1,4 @@
-// Generated from passitai-api/src/constants. Run pnpm sync:domain-values in passitai-api.
+// Generated from passitai-api/src/constants. Run pnpm sync in passitai-api.
 export const domainValues = {
   dataStatus: ['enabled', 'disabled'],
   sourceType: ['system', 'crawler', 'manual', 'import', 'ai'],
