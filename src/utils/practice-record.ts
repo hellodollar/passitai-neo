@@ -29,7 +29,7 @@ import {
 } from '@/utils/practice-record-control'
 
 const SOURCES = ['practice', 'favorites', 'wrong-questions'] as const
-const SUBMISSION_ID_PATTERN = /^rec_[0-9a-f]{12}$/
+const SUBMISSION_ID_PATTERN = /^rec[0-9a-f]{12}$/
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value)

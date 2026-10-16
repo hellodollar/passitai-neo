@@ -7,8 +7,8 @@ const { getCorrectOptionValues, getQuestionOptions, isAnswerCorrect } =
   await loadSource('utils/practice-question.ts')
 
 const question = {
-  id: 'qst_000000000001',
-  subjectId: 'sub_000000000001',
+  id: 'qst000000000001',
+  subjectId: 'sub000000000001',
   title: '哪些说法正确？',
   questionType: 'multiple',
   A: '选项一',

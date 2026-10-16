@@ -16,7 +16,7 @@ type SubmissionPlan =
 
 function createSubmissionId() {
   const bytes = crypto.getRandomValues(new Uint8Array(6))
-  return `rec_${Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')}`
+  return `rec${Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')}`
 }
 
 /** 同版本复用报告；失败重试使用原 ID 和快照，不读取正在编辑的输入。 */

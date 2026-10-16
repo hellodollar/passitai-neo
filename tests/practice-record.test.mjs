@@ -38,10 +38,10 @@ class MemoryStorage {
 
 const now = Date.now() - 1000
 const context = {
-  userId: 'usr_one',
-  paperId: 'pap_one',
+  userId: 'usrone',
+  paperId: 'papone',
   source: 'practice',
-  subjectId: 'sub_one',
+  subjectId: 'subone',
   paperType: 'pastExam',
 }
 const answer = {
@@ -56,7 +56,7 @@ const input = {
   text: '未确认文本',
   values: [],
 }
-const submissionId = 'rec_123456abcdef'
+const submissionId = 'rec123456abcdef'
 const legacyKey = (record = context) =>
   `passitai:practice-draft:v1:${record.userId}:${record.paperId}`
 const recordKey = (record = context) =>
@@ -98,7 +98,7 @@ test('v1 迁移保留答案、未确认输入、位置、时间与待提交 ID�
   storage.setItem(legacyKey(), JSON.stringify(legacyDraft()))
   const record = readPracticeRecord(context)
   assert.equal(record.version, 2)
-  assert.equal(record.subjectId, 'sub_one')
+  assert.equal(record.subjectId, 'subone')
   assert.equal(record.paperType, 'pastExam')
   assert.deepEqual(record.answers, { [answer.questionId]: answer })
   assert.deepEqual(record.inputs, { [input.questionId]: input })
@@ -160,7 +160,7 @@ test('损坏、版本不符或用户不符的旧数据不迁移、不删除', ()
   for (const raw of [
     'bad json',
     JSON.stringify(legacyDraft({ version: 0 })),
-    JSON.stringify(legacyDraft({ userId: 'usr_other' })),
+    JSON.stringify(legacyDraft({ userId: 'usrother' })),
   ]) {
     storage.setItem(legacyKey(), raw)
     assert.equal(readPracticeRecord(context), null)
@@ -171,14 +171,14 @@ test('损坏、版本不符或用户不符的旧数据不迁移、不删除', ()
 
 test('新记录按用户、题集和训练来源隔离，包括相同 fav: ID', () => {
   const identities = [
-    { ...context, source: 'favorites', paperId: 'fav:sub_one', paperType: null },
-    { ...context, source: 'wrong-questions', paperId: 'fav:sub_one', paperType: null },
-    { ...context, source: 'favorites', paperId: 'fav:pap_one', paperType: null },
+    { ...context, source: 'favorites', paperId: 'fav:subone', paperType: null },
+    { ...context, source: 'wrong-questions', paperId: 'fav:subone', paperType: null },
+    { ...context, source: 'favorites', paperId: 'fav:papone', paperType: null },
     {
       ...context,
-      userId: 'usr_other',
+      userId: 'usrother',
       source: 'favorites',
-      paperId: 'fav:sub_one',
+      paperId: 'fav:subone',
       paperType: null,
     },
   ]
@@ -197,7 +197,7 @@ test('新记录按用户、题集和训练来源隔离，包括相同 fav: ID', 
 })
 
 test('v1 的共享集合草稿只迁移到首次访问来源，不复制给另一个来源', () => {
-  const favorites = { ...context, source: 'favorites', paperId: 'fav:sub_one', paperType: null }
+  const favorites = { ...context, source: 'favorites', paperId: 'fav:subone', paperType: null }
   const wrong = { ...favorites, source: 'wrong-questions' }
   storage.setItem(
     legacyKey(favorites),
@@ -208,7 +208,7 @@ test('v1 的共享集合草稿只迁移到首次访问来源，不复制给另�
 })
 
 test('旧集合键删除失败，也不会再次迁移到另一个训练来源', () => {
-  const favorites = { ...context, source: 'favorites', paperId: 'fav:sub_one', paperType: null }
+  const favorites = { ...context, source: 'favorites', paperId: 'fav:subone', paperType: null }
   const wrong = { ...favorites, source: 'wrong-questions' }
   storage.setItem(
     legacyKey(favorites),
@@ -345,7 +345,7 @@ test('登出清理当前账号所有来源及未迁移草稿，不影响其他�
   for (const source of ['practice', 'favorites', 'wrong-questions']) {
     writePracticeRecord(createPracticeRecord({ ...context, source }, now))
   }
-  const other = { ...context, userId: 'usr_other' }
+  const other = { ...context, userId: 'usrother' }
   writePracticeRecord(createPracticeRecord(other, now))
   storage.setItem(legacyKey(), JSON.stringify(legacyDraft()))
   storage.setItem(legacyKey(other), 'other legacy')

@@ -1,11 +1,20 @@
 # Neo 客户端 API
 
-本文记录 Neo 客户端当前接入的接口契约；运行时以服务端实现为准，变更接口时需同步更新本文件、`src/api/` 与 `src/types/domain.ts`。基础路径为 `/api`，仅接受客户端登录签发的 `app` scope
-JWT。除注册、登录外，所有接口都需要：
+本契约以 API 路由、schema 和服务实现为准。唯一源为 `passitai-api/docs/client-api.md`，
+`passitai-neo/docs/client-api.md` 是逐字节镜像，不单独编辑；源文件更新后在 API 执行 `pnpm sync`。
+接口变更同时对齐 Neo 的 `src/api/` 与领域类型。基础路径为 `/api`，仅接受客户端登录签发的
+`app` scope JWT。除注册、登录外，所有接口都需要：
 
 ```http
 Authorization: Bearer <app-token>
 ```
+
+## 导航
+
+- [通用约定](#1-通用约定)
+- [用户](#2-用户模块) · [学习计划](#3-学习计划模块) · [练习](#4-练习模块)
+- [收藏](#5-题目收藏模块) · [错题](#6-错题模块) · [字典选项](#7-字典选项模块)
+- [接口总表](#8-接口总表)
 
 ## 1. 通用约定
 
@@ -27,6 +36,9 @@ HTTP 2xx、`ok: true` 表示成功；HTTP 4xx/5xx、`ok: false` 表示失败，�
 失败返回 `{ ok: false, message, data: null }`，`message` 必填。
 仅明确需要服务端动态提示时，成功响应才可携带字符串 `message`；普通成功提示由前端按操作场景展示。
 分页参数默认 `page=1&limit=20`，`limit` 最大为 `100`。
+
+实体 ID 为资源前缀直接接 12 位小写十六进制，例如 `usrd6b8bfc02727`、`pap32bf50a871c1`。
+交卷 `submissionId` 使用 `rec` 前缀；旧的带下划线格式不再接受，不自动转换旧记录或本地草稿。
 
 所有 `/api/*` 请求正文上限为 **1 MiB（1,048,576 字节）**，按 UTF-8 字节计，
 包括没有 Content-Length 的流式请求；超限在鉴权和 JSON 校验之前返回
@@ -208,7 +220,7 @@ interface UpdatePlanBody {
 | ------- | ------------------------------------------------------------- | ------------------------------ | -------- |
 | `GET`   | `/api/practice/settings`                                      | 获取练习全局配置               | 可用     |
 | `PATCH` | `/api/practice/settings`                                      | 修改练习全局配置               | 可用     |
-| `GET`   | `/api/practice/entries?subjectId=sub_xxx`                     | 获取该科目下的练习入口         | 部分可用 |
+| `GET`   | `/api/practice/entries?subjectId=subxxx`                     | 获取该科目下的练习入口         | 部分可用 |
 | `GET`   | `/api/practice/papers/:paperId`                               | 获取题集内容及最近真实练习记录 | 可用     |
 | `POST`  | `/api/practice/papers/:paperId/submissions`                   | 交卷并创建练习记录             | 可用     |
 | `GET`   | `/api/practice/papers/:paperId/submissions/:submissionId`    | 获取本次交卷记录               | 可用     |
@@ -336,7 +348,7 @@ Section 的所有题目都与 `questionType` 一致；缺失 `questionType` 表�
 
 ```ts
 interface SubmitPracticePaperBody {
-  submissionId: string // 客户端生成 rec_ + 12 位十六进制；同一次交卷重试保持不变
+  submissionId: string // 客户端生成 rec + 12 位十六进制；同一次交卷重试保持不变
   userAnswers: Record<string, string | string[]> // 只传已作答题目；多选为数组，其余为字符串
   startTime?: string // ISO 时间；缺失或晚于交卷时间时使用服务端交卷时间
 }
@@ -380,7 +392,7 @@ interface PracticeSubmission {
 收藏/取消使用训练页三元组请求体（`subjectId` 服务端校验一致后固化）：
 
 ```json
-{ "questionId": "qst_xxx", "subjectId": "sub_xxx", "paperId": "pap_xxx" }
+{ "questionId": "qstxxx", "subjectId": "subxxx", "paperId": "papxxx" }
 ```
 
 题目、题集必须启用、未删除且属于平台或当前用户，题目须在题集中，否则 HTTP 404；
@@ -433,8 +445,8 @@ interface PracticeSubmission {
       name: string // 题型中文名
       questionType: QuestionType
       items: Array<PracticePaperItem & {
-        favId: string | null // 当前用户收藏记录 ID（fav_），未收藏为 null
-        wrongQuestionId: string | null // 错题练习中的错题记录 ID（wrq_）；收藏练习为 null
+        favId: string | null // 当前用户收藏记录 ID（fav），未收藏为 null
+        wrongQuestionId: string | null // 错题练习中的错题记录 ID（wrq）；收藏练习为 null
         subjectId: string | null
         paperId: string | null // 收藏发生时的题集
       }>
@@ -470,7 +482,7 @@ interface PracticeSubmission {
 | Method | Path                                     | 说明                     | 状态 |
 | ------ | ---------------------------------------- | ------------------------ | ---- |
 | `GET`  | `/api/options/majors?code=`              | 获取专业选项（code 选填） | 可用 |
-| `GET`  | `/api/options/subjects?majorId=maj_xxx`  | 根据专业获取科目选项     | 可用 |
+| `GET`  | `/api/options/subjects?majorId=majxxx`  | 根据专业获取科目选项     | 可用 |
 
 统一返回：
 

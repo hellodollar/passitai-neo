@@ -22,7 +22,7 @@ const DEFAULT_SETTINGS = {
 const SESSION = {
   token: 'token',
   user: {
-    id: 'usr_one',
+    id: 'usrone',
     email: 'user@example.com',
     role: 'user',
     createdAt: '2026-01-01T00:00:00Z',
@@ -90,8 +90,8 @@ function installFetch({
 
 function question(overrides = {}) {
   return {
-    id: 'qst_one',
-    subjectId: 'sub_one',
+    id: 'qstone',
+    subjectId: 'subone',
     title: '题目',
     questionType: 'single',
     A: '甲',
@@ -112,7 +112,7 @@ function answer(questionId, values, text = '') {
 
 function setup({
   session = SESSION,
-  context = () => ({ questionId: 'qst_one', subjectId: 'sub_one', paperId: 'pap_one' }),
+  context = () => ({ questionId: 'qstone', subjectId: 'subone', paperId: 'papone' }),
   ...fetchOptions
 } = {}) {
   installFetch(fetchOptions)
@@ -136,60 +136,60 @@ afterEach(() => {
 
 test('无参考答案的选择题既不收录也不移除', async () => {
   const { sync } = setup()
-  await sync.syncOnAnswered(question({ correctAnswer: '' }), answer('qst_one', ['B']))
+  await sync.syncOnAnswered(question({ correctAnswer: '' }), answer('qstone', ['B']))
   assert.equal(requests.length, 0)
 })
 
 test('有关闭记录时答错不写入错题', async () => {
   const { sync } = setup({ settings: { ...DEFAULT_SETTINGS, recordWrongQuestions: false } })
-  await sync.syncOnAnswered(question(), answer('qst_one', ['B']))
+  await sync.syncOnAnswered(question(), answer('qstone', ['B']))
   assert.equal(requests.length, 0)
 })
 
 test('答错按题目上下文收录错题', async () => {
   const { sync } = setup()
-  await sync.syncOnAnswered(question(), answer('qst_one', ['B']))
+  await sync.syncOnAnswered(question(), answer('qstone', ['B']))
   assert.deepEqual(requests, [
     {
       method: 'POST',
       href: '/api/wrong-questions',
-      body: { questionId: 'qst_one', subjectId: 'sub_one', paperId: 'pap_one' },
+      body: { questionId: 'qstone', subjectId: 'subone', paperId: 'papone' },
     },
   ])
 })
 
 test('答对开启自动移除时按上下文移除错题', async () => {
   const { sync } = setup({ settings: { ...DEFAULT_SETTINGS, removeMistakeOnCorrect: true } })
-  await sync.syncOnAnswered(question(), answer('qst_one', ['A']))
+  await sync.syncOnAnswered(question(), answer('qstone', ['A']))
   assert.deepEqual(requests, [
     {
       method: 'DELETE',
       href: '/api/wrong-questions',
-      body: { questionId: 'qst_one', subjectId: 'sub_one', paperId: 'pap_one' },
+      body: { questionId: 'qstone', subjectId: 'subone', paperId: 'papone' },
     },
   ])
 })
 
 test('答对但未开启自动移除时不请求移除', async () => {
   const { sync } = setup({ settings: { ...DEFAULT_SETTINGS, removeMistakeOnCorrect: false } })
-  await sync.syncOnAnswered(question(), answer('qst_one', ['A']))
+  await sync.syncOnAnswered(question(), answer('qstone', ['A']))
   assert.equal(requests.length, 0)
 })
 
 test('非选择题与缺少上下文的题目不触发同步', async () => {
   const { sync } = setup({ context: () => null })
-  await sync.syncOnAnswered(question({ questionType: 'essay' }), answer('qst_one', [], '作答'))
-  await sync.syncOnAnswered(question(), answer('qst_one', ['B']))
+  await sync.syncOnAnswered(question({ questionType: 'essay' }), answer('qstone', [], '作答'))
+  await sync.syncOnAnswered(question(), answer('qstone', ['B']))
   assert.equal(requests.length, 0)
 })
 
 test('等待设置期间账号切换后不再同步', async () => {
   const { auth, sync } = setup({ deferSettings: true })
-  const pending = sync.syncOnAnswered(question(), answer('qst_one', ['B']))
+  const pending = sync.syncOnAnswered(question(), answer('qstone', ['B']))
   await Promise.resolve()
   await Promise.resolve()
   assert.ok(resolveSettings, '设置请求应已发出')
-  auth.session = { ...SESSION, user: { ...SESSION.user, id: 'usr_two' } }
+  auth.session = { ...SESSION, user: { ...SESSION.user, id: 'usrtwo' } }
   resolveSettings()
   await pending
   assert.equal(requests.length, 0)
@@ -197,25 +197,25 @@ test('等待设置期间账号切换后不再同步', async () => {
 
 test('上下文按题隔离，各自携带真实题集与科目', async () => {
   const contexts = {
-    qst_a: { questionId: 'qst_a', subjectId: 'sub_a', paperId: 'pap_a' },
-    qst_b: { questionId: 'qst_b', subjectId: 'sub_b', paperId: 'pap_b' },
+    qsta: { questionId: 'qsta', subjectId: 'suba', paperId: 'papa' },
+    qstb: { questionId: 'qstb', subjectId: 'subb', paperId: 'papb' },
   }
   const { sync } = setup({ context: (id) => contexts[id] ?? null })
-  await sync.syncOnAnswered(question({ id: 'qst_a', subjectId: 'sub_a' }), answer('qst_a', ['B']))
-  await sync.syncOnAnswered(question({ id: 'qst_b', subjectId: 'sub_b' }), answer('qst_b', ['B']))
+  await sync.syncOnAnswered(question({ id: 'qsta', subjectId: 'suba' }), answer('qsta', ['B']))
+  await sync.syncOnAnswered(question({ id: 'qstb', subjectId: 'subb' }), answer('qstb', ['B']))
   assert.deepEqual(
     requests.map((request) => request.body),
     [
-      { questionId: 'qst_a', subjectId: 'sub_a', paperId: 'pap_a' },
-      { questionId: 'qst_b', subjectId: 'sub_b', paperId: 'pap_b' },
+      { questionId: 'qsta', subjectId: 'suba', paperId: 'papa' },
+      { questionId: 'qstb', subjectId: 'subb', paperId: 'papb' },
     ],
   )
 })
 
 test('同步失败只提示一次，后续不再重复打扰', async () => {
   const { sync } = setup({ mistakeStatus: 500 })
-  await sync.syncOnAnswered(question(), answer('qst_one', ['B']))
-  await sync.syncOnAnswered(question(), answer('qst_one', ['B']))
+  await sync.syncOnAnswered(question(), answer('qstone', ['B']))
+  await sync.syncOnAnswered(question(), answer('qstone', ['B']))
   assert.equal(requests.length, 2)
   const toasts = useToasts().value
   assert.equal(toasts.length, 1)

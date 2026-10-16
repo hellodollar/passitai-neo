@@ -18,10 +18,10 @@ const { buildSubmissionResult } = await loadSource('utils/practice-result.ts')
 
 const startedAt = Date.now() - 1000
 const context = {
-  userId: 'usr_one',
-  paperId: 'pap_one',
+  userId: 'usrone',
+  paperId: 'papone',
   source: 'practice',
-  subjectId: 'sub_one',
+  subjectId: 'subone',
   paperType: 'pastExam',
 }
 const questions = [
@@ -33,8 +33,8 @@ const fingerprints = { que_one: 'fp1', que_two: 'fp2', que_three: 'fp3' }
 const single = { questionId: 'que_one', fingerprint: 'fp1', text: '甲', values: ['A'] }
 const multiple = { questionId: 'que_two', fingerprint: 'fp2', text: '甲、乙', values: ['A', 'B'] }
 const textInput = { questionId: 'que_three', fingerprint: 'fp3', text: '未确认', values: [] }
-const id1 = 'rec_123456abcdef'
-const id2 = 'rec_abcdef123456'
+const id1 = 'rec123456abcdef'
+const id2 = 'recabcdef123456'
 const createRecord = (answers = {}, inputs = {}) =>
   updatePracticeRecord(createPracticeRecord(context, startedAt), {
     startedAt,
@@ -67,6 +67,14 @@ beforeEach(() => {
 afterEach(() => {
   if (previousWindow === undefined) delete globalThis.window
   else globalThis.window = previousWindow
+})
+
+test('交卷生成不含下划线的 rec 实体 ID，同版本重试沿用原 ID', () => {
+  const plan = preparePracticeSubmission(createRecord(), {})
+  assert.equal(plan.kind, 'submit')
+  assert.match(plan.pending.submissionId, /^rec[0-9a-f]{12}$/)
+  const retried = preparePracticeSubmission(plan.record, {})
+  assert.equal(retried.pending.submissionId, plan.pending.submissionId)
 })
 
 test('全部已答、部分已答、零作答均可交卷并生成报告，未确认输入不算已答', () => {
@@ -214,8 +222,8 @@ test('旧请求迟到不能清除补答后的新快照、输入或覆盖更新�
 test('其他账号、题集、来源或不匹配的交卷响应不能登记到当前记录', () => {
   const plan = preparePracticeSubmission(createRecord(), {}, () => id1)
   for (const invalid of [
-    { ...plan.record, userId: 'usr_two' },
-    { ...plan.record, paperId: 'pap_two' },
+    { ...plan.record, userId: 'usrtwo' },
+    { ...plan.record, paperId: 'paptwo' },
     { ...plan.record, source: 'favorites' },
     { ...plan.record, answerRevision: -1 },
   ]) {
@@ -225,14 +233,14 @@ test('其他账号、题集、来源或不匹配的交卷响应不能登记到�
     settlePracticeSubmission(plan.record, plan.record, response(plan, { id: id2 })),
   )
   assert.throws(() =>
-    settlePracticeSubmission(plan.record, plan.record, response(plan, { paperId: 'pap_two' })),
+    settlePracticeSubmission(plan.record, plan.record, response(plan, { paperId: 'paptwo' })),
   )
   assert.throws(() => preparePracticeSubmission({ ...plan.record, source: 'wrong-questions' }, {}))
 })
 
 test('默认生成的提交 ID 满足接口格式，缺失交卷时间时使用确认时间', () => {
   const plan = preparePracticeSubmission(createRecord(), {})
-  assert.match(plan.pending.submissionId, /^rec_[0-9a-f]{12}$/)
+  assert.match(plan.pending.submissionId, /^rec[0-9a-f]{12}$/)
   const saved = settlePracticeSubmission(
     plan.record,
     plan.record,

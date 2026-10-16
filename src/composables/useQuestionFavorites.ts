@@ -76,7 +76,7 @@ export function useQuestionFavorites(options: FavoriteOptions) {
         if (isCurrent()) favoriteIds.delete(questionId)
       } else {
         const result = await options.add(context!)
-        if (!result?.favId?.startsWith('fav_')) throw new Error('缺少有效的收藏 ID')
+        if (!result?.favId?.startsWith('fav')) throw new Error('缺少有效的收藏 ID')
         if (isCurrent()) favoriteIds.set(questionId, result.favId)
       }
     } catch {

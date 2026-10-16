@@ -44,9 +44,9 @@ class MemoryStorage {
   }
 }
 const context = {
-  userId: 'usr_one',
-  paperId: 'pap_one',
-  subjectId: 'sub_one',
+  userId: 'usrone',
+  paperId: 'papone',
+  subjectId: 'subone',
   source: 'practice',
   paperType: 'pastExam',
 }
@@ -70,7 +70,7 @@ const entries = [
     name: '历年真题',
     answeredCount: 999,
     questionCount: 8,
-    children: [{ paperId: 'pap_one', name: '测试', answeredCount: 999, questionCount: 8 }],
+    children: [{ paperId: 'papone', name: '测试', answeredCount: 999, questionCount: 8 }],
   },
 ]
 const previousWindow = globalThis.window
@@ -99,8 +99,8 @@ test('首页进度只取本地已确认答案；没有记录为 0，接口进度
     0,
   )
   for (const mismatch of [
-    { ...record, userId: 'usr_other' },
-    { ...record, subjectId: 'sub_other' },
+    { ...record, userId: 'usrother' },
+    { ...record, subjectId: 'subother' },
     { ...record, source: 'favorites' },
     { ...record, paperType: 'mock' },
   ]) {
@@ -116,7 +116,7 @@ test('本地进度按题集累加且不超过题目总数，未确认输入不�
   const record = makeRecord()
   record.answers.que_empty = { ...answer, questionId: 'que_empty', text: '', values: [] }
   const second = {
-    ...makeRecord({ ...context, paperId: 'pap_two' }),
+    ...makeRecord({ ...context, paperId: 'paptwo' }),
     answers: { que_a: answer, que_b: answer },
   }
   const directory = [
@@ -124,7 +124,7 @@ test('本地进度按题集累加且不超过题目总数，未确认输入不�
       ...entries[0],
       children: [
         ...entries[0].children,
-        { paperId: 'pap_two', name: '第二集', questionCount: 1, answeredCount: 0 },
+        { paperId: 'paptwo', name: '第二集', questionCount: 1, answeredCount: 0 },
       ],
     },
   ]
@@ -144,18 +144,18 @@ test('本地进度按题集累加且不超过题目总数，未确认输入不�
 test('单题集清除答案、输入、位置及提交状态，不删除另一个来源或账号记录', () => {
   const original = makeRecord()
   original.pendingSubmission = {
-    submissionId: 'rec_123456abcdef',
+    submissionId: 'rec123456abcdef',
     answerRevision: original.answerRevision,
     payload: null,
   }
   original.lastSubmission = {
-    submissionId: 'rec_abcdef123456',
+    submissionId: 'recabcdef123456',
     answerRevision: 0,
     submittedAt: new Date().toISOString(),
   }
   writePracticeRecord(original)
   const otherSource = { ...context, source: 'favorites', paperType: null }
-  const otherUser = { ...context, userId: 'usr_other' }
+  const otherUser = { ...context, userId: 'usrother' }
   writePracticeRecord(makeRecord(otherSource))
   writePracticeRecord(makeRecord(otherUser))
   assert.equal(clearPracticeRecords({ kind: 'paper', identity: context }), true)
@@ -172,10 +172,10 @@ test('单题集清除答案、输入、位置及提交状态，不删除另一�
 test('分类清理跨科目覆盖全部目标题集，其他分类和收藏、错题均不受影响', () => {
   const contexts = [
     context,
-    { ...context, paperId: 'pap_two', subjectId: 'sub_two' },
-    { ...context, paperId: 'pap_mock', paperType: 'mock' },
-    { ...context, paperId: 'fav:sub_one', source: 'favorites', paperType: null },
-    { ...context, paperId: 'fav:sub_one', source: 'wrong-questions', paperType: null },
+    { ...context, paperId: 'paptwo', subjectId: 'subtwo' },
+    { ...context, paperId: 'papmock', paperType: 'mock' },
+    { ...context, paperId: 'fav:subone', source: 'favorites', paperType: null },
+    { ...context, paperId: 'fav:subone', source: 'wrong-questions', paperType: null },
   ]
   const records = contexts.map((ctx) => makeRecord(ctx))
   records.forEach(writePracticeRecord)
@@ -225,7 +225,7 @@ test('未知分类的 v1 不猜测迁移，分类清理后延迟打开也不恢�
 })
 
 test('收藏旧键删除失败后，清理屏障阻止它再次迁移到错题，但不影响错题 v2', () => {
-  const favorites = { ...context, paperId: 'fav:sub_one', source: 'favorites', paperType: null }
+  const favorites = { ...context, paperId: 'fav:subone', source: 'favorites', paperType: null }
   const wrong = { ...favorites, source: 'wrong-questions' }
   const old = {
     version: 1,
@@ -247,7 +247,7 @@ test('收藏旧键删除失败后，清理屏障阻止它再次迁移到错题�
 test('清除全部含收藏/错题本地作答和旧草稿，不碰其他用户、登录和刷题设置', () => {
   for (const source of ['practice', 'favorites', 'wrong-questions'])
     writePracticeRecord(makeRecord({ ...context, source }))
-  const other = { ...context, userId: 'usr_other' }
+  const other = { ...context, userId: 'usrother' }
   writePracticeRecord(makeRecord(other))
   storage.setItem(legacyKey(), '{}')
   storage.setItem('passitai:auth-session', 'auth')
@@ -282,7 +282,7 @@ test('删除原键失败时屏障仍使旧记录不可读、不可回写，不�
 })
 
 test('清理后的迟到交卷响应不能登记报告，也不能复用旧提交', () => {
-  const old = preparePracticeSubmission(makeRecord(), { que_one: 'A' }, () => 'rec_123456abcdef')
+  const old = preparePracticeSubmission(makeRecord(), { que_one: 'A' }, () => 'rec123456abcdef')
   const response = {
     id: old.pending.submissionId,
     paperId: context.paperId,
@@ -299,10 +299,10 @@ test('清理后的迟到交卷响应不能登记报告，也不能复用旧提�
 
 test('先后清理不同分类或单题集保留独立屏障，不使之前清理的记录重新有效', () => {
   const past = makeRecord()
-  const mock = makeRecord({ ...context, paperId: 'pap_mock', paperType: 'mock' })
+  const mock = makeRecord({ ...context, paperId: 'papmock', paperType: 'mock' })
   clearPracticeRecords({ kind: 'category', userId: context.userId, paperType: 'pastExam' })
   clearPracticeRecords({ kind: 'category', userId: context.userId, paperType: 'mock' })
-  clearPracticeRecords({ kind: 'paper', identity: { ...context, paperId: 'pap_other' } })
+  clearPracticeRecords({ kind: 'paper', identity: { ...context, paperId: 'papother' } })
   assert.equal(isPracticeRecordCurrent(past), false)
   assert.equal(isPracticeRecordCurrent(mock), false)
 })

@@ -70,7 +70,7 @@ const route = useRoute()
 const auth = useAuthStore()
 const practice = usePracticeStore()
 
-/** 收藏/错题练习模式：路由 paperId 形如 fav:<sub_xxx|pap_xxx>，query.source 指明集合 */
+/** 收藏/错题练习模式：路由 paperId 形如 fav:<subxxx|papxxx>，query.source 指明集合 */
 const COLLECTION_PAPER_PREFIX = 'fav:'
 const collectionMode = computed(() => {
   const paperId = route.params.paperId
@@ -223,7 +223,7 @@ const wrongCount = computed(
 /** 收藏/记错上下文：真实题集取路由参数；fav: 虚拟题集取题目固化的收录上下文 */
 function collectionContext(questionId: string): CollectionContext | null {
   const routePaperId = String(route.params.paperId ?? '')
-  if (routePaperId.startsWith('pap_')) {
+  if (routePaperId.startsWith('pap')) {
     const subjectId = currentQuestions.value[0]?.subjectId ?? ''
     if (!subjectId) return null
     return { questionId, subjectId, paperId: routePaperId }
@@ -595,10 +595,10 @@ function handlePaperStateAction() {
   exitPractice()
 }
 
-/** 收藏/错题练习数据加载：fav:<sub_xxx> 按科目 / fav:<pap_xxx> 按题集 */
+/** 收藏/错题练习数据加载：fav:<subxxx> 按科目 / fav:<papxxx> 按题集 */
 async function loadCollectionPaper(paperId: string) {
   const originId = paperId.slice(COLLECTION_PAPER_PREFIX.length)
-  const params = originId.startsWith('pap_') ? { paperId: originId } : { subjectId: originId }
+  const params = originId.startsWith('pap') ? { paperId: originId } : { subjectId: originId }
   const { paper } =
     collectionSource.value === 'wrong-questions'
       ? await fetchMistakePractice(params)

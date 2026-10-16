@@ -134,7 +134,7 @@ test('返回原列表及完整条件；旧链接按来源兜底，外链和练�
     '//evil.test',
     '/\\evil.test',
     '/login',
-    '/practice/papers/pap_x',
+    '/practice/papers/papx',
     ['/', '/favorites'],
   ]) {
     assert.equal(practiceReturnTarget({ returnTo }, false), '/')

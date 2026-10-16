@@ -8,7 +8,7 @@ const { usePracticeStore } = await loadSource('stores/practice.ts')
 const { STORAGE_KEYS } = await loadSource('constants/app.ts')
 const previousFetch = globalThis.fetch
 const session = { token: 'old-session-token',
-  user: { id: 'usr_fixture', email: 'fixture@example.invalid', role: 'user' } }
+  user: { id: 'usrfixture', email: 'fixture@example.invalid', role: 'user' } }
 
 class MemoryStorage {
   items = new Map()

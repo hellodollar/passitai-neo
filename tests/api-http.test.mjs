@@ -81,7 +81,7 @@ function storedSession() {
 function persist(token) {
   globalThis.window.localStorage.setItem(
     STORAGE_KEYS.authSession,
-    JSON.stringify({ token, user: { id: 'usr_1' } }),
+    JSON.stringify({ token, user: { id: 'usr1' } }),
   )
 }
 
@@ -157,7 +157,7 @@ test('HTTP 200 缺少 ok、ok 类型错误或 ok: false 时拒绝协议且不清
 
 test('业务数据中的 false 不影响接口成功，包括答错题', async () => {
   handler = () => envelope({ isCorrect: false })
-  assert.deepEqual(await request('/practice/records/rec_fixture/submit', { method: 'POST' }),
+  assert.deepEqual(await request('/practice/records/recfixture/submit', { method: 'POST' }),
     { isCorrect: false })
 })
 

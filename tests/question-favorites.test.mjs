@@ -7,7 +7,7 @@ const { useQuestionFavorites } = await loadSource('composables/useQuestionFavori
 const { preparePracticePaper } = await loadSource('utils/practice-paper.ts')
 
 const question = {
-  id: 'qst_one',
+  id: 'qstone',
   title: '题目',
   questionType: 'single',
   A: '一',
@@ -18,10 +18,10 @@ const question = {
   F: null,
   correctAnswer: 'A',
   explanation: null,
-  subjectId: 'sub_one',
-  paperId: 'pap_origin',
-  favId: 'fav_old',
-  wrongQuestionId: 'wrq_one',
+  subjectId: 'subone',
+  paperId: 'paporigin',
+  favId: 'favold',
+  wrongQuestionId: 'wrqone',
 }
 
 function fixture({ collectionMode = true, items = [question], ids = [] } = {}) {
@@ -38,7 +38,7 @@ function fixture({ collectionMode = true, items = [question], ids = [] } = {}) {
     scopeKey: () => scope,
     add: async (context) => {
       calls.push(['add', context])
-      return { favId: 'fav_new' }
+      return { favId: 'favnew' }
     },
     remove: async (context) => {
       calls.push(['remove', context])
@@ -70,9 +70,9 @@ test('收藏聚合取消、重加、再次取消使用新 favId，保留原题�
   assert.equal(controller.currentQuestionFavorited.value, true)
   await controller.toggleFavorite()
   assert.deepEqual(calls, [
-    ['removeById', 'fav_old'],
-    ['add', { questionId: 'qst_one', subjectId: 'sub_one', paperId: 'pap_origin' }],
-    ['removeById', 'fav_new'],
+    ['removeById', 'favold'],
+    ['add', { questionId: 'qstone', subjectId: 'subone', paperId: 'paporigin' }],
+    ['removeById', 'favnew'],
   ])
   assert.equal(controller.currentQuestionFavorited.value, false)
 })
@@ -81,7 +81,7 @@ test('普通刷题取消仍使用三元组，不改成 ID 删除', async () => {
   const { controller, calls } = fixture({
     collectionMode: false,
     items: [{ ...question, favId: null }],
-    ids: ['qst_one'],
+    ids: ['qstone'],
   })
   await controller.toggleFavorite()
   await controller.toggleFavorite()
@@ -89,9 +89,9 @@ test('普通刷题取消仍使用三元组，不改成 ID 删除', async () => {
   assert.equal(calls[0][0], 'remove')
   assert.equal(calls[2][0], 'remove')
   assert.deepEqual(calls[2][1], {
-    questionId: 'qst_one',
-    subjectId: 'sub_one',
-    paperId: 'pap_origin',
+    questionId: 'qstone',
+    subjectId: 'subone',
+    paperId: 'paporigin',
   })
 })
 
@@ -99,12 +99,12 @@ test('错题页从 favId 初始化状态，未收藏的题不能把 wrq ID 当�
   const known = fixture()
   assert.equal(known.controller.currentQuestionFavorited.value, true)
   await known.controller.toggleFavorite()
-  assert.deepEqual(known.calls, [['removeById', 'fav_old']])
+  assert.deepEqual(known.calls, [['removeById', 'favold']])
   const unknown = fixture({ items: [{ ...question, favId: null }] })
   assert.equal(unknown.controller.currentQuestionFavorited.value, false)
   await unknown.controller.toggleFavorite()
   await unknown.controller.toggleFavorite()
-  assert.deepEqual(unknown.calls[1], ['removeById', 'fav_new'])
+  assert.deepEqual(unknown.calls[1], ['removeById', 'favnew'])
 })
 
 test('取消失败恢复收藏状态，重试仍使用有效 ID', async () => {
@@ -119,7 +119,7 @@ test('取消失败恢复收藏状态，重试仍使用有效 ID', async () => {
     calls.push(['retry', id])
   }
   await controller.toggleFavorite()
-  assert.deepEqual(calls, [['retry', 'fav_old']])
+  assert.deepEqual(calls, [['retry', 'favold']])
   assert.equal(controller.favoriteError.value, '')
 })
 
@@ -137,10 +137,10 @@ test('同题请求未完成不能重复切换，切到别题不影响原题处�
   await controller.toggleFavorite()
   assert.equal(requests, 1)
   assert.equal(controller.currentQuestionFavoritePending.value, true)
-  changeQuestion('qst_other')
+  changeQuestion('qstother')
   resolve()
   await pending
-  changeQuestion('qst_one')
+  changeQuestion('qstone')
   assert.equal(controller.currentQuestionFavoritePending.value, false)
   assert.equal(controller.currentQuestionFavorited.value, false)
 })
@@ -172,7 +172,7 @@ test('收藏成功迟到响应不能登记到新页面，缺少 favId 的响应�
     })
   const pending = controller.toggleFavorite()
   controller.resetFavorites()
-  resolve({ favId: 'fav_late' })
+  resolve({ favId: 'favlate' })
   await pending
   assert.equal(controller.currentQuestionFavorited.value, false)
   options.add = async () => null
@@ -182,15 +182,15 @@ test('收藏成功迟到响应不能登记到新页面，缺少 favId 的响应�
 })
 
 test('按科目无顶层 ID 的多题集聚合可以整理，逐题保留各自题集和 favId', () => {
-  const second = { ...question, id: 'qst_two', paperId: 'pap_another', favId: 'fav_two' }
+  const second = { ...question, id: 'qsttwo', paperId: 'papanother', favId: 'favtwo' }
   const paper = preparePracticePaper({
     name: '科目',
-    subjectId: 'sub_one',
+    subjectId: 'subone',
     questionCount: 2,
     sections: [{ name: '单选题', questionType: 'single', items: [question, second] }],
   })
-  assert.equal(paper.groups[0].key, 'sub_one-0')
-  assert.equal(paper.itemsById.get('qst_one').paperId, 'pap_origin')
-  assert.equal(paper.itemsById.get('qst_two').paperId, 'pap_another')
-  assert.equal(paper.itemsById.get('qst_two').favId, 'fav_two')
+  assert.equal(paper.groups[0].key, 'subone-0')
+  assert.equal(paper.itemsById.get('qstone').paperId, 'paporigin')
+  assert.equal(paper.itemsById.get('qsttwo').paperId, 'papanother')
+  assert.equal(paper.itemsById.get('qsttwo').favId, 'favtwo')
 })
