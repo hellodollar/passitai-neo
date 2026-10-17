@@ -202,7 +202,7 @@ interface UpdatePlanBody {
 }
 ```
 
-计划存储在当前用户的 `preferences.plan`。`majorId` 必须指向启用且未删除的专业，否则返回资源不存在。
+计划存储在当前用户的 `preferences.plan`。`majorId` 必须指向启用且未删除的专业，否则返回资源不存在。所选科目的 `majorIds` 必须包含该专业 ID，且科目启用、未删除。
 提交的每个 `subjectId` 都必须属于该专业、启用且未删除；任一科目不符合时返回 HTTP 400，
 计划保持不变。`educationLevel`、`nextExamDate` 均从所选专业读取。
 
@@ -495,7 +495,7 @@ interface OptionItem {
 ```
 
 仅返回启用且未删除的数据。`/api/options/majors` 支持 `code` 精确过滤；`/api/options/subjects`
-支持 `majorId` 过滤。
+支持单个 `majorId` 过滤，精确匹配科目 `majorIds` 数组中的专业 ID。
 
 ## 8. 接口总表
 
