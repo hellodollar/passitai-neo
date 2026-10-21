@@ -22,9 +22,11 @@ import StudyPlanModal from '@/components/practice/StudyPlanModal.vue'
 import PracticeSettingsModal from '@/components/settings/PracticeSettingsModal.vue'
 import PracticeRecordsModal from '@/components/practice/PracticeRecordsModal.vue'
 import { useAuthStore } from '@/stores/auth'
+import { usePlanStore } from '@/stores/plan'
 import type { StudyPlan, PracticeSettings, UserMe } from '@/types'
 
 const auth = useAuthStore()
+const planStore = usePlanStore()
 const router = useRouter()
 const signingOut = ref(false)
 const accountModalOpen = ref(false)
@@ -122,6 +124,8 @@ async function loadMe() {
 }
 
 function onPlanUpdated(plan: StudyPlan) {
+  // 同步首页数据缓存,避免首页继续渲染旧计划
+  planStore.applyPlan(plan)
   if (me.value) {
     me.value.preferences.plan = plan
   }

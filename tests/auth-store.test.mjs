@@ -5,6 +5,7 @@ import { loadSource } from './helpers/load-source.mjs'
 
 const { useAuthStore } = await loadSource('stores/auth.ts')
 const { usePracticeStore } = await loadSource('stores/practice.ts')
+const { usePlanStore } = await loadSource('stores/plan.ts')
 const { STORAGE_KEYS } = await loadSource('constants/app.ts')
 const previousFetch = globalThis.fetch
 const session = { token: 'old-session-token',
@@ -28,12 +29,15 @@ beforeEach(() => {
 })
 afterEach(() => { globalThis.fetch = previousFetch })
 
-test('改密码后的本地清理不再调用已经失效的 Token 登出，并清除设置缓存', () => {
+test('改密码后的本地清理不再调用已经失效的 Token 登出，并清除设置与首页数据缓存', () => {
   globalThis.fetch = () => { throw new Error('Local session reset must not request logout') }
   const auth = useAuthStore()
   const practice = usePracticeStore()
+  const plan = usePlanStore()
   practice.settingsLoaded = true
   practice.settings = { autoNext: true }
+  plan.planLoaded = true
+  plan.plan = { majorName: '汉语言文学' }
   assert.equal(auth.isAuthenticated, true)
   auth.clearLocalSession()
   assert.equal(auth.isAuthenticated, false)
@@ -42,6 +46,8 @@ test('改密码后的本地清理不再调用已经失效的 Token 登出，并�
   assert.equal(window.localStorage.getItem(STORAGE_KEYS.authSession), null)
   assert.equal(practice.settingsLoaded, false)
   assert.equal(practice.settings, null)
+  assert.equal(plan.planLoaded, false)
+  assert.equal(plan.plan, null)
   auth.clearLocalSession() // repeated cleanup remains harmless
 })
 

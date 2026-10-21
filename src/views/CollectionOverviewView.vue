@@ -18,6 +18,7 @@ import { clearFavorites, fetchFavoriteAggregate } from '@/api/favorites'
 import { clearMistakes, fetchMistakeAggregate } from '@/api/wrong-questions'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
+import PagePlaceholder from '@/components/common/PagePlaceholder.vue'
 import { ROUTE_NAMES } from '@/constants/app'
 import { useAuthStore } from '@/stores/auth'
 import { useBrowseScroll } from '@/composables/useBrowseScroll'
@@ -342,7 +343,7 @@ watch(
 </script>
 
 <template>
-  <section class="flex min-h-[calc(100dvh-8rem)] flex-col" :aria-busy="loading">
+  <section class="relative flex min-h-[calc(100dvh-8rem)] flex-col" :aria-busy="loading">
     <header class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
       <div class="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
         <h2 class="shrink-0 text-lg font-semibold leading-tight">{{ pageTitle }}</h2>
@@ -454,16 +455,14 @@ watch(
       </div>
     </div>
 
-    <p v-if="loading" class="sr-only" role="status">正在加载列表</p>
+    <p v-if="loading && items.length > 0" class="sr-only" role="status">正在加载列表</p>
 
-    <div v-if="loading && items.length === 0" class="flex flex-1 items-center justify-center py-16">
+    <PagePlaceholder v-if="loading && items.length === 0" role="status">
       <span class="loading loading-spinner loading-md text-primary"></span>
-    </div>
+      <p class="text-sm font-medium text-base-content/65">正在加载…</p>
+    </PagePlaceholder>
 
-    <div
-      v-else-if="loadError && items.length === 0"
-      class="flex flex-1 items-center justify-center py-16"
-    >
+    <PagePlaceholder v-else-if="loadError && items.length === 0">
       <EmptyState
         :icon="AlertCircle"
         tone="error"
@@ -472,9 +471,9 @@ watch(
         action-label="重新加载"
         @action="loadSubjects"
       />
-    </div>
+    </PagePlaceholder>
 
-    <div v-else-if="items.length === 0" class="flex flex-1 items-center justify-center py-16">
+    <PagePlaceholder v-else-if="items.length === 0">
       <EmptyState
         :icon="isFavorites ? BookMarked : XCircle"
         :title="emptyTitle"
@@ -482,7 +481,7 @@ watch(
         action-label="去练习"
         action-to="/"
       />
-    </div>
+    </PagePlaceholder>
 
     <div v-else class="mt-2 grid content-start gap-2">
       <div

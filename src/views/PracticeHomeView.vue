@@ -20,15 +20,14 @@ import { useRoute, useRouter } from 'vue-router'
 import logoPassitai from '@/assets/icons/icon-passitai.svg'
 import BaseModal from '@/components/common/BaseModal.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
+import PagePlaceholder from '@/components/common/PagePlaceholder.vue'
 import StudyPlanModal from '@/components/practice/StudyPlanModal.vue'
 import PracticeSettingsModal from '@/components/settings/PracticeSettingsModal.vue'
 import { useLocalPracticeRecords } from '@/composables/useLocalPracticeRecords'
-import { fetchPracticeEntries } from '@/api/practice'
-import { fetchPlan } from '@/api/plan'
-import { fetchMajorOptions, fetchSubjectOptions } from '@/api/options'
 import { ROUTE_NAMES } from '@/constants/app'
 import { BASELINE_CHILD_ICONS } from '@/constants/practice-icons'
 import { useAuthStore } from '@/stores/auth'
+import { usePlanStore } from '@/stores/plan'
 import { usePracticeStore } from '@/stores/practice'
 import { useBrowseScroll } from '@/composables/useBrowseScroll'
 import { homeSelection, readBrowseState, writeBrowseState } from '@/utils/browse-state'
@@ -52,8 +51,12 @@ const activeSubjectId = ref('')
 const settingsModalOpen = ref(false)
 const subjectPanelOpen = ref(false)
 const planModalOpen = ref(false)
-const plan = ref<StudyPlan | null>(null)
-const planLoading = ref(false)
+// 计划与题集目录来自 plan store:有缓存时挂载即渲染,仅在首次加载(未成功也未失败)时显示整页加载态
+const planStore = usePlanStore()
+const plan = computed<StudyPlan | null>(() => planStore.plan)
+const planLoading = computed(
+  () => !planStore.planLoaded && (planStore.planFetching || !planStore.planFailed),
+)
 
 const subjectOrder = ref<string[]>(initialBrowse.subjectOrder)
 const hiddenSubjectCodes = ref<Set<string>>(new Set(initialBrowse.hiddenSubjectCodes))
@@ -205,24 +208,19 @@ function entryToneClasses(tone: EntryTone) {
 function selectSubject(code: string) {
   activeSubjectCode.value = code
   expandedEntryKey.value = 'baseline'
-  persistHomeSelection()
+  syncSelectionQuery()
 }
 
 function selectEntry(key: string) {
   expandedEntryKey.value = key
-  persistHomeSelection()
+  syncSelectionQuery()
 }
 
-function persistHomeSelection() {
+/** URL 只由用户操作更新;数据加载链路不回写,避免 query ↔ 状态互相触发的同步回路。 */
+function syncSelectionQuery() {
   if (route.name !== ROUTE_NAMES.practiceHome) return
   const subjectCode = activeSubject.value?.code ?? ''
   const entry = expandedEntryKey.value || 'baseline'
-  writeBrowseState(auth.session?.user.id ?? '', 'home', {
-    subjectCode,
-    entry,
-    subjectOrder: subjectOrder.value,
-    hiddenSubjectCodes: [...hiddenSubjectCodes.value],
-  })
   if (route.query.subjectCode !== (subjectCode || undefined) || route.query.entry !== entry) {
     void router.replace({ query: { ...route.query, subjectCode: subjectCode || undefined, entry } })
   }
@@ -256,7 +254,6 @@ function moveSubject(code: string, direction: -1 | 1) {
   if (!current) return
   codes.splice(nextIndex, 0, current)
   subjectOrder.value = codes
-  persistHomeSelection()
 }
 
 function toggleSubjectVisibility(code: string) {
@@ -268,7 +265,7 @@ function toggleSubjectVisibility(code: string) {
   }
   hiddenSubjectCodes.value = nextCodes
   syncSubjectOrder()
-  persistHomeSelection()
+  syncSelectionQuery()
 }
 
 function startEntryPaper(child: PracticeEntryChild) {
@@ -289,50 +286,36 @@ function startEntryPaper(child: PracticeEntryChild) {
   })
 }
 
-// 计划只有科目 code；进入题集前按专业解析真实 subjectId。
-const subjectIdsByMajorCode = new Map<string, Map<string, string>>()
+// 计划只有科目 code;subjectId 映射与题集目录走 plan store 缓存,重复进入/切换科目不再全量拉取。
 let entryLoadSequence = 0
-let planLoadSequence = 0
-
-async function getSubjectIdMap(majorCode: string) {
-  if (!majorCode) return null
-  const cached = subjectIdsByMajorCode.get(majorCode)
-  if (cached) return cached
-
-  const majors = await fetchMajorOptions({ code: majorCode })
-  const majorId = majors.find((major) => major.code === majorCode)?.id
-  if (!majorId) return null
-  const subjects = await fetchSubjectOptions(majorId)
-  const subjectIds = new Map(subjects.map((subject) => [subject.code, subject.id]))
-  subjectIdsByMajorCode.set(majorCode, subjectIds)
-  return subjectIds
-}
 
 async function loadEntries() {
   const sequence = ++entryLoadSequence
   const userId = auth.session?.user.id
-  activeSubjectId.value = ''
   const subject = activeSubject.value
   if (!subject) {
     entries.value = []
     entriesLoading.value = false
-    if (plan.value && !planLoading.value) void browseScroll.restore()
+    if (planStore.planLoaded && !planLoading.value) void browseScroll.restore()
     return
   }
-  entries.value = []
+  // 切换科目时保留上一科目的内容与进度,仅在尚无内容时显示占位加载
   entriesLoading.value = true
   try {
-    const subjectIds = await getSubjectIdMap(planMajorCode.value)
+    const subjectIds = await planStore.ensureSubjectIdMap(planMajorCode.value)
     if (sequence !== entryLoadSequence) return
     const subjectId = subjectIds?.get(subject.code)
-    if (!subjectId) return
+    if (!subjectId) {
+      entries.value = []
+      return
+    }
 
-    const loadedEntries = await fetchPracticeEntries(subjectId)
+    const loadedEntries = await planStore.ensureEntries(subjectId)
     if (sequence !== entryLoadSequence || auth.session?.user.id !== userId) return
     activeSubjectId.value = subjectId
     // 目录已给出真实科目及分类，可迁移这些题集的旧记录；不额外拉取作答接口。
     if (userId) {
-      for (const entry of loadedEntries) {
+      for (const entry of loadedEntries ?? []) {
         for (const child of entry.children ?? []) {
           readPracticeRecord({
             userId,
@@ -345,11 +328,13 @@ async function loadEntries() {
       }
       refreshLocalRecords()
     }
-    entries.value = loadedEntries
-    if (!entries.value.some((entry) => entry.type === expandedEntryKey.value)) {
+    entries.value = loadedEntries ?? []
+    const entryMatched = (loadedEntries ?? []).some(
+      (entry) => entry.type === expandedEntryKey.value,
+    )
+    if (entries.value.length > 0 && !entryMatched) {
       expandedEntryKey.value = entries.value[0]?.type ?? ''
     }
-    persistHomeSelection()
   } catch {
     if (sequence !== entryLoadSequence) return
     entries.value = []
@@ -370,63 +355,56 @@ async function loadEntries() {
   }
 }
 
-async function loadPlan() {
-  const sequence = ++planLoadSequence
-  planLoading.value = true
-  try {
-    const loadedPlan = await fetchPlan()
-    if (sequence === planLoadSequence) plan.value = loadedPlan
-  } catch {
-    if (sequence === planLoadSequence) plan.value = null
-  } finally {
-    if (sequence === planLoadSequence) {
-      planLoading.value = false
-      if (!hasStudyPlan.value) void browseScroll.restore()
-    }
-  }
-}
-
 function handlePlanUpdated(updated: StudyPlan) {
-  planLoadSequence++
-  planLoading.value = false
-  plan.value = updated
+  planStore.applyPlan(updated)
 }
 
 onMounted(() => {
-  void loadPlan()
+  void planStore.ensurePlan()
 })
 
 onBeforeUnmount(() => {
-  planLoadSequence++
   entryLoadSequence++
 })
 
 watch([() => route.query.subjectCode, () => route.query.entry], () => {
   const selection = homeSelection(route.query, readBrowseState(auth.session?.user.id ?? '', 'home'))
-  activeSubjectCode.value = selection.subjectCode
-  expandedEntryKey.value = selection.entry
+  if (selection.subjectCode !== activeSubjectCode.value) {
+    activeSubjectCode.value = selection.subjectCode
+  }
+  if (selection.entry !== expandedEntryKey.value) {
+    expandedEntryKey.value = selection.entry
+  }
   syncSubjectOrder()
+})
+
+// 选中态与科目管理变化只写入本地记忆(按账号),URL 不在此回写。
+watch([activeSubjectCode, expandedEntryKey, subjectOrder, hiddenSubjectCodes], () => {
+  if (route.name !== ROUTE_NAMES.practiceHome) return
+  writeBrowseState(auth.session?.user.id ?? '', 'home', {
+    subjectCode: activeSubject.value?.code ?? '',
+    entry: expandedEntryKey.value || 'baseline',
+    subjectOrder: subjectOrder.value,
+    hiddenSubjectCodes: [...hiddenSubjectCodes.value],
+  })
 })
 
 watch(
   () => auth.session?.user.id,
   (userId) => {
-    planLoadSequence++
     entryLoadSequence++
     const state = readBrowseState(userId ?? '', 'home')
     const selection = homeSelection({}, state)
     browseScroll.reset()
-    plan.value = null
-    planLoading.value = false
+    // plan 缓存已由 auth store 按会话清空,这里重置本页状态并拉取新账号计划
     entries.value = []
     entriesLoading.value = false
     activeSubjectId.value = ''
-    subjectIdsByMajorCode.clear()
     subjectOrder.value = state.subjectOrder
     hiddenSubjectCodes.value = new Set(state.hiddenSubjectCodes)
     activeSubjectCode.value = selection.subjectCode
     expandedEntryKey.value = selection.entry
-    if (userId) void loadPlan()
+    if (userId) void planStore.ensurePlan()
   },
 )
 
@@ -458,23 +436,18 @@ watch(
 
 <template>
   <section
-    class="flex min-h-[calc(100dvh-8rem)] w-full min-w-0 max-w-full flex-col gap-4 overflow-x-hidden"
+    class="relative flex min-h-[calc(100dvh-8rem)] w-full min-w-0 max-w-full flex-col gap-4 overflow-x-hidden"
   >
     <header class="flex h-9 shrink-0 items-center">
       <img :src="logoPassitai" alt="Passitai" class="h-8 w-auto" />
     </header>
 
-    <section
-      v-if="planLoading"
-      class="flex flex-1 flex-col items-center justify-center gap-3"
-      role="status"
-      aria-live="polite"
-    >
+    <PagePlaceholder v-if="planLoading" role="status" aria-live="polite">
       <span class="loading loading-spinner loading-md text-primary"></span>
       <p class="text-sm font-medium text-base-content/65">正在获取练习计划…</p>
-    </section>
+    </PagePlaceholder>
 
-    <section v-else-if="!hasStudyPlan" class="flex flex-1 items-center justify-center">
+    <PagePlaceholder v-else-if="!hasStudyPlan">
       <EmptyState
         :icon="Target"
         title="暂无练习计划"
@@ -482,7 +455,7 @@ watch(
         action-label="设置计划"
         @action="planModalOpen = true"
       />
-    </section>
+    </PagePlaceholder>
 
     <template v-else>
       <section class="overflow-hidden rounded-2xl border border-base-200 bg-base-100">
@@ -616,7 +589,7 @@ watch(
         </div>
 
         <div
-          v-else-if="entriesLoading"
+          v-else-if="entriesLoading && entryRows.length === 0"
           class="flex min-h-20 items-center justify-center border-t border-base-200"
         >
           <span class="loading loading-spinner loading-xs text-base-content/40"></span>
@@ -630,7 +603,16 @@ watch(
         </div>
 
         <template v-else>
-          <div class="border-t border-base-200 px-4 py-3">
+          <!-- 切换科目加载期间保留上一科目内容:降透明提示更新中,点击由 entriesLoading 拦截 -->
+          <div
+            class="relative border-t border-base-200 px-4 py-3 transition-opacity"
+            :class="entriesLoading ? 'opacity-50' : 'opacity-100'"
+          >
+            <span
+              v-if="entriesLoading"
+              class="absolute right-3 top-3 loading loading-spinner loading-xs text-base-content/40"
+              aria-hidden="true"
+            ></span>
             <div class="grid grid-cols-4 gap-1.5">
               <button
                 v-for="entry in entryRows"
