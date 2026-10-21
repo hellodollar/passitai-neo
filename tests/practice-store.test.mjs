@@ -79,13 +79,11 @@ afterEach(() => {
   globalThis.fetch = previousFetch
 })
 
-test('练习运行态开始与结束', () => {
+test('clearSettings 只清设置缓存', () => {
   const store = practice()
-  assert.equal(store.practiceActive, false)
-  store.startPractice()
-  assert.equal(store.practiceActive, true)
-  store.endPractice()
-  assert.equal(store.practiceActive, false)
+  store.clearSettings()
+  assert.equal(store.settings, null)
+  assert.equal(store.settingsLoaded, false)
 })
 
 test('设置 GET 缓存且并发去重', async () => {
@@ -209,15 +207,6 @@ test('新会话设置写入后旧 PATCH 返回不能覆盖新缓存', async () =
   assert.equal(store.settingsLoaded, true)
 })
 
-test('clearSettings 只清设置缓存，不改变练习运行态', () => {
-  const store = practice()
-  store.startPractice()
-  store.clearSettings()
-  assert.equal(store.practiceActive, true)
-  assert.equal(store.settings, null)
-  assert.equal(store.settingsLoaded, false)
-})
-
 test('PATCH 失败抛出且不伪报成功，原缓存保持', async () => {
   const store = practice()
   await store.ensureSettings()
@@ -227,4 +216,33 @@ test('PATCH 失败抛出且不伪报成功，原缓存保持', async () => {
   await assert.rejects(store.patchSettings({ autoNext: true }))
   assert.deepEqual(store.settings, SETTINGS)
   assert.equal(store.settingsLoaded, true)
+
+  // 队列不因失败中断:后续 PATCH 仍可提交
+  handler = ({ body }) => envelope({ ...SETTINGS, ...body })
+  await store.patchSettings({ loopAfterCompletion: true })
+  assert.deepEqual(store.settings, { ...SETTINGS, loopAfterCompletion: true })
+})
+
+test('连续 PATCH 串行提交，前一个完成后才发出下一个，顺序与调用一致', async () => {
+  const first = defer()
+  let patches = 0
+  handler = ({ method, body }) => {
+    if (method !== 'PATCH') return envelope(SETTINGS)
+    patches += 1
+    return patches === 1 ? first.promise : envelope({ ...SETTINGS, ...body })
+  }
+  const store = practice()
+  const firstRequest = store.patchSettings({ autoNext: true })
+  const secondRequest = store.patchSettings({ recordWrongQuestions: false })
+  await flush()
+  await flush()
+  // 第二个 PATCH 在队列中等待,未发出
+  assert.equal(requests.length, 1)
+
+  first.resolve(envelope({ ...SETTINGS, autoNext: true }))
+  await Promise.all([firstRequest, secondRequest])
+  assert.deepEqual(
+    requests.map((request) => request.body),
+    [{ autoNext: true }, { recordWrongQuestions: false }],
+  )
 })

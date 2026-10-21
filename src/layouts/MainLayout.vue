@@ -1,11 +1,15 @@
 <script setup lang="ts">
 import { BookMarked, Home, UserRound, XCircle } from '@lucide/vue'
-import { RouterView } from 'vue-router'
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 
 import BottomTabBar from '@/components/BottomTabBar.vue'
-import { usePracticeStore } from '@/stores/practice'
 
-const practice = usePracticeStore()
+const route = useRoute()
+
+// 练习/报告路由隐藏壳层。由路由 meta 而非命令式状态驱动:
+// 壳层变化与视图切换落在同一次渲染,旧页面不会先于导航重排闪动。
+const practiceShell = computed(() => Boolean(route.meta.practiceShell))
 
 const navItems = [
   { label: '首页', to: '/', icon: Home },
@@ -20,15 +24,12 @@ const navItems = [
     <div
       class="mx-auto min-h-screen w-full max-w-[32rem] overflow-x-hidden bg-base-100 [--app-header-height:0rem] md:border-x md:border-base-300"
     >
-      <main
-        class="overflow-x-hidden px-5"
-        :class="practice.practiceActive ? 'pb-0 pt-0' : 'pb-24 pt-5'"
-      >
+      <main class="overflow-x-hidden px-5" :class="practiceShell ? 'pb-0 pt-0' : 'pb-24 pt-5'">
         <RouterView />
       </main>
 
       <BottomTabBar
-        v-if="!practice.practiceActive"
+        v-if="!practiceShell"
         class="fixed bottom-0 left-1/2 z-30 w-full max-w-[32rem] -translate-x-1/2 border-t border-base-200 bg-base-100/95 px-3 pb-[calc(0.45rem+env(safe-area-inset-bottom))] pt-1.5 backdrop-blur"
         :items="navItems"
       />

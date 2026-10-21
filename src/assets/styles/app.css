@@ -94,3 +94,50 @@ svg {
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* 题目横滑舞台:松手后轨道吸附;时长与 useQuestionSwipe 的 SETTLE_DURATION_MS 保持一致 */
+.question-track-settling {
+  transition: transform 250ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/* 答题卡跨题跳转时新题按方向轻量入场;相邻切题由舞台位移完成,不使用此动画 */
+@keyframes question-enter-from-next {
+  from {
+    opacity: 0.5;
+    transform: translateX(2rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes question-enter-from-prev {
+  from {
+    opacity: 0.5;
+    transform: translateX(-2rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.question-enter-from-next {
+  animation: question-enter-from-next 220ms ease-out;
+}
+
+.question-enter-from-prev {
+  animation: question-enter-from-prev 220ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .question-track-settling {
+    transition-duration: 1ms;
+  }
+
+  .question-enter-from-next,
+  .question-enter-from-prev {
+    animation: none;
+  }
+}

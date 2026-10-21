@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { ArrowLeft, CircleAlert, Clock3 } from '@lucide/vue'
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { fetchPracticePaper, fetchPracticeSubmission } from '@/api/practice'
 import BaseModal from '@/components/common/BaseModal.vue'
 import { practiceReturnTarget, returnFromPractice } from '@/utils/browse-state'
 import { QUESTION_TYPE_LABELS } from '@/constants/entity'
-import { usePracticeStore } from '@/stores/practice'
 import { buildSubmissionResult } from '@/utils/practice-result'
 import type {
   PracticeResultQuestion,
@@ -18,7 +17,6 @@ import type {
 
 const router = useRouter()
 const route = useRoute()
-const practice = usePracticeStore()
 
 const result = ref<PracticeSubmissionResult | null>(null)
 const loading = ref(true)
@@ -82,7 +80,7 @@ async function loadResult() {
       detail,
       submission,
       paperId.value,
-      typeof route.query.subject === 'string' ? route.query.subject : '',
+      typeof route.query.subjectName === 'string' ? route.query.subjectName : '',
     )
   } catch {
     if (requestId !== loadRequestId) return
@@ -121,10 +119,6 @@ function returnToPractice() {
   returnFromPractice(router, practiceReturnTarget(route.query, false))
 }
 
-onMounted(() => {
-  practice.startPractice()
-})
-
 watch(
   [paperId, submissionId],
   () => {
@@ -132,10 +126,6 @@ watch(
   },
   { immediate: true },
 )
-
-onBeforeUnmount(() => {
-  practice.endPractice()
-})
 </script>
 
 <template>

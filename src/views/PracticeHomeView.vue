@@ -28,7 +28,6 @@ import { ROUTE_NAMES } from '@/constants/app'
 import { BASELINE_CHILD_ICONS } from '@/constants/practice-icons'
 import { useAuthStore } from '@/stores/auth'
 import { usePlanStore } from '@/stores/plan'
-import { usePracticeStore } from '@/stores/practice'
 import { useBrowseScroll } from '@/composables/useBrowseScroll'
 import { homeSelection, readBrowseState, writeBrowseState } from '@/utils/browse-state'
 import { readPracticeRecord } from '@/utils/practice-record'
@@ -37,7 +36,6 @@ import type { PracticeEntry, PracticeEntryChild, StudyPlan } from '@/types'
 
 const router = useRouter()
 const route = useRoute()
-const practice = usePracticeStore()
 const auth = useAuthStore()
 const browseScroll = useBrowseScroll(
   () => auth.session?.user.id ?? '',
@@ -278,11 +276,10 @@ function startEntryPaper(child: PracticeEntryChild) {
       entry: expandedEntryKey.value || 'baseline',
     },
   }).fullPath
-  practice.startPractice()
   router.push({
     name: ROUTE_NAMES.practicePaper,
     params: { paperId: child.paperId },
-    query: { subject: activeSubject.value?.name ?? '', returnTo },
+    query: { subjectName: activeSubject.value?.name ?? '', returnTo },
   })
 }
 
@@ -590,14 +587,14 @@ watch(
 
         <div
           v-else-if="entriesLoading && entryRows.length === 0"
-          class="flex min-h-20 items-center justify-center border-t border-base-200"
+          class="flex min-h-44 items-center justify-center border-t border-base-200"
         >
           <span class="loading loading-spinner loading-xs text-base-content/40"></span>
         </div>
 
         <div
           v-else-if="entryRows.length === 0"
-          class="border-t border-base-200 px-4 py-8 text-center"
+          class="flex min-h-44 items-center justify-center border-t border-base-200 px-4 text-center"
         >
           <p class="text-sm text-base-content/65">{{ activeSubject.name }} 暂无可用练习内容</p>
         </div>
@@ -640,9 +637,10 @@ watch(
             </div>
           </div>
 
+          <!-- 题集列表保持统一最小高度:空态/单条/多条之间切换时卡片不塌陷、不跳动 -->
           <div
             v-if="activeEntryChildren.length > 0"
-            class="min-w-0 divide-y divide-base-200 border-t border-base-200"
+            class="min-h-44 min-w-0 divide-y divide-base-200 border-t border-base-200"
           >
             <button
               v-for="child in activeEntryChildren"
@@ -686,8 +684,11 @@ watch(
             </button>
           </div>
 
-          <div v-else-if="activeEntry" class="px-4 py-5 text-center">
-            <p class="text-xs text-base-content/45">
+          <div
+            v-else-if="activeEntry"
+            class="flex min-h-44 items-center justify-center border-t border-base-200 px-5 text-center"
+          >
+            <p class="text-xs leading-relaxed text-base-content/45">
               {{ activeEntry.description || '当前入口暂无可用内容' }}
             </p>
           </div>

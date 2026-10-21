@@ -282,7 +282,7 @@ function startPractice(item: CollectionAggregateItem) {
   void router.push({
     name: ROUTE_NAMES.practicePaper,
     params: { paperId: `fav:${originId}` },
-    query: { source: props.source, subject: item.subjectName, returnTo },
+    query: { source: props.source, subjectName: item.subjectName, returnTo },
   })
 }
 

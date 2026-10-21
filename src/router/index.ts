@@ -46,11 +46,13 @@ const router = createRouter({
           path: 'practice/papers/:paperId',
           name: ROUTE_NAMES.practicePaper,
           component: () => import('@/views/PracticePaperView.vue'),
+          meta: { practiceShell: true },
         },
         {
           path: 'practice/papers/:paperId/result',
           name: ROUTE_NAMES.practicePaperResult,
           component: () => import('@/views/PracticeResultView.vue'),
+          meta: { practiceShell: true },
         },
         {
           path: 'favorites',

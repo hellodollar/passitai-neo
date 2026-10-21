@@ -17,6 +17,7 @@ import PracticeQuestionPanel from '@/components/practice/PracticeQuestionPanel.v
 import QuestionSheetModal from '@/components/practice/QuestionSheetModal.vue'
 import PracticeSettingsModal from '@/components/settings/PracticeSettingsModal.vue'
 import { usePracticeNavigation } from '@/composables/usePracticeNavigation'
+import { useQuestionSwipe } from '@/composables/useQuestionSwipe'
 import { useQuestionFavorites } from '@/composables/useQuestionFavorites'
 import { useMistakeSync } from '@/composables/useMistakeSync'
 import {
@@ -110,25 +111,65 @@ let unsubscribeRecordChanges = () => {}
 /** 加载时的原始题目数据（PracticePaperItem），供交卷本地快照使用 */
 const paperItemsById = ref<Map<string, PracticePaperItem>>(new Map())
 const paperLoadState = ref<PaperLoadState>('loading')
+/** 横滑舞台容器,用于测量宽度与绑定触摸事件 */
+const questionStage = ref<HTMLElement | null>(null)
 
-const { clearAutoAdvance, handleTouchEnd, handleTouchStart, scheduleAutoAdvance } =
-  usePracticeNavigation({
-    currentIndex,
-    questionCount: () => currentQuestions.value.length,
-    suspended: () =>
-      paperLoadState.value !== 'ready' ||
-      questionSheetOpen.value ||
-      settingsModalOpen.value ||
-      submitConfirmOpen.value ||
-      clearRecordConfirmOpen.value,
-  })
+/** 悬浮层打开或试卷未就绪时,横滑与键盘切题一并挂起 */
+const navigationSuspended = () =>
+  paperLoadState.value !== 'ready' ||
+  questionSheetOpen.value ||
+  settingsModalOpen.value ||
+  submitConfirmOpen.value ||
+  clearRecordConfirmOpen.value
+
+const {
+  dragOffset: swipeOffset,
+  settling: swipeSettling,
+  enterFrom: swipeEnterFrom,
+  moveBy: moveQuestionBy,
+  jumpTo: jumpToQuestion,
+  reset: resetSwipe,
+  onTouchStart: onSwipeTouchStart,
+  onTouchMove: onSwipeTouchMove,
+  onTouchEnd: onSwipeTouchEnd,
+} = useQuestionSwipe({
+  index: currentIndex,
+  count: () => currentQuestions.value.length,
+  stageWidth: () => questionStage.value?.clientWidth ?? 0,
+  suspended: navigationSuspended,
+})
+
+const { clearAutoAdvance, scheduleAutoAdvance } = usePracticeNavigation({
+  currentIndex,
+  questionCount: () => currentQuestions.value.length,
+  suspended: navigationSuspended,
+  move: (direction) => moveQuestionBy(direction),
+})
 
 const currentQuestion = computed(() => currentQuestions.value[currentIndex.value])
 const currentPaperTitle = computed(() => paperTitle.value || '练习')
 const paperSubjectName = computed(() => {
-  const subject = route.query.subject
-  return typeof subject === 'string' ? subject : ''
+  const subjectName = route.query.subjectName
+  return typeof subjectName === 'string' ? subjectName : ''
 })
+/** 横滑舞台的相邻题:仅作拖拽预览,不可交互 */
+const prevQuestion = computed(() => currentQuestions.value[currentIndex.value - 1])
+const nextQuestion = computed(() => currentQuestions.value[currentIndex.value + 1])
+const questionEnterClass = computed(() => {
+  if (swipeEnterFrom.value === 1) return 'question-enter-from-next'
+  if (swipeEnterFrom.value === -1) return 'question-enter-from-prev'
+  return ''
+})
+
+/** 相邻题面板的作答回显:与当前题一致,取自已确认答案或未确认草稿 */
+function neighborPanelState(question: QuestionListItem) {
+  const record = answerRecords.value[question.id] ?? inputDrafts.value[question.id]
+  return {
+    selectedValues: new Set(record?.values ?? []),
+    textAnswer: record?.text ?? '',
+    answerRecord: answerRecords.value[question.id],
+  }
+}
 const currentAnswerRecord = computed(() =>
   currentQuestion.value ? answerRecords.value[currentQuestion.value.id] : undefined,
 )
@@ -184,9 +225,9 @@ const paperStateContent = computed(() => {
   return {
     icon: ClipboardList,
     iconClasses: 'bg-primary/10 text-primary',
-    title: '暂无题目',
-    description: '这个练习包没有题目，换一个试试。',
-    primaryLabel: '更换练习包',
+    title: '空题集',
+    description: '换一个题集试试吧。',
+    primaryLabel: '返回练习',
     showSecondaryAction: false,
   }
 })
@@ -324,6 +365,7 @@ function resetClearedRecord() {
   loadSequence++
   answerRecords.value = {}
   inputDrafts.value = {}
+  resetSwipe()
   currentIndex.value = 0
   practiceStartedAt.value = Date.now()
   localRecord.value = createPracticeRecord(record, practiceStartedAt.value)
@@ -444,6 +486,7 @@ async function submitCurrentAnswer() {
   pendingSubmissionId.value = ''
   saveRecordNow()
   void syncOnAnswered(question, record)
+  void maybeAutoSubmitOnComplete(sequence)
 
   // 仅「答对 + 开启自动切题」时前进；设置请求期间若用户已手动切题，不再跳过新题。
   if (isChoiceQuestionType(question.questionType) && isAnswerCorrect(record, question)) {
@@ -459,6 +502,21 @@ async function submitCurrentAnswer() {
       scheduleAutoAdvance()
     }
   }
+}
+
+/** 答完最后一题时按设置自动交卷;仅真实题集,收藏/错题纯刷题无交卷概念。 */
+async function maybeAutoSubmitOnComplete(sequence: number) {
+  if (collectionMode.value || submitting.value || submitConfirmOpen.value) return
+  const settings = await practice.ensureSettings()
+  if (
+    !settings?.autoSubmitAfterCompletion ||
+    sequence !== loadSequence ||
+    currentQuestions.value.length === 0 ||
+    answeredCount.value !== currentQuestions.value.length
+  ) {
+    return
+  }
+  await confirmSubmitPaper()
 }
 
 function requestSubmitPaper() {
@@ -515,13 +573,12 @@ async function confirmSubmitPaper() {
 
     if (!isCurrentSubmissionContext(sequence, record)) return
     submitConfirmOpen.value = false
-    practice.endPractice()
     await router.replace({
       name: ROUTE_NAMES.practicePaperResult,
       params: { paperId: paperIdParam },
       query: {
         submissionId,
-        subject: subjectName || undefined,
+        subjectName: subjectName || undefined,
         returnTo: practiceReturnTarget(route.query, false),
       },
     })
@@ -575,13 +632,12 @@ async function reconcilePendingSubmission(sequence: number, record: PracticeReco
 function goToQuestion(index: number) {
   if (index < 0 || index >= currentQuestions.value.length) return
   clearAutoAdvance()
-  currentIndex.value = index
+  jumpToQuestion(index)
   questionSheetOpen.value = false
 }
 
 function exitPractice() {
   saveRecordNow()
-  practice.endPractice()
   returnFromPractice(router, practiceReturnTarget(route.query, collectionMode.value))
 }
 
@@ -614,6 +670,7 @@ async function loadPaperData() {
   submitConfirmOpen.value = false
   submitError.value = ''
   paperLoadState.value = 'loading'
+  resetSwipe()
   currentIndex.value = 0
   currentQuestions.value = []
   questionSheetGroups.value = []
@@ -705,7 +762,6 @@ async function loadPaperData() {
 }
 
 onMounted(() => {
-  practice.startPractice()
   void practice.ensureSettings()
   window.addEventListener('pagehide', saveRecordNow)
   document.addEventListener('visibilitychange', saveRecordWhenHidden)
@@ -719,7 +775,6 @@ onBeforeUnmount(() => {
   loadSequence++
   window.removeEventListener('pagehide', saveRecordNow)
   document.removeEventListener('visibilitychange', saveRecordWhenHidden)
-  practice.endPractice()
 })
 
 function saveRecordWhenHidden() {
@@ -786,23 +841,110 @@ watch(questionSheetOpen, (open) => {
       </div>
     </section>
 
+    <!-- 题目舞台:上一题/当前题/下一题三栏,横滑跟手,相邻题随拖拽露出 -->
     <article
       v-else-if="currentQuestion"
       class="-mx-5 flex min-w-0 flex-1 flex-col pb-[calc(5rem+env(safe-area-inset-bottom))] pt-[calc(3.85rem+env(safe-area-inset-top))]"
-      @touchstart.passive="handleTouchStart"
-      @touchend.passive="handleTouchEnd"
     >
-      <PracticeQuestionPanel
-        :question="currentQuestion"
-        :subject-name="paperSubjectName"
-        :selected-values="selectedOptionValues"
-        :text-answer="textAnswer"
-        :answer-record="currentAnswerRecord"
-        @toggle-option="toggleOption"
-        @confirm-answer="submitCurrentAnswer()"
-        @update:text-answer="onTextAnswer"
-      />
+      <div
+        ref="questionStage"
+        class="relative flex min-w-0 flex-1 flex-col overflow-x-clip [touch-action:pan-y_pinch-zoom]"
+        @touchstart.passive="onSwipeTouchStart"
+        @touchmove.passive="onSwipeTouchMove"
+        @touchend.passive="onSwipeTouchEnd"
+        @touchcancel.passive="onSwipeTouchEnd"
+      >
+        <div
+          class="relative flex min-w-0 flex-1 flex-col will-change-transform"
+          :class="swipeSettling ? 'question-track-settling' : ''"
+          :style="swipeOffset ? { transform: `translateX(${swipeOffset}px)` } : undefined"
+        >
+          <!-- 定位容器按槽位固定且不加 key,避免题目在槽位间移动时跨模板复用导致样式错位 -->
+          <div
+            class="pointer-events-none absolute inset-y-0 left-[-100%] w-full overflow-hidden"
+            aria-hidden="true"
+            inert
+          >
+            <PracticeQuestionPanel
+              v-if="prevQuestion"
+              :question="prevQuestion"
+              :subject-name="paperSubjectName"
+              v-bind="neighborPanelState(prevQuestion)"
+            />
+          </div>
+
+          <div
+            class="relative flex min-w-0 flex-1 flex-col"
+            :class="questionEnterClass"
+          >
+            <PracticeQuestionPanel
+              :key="currentQuestion.id"
+              :question="currentQuestion"
+              :subject-name="paperSubjectName"
+              :selected-values="selectedOptionValues"
+              :text-answer="textAnswer"
+              :answer-record="currentAnswerRecord"
+              @toggle-option="toggleOption"
+              @confirm-answer="submitCurrentAnswer()"
+              @update:text-answer="onTextAnswer"
+            />
+          </div>
+
+          <div
+            class="pointer-events-none absolute inset-y-0 right-[-100%] w-full overflow-hidden"
+            aria-hidden="true"
+            inert
+          >
+            <PracticeQuestionPanel
+              v-if="nextQuestion"
+              :question="nextQuestion"
+              :subject-name="paperSubjectName"
+              v-bind="neighborPanelState(nextQuestion)"
+            />
+          </div>
+        </div>
+      </div>
     </article>
+
+    <!-- 空态/失效/失败占位:与加载态、题目舞台互斥,v-else-if 链不可被其他节点打断 -->
+    <section
+      v-else-if="paperLoadState !== 'ready'"
+      class="-mx-5 flex flex-1 items-center justify-center px-7 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-[calc(5rem+env(safe-area-inset-top))]"
+    >
+      <div class="w-full max-w-sm text-center">
+        <span
+          class="mx-auto flex size-14 items-center justify-center rounded-full"
+          :class="paperStateContent.iconClasses"
+        >
+          <component :is="paperStateContent.icon" :size="24" />
+        </span>
+
+        <h2 class="mt-4 text-base font-semibold text-base-content">
+          {{ paperStateContent.title }}
+        </h2>
+        <p class="mt-1.5 text-sm leading-relaxed text-base-content/55">
+          {{ paperStateContent.description }}
+        </p>
+
+        <div class="mx-auto mt-5 grid max-w-[15rem] gap-2.5">
+          <button
+            class="btn btn-primary h-11 min-h-11 rounded-full px-6 text-sm"
+            type="button"
+            @click="handlePaperStateAction"
+          >
+            {{ paperStateContent.primaryLabel }}
+          </button>
+          <button
+            v-if="paperStateContent.showSecondaryAction"
+            class="btn btn-ghost h-10 min-h-10 rounded-full text-sm text-base-content/55"
+            type="button"
+            @click="exitPractice"
+          >
+            返回练习
+          </button>
+        </div>
+      </div>
+    </section>
 
     <div
       v-if="currentQuestion"
@@ -860,45 +1002,6 @@ watch(questionSheetOpen, (open) => {
         </button>
       </div>
     </div>
-
-    <section
-      v-else-if="paperLoadState !== 'ready'"
-      class="-mx-5 flex flex-1 items-center justify-center px-7 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-[calc(5rem+env(safe-area-inset-top))]"
-    >
-      <div class="w-full max-w-sm text-center">
-        <span
-          class="mx-auto flex size-14 items-center justify-center rounded-full"
-          :class="paperStateContent.iconClasses"
-        >
-          <component :is="paperStateContent.icon" :size="24" />
-        </span>
-
-        <h2 class="mt-4 text-base font-semibold text-base-content">
-          {{ paperStateContent.title }}
-        </h2>
-        <p class="mt-1.5 text-sm leading-relaxed text-base-content/55">
-          {{ paperStateContent.description }}
-        </p>
-
-        <div class="mx-auto mt-5 grid max-w-[15rem] gap-2.5">
-          <button
-            class="btn btn-primary h-11 min-h-11 rounded-full px-6 text-sm"
-            type="button"
-            @click="handlePaperStateAction"
-          >
-            {{ paperStateContent.primaryLabel }}
-          </button>
-          <button
-            v-if="paperStateContent.showSecondaryAction"
-            class="btn btn-ghost h-10 min-h-10 rounded-full text-sm text-base-content/55"
-            type="button"
-            @click="exitPractice"
-          >
-            返回练习
-          </button>
-        </div>
-      </div>
-    </section>
 
     <QuestionSheetModal
       v-model="questionSheetOpen"
