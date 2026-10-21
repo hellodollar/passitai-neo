@@ -23,13 +23,13 @@ function confirmClear() {
     return
   }
   model.value = false
-  showSuccessToast('做题记录已清除')
+  showSuccessToast('刷题记录已清除')
   emit('cleared')
 }
 </script>
 
 <template>
-  <BaseDialog v-model="model" title="清除做题记录">
+  <BaseDialog v-model="model" title="清除刷题记录">
     <p class="text-sm leading-6 text-base-content/70">
       将清除{{ label }}，操作不可恢复。不影响收藏、错题和交卷报告。
     </p>

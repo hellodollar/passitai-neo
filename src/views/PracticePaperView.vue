@@ -8,7 +8,7 @@ import {
   Grid2X2,
   Settings,
 } from '@lucide/vue'
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import BaseDialog from '@/components/common/BaseDialog.vue'
@@ -90,7 +90,6 @@ const submitting = ref(false)
 const submitError = ref('')
 const pendingSubmissionId = ref('')
 const paperTitle = ref('')
-const paperType = ref<PracticeRecordContext['paperType']>(null)
 const practiceStartedAt = ref(Date.now())
 
 const currentQuestions = ref<QuestionListItem[]>([])
@@ -293,8 +292,10 @@ const hasLocalRecordProgress = computed(
     currentIndex.value > 0 ||
     Boolean(localRecord.value?.pendingSubmission || localRecord.value?.lastSubmission),
 )
-// 仅专项训练提供页内记录清理；收藏、错题及其他题集模式不展示该入口。
-const canClearRecord = computed(() => !collectionMode.value && paperType.value === 'baseline')
+// 所有真实题集都有独立本地记录；收藏/错题练习不展示清除入口。
+const canClearRecord = computed(
+  () => !collectionMode.value && recordReady.value && localRecord.value?.source === 'practice',
+)
 const clearRecordScope = computed(() =>
   localRecord.value
     ? {
@@ -311,7 +312,6 @@ const clearRecordScope = computed(() =>
 function requestClearRecord() {
   if (!canClearRecord.value || !hasLocalRecordProgress.value || submitting.value) return
   clearAutoAdvance()
-  questionSheetOpen.value = false
   clearRecordConfirmOpen.value = true
 }
 
@@ -464,7 +464,6 @@ async function submitCurrentAnswer() {
 function requestSubmitPaper() {
   clearAutoAdvance()
   submitError.value = ''
-  questionSheetOpen.value = false
   submitConfirmOpen.value = true
 }
 
@@ -630,7 +629,6 @@ async function loadPaperData() {
   resetFavorites()
   paperItemsById.value = new Map()
   paperTitle.value = ''
-  paperType.value = null
   clearRecordConfirmOpen.value = false
 
   const paperIdParam = route.params.paperId
@@ -651,7 +649,6 @@ async function loadPaperData() {
         : await loadCollectionPaper(paperIdParam)
     if (sequence !== loadSequence) return
     const { paper } = loaded
-    paperType.value = loaded.paperType
     paperTitle.value = paper.name
     const { questions, groups, fingerprints, itemsById } = preparePracticePaper(paper)
 
@@ -734,6 +731,7 @@ watch(
   () => {
     syncCurrentInput()
     scheduleRecordSave()
+    void nextTick(() => window.scrollTo({ top: 0, left: 0, behavior: 'instant' }))
   },
 )
 
@@ -835,15 +833,9 @@ watch(questionSheetOpen, (open) => {
           :aria-label="`答对 ${correctCount} 题，答错 ${wrongCount} 题`"
         >
           <ClipboardCheck :size="19" />
-          <span class="flex items-center gap-2">
-            <span class="flex items-center gap-1">
-              <span class="size-1.5 rounded-full bg-success" aria-hidden="true"></span>
-              对{{ correctCount }}
-            </span>
-            <span class="flex items-center gap-1">
-              <span class="size-1.5 rounded-full bg-error" aria-hidden="true"></span>
-              错{{ wrongCount }}
-            </span>
+          <span class="flex items-center gap-1">
+            <span class="text-success">对{{ correctCount }}</span>
+            <span class="text-error">错{{ wrongCount }}</span>
           </span>
         </div>
 
@@ -956,7 +948,7 @@ watch(questionSheetOpen, (open) => {
           @click="confirmSubmitPaper"
         >
           <span v-if="submitting" class="loading loading-spinner loading-xs"></span>
-          {{ submitting ? '提交中' : '交卷' }}
+          {{ submitting ? '提交中' : '确定' }}
         </button>
       </template>
     </BaseDialog>
@@ -966,7 +958,7 @@ watch(questionSheetOpen, (open) => {
       v-if="canClearRecord"
       v-model="clearRecordConfirmOpen"
       :scope="clearRecordScope"
-      :label="`“${currentPaperTitle}”的本地做题记录`"
+      :label="`“${currentPaperTitle}”的刷题记录`"
     />
   </section>
 </template>

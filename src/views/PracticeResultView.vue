@@ -96,8 +96,8 @@ function questionStatusClasses(status: PracticeResultQuestionStatus) {
   const map = {
     correct: 'border-success bg-success text-white',
     wrong: 'border-error bg-error text-white',
-    unanswered: 'border-base-300 bg-base-100 text-base-content/45',
-    pending: 'border-warning/30 bg-warning/10 text-warning',
+    unanswered: 'border-base-300 bg-base-100 text-base-content/65',
+    pending: 'border-secondary/30 bg-secondary/10 text-secondary',
   }
   return map[status]
 }
@@ -283,7 +283,7 @@ onBeforeUnmount(() => {
               <span class="size-2 rounded-full border border-base-300 bg-base-100"></span>未答
             </span>
             <span class="flex items-center gap-1.5 text-base-content/65">
-              <span class="size-2 rounded-full bg-warning/60"></span>待批阅
+              <span class="size-2 rounded-full bg-secondary"></span>待批阅
             </span>
           </div>
 
@@ -292,11 +292,13 @@ onBeforeUnmount(() => {
               <p class="mb-2 text-xs font-medium text-base-content/65">
                 {{ QUESTION_TYPE_LABELS[type] }}（{{ questions.length }}题）
               </p>
-              <div class="grid grid-cols-7 justify-items-center gap-2 sm:grid-cols-10">
+              <div
+                class="grid grid-cols-[repeat(auto-fill,minmax(1.75rem,1fr))] justify-items-center gap-x-1 gap-y-1.5"
+              >
                 <button
                   v-for="question in questions"
                   :key="question.id"
-                  class="flex size-9 items-center justify-center rounded-full border text-xs font-semibold tabular-nums transition active:scale-90"
+                  class="flex size-7 items-center justify-center rounded-full border text-xs font-semibold tabular-nums transition-colors active:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                   :class="questionStatusClasses(question.status)"
                   type="button"
                   :aria-label="`第 ${question.index} 题，${statusLabel(question.status)}`"
@@ -336,7 +338,7 @@ onBeforeUnmount(() => {
               'bg-success/10 text-success': selectedQuestion.status === 'correct',
               'bg-error/10 text-error': selectedQuestion.status === 'wrong',
               'bg-base-200 text-base-content/45': selectedQuestion.status === 'unanswered',
-              'bg-warning/10 text-warning': selectedQuestion.status === 'pending',
+              'bg-secondary/10 text-secondary': selectedQuestion.status === 'pending',
             }"
           >
             {{ statusLabel(selectedQuestion.status) }}
@@ -349,7 +351,7 @@ onBeforeUnmount(() => {
 
         <dl class="mt-4 overflow-hidden rounded-xl border border-base-200 divide-y divide-base-200">
           <div class="grid grid-cols-[5rem_minmax(0,1fr)] gap-3 px-3 py-2.5 text-sm">
-            <dt class="text-base-content/65">你的答案</dt>
+            <dt class="text-base-content/65">我的答案</dt>
             <dd :class="selectedQuestion.status === 'wrong' ? 'text-error' : ''">
               {{ selectedQuestion.userAnswer || '未作答' }}
             </dd>

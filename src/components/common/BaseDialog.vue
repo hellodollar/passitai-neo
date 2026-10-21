@@ -19,6 +19,7 @@ const props = withDefaults(
 )
 
 const dialogRef = ref<HTMLElement | null>(null)
+let previousFocus: HTMLElement | null = null
 
 function close() {
   model.value = false
@@ -32,10 +33,35 @@ function handleEscape() {
   if (props.closeOnEscape) close()
 }
 
+function handleTab(event: KeyboardEvent) {
+  const buttons = dialogRef.value?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')
+  const first = buttons?.[0]
+  const last = buttons?.[buttons.length - 1]
+  if (!first || !last) {
+    event.preventDefault()
+    return
+  }
+  if (
+    event.shiftKey &&
+    (document.activeElement === first || document.activeElement === dialogRef.value)
+  ) {
+    event.preventDefault()
+    last.focus()
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault()
+    first.focus()
+  }
+}
+
 watch(model, async (open) => {
-  if (!open) return
+  if (!open) {
+    await nextTick()
+    if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true })
+    return
+  }
+  previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
   await nextTick()
-  dialogRef.value?.focus()
+  dialogRef.value?.focus({ preventScroll: true })
 })
 </script>
 
@@ -51,6 +77,7 @@ watch(model, async (open) => {
       tabindex="-1"
       @click.self="handleBackdropClick"
       @keydown.esc.stop.prevent="handleEscape"
+      @keydown.tab="handleTab"
     >
       <div
         class="modal-box w-full max-w-sm overflow-hidden rounded-2xl border border-base-200 bg-base-100 p-0 shadow-none"
