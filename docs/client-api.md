@@ -73,19 +73,29 @@ HTTP 2xx、`ok: true` 表示成功；HTTP 4xx/5xx、`ok: false` 表示失败，�
 ```ts
 interface AuthBody {
   email: string
-  password: string // 6-20 位，须同时包含字母和数字
+  password: string // 登录校验6–20位；注册还须同时包含字母和数字
 }
 
 interface RegisterBody extends AuthBody {
-  inviteCode?: string // 选填；填写时须 6-8 位，否则 HTTP 400
+  inviteCode?: string // 字段可选；仅在当前策略要求时必须提供有效邀请码
 }
 ```
 
-注册邀请码第一阶段固定为 `taikula`：
+注册页始终显示邀请码选填输入框，不读取服务端注册配置，也不调用公开配置接口。
+空值可以提交；填写时 trim 并转大写，校验六位字母数字且至少各一个。请求中省略空邀请码。
 
-- 未填写（缺失或为空）：通过参数校验，注册失败返回 `HTTP 400`（邀请码无效）。
-- 填写但长度不在 6-8 位：参数校验失败返回 `HTTP 400`（邀请码长度需在6-8位之间）。
-- 填写且长度合法但不为 `taikula`：注册失败返回 `HTTP 400`（邀请码无效）。
+注册由服务端读取 KV 设置后判断：
+
+- 没有 KV 配置时默认允许普通注册，不要求邀请码；用户有效期默认三天，管理员默认一天。
+- 已配置 `registrationEnabled=false` 时返回 `403`（暂未开放注册），已有账号仍可登录。
+- 允许注册且 `requireInviteCode=false` 时不校验邀请码有效性。
+- 允许注册且 `requireInviteCode=true` 时必须匹配当前六位统一邀请码，否则返回 `400`。
+- `inviteCode` 请求字段始终可选，基础校验只接受最多64字符的字符串；是否必需由后端决定。
+- 鉴权配置读取失败或内容无效返回 `503`，与未配置区分，不能当作普通注册放行。
+- 登录只读取鉴权策略以取得有效期，不受注册开关影响，也不读取邀请码；普通注册同样不读取邀请码。
+  仅开启邀请注册时读取邀请码存储，其故障返回 `503`；关闭注册仍优先返回 `403`。
+- KV 配置存在传播延迟；换码、关闭注册或有效期变更逐步生效，已在处理中的注册可能按原策略完成。
+- 不保留固定邀请码；邀请码可多人使用，新码传播后旧码不再接受。
 
 邮箱已被占用时注册失败返回 `HTTP 409`（账号已存在）；未预期的服务端错误返回
 `HTTP 500`。
@@ -93,25 +103,30 @@ interface RegisterBody extends AuthBody {
 注册、登录和修改邮箱统一去除首尾空格并转小写。邮箱查重不区分大小写，
 仅大小写或首尾空格不同不视为新账号；已占用或软删除账号的邮箱不能重新注册。
 
-前端约定：不填写邀请码允许直接提交（由服务端返回 HTTP 400 和“邀请码无效”）；填写时前端先做 6-8 位长度校验。
+注册失败直接显示后端返回的错误，Client 不预判是否需要邀请码。
+Client 注册只产生启用的普通用户，不接受角色或状态字段。
+注册与登录请求拒绝未知字段。Client 仅允许 `role=user` 登录，管理员使用 Dash 登录入口；
+不存在、禁用、已删除、角色不符或密码错误统一返回 `401`（账号或密码错误）。
 
 注册与登录成功返回：
 
 ```ts
 interface AuthResult {
   token: string
+  expiresAt: string // ISO 8601 UTC，与 JWT exp 来自同一次计算
   user: {
     id: string
     email: string
     role: 'admin' | 'user'
+    status: 'enabled' | 'disabled'
     createdAt: string
   }
 }
 ```
 
 `POST /api/login`、`POST /api/register` 为公开接口；`POST /api/logout` 需要携带当前
-`Authorization: Bearer <token>`，客户端应在清除本地会话之前用它调用一次完成服务端吊销，失败不阻塞
-本地登出。登录/注册/登出等认证动作接口应排除在后台会话失效广播之外：它们返回的 `401` 不代表当前
+`Authorization: Bearer <token>`。客户端捕获原 Token 后请求撤销，只清理对应原会话，失败仍可本地退出，
+并提示服务端撤销未确认。登录/注册/登出等认证动作接口应排除在后台会话失效广播之外：它们返回的 `401` 不代表当前
 会话失效，不应据此清除已有本地会话。
 
 会话使用 HS256，服务端每次鉴权核对账号当前角色、启用/删除状态和内部 `sessionVersion`。
@@ -122,6 +137,11 @@ interface AuthResult {
 登出存储失败返回通用 `500`，不会假报成功；KV 黑名单存在跨节点传播延迟，
 不保证跨节点即时生效。密码与账号安全变更通过 D1 会话版本撤销，不依赖黑名单传播。
 
+用户登录有效期默认 **3天（259200秒）**，由后台独立配置；允许3600–2592000秒整数。
+从签发时计固定有效期，到期必须重新登录，不自动刷新或滑动续期。
+修改策略只影响新签发 Token，已有会话仍按自身 `exp` 到期。登录响应不返回密码、偏好或会话版本。
+启动、回到前台及到期时核对会话；跨标签同步登录/退出，旧请求及旧退出结果不能覆盖新登录。
+
 ### 用户基础信息与聚合信息
 
 `GET /api/user` 返回 `AuthResult['user']`。
@@ -130,7 +150,7 @@ interface AuthResult {
 
 ```ts
 interface UserMe {
-  user: AuthResult['user'] & { status: 'enabled' | 'disabled' }
+  user: AuthResult['user']
   preferences: {
     plan: StudyPlan | null
     practice: PracticeSettings
@@ -158,7 +178,8 @@ interface ChangeEmailBody {
   全部失效，客户端清除本地会话并跳转登录页；更新期间账号被并发修改返回 `HTTP 409`。
 - `PUT /api/user/email`：校验登录密码并确保新邮箱未被占用后更新，成功返回 `{ userId, email }`。邮箱
   已被占用返回 `HTTP 409`；与当前邮箱规范化后相同返回 `HTTP 409`；返回规范化的小写邮箱。
-  更新期间账号被并发修改返回 `HTTP 409`。
+  原邮箱、密码或会话版本在更新期间变化，或账号被删除时返回 `HTTP 409`，不覆盖并发改动。
+  更换邮箱本身不延长有效期、不撤销已有会话；客户端同步更新当前会话的用户邮箱。
 
 ### 通知开关
 

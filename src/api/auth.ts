@@ -17,8 +17,9 @@ export function register(payload: RegisterCredentials) {
   })
 }
 
-export function logout() {
+export function logout(token: string) {
   return request<null>('/logout', {
     method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
   })
 }

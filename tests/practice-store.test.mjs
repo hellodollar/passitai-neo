@@ -41,10 +41,10 @@ class MemoryStorage {
 
 function envelope(data, { status = 200 } = {}) {
   const ok = status >= 200 && status < 300
-  return new Response(
-    JSON.stringify(ok ? { ok, data } : { ok, message: '请求失败', data }),
-    { status, headers: { 'content-type': 'application/json' } },
-  )
+  return new Response(JSON.stringify(ok ? { ok, data } : { ok, message: '请求失败', data }), {
+    status,
+    headers: { 'content-type': 'application/json' },
+  })
 }
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0))
@@ -245,4 +245,56 @@ test('连续 PATCH 串行提交，前一个完成后才发出下一个，顺序�
     requests.map((request) => request.body),
     [{ autoNext: true }, { recordWrongQuestions: false }],
   )
+})
+
+test('同会话迟到 GET 不能覆盖已经保存的 PATCH', async () => {
+  const stale = defer()
+  handler = ({ method }) =>
+    method === 'GET' ? stale.promise : envelope({ ...SETTINGS, autoNext: true })
+  const store = practice()
+  const get = store.ensureSettings()
+  await flush()
+  await store.patchSettings({ autoNext: true })
+  stale.resolve(envelope(SETTINGS))
+  assert.equal(await get, null)
+  assert.equal(store.settings.autoNext, true)
+})
+
+test('账号切换取消尚未发出的旧 PATCH，新账号请求不等待旧队列', async () => {
+  const old = defer()
+  const tokens = []
+  const storage = window.localStorage
+  const setSession = (token) => storage.setItem('passitai:auth-session', JSON.stringify({ token }))
+  setSession('account-a')
+  globalThis.fetch = (_url, options) => {
+    tokens.push(new Headers(options.headers).get('Authorization'))
+    return tokens.length === 1 ? old.promise : envelope(SETTINGS)
+  }
+  const store = practice()
+  const first = store.patchSettings({ autoNext: true }).catch(() => null)
+  const queued = store.patchSettings({ loopAfterCompletion: true }).catch((error) => error)
+  await flush()
+  store.clearSettings()
+  setSession('account-b')
+  await store.patchSettings({ recordWrongQuestions: false })
+  assert.deepEqual(tokens, ['Bearer account-a', 'Bearer account-b'])
+  old.resolve(envelope(SETTINGS))
+  await first
+  assert.equal((await queued).name, 'SessionChangedError')
+  assert.equal(tokens.length, 2)
+})
+
+test('无 storage 事件时，排队请求也检查当前 Token', async () => {
+  const old = defer()
+  window.localStorage.setItem('passitai:auth-session', JSON.stringify({ token: 'a' }))
+  handler = () => old.promise
+  const store = practice()
+  const first = store.patchSettings({ autoNext: true }).catch(() => null)
+  const queued = store.patchSettings({ loopAfterCompletion: true }).catch((error) => error)
+  await flush()
+  window.localStorage.setItem('passitai:auth-session', JSON.stringify({ token: 'b' }))
+  old.resolve(envelope(SETTINGS))
+  await first
+  assert.equal((await queued).name, 'SessionChangedError')
+  assert.equal(requests.length, 1)
 })

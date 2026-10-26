@@ -4,7 +4,12 @@ import type {
   EmailChangeResult,
   PasswordChangeBody,
   PasswordChangeResult,
+  User,
 } from '@/types'
+
+export function fetchUser() {
+  return request<User>('/user')
+}
 
 export function changePassword(payload: PasswordChangeBody) {
   return request<PasswordChangeResult>('/user/password', {

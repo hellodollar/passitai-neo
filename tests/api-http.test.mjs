@@ -144,12 +144,16 @@ test('成功无数据时接受 data: null，不要求 message', async () => {
 test('HTTP 200 缺少 ok、ok 类型错误或 ok: false 时拒绝协议且不清会话', async () => {
   persist('tok_existing')
   const invalidations = countInvalidations()
-  const bodies = [{ message: 'success', data: {} },
-    ...[false, 0, 1, 'true', null].map((ok) => ({ ok, message: 'success', data: {} }))]
+  const bodies = [
+    { message: 'success', data: {} },
+    ...[false, 0, 1, 'true', null].map((ok) => ({ ok, message: 'success', data: {} })),
+  ]
   for (const body of bodies) {
     handler = () => Response.json(body)
-    await assert.rejects(request('/thing'), (error) =>
-      error instanceof ApiError && error.status === null)
+    await assert.rejects(
+      request('/thing'),
+      (error) => error instanceof ApiError && error.status === null,
+    )
   }
   assert.equal(storedSession().token, 'tok_existing')
   assert.equal(invalidations(), 0)
@@ -157,16 +161,19 @@ test('HTTP 200 缺少 ok、ok 类型错误或 ok: false 时拒绝协议且不清
 
 test('业务数据中的 false 不影响接口成功，包括答错题', async () => {
   handler = () => envelope({ isCorrect: false })
-  assert.deepEqual(await request('/practice/records/recfixture/submit', { method: 'POST' }),
-    { isCorrect: false })
+  assert.deepEqual(await request('/practice/records/recfixture/submit', { method: 'POST' }), {
+    isCorrect: false,
+  })
 })
 
 test('上游非 JSON 的 502 响应保留 HTTP 状态，不误清用户会话', async () => {
   persist('tok_user')
   const invalidations = countInvalidations()
-  handler = () => new Response('<html>upstream unavailable</html>', {
-    status: 502, headers: { 'content-type': 'text/html' },
-  })
+  handler = () =>
+    new Response('<html>upstream unavailable</html>', {
+      status: 502,
+      headers: { 'content-type': 'text/html' },
+    })
   await assert.rejects(request('/thing'), (error) => error.status === 502)
   assert.equal(storedSession().token, 'tok_user')
   assert.equal(invalidations(), 0)
@@ -244,6 +251,7 @@ test('公共登录/登出接口 401 不清除已有会话', async () => {
   handler = () => envelope(null, { status: 401 })
 
   await assert.rejects(request('/login', { method: 'POST', body: {} }))
+  await assert.rejects(request('/register', { method: 'POST', body: {} }))
   await assert.rejects(request('/logout', { method: 'POST' }))
   assert.equal(invalidations(), 0)
   assert.equal(storedSession()?.token, 'tok_existing')
@@ -262,4 +270,17 @@ test('显式 Authorization（登出旧 token）不被当前会话覆盖', async 
   assert.equal(requests.at(-1).authorization, 'Bearer tok_old')
   assert.equal(invalidations(), 0)
   assert.equal(storedSession()?.token, 'tok_current')
+})
+
+test('请求创建即捕获 Token，迟到成功不泄露到新账号界面', async () => {
+  persist('tok_old')
+  const pending = defer()
+  handler = () => pending.promise
+  const oldRequest = request('/user')
+  persist('tok_new')
+  await flush()
+  assert.equal(requests[0].authorization, 'Bearer tok_old')
+  pending.resolve(envelope({ id: 'old-user' }))
+  await assert.rejects(oldRequest, (error) => error.name === 'SessionChangedError')
+  assert.equal(storedSession().token, 'tok_new')
 })

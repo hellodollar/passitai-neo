@@ -6,6 +6,7 @@ import { RouterLink, useRouter } from 'vue-router'
 import AuthField from '@/components/auth/AuthField.vue'
 import AuthFrame from '@/components/auth/AuthFrame.vue'
 import { useAuthStore } from '@/stores/auth'
+import { inviteCodeError, normalizeInviteCode, registrationPayload } from '@/utils/registration'
 import { EMAIL_PATTERN, PASSWORD_PATTERN } from '@/utils/validation'
 
 const auth = useAuthStore()
@@ -24,10 +25,6 @@ const errors = reactive({
   confirmPassword: '',
   inviteCode: '',
 })
-
-// 邀请码非必填：不填写可直接提交（由服务端判定），填写了则校验长度
-const INVITE_CODE_MIN = 6
-const INVITE_CODE_MAX = 8
 
 function validateEmail() {
   const value = form.email.trim()
@@ -53,11 +50,8 @@ function validateConfirmPassword() {
 }
 
 function validateInviteCode() {
-  const value = form.inviteCode.trim()
-  if (!value) errors.inviteCode = ''
-  else if (value.length < INVITE_CODE_MIN || value.length > INVITE_CODE_MAX)
-    errors.inviteCode = `邀请码长度需在 ${INVITE_CODE_MIN}-${INVITE_CODE_MAX} 位之间`
-  else errors.inviteCode = ''
+  form.inviteCode = normalizeInviteCode(form.inviteCode)
+  errors.inviteCode = inviteCodeError(form.inviteCode)
   return !errors.inviteCode
 }
 
@@ -82,6 +76,7 @@ watch(
 )
 
 async function submit() {
+  if (auth.loading) return
   submitted = true
   const valid = Object.values(validators)
     .map((validate) => validate())
@@ -89,11 +84,7 @@ async function submit() {
   if (!valid) return
 
   // 接口失败时错误提示由请求层统一弹出，成功才进入首页
-  const success = await auth.signUp({
-    email: form.email.trim(),
-    password: form.password,
-    inviteCode: form.inviteCode.trim() || undefined,
-  })
+  const success = await auth.signUp(registrationPayload(form))
   if (success) router.push('/')
 }
 </script>
@@ -136,11 +127,11 @@ async function submit() {
 
       <AuthField
         v-model="form.inviteCode"
-        label="邀请码"
+        label="邀请码（选填）"
         :icon="TicketPercent"
         :error="errors.inviteCode"
         autocomplete="off"
-        placeholder="选填，6-8 位"
+        placeholder="6位字母和数字"
         @blur="validateInviteCode"
       />
 

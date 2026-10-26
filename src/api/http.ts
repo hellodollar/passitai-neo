@@ -3,6 +3,7 @@ import { FetchError, ofetch, type FetchOptions } from 'ofetch'
 import { AUTH_INVALIDATED_EVENT, STORAGE_KEYS } from '@/constants/app'
 import type { ApiEnvelope, AuthSession } from '@/types'
 import { readStorage, removeStorage } from '@/utils/storage'
+import { currentSessionToken } from '@/utils/auth-session'
 import { showErrorToast } from '@/utils/toast'
 
 const configuredApiBase = import.meta.env.VITE_API_BASE_URL?.trim()
@@ -28,6 +29,14 @@ export class ApiError extends Error {
     super(message)
     this.name = 'ApiError'
     this.status = status
+  }
+}
+
+/** 会话已切换的请求不能继续修改界面或显示旧账号的错误。 */
+export class SessionChangedError extends Error {
+  constructor() {
+    super('会话已切换')
+    this.name = 'SessionChangedError'
   }
 }
 
@@ -66,17 +75,6 @@ function toApiError(error: unknown): ApiError {
 
 const http = ofetch.create({
   baseURL: apiBase,
-  onRequest({ options }) {
-    const session = readStorage<AuthSession | null>(STORAGE_KEYS.authSession, null)
-    const headers = new Headers(options.headers)
-
-    // 显式 Authorization（例如登出时捕获的旧 token）优先，不被当前会话覆盖。
-    if (session?.token && !headers.has('Authorization')) {
-      headers.set('Authorization', `Bearer ${session.token}`)
-    }
-
-    options.headers = headers
-  },
   onResponseError({ request, options, response }) {
     if (response.status === 401 && !isAuthRoute(request)) {
       invalidateSession(bearerToken(options.headers))
@@ -89,19 +87,41 @@ const http = ofetch.create({
 
 export async function request<T>(url: string, options?: RequestOptions): Promise<T> {
   const { notify = false, ...fetchOptions } = options ?? {}
+  const headers = new Headers(fetchOptions.headers)
+  const token = currentSessionToken()
+  if (token && !headers.has('Authorization')) headers.set('Authorization', `Bearer ${token}`)
+  const requestToken = bearerToken(headers)
+  fetchOptions.headers = headers
 
   try {
     const result = await http<ApiEnvelope<T>>(url, fetchOptions)
 
+    if (!isAuthRoute(url) && requestToken && requestToken !== currentSessionToken()) {
+      throw new SessionChangedError()
+    }
+
     // 成功正文为 { ok: true, data }；message 可省略，携带时必须是字符串。
-    if (!result || typeof result !== 'object' || !('data' in result)
-      || result.ok !== true
-      || (result.message !== undefined && typeof result.message !== 'string')) {
+    if (
+      !result ||
+      typeof result !== 'object' ||
+      !('data' in result) ||
+      result.ok !== true ||
+      (result.message !== undefined && typeof result.message !== 'string')
+    ) {
       throw new ApiError(FALLBACK_MESSAGE)
     }
 
     return result.data as T
   } catch (error) {
+    if (error instanceof SessionChangedError) throw error
+    if (
+      !isAuthRoute(url) &&
+      requestToken &&
+      currentSessionToken() &&
+      requestToken !== currentSessionToken()
+    ) {
+      throw new SessionChangedError()
+    }
     const apiError = toApiError(error)
     // 全局唯一入口：需要展示给用户的接口在这里统一弹出错误提示
     if (notify) {

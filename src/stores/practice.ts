@@ -1,5 +1,7 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
+import { SessionChangedError } from '@/api/http'
+import { currentSessionToken } from '@/utils/auth-session'
 
 import { fetchPracticeSettings, updatePracticeSettings } from '@/api/practice'
 import type { PracticeSettings } from '@/types'
@@ -14,6 +16,7 @@ export const usePracticeStore = defineStore('practice', () => {
   const settingsLoaded = ref(false)
 
   let generation = 0
+  let writeTick = 0
   let pending: { generation: number; promise: Promise<PracticeSettings | null> } | null = null
   let patchChain: Promise<unknown> = Promise.resolve()
 
@@ -23,9 +26,16 @@ export const usePracticeStore = defineStore('practice', () => {
     if (pending && pending.generation === generation) return pending.promise
 
     const requestGeneration = generation
+    const requestTick = writeTick
+    const requestToken = currentSessionToken()
     const promise = fetchPracticeSettings()
       .then((value) => {
-        if (requestGeneration !== generation) return null
+        if (
+          requestGeneration !== generation ||
+          requestTick !== writeTick ||
+          requestToken !== currentSessionToken()
+        )
+          return null
         settings.value = value
         settingsLoaded.value = true
         return value
@@ -45,9 +55,17 @@ export const usePracticeStore = defineStore('practice', () => {
    */
   function patchSettings(payload: Partial<PracticeSettings>): Promise<PracticeSettings> {
     const requestGeneration = generation
+    const requestToken = currentSessionToken()
+    writeTick++
+    pending = null
     const request = patchChain.then(async () => {
+      if (requestGeneration !== generation || requestToken !== currentSessionToken()) {
+        throw new SessionChangedError()
+      }
       const next = await updatePracticeSettings(payload)
-      if (requestGeneration === generation) {
+      if (requestGeneration === generation && requestToken === currentSessionToken()) {
+        writeTick++
+        pending = null
         settings.value = next
         settingsLoaded.value = true
       }
@@ -60,6 +78,8 @@ export const usePracticeStore = defineStore('practice', () => {
   /** 清空设置缓存并作废在途请求；不清除本地做题记录。 */
   function clearSettings() {
     generation++
+    writeTick++
+    patchChain = Promise.resolve()
     pending = null
     settings.value = null
     settingsLoaded.value = false

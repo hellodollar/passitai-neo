@@ -10,11 +10,13 @@ export type User = {
   id: string
   email: string
   role: UserRole
+  status: DomainValue<'dataStatus'>
   createdAt: string
 }
 
 export type AuthSession = {
   token: string
+  expiresAt: string
   user: User
 }
 
@@ -24,12 +26,12 @@ export type AuthCredentials = {
 }
 
 export type RegisterCredentials = AuthCredentials & {
-  /** 邀请码，选填：不填写可直接提交（服务端判定失败）；填写时须 6-8 位 */
+  /** 邀请码选填；填写时为六位字母数字，注册限制由服务端判定。 */
   inviteCode?: string
 }
 
 export type UserMe = {
-  user: User & { status: DomainValue<'dataStatus'> }
+  user: User
   preferences: {
     /** 未设置计划时为 null，需用户手动添加 */
     plan: StudyPlan | null

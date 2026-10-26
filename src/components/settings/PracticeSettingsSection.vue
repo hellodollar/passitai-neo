@@ -36,10 +36,18 @@ const practice = usePracticeStore()
 const practiceSettings = ref<PracticeSettings>({ ...DEFAULT_PRACTICE_SETTINGS })
 const loaded = ref(false)
 let lastValues: PracticeSettings = { ...DEFAULT_PRACTICE_SETTINGS }
+let editSequence = 0
+const pendingEdits = new Map<keyof PracticeSettings, { sequence: number; value: boolean }>()
 
 function applySettings(settings: PracticeSettings) {
   practiceSettings.value = { ...settings }
   lastValues = { ...settings }
+}
+
+function applyServerSettings(settings: PracticeSettings) {
+  const next = { ...settings }
+  for (const [key, edit] of pendingEdits) next[key] = edit.value
+  applySettings(next)
 }
 
 // 首次打开时才加载:优先用外部传入,缺失时走 store 缓存(无缓存才请求)
@@ -67,25 +75,33 @@ watch(
 
     // 深度监听里找出真正变化的字段，只提交增量。
     const payload: Partial<PracticeSettings> = {}
+    const sequence = ++editSequence
     for (const key of Object.keys(settings) as Array<keyof PracticeSettings>) {
       if (settings[key] !== lastValues[key]) {
         payload[key] = settings[key]
         lastValues[key] = settings[key]
+        pendingEdits.set(key, { sequence, value: settings[key] })
       }
     }
     if (Object.keys(payload).length === 0) return
 
     void practice
       .patchSettings(payload)
-      .then(() => {
-        emit('saved', { ...practiceSettings.value })
+      .then((next) => {
+        for (const key of Object.keys(payload) as Array<keyof PracticeSettings>) {
+          if (pendingEdits.get(key)?.sequence === sequence) pendingEdits.delete(key)
+        }
+        applyServerSettings(next)
+        emit('saved', { ...next })
       })
       .catch(() => {
         // 保存失败时只回滚本次提交的字段，让开关回到服务端当前状态；错误提示由请求层统一弹出。
         const restored = { ...practiceSettings.value }
         for (const key of Object.keys(payload) as Array<keyof PracticeSettings>) {
-          restored[key] = previous[key]
-          lastValues[key] = previous[key]
+          if (pendingEdits.get(key)?.sequence !== sequence) continue
+          pendingEdits.delete(key)
+          restored[key] = practice.settings?.[key] ?? previous[key]
+          lastValues[key] = restored[key]
         }
         practiceSettings.value = restored
       })
@@ -96,7 +112,7 @@ watch(
 watch(
   () => props.settings,
   (value) => {
-    if (value) applySettings(value)
+    if (value) applyServerSettings(value)
   },
 )
 
