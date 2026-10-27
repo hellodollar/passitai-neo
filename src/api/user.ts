@@ -8,11 +8,11 @@ import type {
 } from '@/types'
 
 export function fetchUser() {
-  return request<User>('/user', { retry: 0, timeout: 10_000 })
+  return request<User>('/profile', { retry: 0, timeout: 10_000 })
 }
 
 export function changePassword(payload: PasswordChangeBody) {
-  return request<PasswordChangeResult>('/user/password', {
+  return request<PasswordChangeResult>('/profile/password', {
     method: 'PUT',
     body: payload,
     notify: true,
@@ -20,7 +20,7 @@ export function changePassword(payload: PasswordChangeBody) {
 }
 
 export function changeEmail(payload: EmailChangeBody) {
-  return request<EmailChangeResult>('/user/email', {
+  return request<EmailChangeResult>('/profile/email', {
     method: 'PUT',
     body: payload,
     notify: true,

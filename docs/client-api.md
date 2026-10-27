@@ -61,9 +61,9 @@ HTTP 2xx、`ok: true` 表示成功；HTTP 4xx/5xx、`ok: false` 表示失败，�
 | `POST`  | `/api/register`                    | 用户注册           | 可用 |
 | `POST`  | `/api/login`                       | 用户登录           | 可用 |
 | `POST`  | `/api/logout`                      | 用户登出，必须鉴权 | 可用 |
-| `GET`   | `/api/user`                        | 获取用户基础信息   | 可用 |
-| `PUT`   | `/api/user/password`               | 修改密码           | 可用 |
-| `PUT`   | `/api/user/email`                  | 修改邮箱           | 可用 |
+| `GET`   | `/api/profile`                        | 获取用户基础信息   | 可用 |
+| `PUT`   | `/api/profile/password`               | 修改密码           | 可用 |
+| `PUT`   | `/api/profile/email`                  | 修改邮箱           | 可用 |
 
 ### 注册与登录
 
@@ -137,22 +137,22 @@ interface AuthResult {
 用户登录有效期默认 **3天（259200秒）**，由后台独立配置；允许3600–2592000秒整数。
 从签发时计固定有效期，到期必须重新登录，不自动刷新或滑动续期。
 修改策略只影响新签发 Token，已有会话仍按自身 `exp` 到期。登录响应不返回密码、偏好或会话版本。
-恢复已有有效会话时，Client初始化仅请求一次`GET /api/user`；新登录/注册直接使用返回的user。
+恢复已有有效会话时，Client初始化仅请求一次`GET /api/profile`；新登录/注册直接使用返回的user。
 站内路由切换不追加用户请求；窗口focus、页面恢复可见、到期及跨标签事件只核对本地会话，
 不会自动刷新用户或续期。跨标签直接同步已保存的会话快照；旧请求及旧退出结果不能覆盖新登录。
-资料显式刷新由账户Store统一处理，GET /api/user使用10秒超时、零自动重试。
+资料显式刷新由账户Store统一处理，GET /api/profile使用10秒超时、零自动重试。
 密码/邮箱修改也由账户Store统一提交；邮箱成功后直接更新共享用户，密码成功后清理原会话，均不追加资料请求。
 
 ### 用户基础信息与“我的”页
 
-`GET /api/user` 只返回 `AuthResult['user']`，不返回密码哈希、会话版本、刷题计划或偏好。
+`GET /api/profile` 只返回 `AuthResult['user']`，不返回密码哈希、会话版本、刷题计划或偏好。
 账户信息由当前会话统一维护；“我的”页不再复制账户和设置的聚合快照。
 刷题计划与刷题设置分别按需读取，共享各自的状态与缓存；两者可并行加载、独立失败与重试。
 保存计划后首页与“我的”读取同一份计划状态；设置保存后答题页与“我的”读取同一份设置状态。
 账号切换或退出清理缓存，迟到响应不能覆盖新会话。
 
-`/api/me` 已移除。通知尚未开放，不持久化通知占位配置，
-`GET/PATCH /api/user/settings/notifications` 返回404；页面只显示“暂未开放”。
+`/api/me`、`/api/user` 已移除（账户资料迁移到 `/api/profile`）。通知尚未开放，不持久化通知占位配置，
+`GET/PATCH /api/profile/settings/notifications` 返回404；页面只显示“暂未开放”。
 本地刷题记录由浏览器按用户隔离保存，管理入口明确标注“本地”，不删除服务端交卷报告。
 
 ### 修改密码与邮箱
@@ -169,10 +169,10 @@ interface ChangeEmailBody {
 }
 ```
 
-- `PUT /api/user/password`：校验当前密码后更新为新密码，成功返回 `{ userId, changed: true }`。当前密码
+- `PUT /api/profile/password`：校验当前密码后更新为新密码，成功返回 `{ userId, changed: true }`。当前密码
   错误返回 `HTTP 400`；新密码与当前密码相同返回 `HTTP 400`。成功后包括当前会话在内的旧会话
   全部失效，客户端清除本地会话并跳转登录页；更新期间账号被并发修改返回 `HTTP 409`。
-- `PUT /api/user/email`：校验登录密码并确保新邮箱未被占用后更新，成功返回 `{ userId, email }`。邮箱
+- `PUT /api/profile/email`：校验登录密码并确保新邮箱未被占用后更新，成功返回 `{ userId, email }`。邮箱
   已被占用返回 `HTTP 409`；与当前邮箱规范化后相同返回 `HTTP 409`；返回规范化的小写邮箱。
   原邮箱、密码或会话版本在更新期间变化，或账号被删除时返回 `HTTP 409`，不覆盖并发改动。
   更换邮箱本身不延长有效期、不撤销已有会话；客户端同步更新当前会话的用户邮箱。
@@ -519,9 +519,9 @@ interface OptionItem {
 POST   /api/register
 POST   /api/login
 POST   /api/logout
-GET    /api/user
-PUT    /api/user/password
-PUT    /api/user/email
+GET    /api/profile
+PUT    /api/profile/password
+PUT    /api/profile/email
 
 GET    /api/practice/plan
 PUT    /api/practice/plan
