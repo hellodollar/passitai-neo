@@ -10,23 +10,21 @@ import {
   Settings2,
   UserRound,
 } from '@lucide/vue'
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-
-import { fetchUserMe } from '@/api/me'
 import AccountEmailContent from '@/components/auth/AccountEmailContent.vue'
 import AccountPasswordContent from '@/components/auth/AccountPasswordContent.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
-import NotificationSettingsContent from '@/components/settings/NotificationSettingsContent.vue'
-import StudyPlanModal from '@/components/practice/StudyPlanModal.vue'
+import PracticePlanModal from '@/components/practice/PracticePlanModal.vue'
 import PracticeSettingsModal from '@/components/settings/PracticeSettingsModal.vue'
 import PracticeRecordsModal from '@/components/practice/PracticeRecordsModal.vue'
 import { useAuthStore } from '@/stores/auth'
-import { usePlanStore } from '@/stores/plan'
-import type { StudyPlan, PracticeSettings, UserMe } from '@/types'
+import { usePracticePlanStore } from '@/stores/practice-plan'
+import { usePracticeSettingsStore } from '@/stores/practice-settings'
 
 const auth = useAuthStore()
-const planStore = usePlanStore()
+const practicePlanStore = usePracticePlanStore()
+const practiceSettingsStore = usePracticeSettingsStore()
 const router = useRouter()
 const signingOut = ref(false)
 const accountModalOpen = ref(false)
@@ -36,112 +34,68 @@ const planModalOpen = ref(false)
 const practiceSettingsModalOpen = ref(false)
 const notificationModalOpen = ref(false)
 const recordsModalOpen = ref(false)
-const me = ref<UserMe | null>(null)
 
 type SettingsAction = 'account' | 'plan' | 'practice' | 'notification' | 'records'
-
 const displayName = computed(() => {
   const name = auth.user?.email.split('@')[0]
   return name ? name.replace(/[._-]+/g, ' ') : 'PassIt AI'
 })
-
-const profileEmail = computed(() => me.value?.user.email ?? auth.user?.email ?? 'you@passitai.ai')
-
-const menuItems = computed(() => {
-  const plan = me.value?.preferences.plan
-  const practice = me.value?.preferences.practice
-  const notifications = me.value?.preferences.notifications
-
-  return [
-    {
-      title: '账户',
-      subtitle: '密码与邮箱',
-      icon: UserRound,
-      action: 'account' as const,
-    },
-    {
-      title: '刷题计划',
-      subtitle: plan ? `${plan.majorName} · ${plan.subjects.length} 个科目` : '专业和刷题科目',
-      icon: GraduationCap,
-      action: 'plan' as const,
-    },
-    {
-      title: '刷题设置',
-      subtitle: practice
-        ? `自动下一题 ${practice.autoNext ? '开' : '关'} · 解析 ${practice.showExplanationAfterAnswer ? '开' : '关'}`
-        : '答题方式、错题记录、解析显示',
-      icon: Settings2,
-      action: 'practice' as const,
-    },
-    {
-      title: '刷题记录',
-      subtitle: '按分类清理做题记录',
-      icon: Eraser,
-      action: 'records' as const,
-    },
-    {
-      title: '通知',
-      subtitle: notifications
-        ? notifications.dailyReminder
-          ? '学习提醒已开启'
-          : '学习提醒已关闭'
-        : '学习提醒、系统消息',
-      icon: Bell,
-      action: 'notification' as const,
-    },
-  ]
-})
+const profileEmail = computed(() => auth.user?.email ?? '')
+const menuGroups = computed(() => [
+  {
+    title: '刷题',
+    items: [
+      {
+        title: '刷题计划',
+        icon: GraduationCap,
+        action: 'plan' as const,
+        subtitle: practicePlanStore.isLoading
+          ? '加载中…'
+          : practicePlanStore.error
+            ? '加载失败，点击重试'
+            : practicePlanStore.plan
+              ? `${practicePlanStore.plan.majorName} · ${practicePlanStore.plan.subjects.length} 个科目`
+              : '选择专业和刷题科目',
+      },
+      {
+        title: '刷题设置',
+        icon: Settings2,
+        action: 'practice' as const,
+        subtitle: practiceSettingsStore.isLoading
+          ? '加载中…'
+          : practiceSettingsStore.error
+            ? '加载失败，点击重试'
+            : practiceSettingsStore.settings
+              ? `自动下一题 ${practiceSettingsStore.settings.autoNext ? '开' : '关'} · 自动交卷 ${practiceSettingsStore.settings.autoSubmitAfterCompletion ? '开' : '关'}`
+              : '答题方式与错题设置',
+      },
+      {
+        title: '本地刷题记录',
+        subtitle: '本机作答，不影响交卷报告',
+        icon: Eraser,
+        action: 'records' as const,
+      },
+    ],
+  },
+  {
+    title: '账户与偏好',
+    items: [
+      { title: '账户与安全', subtitle: '密码与邮箱', icon: UserRound, action: 'account' as const },
+      { title: '通知', subtitle: '暂未开放', icon: Bell, action: 'notification' as const },
+    ],
+  },
+])
 
 function openMenuItem(action: SettingsAction) {
-  if (action === 'records') {
-    recordsModalOpen.value = true
-    return
-  }
-  if (action === 'account') {
-    accountModalOpen.value = true
-    return
-  }
-
-  if (action === 'plan') {
+  if (action === 'records') recordsModalOpen.value = true
+  else if (action === 'account') accountModalOpen.value = true
+  else if (action === 'plan') {
+    if (practicePlanStore.error) void practicePlanStore.load()
     planModalOpen.value = true
-    return
-  }
-
-  if (action === 'practice') {
+  } else if (action === 'practice') {
+    if (practiceSettingsStore.error) void practiceSettingsStore.load()
     practiceSettingsModalOpen.value = true
-    return
-  }
-
-  notificationModalOpen.value = true
-}
-
-async function loadMe() {
-  try {
-    me.value = await fetchUserMe()
-  } catch {
-    me.value = null
-  }
-}
-
-function onPlanUpdated(plan: StudyPlan) {
-  // 同步首页数据缓存,避免首页继续渲染旧计划
-  planStore.applyPlan(plan)
-  if (me.value) {
-    me.value.preferences.plan = plan
-  }
-}
-
-function onPracticeSettingsSaved(settings: PracticeSettings) {
-  if (me.value) {
-    me.value.preferences.practice = settings
-  }
-}
-
-function onEmailUpdated(email: string) {
-  if (me.value) {
-    me.value.user.email = email
-  }
-  auth.updateEmail(email)
+  } else notificationModalOpen.value = true
 }
 
 function openAccountAction(action: 'password' | 'email') {
@@ -150,18 +104,30 @@ function openAccountAction(action: 'password' | 'email') {
   else emailModalOpen.value = true
 }
 
-async function signOut() {
+async function logout() {
   if (signingOut.value) return
-
   signingOut.value = true
-  await auth.signOut()
+  const exited = await auth.logout()
   signingOut.value = false
-  router.push('/login')
+  if (exited) router.push('/login')
 }
 
-onMounted(() => {
-  loadMe()
-})
+watch(
+  () => auth.session?.token,
+  (token, previous) => {
+    if (previous && token !== previous) {
+      accountModalOpen.value = false
+      passwordModalOpen.value = false
+      emailModalOpen.value = false
+      planModalOpen.value = false
+      practiceSettingsModalOpen.value = false
+      notificationModalOpen.value = false
+      recordsModalOpen.value = false
+    }
+    if (token) void Promise.allSettled([practicePlanStore.load(), practiceSettingsStore.load()])
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
@@ -181,10 +147,7 @@ onMounted(() => {
         >
           <UserRound :size="34" stroke-width="1.8" />
         </span>
-
-        <h1
-          class="mt-3 max-w-full truncate text-[22px] font-semibold capitalize leading-tight text-base-content"
-        >
+        <h1 class="mt-3 max-w-full truncate text-[22px] font-semibold capitalize leading-tight">
           {{ displayName }}
         </h1>
         <p class="mt-1.5 max-w-full truncate text-sm font-medium text-base-content/65">
@@ -193,49 +156,47 @@ onMounted(() => {
       </section>
     </header>
 
-    <div class="relative flex flex-1 flex-col px-5 pb-4">
-      <section
-        class="w-full min-w-0 overflow-hidden rounded-2xl border border-base-200 bg-base-100 divide-y divide-base-200"
-      >
-        <button
-          v-for="item in menuItems"
-          :key="item.title"
-          class="grid w-full min-w-0 grid-cols-[2.25rem_minmax(0,1fr)_1.125rem] items-center gap-3 px-4 py-3.5 text-left transition-colors active:bg-base-200/60"
-          type="button"
-          @click="openMenuItem(item.action)"
-        >
-          <span
-            class="flex size-9 shrink-0 items-center justify-center rounded-xl bg-base-200 text-base-content/70"
+    <div class="relative px-5">
+      <div class="space-y-3">
+        <section v-for="group in menuGroups" :key="group.title" :aria-label="group.title">
+          <div
+            class="divide-y divide-base-200 overflow-hidden rounded-2xl border border-base-200 bg-base-100"
           >
-            <component :is="item.icon" :size="17" stroke-width="2" />
-          </span>
-
-          <span class="min-w-0">
-            <span class="block truncate text-base font-semibold leading-tight text-base-content">
-              {{ item.title }}
-            </span>
-            <span class="mt-1 block truncate text-xs leading-tight text-base-content/65">
-              {{ item.subtitle }}
-            </span>
-          </span>
-
-          <ChevronRight :size="18" class="justify-self-end text-base-content/30" />
-        </button>
-      </section>
+            <button
+              v-for="item in group.items"
+              :key="item.title"
+              class="flex min-h-13 w-full min-w-0 items-center gap-3 px-3 py-2 text-left transition-colors active:bg-base-200/60"
+              type="button"
+              @click="openMenuItem(item.action)"
+            >
+              <component
+                :is="item.icon"
+                :size="18"
+                stroke-width="1.8"
+                class="shrink-0 text-base-content/55"
+                aria-hidden="true"
+              />
+              <span class="min-w-0 flex-1">
+                <span class="block truncate text-sm font-medium leading-5">{{ item.title }}</span>
+                <span class="block truncate text-xs leading-4 text-base-content/50">{{
+                  item.subtitle
+                }}</span>
+              </span>
+              <ChevronRight :size="15" class="shrink-0 text-base-content/30" aria-hidden="true" />
+            </button>
+          </div>
+        </section>
+      </div>
 
       <button
-        class="mt-4 flex w-full items-center gap-3 rounded-2xl border border-base-200 bg-base-100 px-4 py-3.5 text-left text-error transition-colors active:bg-error/5 disabled:opacity-50"
+        class="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg text-sm text-base-content/55 transition-colors active:bg-error/5 active:text-error disabled:opacity-50"
         type="button"
         :disabled="signingOut"
-        @click="signOut"
+        @click="logout"
       >
-        <span
-          class="flex size-9 shrink-0 items-center justify-center rounded-xl bg-error/10 text-error"
-        >
-          <span v-if="signingOut" class="loading loading-spinner loading-xs"></span>
-          <LogOut v-else :size="17" />
-        </span>
-        <span class="text-sm font-semibold">退出登录</span>
+        <span v-if="signingOut" class="loading loading-spinner loading-xs"></span>
+        <LogOut v-else :size="16" aria-hidden="true" />
+        退出登录
       </button>
     </div>
 
@@ -279,25 +240,13 @@ onMounted(() => {
 
     <AccountPasswordContent v-model="passwordModalOpen" />
 
-    <AccountEmailContent
-      v-model="emailModalOpen"
-      :current-email="profileEmail"
-      @updated="onEmailUpdated"
-    />
+    <AccountEmailContent v-model="emailModalOpen" />
 
-    <StudyPlanModal v-model="planModalOpen" :plan="me?.preferences.plan" @updated="onPlanUpdated" />
-
-    <PracticeSettingsModal
-      v-model="practiceSettingsModalOpen"
-      :settings="me?.preferences.practice"
-      show-mistake-settings
-      @saved="onPracticeSettingsSaved"
-    />
-
-    <NotificationSettingsContent
-      v-model="notificationModalOpen"
-      :notifications="me?.preferences.notifications"
-    />
+    <PracticePlanModal v-model="planModalOpen" />
+    <PracticeSettingsModal v-model="practiceSettingsModalOpen" show-mistake-settings />
+    <BaseModal v-model="notificationModalOpen" title="通知">
+      <p class="py-4 text-center text-sm text-base-content/60">通知功能暂未开放</p>
+    </BaseModal>
     <PracticeRecordsModal v-model="recordsModalOpen" />
   </section>
 </template>

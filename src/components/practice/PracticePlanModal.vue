@@ -3,24 +3,17 @@ import { ref, watch } from 'vue'
 
 import BaseModal from '@/components/common/BaseModal.vue'
 import { fetchMajorOptions, fetchSubjectOptions } from '@/api/options'
-import { updatePlan } from '@/api/plan'
+import { usePracticePlanStore } from '@/stores/practice-plan'
+import { useAuthStore } from '@/stores/auth'
 import { showSuccessToast } from '@/utils/toast'
-import type { OptionItem, StudyPlan } from '@/types'
+import type { OptionItem } from '@/types'
 
 const model = defineModel<boolean>({ default: false })
 
-const props = withDefaults(
-  defineProps<{
-    plan?: StudyPlan | null
-  }>(),
-  {
-    plan: null,
-  },
-)
-
-const emit = defineEmits<{
-  updated: [plan: StudyPlan]
-}>()
+const practicePlanStore = usePracticePlanStore()
+const auth = useAuthStore()
+let loadSequence = 0
+let subjectSequence = 0
 
 const majorOptions = ref<OptionItem[]>([])
 const subjectOptions = ref<OptionItem[]>([])
@@ -48,13 +41,17 @@ async function loadSubjectOptions(majorId: string) {
     displaySubjects.value = []
     return
   }
+  const sequence = ++subjectSequence
+  const token = auth.session?.token
   subjectOptionsLoading.value = true
   try {
-    subjectOptions.value = await fetchSubjectOptions(majorId)
+    const next = await fetchSubjectOptions(majorId)
+    if (sequence === subjectSequence && token === auth.session?.token) subjectOptions.value = next
   } catch {
-    subjectOptions.value = []
+    if (sequence === subjectSequence && token === auth.session?.token) subjectOptions.value = []
   } finally {
-    subjectOptionsLoading.value = false
+    if (sequence === subjectSequence && token === auth.session?.token)
+      subjectOptionsLoading.value = false
   }
 }
 
@@ -66,23 +63,26 @@ function applySelectedFirst() {
 }
 
 async function syncDraft() {
+  const sequence = ++loadSequence
+  const token = auth.session?.token
   draftMajorId.value = ''
   draftSubjectIds.value = new Set()
   subjectOptions.value = []
   displaySubjects.value = []
 
-  await loadMajorOptions()
-
-  const matchedMajor = majorOptions.value.find((major) => major.code === props.plan?.majorCode)
-  draftMajorId.value = matchedMajor?.id ?? ''
+  await Promise.all([loadMajorOptions(), practicePlanStore.load()])
+  if (sequence !== loadSequence || token !== auth.session?.token || !model.value) return
+  if (practicePlanStore.error) return
+  draftMajorId.value = practicePlanStore.plan?.majorId ?? ''
 
   if (!draftMajorId.value) return
 
   await loadSubjectOptions(draftMajorId.value)
+  if (sequence !== loadSequence || token !== auth.session?.token || !model.value) return
 
-  const planCodes = new Set(props.plan?.subjects.map((subject) => subject.code) ?? [])
+  const subjectIds = new Set(practicePlanStore.plan?.subjects.map((subject) => subject.id) ?? [])
   draftSubjectIds.value = new Set(
-    subjectOptions.value.filter((option) => planCodes.has(option.code)).map((option) => option.id),
+    subjectOptions.value.filter((option) => subjectIds.has(option.id)).map((option) => option.id),
   )
   applySelectedFirst()
 }
@@ -108,15 +108,12 @@ async function save() {
   if (!draftMajorId.value || saving.value) return
   saving.value = true
   try {
-    const major = majorOptions.value.find((item) => item.id === draftMajorId.value)
-    const updated = await updatePlan({
+    await practicePlanStore.save({
       majorId: draftMajorId.value,
-      majorCode: major?.code,
       subjectIds: [...draftSubjectIds.value],
     })
     // 接口失败时错误提示由请求层统一弹出，弹框保持打开
     showSuccessToast('刷题计划已更新')
-    emit('updated', updated)
     model.value = false
   } catch {
     // keep modal open on failure
@@ -127,12 +124,33 @@ async function save() {
 
 watch(model, (open) => {
   if (open) void syncDraft()
+  else {
+    loadSequence++
+    subjectSequence++
+  }
 })
+watch(
+  () => auth.session?.token,
+  () => {
+    model.value = false
+    loadSequence++
+    subjectSequence++
+    draftMajorId.value = ''
+    draftSubjectIds.value = new Set()
+    subjectOptions.value = []
+    displaySubjects.value = []
+    subjectOptionsLoading.value = false
+  },
+)
 </script>
 
 <template>
   <BaseModal v-model="model" title="刷题计划" compact-footer>
     <div>
+      <div v-if="practicePlanStore.error" class="mb-4 text-center text-sm text-error">
+        <p>刷题计划加载失败</p>
+        <button type="button" class="btn btn-ghost btn-sm mt-1" @click="syncDraft">重试</button>
+      </div>
       <section class="border-b border-base-200 px-0.5 pb-4">
         <div>
           <p class="text-sm font-medium">报考专业</p>
@@ -154,7 +172,7 @@ watch(model, (open) => {
       <section class="px-0.5 pt-4">
         <div>
           <p class="text-sm font-medium">刷题科目</p>
-          <p class="mt-0.5 text-xs text-base-content/50">选择练习页需要展示的科目</p>
+          <p class="mt-0.5 text-xs text-base-content/50">选择刷题页需要展示的科目</p>
         </div>
 
         <div class="mt-3 min-h-36 overflow-hidden rounded-xl border border-base-200">
@@ -206,7 +224,13 @@ watch(model, (open) => {
       <button
         class="btn btn-primary h-8 min-h-8 rounded-lg px-4 text-sm"
         type="button"
-        :disabled="saving || !draftMajorId"
+        :disabled="
+          saving ||
+          !draftMajorId ||
+          Boolean(practicePlanStore.error) ||
+          practicePlanStore.isLoading ||
+          subjectOptionsLoading
+        "
         @click="save"
       >
         <span v-if="saving" class="loading loading-spinner loading-xs"></span>

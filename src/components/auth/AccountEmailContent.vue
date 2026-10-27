@@ -4,24 +4,13 @@ import { reactive, ref, watch } from 'vue'
 
 import AuthField from '@/components/auth/AuthField.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
-import { changeEmail } from '@/api/user'
+import { useAuthStore } from '@/stores/auth'
 import { showSuccessToast } from '@/utils/toast'
 import { EMAIL_PATTERN } from '@/utils/validation'
 
 const model = defineModel<boolean>({ default: false })
 
-const props = withDefaults(
-  defineProps<{
-    currentEmail?: string
-  }>(),
-  {
-    currentEmail: '',
-  },
-)
-
-const emit = defineEmits<{
-  updated: [email: string]
-}>()
+const auth = useAuthStore()
 
 const form = reactive({
   password: '',
@@ -44,7 +33,7 @@ function validateNewEmail() {
   const value = form.newEmail.trim()
   if (!value) errors.newEmail = '请输入新邮箱'
   else if (!EMAIL_PATTERN.test(value)) errors.newEmail = '邮箱格式不正确，请检查后重试'
-  else if (value === props.currentEmail) errors.newEmail = '新邮箱与当前邮箱相同'
+  else if (value === (auth.user?.email ?? '')) errors.newEmail = '新邮箱与当前邮箱相同'
   else errors.newEmail = ''
   return !errors.newEmail
 }
@@ -67,8 +56,7 @@ watch(
   },
 )
 
-watch(model, (open) => {
-  if (!open) return
+watch(model, () => {
   form.password = ''
   form.newEmail = ''
   errors.password = ''
@@ -85,13 +73,12 @@ async function submit() {
 
   submitting.value = true
   try {
-    const result = await changeEmail({
+    await auth.changeEmail({
       password: form.password,
       newEmail: form.newEmail.trim(),
     })
     // 接口失败时错误提示由请求层统一弹出，弹框保持打开
     showSuccessToast('邮箱已更新')
-    emit('updated', result.email)
     model.value = false
   } catch {
     return
@@ -108,7 +95,9 @@ async function submit() {
         <Mail :size="17" class="shrink-0 text-base-content/35" />
         <span class="min-w-0">
           <span class="block text-xs text-base-content/50">当前邮箱</span>
-          <span class="mt-0.5 block truncate text-sm font-medium">{{ currentEmail || '—' }}</span>
+          <span class="mt-0.5 block truncate text-sm font-medium">{{
+            auth.user?.email || '—'
+          }}</span>
         </span>
       </div>
 

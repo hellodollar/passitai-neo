@@ -30,7 +30,7 @@ import { fetchMistakePractice } from '@/api/wrong-questions'
 import { ROUTE_NAMES } from '@/constants/app'
 import { practiceReturnTarget, returnFromPractice } from '@/utils/browse-state'
 import { useAuthStore } from '@/stores/auth'
-import { usePracticeStore } from '@/stores/practice'
+import { usePracticeSettingsStore } from '@/stores/practice-settings'
 import { fetchPracticePaper, fetchPracticeSubmission, submitPracticePaper } from '@/api/practice'
 import {
   createPracticeRecord,
@@ -69,7 +69,7 @@ import { preparePracticeSubmission, settlePracticeSubmission } from '@/utils/pra
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
-const practice = usePracticeStore()
+const practiceSettingsStore = usePracticeSettingsStore()
 
 /** 收藏/错题练习模式：路由 paperId 形如 fav:<subxxx|papxxx>，query.source 指明集合 */
 const COLLECTION_PAPER_PREFIX = 'fav:'
@@ -490,7 +490,7 @@ async function submitCurrentAnswer() {
 
   // 仅「答对 + 开启自动切题」时前进；设置请求期间若用户已手动切题，不再跳过新题。
   if (isChoiceQuestionType(question.questionType) && isAnswerCorrect(record, question)) {
-    const settings = await practice.ensureSettings()
+    const settings = await practiceSettingsStore.load()
     if (
       settings?.autoNext &&
       sequence === loadSequence &&
@@ -507,7 +507,7 @@ async function submitCurrentAnswer() {
 /** 答完最后一题时按设置自动交卷;仅真实题集,收藏/错题纯刷题无交卷概念。 */
 async function maybeAutoSubmitOnComplete(sequence: number) {
   if (collectionMode.value || submitting.value || submitConfirmOpen.value) return
-  const settings = await practice.ensureSettings()
+  const settings = await practiceSettingsStore.load()
   if (
     !settings?.autoSubmitAfterCompletion ||
     sequence !== loadSequence ||
@@ -762,7 +762,7 @@ async function loadPaperData() {
 }
 
 onMounted(() => {
-  void practice.ensureSettings()
+  void practiceSettingsStore.load()
   window.addEventListener('pagehide', saveRecordNow)
   document.addEventListener('visibilitychange', saveRecordWhenHidden)
   unsubscribeRecordChanges = subscribePracticeRecordChanges(handleRecordChanges)
@@ -873,10 +873,7 @@ watch(questionSheetOpen, (open) => {
             />
           </div>
 
-          <div
-            class="relative flex min-w-0 flex-1 flex-col"
-            :class="questionEnterClass"
-          >
+          <div class="relative flex min-w-0 flex-1 flex-col" :class="questionEnterClass">
             <PracticeQuestionPanel
               :key="currentQuestion.id"
               :question="currentQuestion"

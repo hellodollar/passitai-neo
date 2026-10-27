@@ -12,7 +12,7 @@ const apiBase = configuredApiBase || '/api'
 const FALLBACK_MESSAGE = '请求失败，请稍后重试'
 const NETWORK_MESSAGE = '网络连接失败，请检查网络后重试'
 
-// 认证动作接口：登录/注册是公开接口，登出需要鉴权但由 signOut 自行完成本地登出；
+// 认证动作接口：登录/注册是公开接口，登出需要鉴权但由 auth.logout 自行完成本地登出；
 // 这些接口的 401 不应触发全局会话失效广播（避免重复清理/跳转）。
 const AUTH_ROUTES = ['/login', '/register', '/logout']
 

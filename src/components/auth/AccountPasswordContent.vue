@@ -5,7 +5,6 @@ import { useRouter } from 'vue-router'
 
 import AuthField from '@/components/auth/AuthField.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
-import { changePassword } from '@/api/user'
 import { showSuccessToast } from '@/utils/toast'
 import { PASSWORD_PATTERN } from '@/utils/validation'
 import { ROUTE_NAMES } from '@/constants/app'
@@ -69,8 +68,7 @@ watch(
   },
 )
 
-watch(model, (open) => {
-  if (!open) return
+watch(model, () => {
   form.currentPassword = ''
   form.newPassword = ''
   form.confirmPassword = ''
@@ -89,12 +87,11 @@ async function submit() {
 
   submitting.value = true
   try {
-    await changePassword({
+    await auth.changePassword({
       currentPassword: form.currentPassword,
       newPassword: form.newPassword,
     })
     // 接口失败时错误提示由请求层统一弹出，弹框保持打开
-    auth.clearLocalSession()
     showSuccessToast('密码已修改，请重新登录')
     model.value = false
     await router.replace({ name: ROUTE_NAMES.login })

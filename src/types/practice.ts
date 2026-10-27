@@ -1,24 +1,25 @@
 import type { DomainValue } from '@/generated/domain-values'
 import type { QuestionContent, QuestionType } from './entity'
 
-// ---- Study plan ----
+// ---- Practice plan ----
 
-export type StudyPlanSubject = {
+export type PracticePlanSubject = {
+  id: string
   name: string
   code: string
 }
 
-export type StudyPlan = {
+export type PracticePlan = {
+  majorId: string
   majorName: string
   majorCode: string
   educationLevel: DomainValue<'educationLevel'>
   nextExamDate: string | null
-  subjects: StudyPlanSubject[]
+  subjects: PracticePlanSubject[]
 }
 
-export type UpdatePlanBody = {
+export type UpdatePracticePlanBody = {
   majorId: string
-  majorCode?: string
   subjectIds?: string[]
 }
 
@@ -119,8 +120,6 @@ export type SubmitPracticePaperBody = {
 export type PracticeSettings = {
   autoNext: boolean
   recordWrongQuestions: boolean
-  showExplanationAfterAnswer: boolean
-  loopAfterCompletion: boolean
   autoSubmitAfterCompletion: boolean
   /** 答对自动移除错题 */
   removeMistakeOnCorrect: boolean

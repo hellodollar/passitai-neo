@@ -46,7 +46,7 @@ function requestClear(type?: keyof typeof PRACTICE_CATEGORY_LABELS) {
 </script>
 
 <template>
-  <BaseModal v-model="model" title="刷题记录" compact-footer>
+  <BaseModal v-model="model" title="本地刷题记录" compact-footer>
     <div class="divide-y divide-base-200">
       <div
         v-for="category in categories"
@@ -72,7 +72,7 @@ function requestClear(type?: keyof typeof PRACTICE_CATEGORY_LABELS) {
     <p v-if="legacyCount" class="mt-3 text-xs text-base-content/45">
       另有 {{ legacyCount }} 份旧记录，清除全部时一并处理。
     </p>
-    <p v-if="!totalCount" class="mt-3 text-center text-xs text-base-content/45">暂无刷题记录</p>
+    <p v-if="!totalCount" class="mt-3 text-center text-xs text-base-content/45">暂无本地刷题记录</p>
     <template #footer>
       <button
         class="btn btn-error h-9 min-h-9 w-full rounded-lg text-sm"

@@ -8,7 +8,7 @@ import type {
 } from '@/types'
 
 export function fetchUser() {
-  return request<User>('/user')
+  return request<User>('/user', { retry: 0, timeout: 10_000 })
 }
 
 export function changePassword(payload: PasswordChangeBody) {

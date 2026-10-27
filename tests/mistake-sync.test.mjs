@@ -7,14 +7,12 @@ import { loadSource } from './helpers/load-source.mjs'
 
 const { useMistakeSync } = await loadSource('composables/useMistakeSync.ts')
 const { useAuthStore } = await loadSource('stores/auth.ts')
-const { usePracticeStore } = await loadSource('stores/practice.ts')
+const { usePracticeSettingsStore } = await loadSource('stores/practice-settings.ts')
 const { useToasts } = await loadSource('utils/toast.ts')
 
 const DEFAULT_SETTINGS = {
   autoNext: false,
   recordWrongQuestions: true,
-  showExplanationAfterAnswer: true,
-  loopAfterCompletion: false,
   autoSubmitAfterCompletion: false,
   removeMistakeOnCorrect: false,
 }
@@ -118,7 +116,7 @@ function setup({
   installFetch(fetchOptions)
   const auth = useAuthStore()
   if (session) auth.session = session
-  const settingsStore = usePracticeStore()
+  const settingsStore = usePracticeSettingsStore()
   const sync = useMistakeSync({ context })
   return { auth, settingsStore, sync }
 }

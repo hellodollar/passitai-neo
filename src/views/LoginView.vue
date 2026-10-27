@@ -69,7 +69,7 @@ async function submit() {
   if (!valid) return
 
   // 接口失败时错误提示由请求层统一弹出，成功才跳转
-  const success = await auth.signIn({
+  const success = await auth.login({
     email: form.email.trim(),
     password: form.password,
   })
@@ -104,9 +104,9 @@ async function submit() {
 
       <button
         class="btn btn-primary h-12 w-full rounded-full text-sm font-semibold"
-        :disabled="auth.loading"
+        :disabled="auth.isLoading"
       >
-        <span v-if="auth.loading" class="loading loading-spinner loading-sm"></span>
+        <span v-if="auth.isLoading" class="loading loading-spinner loading-sm"></span>
         登录
       </button>
     </form>

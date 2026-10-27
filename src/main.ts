@@ -15,6 +15,6 @@ app.use(pinia)
 app.use(router)
 
 useAppStore(pinia).bootstrap()
-useAuthStore(pinia).startSessionTracking()
+void useAuthStore(pinia).initialize()
 
 app.mount('#app')

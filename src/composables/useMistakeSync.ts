@@ -1,6 +1,6 @@
 import { addMistake, removeMistakeByContext } from '@/api/wrong-questions'
 import { useAuthStore } from '@/stores/auth'
-import { usePracticeStore } from '@/stores/practice'
+import { usePracticeSettingsStore } from '@/stores/practice-settings'
 import type { CollectionContext, PracticeAnswerRecord, QuestionListItem } from '@/types'
 import {
   getCorrectOptionValues,
@@ -14,7 +14,7 @@ export function useMistakeSync(options: {
   context: (questionId: string) => CollectionContext | null
 }) {
   const auth = useAuthStore()
-  const practice = usePracticeStore()
+  const practiceSettingsStore = usePracticeSettingsStore()
   let errorShown = false
 
   function showErrorOnce(message: string) {
@@ -30,7 +30,7 @@ export function useMistakeSync(options: {
     if (!correct && getCorrectOptionValues(question).length === 0) return
 
     const userId = auth.session?.user.id
-    const settings = await practice.ensureSettings()
+    const settings = await practiceSettingsStore.load()
     if (!userId || auth.session?.user.id !== userId) return
 
     const context = options.context(question.id)

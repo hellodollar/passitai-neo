@@ -12,7 +12,7 @@ Authorization: Bearer <app-token>
 ## 导航
 
 - [通用约定](#1-通用约定)
-- [用户](#2-用户模块) · [学习计划](#3-学习计划模块) · [练习](#4-练习模块)
+- [用户](#2-用户模块) · [刷题计划](#3-刷题计划模块) · [练习](#4-练习模块)
 - [收藏](#5-题目收藏模块) · [错题](#6-错题模块) · [字典选项](#7-字典选项模块)
 - [接口总表](#8-接口总表)
 
@@ -62,11 +62,8 @@ HTTP 2xx、`ok: true` 表示成功；HTTP 4xx/5xx、`ok: false` 表示失败，�
 | `POST`  | `/api/login`                       | 用户登录           | 可用 |
 | `POST`  | `/api/logout`                      | 用户登出，必须鉴权 | 可用 |
 | `GET`   | `/api/user`                        | 获取用户基础信息   | 可用 |
-| `GET`   | `/api/me`                          | 获取用户聚合信息   | 可用 |
 | `PUT`   | `/api/user/password`               | 修改密码           | 可用 |
 | `PUT`   | `/api/user/email`                  | 修改邮箱           | 可用 |
-| `GET`   | `/api/user/settings/notifications` | 获取通知开关配置   | 可用 |
-| `PATCH` | `/api/user/settings/notifications` | 更新通知开关       | 可用 |
 
 ### 注册与登录
 
@@ -140,24 +137,23 @@ interface AuthResult {
 用户登录有效期默认 **3天（259200秒）**，由后台独立配置；允许3600–2592000秒整数。
 从签发时计固定有效期，到期必须重新登录，不自动刷新或滑动续期。
 修改策略只影响新签发 Token，已有会话仍按自身 `exp` 到期。登录响应不返回密码、偏好或会话版本。
-启动、回到前台及到期时核对会话；跨标签同步登录/退出，旧请求及旧退出结果不能覆盖新登录。
+恢复已有有效会话时，Client初始化仅请求一次`GET /api/user`；新登录/注册直接使用返回的user。
+站内路由切换不追加用户请求；窗口focus、页面恢复可见、到期及跨标签事件只核对本地会话，
+不会自动刷新用户或续期。跨标签直接同步已保存的会话快照；旧请求及旧退出结果不能覆盖新登录。
+资料显式刷新由账户Store统一处理，GET /api/user使用10秒超时、零自动重试。
+密码/邮箱修改也由账户Store统一提交；邮箱成功后直接更新共享用户，密码成功后清理原会话，均不追加资料请求。
 
-### 用户基础信息与聚合信息
+### 用户基础信息与“我的”页
 
-`GET /api/user` 返回 `AuthResult['user']`。
+`GET /api/user` 只返回 `AuthResult['user']`，不返回密码哈希、会话版本、刷题计划或偏好。
+账户信息由当前会话统一维护；“我的”页不再复制账户和设置的聚合快照。
+刷题计划与刷题设置分别按需读取，共享各自的状态与缓存；两者可并行加载、独立失败与重试。
+保存计划后首页与“我的”读取同一份计划状态；设置保存后答题页与“我的”读取同一份设置状态。
+账号切换或退出清理缓存，迟到响应不能覆盖新会话。
 
-`GET /api/me` 返回：
-
-```ts
-interface UserMe {
-  user: AuthResult['user']
-  preferences: {
-    plan: StudyPlan | null
-    practice: PracticeSettings
-    notifications: NotificationSettings
-  }
-}
-```
+`/api/me` 已移除。通知尚未开放，不持久化通知占位配置，
+`GET/PATCH /api/user/settings/notifications` 返回404；页面只显示“暂未开放”。
+本地刷题记录由浏览器按用户隔离保存，管理入口明确标注“本地”，不删除服务端交卷报告。
 
 ### 修改密码与邮箱
 
@@ -181,55 +177,47 @@ interface ChangeEmailBody {
   原邮箱、密码或会话版本在更新期间变化，或账号被删除时返回 `HTTP 409`，不覆盖并发改动。
   更换邮箱本身不延长有效期、不撤销已有会话；客户端同步更新当前会话的用户邮箱。
 
-### 通知开关
+## 3. 刷题计划模块
 
-```ts
-interface NotificationSettings {
-  dailyReminder: boolean
-  reminderTime: string
-  weeklyReport: boolean
-}
-```
-
-`PATCH` 接受以上字段的任意子集，并写入当前用户的 `preferences.notifications`。
-未设置时返回 `dailyReminder: false`、`reminderTime: ''`、`weeklyReport: false`；默认值以
-`src/services/client/user-preferences.ts` 为准。
-
-## 3. 学习计划模块
-
-学习计划属于用户顶层配置，不属于练习子资源。
+刷题计划表示当前选择的专业和刷题科目，属于 practice 模块；每个用户最多一份当前计划。
 
 | Method | Path        | 说明             | 状态 |
 | ------ | ----------- | ---------------- | ---- |
-| `GET`  | `/api/plan` | 获取当前学习计划 | 可用 |
-| `PUT`  | `/api/plan` | 更新当前学习计划 | 可用 |
+| `GET`  | `/api/practice/plan` | 获取当前刷题计划 | 可用 |
+| `PUT`  | `/api/practice/plan` | 更新当前刷题计划 | 可用 |
 
 ```ts
-interface StudyPlan {
+interface PracticePlan {
+  majorId: string
   majorName: string
   majorCode: string
   educationLevel: '本科' | '专科' // 来自 majors.educationLevel
   nextExamDate: string | null // 来自 majors.nextExamDate，YYYY-MM-DD
   subjects: {
+    id: string
     name: string
     code: string
   }[]
 }
 
-interface UpdatePlanBody {
+interface UpdatePracticePlanBody {
   majorId: string
-  majorCode?: string
   subjectIds?: string[]
 }
 ```
 
-计划存储在当前用户的 `preferences.plan`。`majorId` 必须指向启用且未删除的专业，否则返回资源不存在。所选科目的 `majorIds` 必须包含该专业 ID，且科目启用、未删除。
-提交的每个 `subjectId` 都必须属于该专业、启用且未删除；任一科目不符合时返回 HTTP 400，
-计划保持不变。`educationLevel`、`nextExamDate` 均从所选专业读取。
+计划独立存于 `users.practicePlan`，只保存 `{ majorId, subjectIds }`；未设置为SQL NULL。
+不重复保存专业或科目的名称、代码。响应中的展示字段实时从题库读取。
+`PUT` 严格接受上述请求字段，未知字段（包括旧majorCode）返回400；省略subjectIds视为空数组，
+数组最多100项，重复ID按首次出现顺序去重。
+专业必须启用且未删除，否则返回404。每个科目必须属于该专业、启用且未删除，
+任一不符合返回400且不改写计划。`educationLevel`、`nextExamDate` 从所选专业读取。
 
-用户未设置计划（新用户）、专业不存在或已删除时，`GET /api/plan` 返回 `data: null`，`/api/me` 的
-`preferences.plan` 同样为 `null`；需先调用 `PUT /api/plan` 手动设置计划。
-当前科目对象只返回 `name`、`code`，不返回学分；客户端不展示学分占位值。
+未设置计划、专业不存在、禁用或删除时，GET返回 `data: null`；需用户手动设置计划。
+读取时过滤已失效的科目并保留选择顺序。返回专业和科目ID，Client直接使用ID，
+不再通过code额外请求字典接口反查。科目不返回学分。
+保存计划不改写偏好、不修改会话版本，也不清理已有刷题记录、收藏或错题。
+旧 `/api/plan` 路径返回404。
 
 ## 4. 练习模块
 
@@ -239,31 +227,30 @@ interface UpdatePlanBody {
 
 | Method  | Path                                                          | 说明                           | 状态     |
 | ------- | ------------------------------------------------------------- | ------------------------------ | -------- |
-| `GET`   | `/api/practice/settings`                                      | 获取练习全局配置               | 可用     |
-| `PATCH` | `/api/practice/settings`                                      | 修改练习全局配置               | 可用     |
+| `GET`   | `/api/practice/settings`                                      | 获取用户刷题设置               | 可用     |
+| `PATCH` | `/api/practice/settings`                                      | 修改用户刷题设置               | 可用     |
 | `GET`   | `/api/practice/entries?subjectId=subxxx`                     | 获取该科目下的练习入口         | 部分可用 |
 | `GET`   | `/api/practice/papers/:paperId`                               | 获取题集内容及最近真实练习记录 | 可用     |
 | `POST`  | `/api/practice/papers/:paperId/submissions`                   | 交卷并创建练习记录             | 可用     |
 | `GET`   | `/api/practice/papers/:paperId/submissions/:submissionId`    | 获取本次交卷记录               | 可用     |
 
-### 练习设置
+### 刷题设置
 
 ```ts
 interface PracticeSettings {
   autoNext: boolean
   recordWrongQuestions: boolean
-  showExplanationAfterAnswer: boolean
-  loopAfterCompletion: boolean
   autoSubmitAfterCompletion: boolean
   removeMistakeOnCorrect: boolean // 答对自动移除错题
 }
 ```
 
-`PATCH` 接受部分字段，并写入当前用户的 `preferences.practice`。
+`PATCH` 接受非空局部更新，只允许上述四个布尔字段；空对象、未知字段或非布尔值返回400。
+配置存于 `users.preferences.practice`，以数据库原子合并保存，不覆盖并发修改的其他字段或刷题计划。
 未设置时返回 `autoNext: false`、`recordWrongQuestions: true`、
-`showExplanationAfterAnswer: true`、`loopAfterCompletion: false`、
 `autoSubmitAfterCompletion: false`、`removeMistakeOnCorrect: false`；默认值以
 `src/services/client/user-preferences.ts` 为准。
+未接入实际行为的循环练习、答后解析开关已移除；请求旧字段返回400。
 
 ### 练习入口
 
@@ -525,14 +512,11 @@ POST   /api/register
 POST   /api/login
 POST   /api/logout
 GET    /api/user
-GET    /api/me
 PUT    /api/user/password
 PUT    /api/user/email
-GET    /api/user/settings/notifications
-PATCH  /api/user/settings/notifications
 
-GET    /api/plan
-PUT    /api/plan
+GET    /api/practice/plan
+PUT    /api/practice/plan
 
 GET    /api/practice/settings
 PATCH  /api/practice/settings

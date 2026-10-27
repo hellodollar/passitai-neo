@@ -1,6 +1,4 @@
 import type { DomainValue } from '@/generated/domain-values'
-import type { NotificationSettings } from './entity'
-import type { PracticeSettings, StudyPlan } from './practice'
 
 // ---- Auth & User ----
 
@@ -28,16 +26,6 @@ export type AuthCredentials = {
 export type RegisterCredentials = AuthCredentials & {
   /** 邀请码选填；填写时为六位字母数字，注册限制由服务端判定。 */
   inviteCode?: string
-}
-
-export type UserMe = {
-  user: User
-  preferences: {
-    /** 未设置计划时为 null，需用户手动添加 */
-    plan: StudyPlan | null
-    practice: PracticeSettings
-    notifications: NotificationSettings
-  }
 }
 
 // ---- Account changes ----

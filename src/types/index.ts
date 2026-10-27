@@ -8,7 +8,6 @@ export type {
   PasswordChangeResult,
   RegisterCredentials,
   User,
-  UserMe,
   UserRole,
 } from './auth'
 export type {
@@ -19,7 +18,6 @@ export type {
   CollectionGroupBy,
   CollectionOrder,
   FavoriteMutationResult,
-  NotificationSettings,
   OptionItem,
   QuestionContent,
   QuestionListItem,
@@ -39,10 +37,10 @@ export type {
   PracticeSettings,
   PracticeSubmission,
   PracticeSubmissionResult,
-  StudyPlan,
-  StudyPlanSubject,
+  PracticePlan,
+  PracticePlanSubject,
   SubmitPracticePaperBody,
-  UpdatePlanBody,
+  UpdatePracticePlanBody,
 } from './practice'
 export type {
   PracticeAnswerRecord,

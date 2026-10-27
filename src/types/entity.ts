@@ -70,12 +70,6 @@ export type QuestionListItem = QuestionContent & {
 
 // ---- Settings (non-practice) ----
 
-export type NotificationSettings = {
-  dailyReminder: boolean
-  reminderTime: string
-  weeklyReport: boolean
-}
-
 // ---- App preferences (UI only) ----
 
 export type AppPreferences = {

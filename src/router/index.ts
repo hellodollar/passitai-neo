@@ -99,7 +99,7 @@ router.beforeEach((to) => {
 // 必须在同一监听器里先清理再跳转，否则 publicOnly 守卫会把仍视为已登录的跳转弹回首页。
 window.addEventListener(AUTH_INVALIDATED_EVENT, () => {
   const auth = useAuthStore()
-  auth.clearLocalSession()
+  auth.clearSession()
 
   const current = router.currentRoute.value
   if (!current.meta.requiresAuth) return

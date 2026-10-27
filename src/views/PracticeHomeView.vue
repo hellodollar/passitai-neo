@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import {
+  AlertCircle,
   ArrowDown,
   ArrowUp,
   BookOpenCheck,
@@ -21,18 +22,19 @@ import logoPassitai from '@/assets/icons/icon-passitai.svg'
 import BaseModal from '@/components/common/BaseModal.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import PagePlaceholder from '@/components/common/PagePlaceholder.vue'
-import StudyPlanModal from '@/components/practice/StudyPlanModal.vue'
+import PracticePlanModal from '@/components/practice/PracticePlanModal.vue'
 import PracticeSettingsModal from '@/components/settings/PracticeSettingsModal.vue'
 import { useLocalPracticeRecords } from '@/composables/useLocalPracticeRecords'
 import { ROUTE_NAMES } from '@/constants/app'
 import { BASELINE_CHILD_ICONS } from '@/constants/practice-icons'
 import { useAuthStore } from '@/stores/auth'
-import { usePlanStore } from '@/stores/plan'
+import { usePracticePlanStore } from '@/stores/practice-plan'
+import { usePracticeEntriesStore } from '@/stores/practice-entries'
 import { useBrowseScroll } from '@/composables/useBrowseScroll'
 import { homeSelection, readBrowseState, writeBrowseState } from '@/utils/browse-state'
 import { readPracticeRecord } from '@/utils/practice-record'
 import { applyLocalPracticeProgress } from '@/utils/practice-progress'
-import type { PracticeEntry, PracticeEntryChild, StudyPlan } from '@/types'
+import type { PracticeEntry, PracticeEntryChild, PracticePlan } from '@/types'
 
 const router = useRouter()
 const route = useRoute()
@@ -50,10 +52,11 @@ const settingsModalOpen = ref(false)
 const subjectPanelOpen = ref(false)
 const planModalOpen = ref(false)
 // 计划与题集目录来自 plan store:有缓存时挂载即渲染,仅在首次加载(未成功也未失败)时显示整页加载态
-const planStore = usePlanStore()
-const plan = computed<StudyPlan | null>(() => planStore.plan)
+const practicePlanStore = usePracticePlanStore()
+const practiceEntriesStore = usePracticeEntriesStore()
+const plan = computed<PracticePlan | null>(() => practicePlanStore.plan)
 const planLoading = computed(
-  () => !planStore.planLoaded && (planStore.planFetching || !planStore.planFailed),
+  () => !practicePlanStore.isLoaded && (practicePlanStore.isLoading || !practicePlanStore.error),
 )
 
 const subjectOrder = ref<string[]>(initialBrowse.subjectOrder)
@@ -131,7 +134,7 @@ const nextExamDate = computed(() => {
   return Number.isNaN(parsedDate.getTime()) ? null : parsedDate
 })
 
-const hasStudyPlan = computed(() => planSubjects.value.length > 0)
+const hasPracticePlan = computed(() => planSubjects.value.length > 0)
 const daysUntilExam = computed(() => {
   if (!nextExamDate.value) return null
   return Math.max(0, differenceInCalendarDays(nextExamDate.value, new Date()))
@@ -283,7 +286,7 @@ function startEntryPaper(child: PracticeEntryChild) {
   })
 }
 
-// 计划只有科目 code;subjectId 映射与题集目录走 plan store 缓存,重复进入/切换科目不再全量拉取。
+// 计划直接携带科目 ID，题集目录按科目缓存。
 let entryLoadSequence = 0
 
 async function loadEntries() {
@@ -293,21 +296,14 @@ async function loadEntries() {
   if (!subject) {
     entries.value = []
     entriesLoading.value = false
-    if (planStore.planLoaded && !planLoading.value) void browseScroll.restore()
+    if (practicePlanStore.isLoaded && !planLoading.value) void browseScroll.restore()
     return
   }
   // 切换科目时保留上一科目的内容与进度,仅在尚无内容时显示占位加载
   entriesLoading.value = true
   try {
-    const subjectIds = await planStore.ensureSubjectIdMap(planMajorCode.value)
-    if (sequence !== entryLoadSequence) return
-    const subjectId = subjectIds?.get(subject.code)
-    if (!subjectId) {
-      entries.value = []
-      return
-    }
-
-    const loadedEntries = await planStore.ensureEntries(subjectId)
+    const subjectId = subject.id
+    const loadedEntries = await practiceEntriesStore.load(subjectId)
     if (sequence !== entryLoadSequence || auth.session?.user.id !== userId) return
     activeSubjectId.value = subjectId
     // 目录已给出真实科目及分类，可迁移这些题集的旧记录；不额外拉取作答接口。
@@ -352,12 +348,8 @@ async function loadEntries() {
   }
 }
 
-function handlePlanUpdated(updated: StudyPlan) {
-  planStore.applyPlan(updated)
-}
-
 onMounted(() => {
-  void planStore.ensurePlan()
+  void practicePlanStore.load()
 })
 
 onBeforeUnmount(() => {
@@ -401,7 +393,7 @@ watch(
     hiddenSubjectCodes.value = new Set(state.hiddenSubjectCodes)
     activeSubjectCode.value = selection.subjectCode
     expandedEntryKey.value = selection.entry
-    if (userId) void planStore.ensurePlan()
+    if (userId) void practicePlanStore.load()
   },
 )
 
@@ -423,7 +415,7 @@ watch(
 )
 
 watch(
-  () => [planMajorCode.value, activeSubject.value?.code ?? ''],
+  () => [plan.value?.majorId, activeSubject.value?.id ?? ''],
   () => {
     void loadEntries()
   },
@@ -444,7 +436,17 @@ watch(
       <p class="text-sm font-medium text-base-content/65">正在获取练习计划…</p>
     </PagePlaceholder>
 
-    <PagePlaceholder v-else-if="!hasStudyPlan">
+    <PagePlaceholder v-else-if="practicePlanStore.error">
+      <EmptyState
+        :icon="AlertCircle"
+        :title="practicePlanStore.error"
+        description="请重试加载刷题计划。"
+        action-label="重试"
+        @action="practicePlanStore.load()"
+      />
+    </PagePlaceholder>
+
+    <PagePlaceholder v-else-if="!hasPracticePlan">
       <EmptyState
         :icon="Target"
         title="暂无练习计划"
@@ -769,6 +771,6 @@ watch(
 
     <PracticeSettingsModal v-model="settingsModalOpen" />
 
-    <StudyPlanModal v-model="planModalOpen" :plan="plan" @updated="handlePlanUpdated" />
+    <PracticePlanModal v-model="planModalOpen" />
   </section>
 </template>

@@ -76,7 +76,7 @@ watch(
 )
 
 async function submit() {
-  if (auth.loading) return
+  if (auth.isLoading) return
   submitted = true
   const valid = Object.values(validators)
     .map((validate) => validate())
@@ -84,7 +84,7 @@ async function submit() {
   if (!valid) return
 
   // 接口失败时错误提示由请求层统一弹出，成功才进入首页
-  const success = await auth.signUp(registrationPayload(form))
+  const success = await auth.register(registrationPayload(form))
   if (success) router.push('/')
 }
 </script>
@@ -137,9 +137,9 @@ async function submit() {
 
       <button
         class="btn btn-primary h-12 w-full rounded-full text-sm font-semibold"
-        :disabled="auth.loading"
+        :disabled="auth.isLoading"
       >
-        <span v-if="auth.loading" class="loading loading-spinner loading-sm"></span>
+        <span v-if="auth.isLoading" class="loading loading-spinner loading-sm"></span>
         创建账号
       </button>
     </form>

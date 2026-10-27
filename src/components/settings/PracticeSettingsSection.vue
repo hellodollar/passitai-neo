@@ -1,125 +1,54 @@
 <script setup lang="ts">
-import { nextTick, ref, watch } from 'vue'
-
+import { computed, ref, watch } from 'vue'
 import SettingsToggleItem from '@/components/common/SettingsToggleItem.vue'
-import { DEFAULT_PRACTICE_SETTINGS } from '@/constants/practice'
-import { usePracticeStore } from '@/stores/practice'
+import { useAuthStore } from '@/stores/auth'
+import { usePracticeSettingsStore } from '@/stores/practice-settings'
 import type { PracticeSettings } from '@/types'
 
-const props = withDefaults(
-  defineProps<{
-    /** 弹框处于打开状态,首次打开时按需加载设置 */
-    active?: boolean
-    /** 外部聚合数据(如 /api/me 的 preferences.practice),提供时优先使用 */
-    settings?: PracticeSettings | null
-    /** 聚合模式下是否显示分组标题 */
-    showHeader?: boolean
-    /** 是否显示错题设置分组（答对自动移除错题），仅"我的-刷题设置"弹框开启 */
-    showMistakeSettings?: boolean
-  }>(),
-  {
-    active: false,
-    settings: null,
-    showHeader: false,
-    showMistakeSettings: false,
-  },
+const props = defineProps<{ active?: boolean; showMistakeSettings?: boolean }>()
+const auth = useAuthStore()
+const practiceSettingsStore = usePracticeSettingsStore()
+const pending = ref<Partial<Record<keyof PracticeSettings, { value: boolean; sequence: number }>>>(
+  {},
 )
-
-const emit = defineEmits<{
-  /** 单项设置保存成功，携带当前完整设置，供外层同步聚合数据 */
-  saved: [settings: PracticeSettings]
-}>()
-
-const practice = usePracticeStore()
-
-/** 默认值来自 constants/practice，克隆使用，避免共享可变对象。 */
-const practiceSettings = ref<PracticeSettings>({ ...DEFAULT_PRACTICE_SETTINGS })
-const loaded = ref(false)
-let lastValues: PracticeSettings = { ...DEFAULT_PRACTICE_SETTINGS }
-let editSequence = 0
-const pendingEdits = new Map<keyof PracticeSettings, { sequence: number; value: boolean }>()
-
-function applySettings(settings: PracticeSettings) {
-  practiceSettings.value = { ...settings }
-  lastValues = { ...settings }
-}
-
-function applyServerSettings(settings: PracticeSettings) {
-  const next = { ...settings }
-  for (const [key, edit] of pendingEdits) next[key] = edit.value
-  applySettings(next)
-}
-
-// 首次打开时才加载:优先用外部传入,缺失时走 store 缓存(无缓存才请求)
-async function loadPracticeSettings() {
-  if (props.settings) {
-    applySettings(props.settings)
-    await nextTick()
-    loaded.value = true
-    return
+let sequence = 0
+const settings = computed(() => {
+  if (!practiceSettingsStore.settings) return null
+  const next = { ...practiceSettingsStore.settings }
+  for (const key of Object.keys(pending.value) as Array<keyof PracticeSettings>) {
+    const edit = pending.value[key]
+    if (edit) next[key] = edit.value
   }
+  return next
+})
 
-  const cached = await practice.ensureSettings()
-  if (cached) applySettings(cached)
-  await nextTick()
-  loaded.value = true
+async function saveSetting(key: keyof PracticeSettings, value: boolean) {
+  const edit = ++sequence
+  const token = auth.session?.token
+  pending.value = { ...pending.value, [key]: { value, sequence: edit } }
+  try {
+    await practiceSettingsStore.save({ [key]: value })
+  } catch {
+    // 请求层显示错误；移除本次乐观值后恢复到共享状态中的服务端值。
+  } finally {
+    if (token === auth.session?.token && pending.value[key]?.sequence === edit) {
+      const next = { ...pending.value }
+      delete next[key]
+      pending.value = next
+    }
+  }
 }
 
 watch(
-  practiceSettings,
-  (settings) => {
-    if (!loaded.value) return
-
-    // 快照改动前的值，保存失败时按此回滚。
-    const previous: PracticeSettings = { ...lastValues }
-
-    // 深度监听里找出真正变化的字段，只提交增量。
-    const payload: Partial<PracticeSettings> = {}
-    const sequence = ++editSequence
-    for (const key of Object.keys(settings) as Array<keyof PracticeSettings>) {
-      if (settings[key] !== lastValues[key]) {
-        payload[key] = settings[key]
-        lastValues[key] = settings[key]
-        pendingEdits.set(key, { sequence, value: settings[key] })
-      }
-    }
-    if (Object.keys(payload).length === 0) return
-
-    void practice
-      .patchSettings(payload)
-      .then((next) => {
-        for (const key of Object.keys(payload) as Array<keyof PracticeSettings>) {
-          if (pendingEdits.get(key)?.sequence === sequence) pendingEdits.delete(key)
-        }
-        applyServerSettings(next)
-        emit('saved', { ...next })
-      })
-      .catch(() => {
-        // 保存失败时只回滚本次提交的字段，让开关回到服务端当前状态；错误提示由请求层统一弹出。
-        const restored = { ...practiceSettings.value }
-        for (const key of Object.keys(payload) as Array<keyof PracticeSettings>) {
-          if (pendingEdits.get(key)?.sequence !== sequence) continue
-          pendingEdits.delete(key)
-          restored[key] = practice.settings?.[key] ?? previous[key]
-          lastValues[key] = restored[key]
-        }
-        practiceSettings.value = restored
-      })
-  },
-  { deep: true },
-)
-
-watch(
-  () => props.settings,
-  (value) => {
-    if (value) applyServerSettings(value)
+  () => auth.session?.token,
+  () => {
+    pending.value = {}
   },
 )
-
 watch(
-  () => props.active,
-  (open) => {
-    if (open && !loaded.value) void loadPracticeSettings()
+  [() => props.active, () => auth.session?.token],
+  ([active]) => {
+    if (active) void practiceSettingsStore.load()
   },
   { immediate: true },
 )
@@ -127,44 +56,47 @@ watch(
 
 <template>
   <section class="grid gap-2">
-    <h4 v-if="showHeader" class="text-[13px] font-semibold text-base-content/60">刷题设置</h4>
-
-    <SettingsToggleItem
-      v-model="practiceSettings.autoNext"
-      title="答题正确自动下一题"
-      description="答对后自动跳转下一题"
-    />
-    <SettingsToggleItem
-      v-model="practiceSettings.autoSubmitAfterCompletion"
-      title="自动交卷"
-      description="答完全部题目后自动提交"
-    />
-
-    <SettingsToggleItem
-      v-model="practiceSettings.loopAfterCompletion"
-      title="循环练习"
-      description="答完一遍后自动重新开始"
-    />
-
-    <SettingsToggleItem
-      v-model="practiceSettings.showExplanationAfterAnswer"
-      title="答题后显示解析"
-      description="提交答案后立即展示题目解析"
-    />
-    <SettingsToggleItem
-      v-model="practiceSettings.recordWrongQuestions"
-      title="记录错题"
-      description="自动收集答错的题目到错题本"
-    />
-
-    <!-- 错题设置分组：仅"我的-刷题设置"弹框显示 -->
-    <template v-if="showMistakeSettings">
-      <h4 class="mt-2 text-[13px] font-semibold text-base-content/60">错题设置</h4>
+    <template v-if="settings">
       <SettingsToggleItem
-        v-model="practiceSettings.removeMistakeOnCorrect"
-        title="答对自动移除错题"
-        description="再次答对已收录的错题时自动移出错题本"
+        :model-value="settings.autoNext"
+        title="答题正确自动下一题"
+        description="答对后自动跳转下一题"
+        @update:model-value="saveSetting('autoNext', $event)"
       />
+      <SettingsToggleItem
+        :model-value="settings.autoSubmitAfterCompletion"
+        title="自动交卷"
+        description="答完全部题目后自动提交"
+        @update:model-value="saveSetting('autoSubmitAfterCompletion', $event)"
+      />
+      <SettingsToggleItem
+        :model-value="settings.recordWrongQuestions"
+        title="记录错题"
+        description="自动收集答错的题目到错题本"
+        @update:model-value="saveSetting('recordWrongQuestions', $event)"
+      />
+      <template v-if="showMistakeSettings">
+        <h4 class="mt-2 text-[13px] font-semibold text-base-content/60">错题设置</h4>
+        <SettingsToggleItem
+          :model-value="settings.removeMistakeOnCorrect"
+          title="答对自动移除错题"
+          description="再次答对已收录的错题时自动移出错题本"
+          @update:model-value="saveSetting('removeMistakeOnCorrect', $event)"
+        />
+      </template>
     </template>
+    <div v-else class="py-6 text-center text-sm text-base-content/60">
+      <template v-if="practiceSettingsStore.isLoading">正在加载刷题设置…</template>
+      <template v-else>
+        <p>刷题设置加载失败</p>
+        <button
+          class="btn btn-ghost btn-sm mt-2"
+          type="button"
+          @click="practiceSettingsStore.load()"
+        >
+          重试
+        </button>
+      </template>
+    </div>
   </section>
 </template>
