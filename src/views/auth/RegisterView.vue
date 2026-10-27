@@ -1,25 +1,35 @@
 <script setup lang="ts">
-import { LockKeyhole, Mail } from '@lucide/vue'
+import { Lock, LockKeyhole, Mail, TicketPercent } from '@lucide/vue'
 import { reactive, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 import AuthField from '@/components/auth/AuthField.vue'
 import AuthFrame from '@/components/auth/AuthFrame.vue'
 import { useAuthStore } from '@/stores/auth'
-import { EMAIL_PATTERN } from '@/utils/validation'
+import { resolveLoginRedirect } from '@/utils/browse/navigation'
+import {
+  inviteCodeError,
+  normalizeInviteCode,
+  registrationPayload,
+} from '@/utils/auth/registration'
+import { EMAIL_PATTERN, PASSWORD_PATTERN } from '@/utils/auth/validation'
 
 const auth = useAuthStore()
-const route = useRoute()
 const router = useRouter()
+const route = useRoute()
 
 const form = reactive({
   email: '',
   password: '',
+  confirmPassword: '',
+  inviteCode: '',
 })
 
 const errors = reactive({
   email: '',
   password: '',
+  confirmPassword: '',
+  inviteCode: '',
 })
 
 function validateEmail() {
@@ -32,13 +42,30 @@ function validateEmail() {
 
 function validatePassword() {
   if (!form.password) errors.password = '请输入密码'
+  else if (!PASSWORD_PATTERN.test(form.password))
+    errors.password = '密码需为 6-20 位，且包含字母和数字'
   else errors.password = ''
   return !errors.password
+}
+
+function validateConfirmPassword() {
+  if (!form.confirmPassword) errors.confirmPassword = '请再次输入密码'
+  else if (form.confirmPassword !== form.password) errors.confirmPassword = '两次输入的密码不一致'
+  else errors.confirmPassword = ''
+  return !errors.confirmPassword
+}
+
+function validateInviteCode() {
+  form.inviteCode = normalizeInviteCode(form.inviteCode)
+  errors.inviteCode = inviteCodeError(form.inviteCode)
+  return !errors.inviteCode
 }
 
 const validators = {
   email: validateEmail,
   password: validatePassword,
+  confirmPassword: validateConfirmPassword,
+  inviteCode: validateInviteCode,
 } as const
 
 // 首次提交前只做失焦校验；提交失败后进入实时校验，改对了错误立即消失
@@ -54,26 +81,17 @@ watch(
   },
 )
 
-/** 登录后的回跳目标只允许站内路径，拒绝外链与协议相对地址。 */
-function safeRedirectTarget(value: unknown): string {
-  if (typeof value !== 'string' || !value.startsWith('/') || value.startsWith('//')) return '/'
-  if (value.includes('\\')) return '/'
-  return value
-}
-
 async function submit() {
+  if (auth.isLoading) return
   submitted = true
   const valid = Object.values(validators)
     .map((validate) => validate())
     .every(Boolean)
   if (!valid) return
 
-  // 接口失败时错误提示由请求层统一弹出，成功才跳转
-  const success = await auth.login({
-    email: form.email.trim(),
-    password: form.password,
-  })
-  if (success) router.push(safeRedirectTarget(route.query.redirect))
+  // 接口失败时错误提示由请求层统一弹出，成功才进入目标页面
+  const success = await auth.register(registrationPayload(form))
+  if (success) await router.replace(resolveLoginRedirect(router, route.query.redirect))
 }
 </script>
 
@@ -97,9 +115,30 @@ async function submit() {
         :icon="LockKeyhole"
         :error="errors.password"
         type="password"
-        autocomplete="current-password"
-        placeholder="6-20 位字符"
+        autocomplete="new-password"
+        placeholder="6-20 位，包含字母和数字"
         @blur="validatePassword"
+      />
+
+      <AuthField
+        v-model="form.confirmPassword"
+        label="确认密码"
+        :icon="Lock"
+        :error="errors.confirmPassword"
+        type="password"
+        autocomplete="new-password"
+        placeholder="请再次输入密码"
+        @blur="validateConfirmPassword"
+      />
+
+      <AuthField
+        v-model="form.inviteCode"
+        label="邀请码（选填）"
+        :icon="TicketPercent"
+        :error="errors.inviteCode"
+        autocomplete="off"
+        placeholder="6位字母和数字"
+        @blur="validateInviteCode"
       />
 
       <button
@@ -107,14 +146,16 @@ async function submit() {
         :disabled="auth.isLoading"
       >
         <span v-if="auth.isLoading" class="loading loading-spinner loading-sm"></span>
-        登录
+        创建账号
       </button>
     </form>
 
     <p class="mt-3 text-center text-sm text-base-content/60">
-      还没有账号？
-      <RouterLink class="font-semibold text-primary hover:underline" to="/register"
-        >创建账号</RouterLink
+      已经有账号？
+      <RouterLink
+        class="font-semibold text-primary hover:underline"
+        :to="{ name: 'login', query: { redirect: route.query.redirect } }"
+        >去登录</RouterLink
       >
     </p>
   </AuthFrame>

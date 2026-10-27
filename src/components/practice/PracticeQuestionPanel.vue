@@ -12,7 +12,7 @@ import {
   isChoiceQuestionType,
   parseQuestionTitle,
   type NormalizedQuestionOption,
-} from '@/utils/practice-question'
+} from '@/utils/practice/question'
 
 /** 单题作答面板：题干与选项渲染、主观题输入、答后反馈与解析展示。 */
 const props = defineProps<{

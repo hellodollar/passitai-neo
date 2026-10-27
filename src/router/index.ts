@@ -1,114 +1,108 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, type RouterHistory } from 'vue-router'
 
-import { AUTH_INVALIDATED_EVENT, ROUTE_NAMES } from '@/constants/app'
+import { AUTH_INVALIDATED_EVENT } from '@/constants/app'
 import { useAuthStore } from '@/stores/auth'
-import { isBrowseRoute } from '@/utils/browse-state'
 import { showErrorToast } from '@/utils/toast'
 
-const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL),
-  scrollBehavior(to, from, savedPosition) {
-    if (isBrowseRoute(to.name) || to.path === from.path) return false
-    return savedPosition ?? { left: 0, top: 0 }
-  },
-  routes: [
-    {
-      path: '/login',
-      name: ROUTE_NAMES.login,
-      component: () => import('@/views/LoginView.vue'),
-      meta: { publicOnly: true },
+export function createAppRouter(history: RouterHistory) {
+  const router = createRouter({
+    history,
+    scrollBehavior(to, from, savedPosition) {
+      if (['home', 'favorites', 'mistakes'].includes(String(to.name)) || to.path === from.path)
+        return false
+      return savedPosition ?? { left: 0, top: 0 }
     },
-    {
-      path: '/register',
-      name: ROUTE_NAMES.register,
-      component: () => import('@/views/RegisterView.vue'),
-      meta: { publicOnly: true },
-    },
-    {
-      path: '/',
-      component: () => import('@/layouts/MainLayout.vue'),
-      meta: { requiresAuth: true },
-      children: [
-        {
-          path: '',
-          name: ROUTE_NAMES.practiceHome,
-          component: () => import('@/views/PracticeHomeView.vue'),
-        },
-        {
-          path: 'practice',
-          redirect: (to) => ({
-            name: ROUTE_NAMES.practiceHome,
-            query: to.query,
-            hash: to.hash,
-          }),
-        },
-        {
-          path: 'practice/papers/:paperId',
-          name: ROUTE_NAMES.practicePaper,
-          component: () => import('@/views/PracticePaperView.vue'),
-          meta: { practiceShell: true },
-        },
-        {
-          path: 'practice/papers/:paperId/result',
-          name: ROUTE_NAMES.practicePaperResult,
-          component: () => import('@/views/PracticeResultView.vue'),
-          meta: { practiceShell: true },
-        },
-        {
-          path: 'favorites',
-          name: ROUTE_NAMES.favorites,
-          component: () => import('@/views/CollectionOverviewView.vue'),
-          props: { source: 'favorites' },
-        },
-        {
-          path: 'wrong-book',
-          name: ROUTE_NAMES.wrongQuestions,
-          component: () => import('@/views/CollectionOverviewView.vue'),
-          props: { source: 'wrong-questions' },
-        },
-        {
-          path: 'me',
-          name: ROUTE_NAMES.me,
-          component: () => import('@/views/MeView.vue'),
-        },
-      ],
-    },
-    {
-      path: '/:pathMatch(.*)*',
-      component: () => import('@/views/NotFoundView.vue'),
-    },
-  ],
-})
-
-router.beforeEach((to) => {
-  const auth = useAuthStore()
-
-  if (to.meta.requiresAuth && !auth.isAuthenticated) {
-    return {
-      name: ROUTE_NAMES.login,
-      query: { redirect: to.fullPath },
-    }
-  }
-
-  if (to.meta.publicOnly && auth.isAuthenticated) {
-    return { name: ROUTE_NAMES.practiceHome }
-  }
-})
-
-// 后台 401 会话失效：清理本地会话并带回跳跳转登录页，避免用户停留在加载失败的页面。
-// 必须在同一监听器里先清理再跳转，否则 publicOnly 守卫会把仍视为已登录的跳转弹回首页。
-window.addEventListener(AUTH_INVALIDATED_EVENT, () => {
-  const auth = useAuthStore()
-  auth.clearSession()
-
-  const current = router.currentRoute.value
-  if (!current.meta.requiresAuth) return
-
-  showErrorToast('登录状态已失效，请重新登录')
-  void router.replace({
-    name: ROUTE_NAMES.login,
-    query: { redirect: current.fullPath },
+    routes: [
+      {
+        path: '/',
+        name: 'home',
+        component: () => import('@/views/HomeView.vue'),
+      },
+      {
+        path: '/practice/:paperId',
+        name: 'practice',
+        component: () => import('@/views/practice/PracticeView.vue'),
+        props: (route) => ({ source: 'practice', paperId: route.params.paperId }),
+      },
+      {
+        path: '/practice/:paperId/result/:submissionId',
+        name: 'practice-result',
+        component: () => import('@/views/practice/PracticeResultView.vue'),
+        props: true,
+      },
+      {
+        path: '/favorites',
+        name: 'favorites',
+        component: () => import('@/views/QuestionCollectionView.vue'),
+        props: { source: 'favorites' },
+      },
+      {
+        path: '/favorites/practice/:groupBy(subject|paper)/:groupId',
+        name: 'favorite-practice',
+        component: () => import('@/views/practice/PracticeView.vue'),
+        props: (route) => ({
+          source: 'favorites',
+          groupBy: route.params.groupBy,
+          groupId: route.params.groupId,
+        }),
+      },
+      {
+        path: '/mistakes',
+        name: 'mistakes',
+        component: () => import('@/views/QuestionCollectionView.vue'),
+        props: { source: 'mistakes' },
+      },
+      {
+        path: '/mistakes/practice/:groupBy(subject|paper)/:groupId',
+        name: 'mistake-practice',
+        component: () => import('@/views/practice/PracticeView.vue'),
+        props: (route) => ({
+          source: 'mistakes',
+          groupBy: route.params.groupBy,
+          groupId: route.params.groupId,
+        }),
+      },
+      {
+        path: '/me',
+        name: 'me',
+        component: () => import('@/views/MeView.vue'),
+      },
+      {
+        path: '/login',
+        name: 'login',
+        component: () => import('@/views/auth/LoginView.vue'),
+      },
+      {
+        path: '/register',
+        name: 'register',
+        component: () => import('@/views/auth/RegisterView.vue'),
+      },
+      {
+        path: '/:pathMatch(.*)*',
+        name: 'not-found',
+        component: () => import('@/views/NotFoundView.vue'),
+      },
+    ],
   })
-})
 
-export default router
+  // 登录、注册和未找到页公开，其余页面均需登录。
+  router.beforeEach((to) => {
+    const auth = useAuthStore()
+    const isAuthPage = to.name === 'login' || to.name === 'register'
+    if (!isAuthPage && to.name !== 'not-found' && !auth.isAuthenticated) {
+      return { name: 'login', query: { redirect: to.fullPath } }
+    }
+    if (isAuthPage && auth.isAuthenticated) return { name: 'home' }
+  })
+
+  window.addEventListener(AUTH_INVALIDATED_EVENT, () => {
+    // 先清会话，登录页守卫才能放行。
+    useAuthStore().clearSession()
+    const current = router.currentRoute.value
+    if (!current.name || ['login', 'register', 'not-found'].includes(String(current.name))) return
+    showErrorToast('登录状态已失效，请重新登录')
+    void router.replace({ name: 'login', query: { redirect: current.fullPath } })
+  })
+
+  return router
+}

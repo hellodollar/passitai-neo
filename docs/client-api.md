@@ -341,7 +341,7 @@ Section 的所有题目都与 `questionType` 一致；缺失 `questionType` 表�
 分页限制；收藏或取消收藏成功后，再次获取本接口会反映最新状态。
 
 题型和同类型 Section 的默认中文文案由 API `src/constants/question.ts` 的 `QuestionTypeLabels`
-维护，同步到 Neo/Dash 的 `src/generated/domain-values.ts`：`single`→`单选题`、
+维护，同步到 Neo 的 `src/constants/domain-values.ts` 与 Dash 的 `src/generated/domain-values.ts`：`single`→`单选题`、
 `multiple`→`多选题`、`judge`→`判断题`、`nounExplain`→`名词解释`、
 `shortAnswer`→`简答题`、`essay`→`论述题`。这只是展示/输入建议；Section 的 `name`
 如已自定义，客户端须原样展示，不用默认文案覆盖。

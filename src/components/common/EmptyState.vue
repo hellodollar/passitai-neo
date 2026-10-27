@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
 import { computed } from 'vue'
-import { RouterLink } from 'vue-router'
 
 const props = withDefaults(
   defineProps<{
@@ -9,14 +8,12 @@ const props = withDefaults(
     title: string
     description?: string
     actionLabel?: string
-    actionTo?: string
     tone?: 'primary' | 'success' | 'warning' | 'error'
     /** 卡片内嵌使用：去掉虚线边框与底色，压缩留白 */
     embedded?: boolean
   }>(),
   {
     actionLabel: '',
-    actionTo: '',
     description: '',
     tone: 'primary',
     embedded: false,
@@ -57,15 +54,8 @@ const toneClasses = computed(() => {
     >
       {{ description }}
     </p>
-    <RouterLink
-      v-if="actionLabel && actionTo"
-      class="btn btn-primary btn-sm mt-5 rounded-full px-5"
-      :to="actionTo"
-    >
-      {{ actionLabel }}
-    </RouterLink>
     <button
-      v-else-if="actionLabel"
+      v-if="actionLabel"
       class="btn btn-primary btn-sm mt-5 rounded-full px-5"
       type="button"
       @click="emit('action')"

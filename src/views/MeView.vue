@@ -12,6 +12,7 @@ import {
 } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+
 import AccountEmailContent from '@/components/auth/AccountEmailContent.vue'
 import AccountPasswordContent from '@/components/auth/AccountPasswordContent.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
@@ -109,7 +110,7 @@ async function logout() {
   signingOut.value = true
   const exited = await auth.logout()
   signingOut.value = false
-  if (exited) router.push('/login')
+  if (exited) await router.replace({ name: 'login' })
 }
 
 watch(

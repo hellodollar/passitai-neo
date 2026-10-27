@@ -6,8 +6,7 @@ import { useRouter } from 'vue-router'
 import AuthField from '@/components/auth/AuthField.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
 import { showSuccessToast } from '@/utils/toast'
-import { PASSWORD_PATTERN } from '@/utils/validation'
-import { ROUTE_NAMES } from '@/constants/app'
+import { PASSWORD_PATTERN } from '@/utils/auth/validation'
 import { useAuthStore } from '@/stores/auth'
 
 const model = defineModel<boolean>({ default: false })
@@ -94,7 +93,7 @@ async function submit() {
     // 接口失败时错误提示由请求层统一弹出，弹框保持打开
     showSuccessToast('密码已修改，请重新登录')
     model.value = false
-    await router.replace({ name: ROUTE_NAMES.login })
+    await router.replace({ name: 'login' })
   } catch {
     return
   } finally {

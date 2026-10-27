@@ -3,7 +3,7 @@ import test from 'node:test'
 
 import { loadSource } from './helpers/load-source.mjs'
 
-const { toSubmissionAnswers } = await loadSource('utils/submission-answers.ts')
+const { toSubmissionAnswers } = await loadSource('utils/practice/submission-answers.ts')
 
 test('交卷数据按题型转换，并排除不属于当前题集的旧答案', () => {
   const questions = [

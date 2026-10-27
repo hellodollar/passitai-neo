@@ -15,25 +15,24 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { clearFavorites, fetchFavoriteAggregate } from '@/api/favorites'
-import { clearMistakes, fetchMistakeAggregate } from '@/api/wrong-questions'
+import { clearMistakes, fetchMistakeAggregate } from '@/api/mistakes'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import PagePlaceholder from '@/components/common/PagePlaceholder.vue'
-import { ROUTE_NAMES } from '@/constants/app'
 import { useAuthStore } from '@/stores/auth'
 import { useBrowseScroll } from '@/composables/useBrowseScroll'
-import { collectionFilters, readBrowseState, writeBrowseState } from '@/utils/browse-state'
+import { parseCollectionFilters, readBrowseState, writeBrowseState } from '@/utils/browse/state'
 import type {
   CollectionAggregateItem,
   CollectionGroupBy,
   CollectionOrder,
-  ReviewSource,
+  CollectionSource,
 } from '@/types'
 import { showErrorToast, showSuccessToast } from '@/utils/toast'
 
 type SortField = 'count' | 'recent'
 
-const props = defineProps<{ source: ReviewSource }>()
+const props = defineProps<{ source: CollectionSource }>()
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
@@ -57,6 +56,7 @@ const sortOptionsRef = ref<HTMLElement | null>(null)
 const focusedSortIndex = ref(0)
 let sortTriggerWasOpen = false
 let loadSequence = 0
+let clearSequence = 0
 
 const groupMode = ref<CollectionGroupBy>('subject')
 const sortField = ref<SortField>('recent')
@@ -98,12 +98,25 @@ function collectedTimeText(item: CollectionAggregateItem) {
 async function loadSubjects() {
   const sequence = ++loadSequence
   const userId = auth.session?.user.id ?? ''
+  const token = auth.session?.token
   const source = props.source
+  const isCurrent = () =>
+    sequence === loadSequence &&
+    token === auth.session?.token &&
+    source === props.source &&
+    auth.isAuthenticated
   const requestedGroup = groupMode.value
   const requestedField = sortField.value
   const requestedOrder = sortOrder.value
-  loading.value = true
   loadError.value = false
+  if (!userId || !auth.isAuthenticated) {
+    items.value = []
+    totalQuestionCount.value = 0
+    loading.value = false
+    loaded.value = false
+    return
+  }
+  loading.value = true
   try {
     const aggregate = isFavorites.value ? fetchFavoriteAggregate : fetchMistakeAggregate
     const result = await aggregate({
@@ -111,8 +124,7 @@ async function loadSubjects() {
       sort: requestedField,
       order: requestedOrder,
     })
-    if (sequence !== loadSequence || userId !== auth.session?.user.id || source !== props.source)
-      return
+    if (!isCurrent()) return
     items.value = result.items
     totalQuestionCount.value = result.totalQuestionCount
     displayedGroupMode.value = requestedGroup
@@ -138,7 +150,7 @@ async function loadSubjects() {
       })
     }
   } catch {
-    if (sequence !== loadSequence) return
+    if (!isCurrent()) return
     // 切换失败不清空已有列表，也不让控件显示未生效的排序或分组。
     groupMode.value = displayedGroupMode.value
     sortField.value = displayedSortField.value
@@ -155,7 +167,7 @@ async function loadSubjects() {
     }
     loadError.value = true
   } finally {
-    if (sequence === loadSequence) {
+    if (isCurrent()) {
       loading.value = false
       loaded.value = true
       // 首次请求失败时不拿空白页的位置覆盖原列表；重试成功后再恢复。
@@ -261,13 +273,14 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   ++loadSequence
+  ++clearSequence
   document.removeEventListener('pointerdown', handleOutsideClick)
   document.removeEventListener('keydown', handleEscape)
 })
 
-/** 进入收藏/错题练习：虚拟题集 id = fav:<subjectId|paperId>，query.source 区分集合 */
+/** 集合来源、分组和资源 ID 在路由中明确表达。 */
 function startPractice(item: CollectionAggregateItem) {
-  if (loading.value || clearing.value) return
+  if (!auth.isAuthenticated || loading.value || clearing.value) return
   const originId = displayedGroupMode.value === 'paper' ? item.paperId : item.subjectId
   if (!originId) return
   const returnTo = router.resolve({
@@ -280,40 +293,49 @@ function startPractice(item: CollectionAggregateItem) {
     },
   }).fullPath
   void router.push({
-    name: ROUTE_NAMES.practicePaper,
-    params: { paperId: `fav:${originId}` },
-    query: { source: props.source, subjectName: item.subjectName, returnTo },
+    name: isFavorites.value ? 'favorite-practice' : 'mistake-practice',
+    params: { groupBy: displayedGroupMode.value, groupId: originId },
+    query: { subjectName: item.subjectName, returnTo },
   })
 }
 
 async function confirmClear() {
-  if (clearing.value) return
+  if (clearing.value || !auth.isAuthenticated) return
+  const sequence = ++clearSequence
+  const token = auth.session?.token
+  const source = props.source
+  const isCurrent = () =>
+    sequence === clearSequence &&
+    token === auth.session?.token &&
+    source === props.source &&
+    auth.isAuthenticated
   clearing.value = true
   try {
-    if (isFavorites.value) await clearFavorites()
+    if (source === 'favorites') await clearFavorites()
     else await clearMistakes()
-    showSuccessToast(isFavorites.value ? '收藏已清空' : '错题已清空')
+    if (!isCurrent()) return
+    showSuccessToast(source === 'favorites' ? '收藏已清空' : '错题已清空')
     clearConfirmOpen.value = false
     await loadSubjects()
   } catch {
-    showErrorToast('清空失败，请稍后重试。')
+    if (isCurrent()) showErrorToast('清空失败，请稍后重试。')
   } finally {
-    clearing.value = false
+    if (isCurrent()) clearing.value = false
   }
 }
 
 watch(
   [
     () => props.source,
-    () => auth.session?.user.id,
+    () => auth.session?.token,
     () => route.query.groupBy,
     () => route.query.sort,
     () => route.query.order,
   ],
   () => {
     const userId = auth.session?.user.id ?? ''
-    const context = `${userId}:${props.source}`
-    const filters = collectionFilters(route.query, readBrowseState(userId, props.source))
+    const context = `${auth.session?.token ?? ''}:${props.source}`
+    const filters = parseCollectionFilters(route.query, readBrowseState(userId, props.source))
     if (
       context === loadedContext &&
       filters.groupBy === groupMode.value &&
@@ -322,6 +344,8 @@ watch(
     )
       return
     if (context !== loadedContext) {
+      clearSequence++
+      clearing.value = false
       loaded.value = false
       items.value = []
       totalQuestionCount.value = 0
@@ -479,7 +503,7 @@ watch(
         :title="emptyTitle"
         :description="emptyDescription"
         action-label="去练习"
-        action-to="/"
+        @action="router.push({ name: 'home' })"
       />
     </PagePlaceholder>
 

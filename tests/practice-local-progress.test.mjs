@@ -9,17 +9,16 @@ const {
   readPracticeRecord,
   writePracticeRecord,
   listPracticeRecords,
-  countLegacyPracticeRecords,
   clearPracticeRecords,
   clearUserPracticeRecords,
-} = await loadSource('utils/practice-record.ts')
+} = await loadSource('utils/practice/record.ts')
 const { isPracticeRecordCurrent, subscribePracticeRecordChanges } = await loadSource(
-  'utils/practice-record-control.ts',
+  'utils/practice/record-control.ts',
 )
 const { preparePracticeSubmission, settlePracticeSubmission } = await loadSource(
-  'utils/practice-submission.ts',
+  'utils/practice/submission.ts',
 )
-const { applyLocalPracticeProgress } = await loadSource('utils/practice-progress.ts')
+const { applyLocalPracticeProgress } = await loadSource('utils/practice/progress.ts')
 
 class MemoryStorage {
   items = new Map()
@@ -53,7 +52,7 @@ const context = {
 const answer = { questionId: 'que_one', fingerprint: 'fp1', text: '甲', values: ['A'] }
 const input = { questionId: 'que_two', fingerprint: 'fp2', text: '未确认', values: [] }
 const recordKey = (ctx = context) =>
-  `passitai:practice-record:v2:${encodeURIComponent(ctx.userId)}:${ctx.source}:${encodeURIComponent(ctx.paperId)}`
+  `passitai:practice-record:v3:${encodeURIComponent(ctx.userId)}:${ctx.source}:${encodeURIComponent(ctx.paperId)}`
 const legacyKey = (ctx = context) => `passitai:practice-draft:v1:${ctx.userId}:${ctx.paperId}`
 const makeRecord = (ctx = context) =>
   updatePracticeRecord(createPracticeRecord(ctx), {
@@ -146,7 +145,11 @@ test('单题集清除答案、输入、位置及提交状态，不删除另一�
   original.pendingSubmission = {
     submissionId: 'rec123456abcdef',
     answerRevision: original.answerRevision,
-    payload: null,
+    payload: {
+      submissionId: 'rec123456abcdef',
+      userAnswers: { que_one: 'A' },
+      startTime: new Date(original.startedAt).toISOString(),
+    },
   }
   original.lastSubmission = {
     submissionId: 'recabcdef123456',
@@ -174,8 +177,8 @@ test('分类清理跨科目覆盖全部目标题集，其他分类和收藏、�
     context,
     { ...context, paperId: 'paptwo', subjectId: 'subtwo' },
     { ...context, paperId: 'papmock', paperType: 'mock' },
-    { ...context, paperId: 'fav:subone', source: 'favorites', paperType: null },
-    { ...context, paperId: 'fav:subone', source: 'wrong-questions', paperType: null },
+    { ...context, paperId: 'collection:subject:subone', source: 'favorites', paperType: null },
+    { ...context, paperId: 'collection:subject:subone', source: 'mistakes', paperType: null },
   ]
   const records = contexts.map((ctx) => makeRecord(ctx))
   records.forEach(writePracticeRecord)
@@ -191,70 +194,31 @@ test('分类清理跨科目覆盖全部目标题集，其他分类和收藏、�
   assert.equal(writePracticeRecord(records[1]), false)
 })
 
-test('旧 v2 没有 clearToken 可无损读取，清理后同一份旧数据不能复活', () => {
-  const old = makeRecord()
-  delete old.clearToken
-  storage.setItem(recordKey(), JSON.stringify(old))
-  assert.deepEqual(readPracticeRecord(context).answers, old.answers)
-  assert.equal(readPracticeRecord(context).clearToken, '')
-  clearPracticeRecords({ kind: 'category', userId: context.userId, paperType: 'pastExam' })
-  storage.setItem(recordKey(), JSON.stringify(old))
+test('缺失 clearToken 的记录不会被解释为当前代际', () => {
+  const invalid = makeRecord()
+  delete invalid.clearToken
+  storage.setItem(recordKey(), JSON.stringify(invalid))
   assert.equal(readPracticeRecord(context), null)
   assert.deepEqual(listPracticeRecords(context.userId), [])
 })
 
-test('未知分类的 v1 不猜测迁移，分类清理后延迟打开也不恢复已清除的旧答案', () => {
-  const old = {
-    version: 1,
-    userId: context.userId,
-    paperId: context.paperId,
-    startedAt: Date.now(),
-    answers: { que_one: answer },
-    inputs: {},
-    savedAt: Date.now(),
-  }
-  storage.setItem(legacyKey(), JSON.stringify(old))
-  assert.equal(countLegacyPracticeRecords(context.userId), 1)
+test('列表只包含当前版本，旧草稿与旧记录不会进入进度统计', () => {
+  const oldRecord = { ...makeRecord(), version: 2 }
+  storage.setItem(recordKey().replace(':v3:', ':v2:'), JSON.stringify(oldRecord))
+  storage.setItem(legacyKey(), JSON.stringify({ ...oldRecord, version: 1 }))
   assert.deepEqual(listPracticeRecords(context.userId), [])
-  clearPracticeRecords({ kind: 'category', userId: context.userId, paperType: 'pastExam' })
   assert.equal(readPracticeRecord(context), null)
-  assert.ok(storage.getItem(legacyKey()))
-  // 未访问的旧数据仍在，但明确清理过的分类不能再迁移；全部清理会移除原键。
-  clearPracticeRecords({ kind: 'all', userId: context.userId })
-  assert.equal(countLegacyPracticeRecords(context.userId), 0)
 })
 
-test('收藏旧键删除失败后，清理屏障阻止它再次迁移到错题，但不影响错题 v2', () => {
-  const favorites = { ...context, paperId: 'fav:subone', source: 'favorites', paperType: null }
-  const wrong = { ...favorites, source: 'wrong-questions' }
-  const old = {
-    version: 1,
-    userId: favorites.userId,
-    paperId: favorites.paperId,
-    startedAt: Date.now(),
-    answers: { que_one: answer },
-    inputs: {},
-  }
-  storage.setItem(legacyKey(favorites), JSON.stringify(old))
-  storage.failRemovals = true
-  assert.ok(readPracticeRecord(favorites))
-  assert.equal(clearPracticeRecords({ kind: 'paper', identity: favorites }), true)
-  assert.equal(readPracticeRecord(wrong), null)
-  assert.equal(writePracticeRecord(makeRecord(wrong)), true)
-  assert.ok(readPracticeRecord(wrong))
-})
-
-test('清除全部含收藏/错题本地作答和旧草稿，不碰其他用户、登录和刷题设置', () => {
-  for (const source of ['practice', 'favorites', 'wrong-questions'])
+test('清除全部含收藏和错题本地作答，不碰其他用户、登录和刷题设置', () => {
+  for (const source of ['practice', 'favorites', 'mistakes'])
     writePracticeRecord(makeRecord({ ...context, source }))
   const other = { ...context, userId: 'usrother' }
   writePracticeRecord(makeRecord(other))
-  storage.setItem(legacyKey(), '{}')
   storage.setItem('passitai:auth-session', 'auth')
   storage.setItem('practice-settings', 'settings')
   assert.equal(clearPracticeRecords({ kind: 'all', userId: context.userId }), true)
   assert.deepEqual(listPracticeRecords(context.userId), [])
-  assert.equal(countLegacyPracticeRecords(context.userId), 0)
   assert.ok(readPracticeRecord(other))
   assert.equal(storage.getItem('passitai:auth-session'), 'auth')
   assert.equal(storage.getItem('practice-settings'), 'settings')

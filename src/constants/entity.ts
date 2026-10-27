@@ -1,3 +1,3 @@
-import { questionTypeLabels } from '@/generated/domain-values'
+import { questionTypeLabels } from '@/constants/domain-values'
 
 export const QUESTION_TYPE_LABELS = questionTypeLabels

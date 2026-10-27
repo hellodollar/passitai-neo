@@ -1,6 +1,4 @@
-import { ROUTE_NAMES } from '@/constants/app'
-
-export type BrowsePage = 'home' | 'favorites' | 'wrong-questions'
+export type BrowsePage = 'home' | 'favorites' | 'mistakes'
 export type CollectionFilters = {
   groupBy: 'subject' | 'paper'
   sort: 'count' | 'recent'
@@ -22,7 +20,7 @@ function text(value: unknown) {
   return typeof value === 'string' ? value : ''
 }
 
-export function collectionFilters(
+export function parseCollectionFilters(
   query: Query,
   fallback?: Partial<CollectionFilters>,
 ): CollectionFilters {
@@ -36,7 +34,7 @@ export function collectionFilters(
   }
 }
 
-export function homeSelection(query: Query, fallback?: Partial<HomeSelection>): HomeSelection {
+export function parseHomeSelection(query: Query, fallback?: Partial<HomeSelection>): HomeSelection {
   const subjectCode = text(query.subjectCode ?? fallback?.subjectCode)
   const entry = text(query.entry ?? fallback?.entry)
   return {
@@ -58,8 +56,8 @@ function normalizeState(value: unknown): BrowseState {
         ]
       : []
   return {
-    ...collectionFilters(raw),
-    ...homeSelection(raw),
+    ...parseCollectionFilters(raw),
+    ...parseHomeSelection(raw),
     scrollTop:
       typeof raw.scrollTop === 'number' && Number.isFinite(raw.scrollTop)
         ? Math.max(0, raw.scrollTop)
@@ -102,49 +100,4 @@ export function clearBrowseState(userId: string) {
   } catch {
     // 清理失败不阻断登出，新账号仍使用独立状态。
   }
-}
-
-/** 返回目标只允许站内三个刷题入口，拒绝外链、登录页和练习页循环。 */
-export function practiceReturnTarget(query: Query, collectionMode: boolean) {
-  const fallback = collectionMode
-    ? query.source === 'wrong-questions'
-      ? '/wrong-book'
-      : '/favorites'
-    : '/'
-  const value = text(query.returnTo)
-  try {
-    if (!value.startsWith('/') || value.startsWith('//') || value.includes('\\')) return fallback
-    const url = new URL(value, 'https://internal.invalid')
-    if (
-      url.origin !== 'https://internal.invalid' ||
-      !['/', '/favorites', '/wrong-book'].includes(url.pathname)
-    ) {
-      return fallback
-    }
-    if (collectionMode && url.pathname !== fallback) return fallback
-    return `${url.pathname}${url.search}${url.hash}`
-  } catch {
-    return fallback
-  }
-}
-
-/** 有匹配的站内上一页时真正后退；直接打开或历史不匹配时替换，避免重复入栈。 */
-export function returnFromPractice(
-  router: {
-    options: { history: { state: { back?: unknown } } }
-    back: () => void
-    replace: (target: string) => unknown
-  },
-  target: string,
-) {
-  if (router.options.history.state.back === target) router.back()
-  else void router.replace(target)
-}
-
-export function isBrowseRoute(name: unknown) {
-  return (
-    name === ROUTE_NAMES.practiceHome ||
-    name === ROUTE_NAMES.favorites ||
-    name === ROUTE_NAMES.wrongQuestions
-  )
 }

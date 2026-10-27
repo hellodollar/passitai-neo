@@ -160,9 +160,7 @@ export function useQuestionSwipe(options: {
     if (axis !== 'horizontal') return
 
     dragging = true
-    const hasNeighbor = dx < 0
-      ? options.index.value < options.count() - 1
-      : options.index.value > 0
+    const hasNeighbor = dx < 0 ? options.index.value < options.count() - 1 : options.index.value > 0
     lastOffset = dampedSwipeOffset(dx, hasNeighbor)
     dragOffset.value = lastOffset
     lastX = touch.clientX

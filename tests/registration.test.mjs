@@ -3,7 +3,7 @@ import { afterEach, beforeEach, test } from 'node:test'
 import { loadSource } from './helpers/load-source.mjs'
 
 const { inviteCodeError, normalizeInviteCode, registrationPayload } =
-  await loadSource('utils/registration.ts')
+  await loadSource('utils/auth/registration.ts')
 const { register } = await loadSource('api/auth.ts')
 const previousFetch = globalThis.fetch
 const previousWindow = globalThis.window

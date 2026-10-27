@@ -1,7 +1,7 @@
 import { nextTick, onBeforeUnmount, onMounted } from 'vue'
 import { onBeforeRouteLeave, useRoute } from 'vue-router'
 
-import { readBrowseState, writeBrowseState, type BrowsePage } from '@/utils/browse-state'
+import { readBrowseState, writeBrowseState, type BrowsePage } from '@/utils/browse/state'
 
 /** 列表加载后再恢复位置，避免异步内容尚未撑开时被浏览器截断。 */
 export function useBrowseScroll(userId: () => string, page: () => BrowsePage) {

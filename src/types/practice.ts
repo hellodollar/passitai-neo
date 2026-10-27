@@ -1,5 +1,5 @@
-import type { DomainValue } from '@/generated/domain-values'
-import type { QuestionContent, QuestionType } from './entity'
+import type { DomainValue } from '@/constants/domain-values'
+import type { CollectionSource, QuestionContent, QuestionType } from './entity'
 
 // ---- Practice plan ----
 
@@ -24,6 +24,8 @@ export type UpdatePracticePlanBody = {
 }
 
 // ---- Practice ----
+
+export type PracticeSource = 'practice' | CollectionSource
 
 /** 收藏/错题练习数据：与练习题集 paper 同构（无 type/assessmentType/latestRecord） */
 export type CollectionPracticePaper = {

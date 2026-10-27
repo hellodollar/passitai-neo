@@ -2,7 +2,7 @@ import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import { fetchPracticePlan, updatePracticePlan } from '@/api/practice-plan'
 import { SessionChangedError } from '@/api/http'
-import { currentSessionToken } from '@/utils/auth-session'
+import { currentSessionToken } from '@/utils/auth/session'
 import type { PracticePlan, UpdatePracticePlanBody } from '@/types'
 
 /** 刷题计划：load 按需缓存，save 保存并更新共享状态，reset 清理当前会话。 */

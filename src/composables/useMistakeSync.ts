@@ -1,4 +1,4 @@
-import { addMistake, removeMistakeByContext } from '@/api/wrong-questions'
+import { addMistake, removeMistakeByContext } from '@/api/mistakes'
 import { useAuthStore } from '@/stores/auth'
 import { usePracticeSettingsStore } from '@/stores/practice-settings'
 import type { CollectionContext, PracticeAnswerRecord, QuestionListItem } from '@/types'
@@ -6,20 +6,21 @@ import {
   getCorrectOptionValues,
   isAnswerCorrect,
   isChoiceQuestionType,
-} from '@/utils/practice-question'
+} from '@/utils/practice/question'
 import { showErrorToast } from '@/utils/toast'
 
 /** 答题后与服务端同步错题：答错收录、答对按设置移除；失败提示一次，不打断作答。 */
 export function useMistakeSync(options: {
   context: (questionId: string) => CollectionContext | null
+  scopeKey: () => string
 }) {
   const auth = useAuthStore()
   const practiceSettingsStore = usePracticeSettingsStore()
-  let errorShown = false
+  let errorScope: string | undefined
 
-  function showErrorOnce(message: string) {
-    if (errorShown) return
-    errorShown = true
+  function showErrorOnce(message: string, scope: string) {
+    if (errorScope === scope) return
+    errorScope = scope
     showErrorToast(message)
   }
 
@@ -30,17 +31,24 @@ export function useMistakeSync(options: {
     if (!correct && getCorrectOptionValues(question).length === 0) return
 
     const userId = auth.session?.user.id
-    const settings = await practiceSettingsStore.load()
-    if (!userId || auth.session?.user.id !== userId) return
-
+    const token = auth.session?.token
     const context = options.context(question.id)
-    if (!context) return
+    if (!userId || !context) return
+    // 题目上下文与练习代际在等待设置前固定，避免同组件切换后提交到新题集。
+    const answerContext = { ...context }
+    const scope = options.scopeKey()
+    const isCurrent = () =>
+      options.scopeKey() === scope &&
+      auth.session?.user.id === userId &&
+      auth.session?.token === token
+    const settings = await practiceSettingsStore.load()
+    if (!isCurrent()) return
 
     if (correct) {
       // 答对自动移除错题（幂等，无记录时静默）
       if (!settings?.removeMistakeOnCorrect) return
       try {
-        await removeMistakeByContext(context)
+        await removeMistakeByContext(answerContext)
       } catch {
         // 静默失败：不打断答题流程
       }
@@ -48,15 +56,15 @@ export function useMistakeSync(options: {
     }
 
     if (!settings) {
-      showErrorOnce('刷题设置加载失败，错题未保存。')
+      showErrorOnce('刷题设置加载失败，错题未保存。', scope)
       return
     }
     if (!settings.recordWrongQuestions) return
 
     try {
-      await addMistake(context)
+      await addMistake(answerContext)
     } catch {
-      showErrorOnce('错题记录失败，请稍后重试。')
+      if (isCurrent()) showErrorOnce('错题记录失败，请稍后重试。', scope)
     }
   }
 

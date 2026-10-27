@@ -25,15 +25,13 @@ import PagePlaceholder from '@/components/common/PagePlaceholder.vue'
 import PracticePlanModal from '@/components/practice/PracticePlanModal.vue'
 import PracticeSettingsModal from '@/components/settings/PracticeSettingsModal.vue'
 import { useLocalPracticeRecords } from '@/composables/useLocalPracticeRecords'
-import { ROUTE_NAMES } from '@/constants/app'
 import { BASELINE_CHILD_ICONS } from '@/constants/practice-icons'
 import { useAuthStore } from '@/stores/auth'
 import { usePracticePlanStore } from '@/stores/practice-plan'
 import { usePracticeEntriesStore } from '@/stores/practice-entries'
 import { useBrowseScroll } from '@/composables/useBrowseScroll'
-import { homeSelection, readBrowseState, writeBrowseState } from '@/utils/browse-state'
-import { readPracticeRecord } from '@/utils/practice-record'
-import { applyLocalPracticeProgress } from '@/utils/practice-progress'
+import { parseHomeSelection, readBrowseState, writeBrowseState } from '@/utils/browse/state'
+import { applyLocalPracticeProgress } from '@/utils/practice/progress'
 import type { PracticeEntry, PracticeEntryChild, PracticePlan } from '@/types'
 
 const router = useRouter()
@@ -44,8 +42,8 @@ const browseScroll = useBrowseScroll(
   () => 'home',
 )
 const initialBrowse = readBrowseState(auth.session?.user.id ?? '', 'home')
-const initialSelection = homeSelection(route.query, initialBrowse)
-const { records, refresh: refreshLocalRecords } = useLocalPracticeRecords()
+const initialSelection = parseHomeSelection(route.query, initialBrowse)
+const { records } = useLocalPracticeRecords()
 const activeSubjectId = ref('')
 
 const settingsModalOpen = ref(false)
@@ -219,7 +217,7 @@ function selectEntry(key: string) {
 
 /** URL 只由用户操作更新;数据加载链路不回写,避免 query ↔ 状态互相触发的同步回路。 */
 function syncSelectionQuery() {
-  if (route.name !== ROUTE_NAMES.practiceHome) return
+  if (route.name !== 'home') return
   const subjectCode = activeSubject.value?.code ?? ''
   const entry = expandedEntryKey.value || 'baseline'
   if (route.query.subjectCode !== (subjectCode || undefined) || route.query.entry !== entry) {
@@ -270,7 +268,7 @@ function toggleSubjectVisibility(code: string) {
 }
 
 function startEntryPaper(child: PracticeEntryChild) {
-  if (!child.paperId || entriesLoading.value) return
+  if (!auth.isAuthenticated || !child.paperId || entriesLoading.value) return
   const returnTo = router.resolve({
     path: route.path,
     query: {
@@ -280,7 +278,7 @@ function startEntryPaper(child: PracticeEntryChild) {
     },
   }).fullPath
   router.push({
-    name: ROUTE_NAMES.practicePaper,
+    name: 'practice',
     params: { paperId: child.paperId },
     query: { subjectName: activeSubject.value?.name ?? '', returnTo },
   })
@@ -292,11 +290,16 @@ let entryLoadSequence = 0
 async function loadEntries() {
   const sequence = ++entryLoadSequence
   const userId = auth.session?.user.id
+  const token = auth.session?.token
+  const isCurrent = () =>
+    sequence === entryLoadSequence && token === auth.session?.token && auth.isAuthenticated
   const subject = activeSubject.value
-  if (!subject) {
+  if (!userId || !auth.isAuthenticated || !subject) {
     entries.value = []
+    activeSubjectId.value = ''
     entriesLoading.value = false
-    if (practicePlanStore.isLoaded && !planLoading.value) void browseScroll.restore()
+    if (auth.isAuthenticated && practicePlanStore.isLoaded && !planLoading.value)
+      void browseScroll.restore()
     return
   }
   // 切换科目时保留上一科目的内容与进度,仅在尚无内容时显示占位加载
@@ -304,23 +307,8 @@ async function loadEntries() {
   try {
     const subjectId = subject.id
     const loadedEntries = await practiceEntriesStore.load(subjectId)
-    if (sequence !== entryLoadSequence || auth.session?.user.id !== userId) return
+    if (!isCurrent()) return
     activeSubjectId.value = subjectId
-    // 目录已给出真实科目及分类，可迁移这些题集的旧记录；不额外拉取作答接口。
-    if (userId) {
-      for (const entry of loadedEntries ?? []) {
-        for (const child of entry.children ?? []) {
-          readPracticeRecord({
-            userId,
-            paperId: child.paperId,
-            source: 'practice',
-            subjectId,
-            paperType: entry.type,
-          })
-        }
-      }
-      refreshLocalRecords()
-    }
     entries.value = loadedEntries ?? []
     const entryMatched = (loadedEntries ?? []).some(
       (entry) => entry.type === expandedEntryKey.value,
@@ -329,27 +317,29 @@ async function loadEntries() {
       expandedEntryKey.value = entries.value[0]?.type ?? ''
     }
   } catch {
-    if (sequence !== entryLoadSequence) return
+    if (!isCurrent()) return
     entries.value = []
   } finally {
-    if (sequence === entryLoadSequence) {
+    if (isCurrent()) {
       entriesLoading.value = false
       await nextTick()
-      const selected = chipsRow.value?.querySelector<HTMLElement>('[aria-pressed="true"]')
-      if (selected && chipsRow.value) {
-        chipsRow.value.scrollLeft = Math.max(
-          0,
-          selected.offsetLeft - chipsRow.value.offsetLeft - 16,
-        )
+      if (isCurrent()) {
+        const selected = chipsRow.value?.querySelector<HTMLElement>('[aria-pressed="true"]')
+        if (selected && chipsRow.value) {
+          chipsRow.value.scrollLeft = Math.max(
+            0,
+            selected.offsetLeft - chipsRow.value.offsetLeft - 16,
+          )
+        }
+        updateChipsScrollHint()
+        void browseScroll.restore()
       }
-      updateChipsScrollHint()
-      void browseScroll.restore()
     }
   }
 }
 
 onMounted(() => {
-  void practicePlanStore.load()
+  if (auth.isAuthenticated) void practicePlanStore.load()
 })
 
 onBeforeUnmount(() => {
@@ -357,7 +347,10 @@ onBeforeUnmount(() => {
 })
 
 watch([() => route.query.subjectCode, () => route.query.entry], () => {
-  const selection = homeSelection(route.query, readBrowseState(auth.session?.user.id ?? '', 'home'))
+  const selection = parseHomeSelection(
+    route.query,
+    readBrowseState(auth.session?.user.id ?? '', 'home'),
+  )
   if (selection.subjectCode !== activeSubjectCode.value) {
     activeSubjectCode.value = selection.subjectCode
   }
@@ -369,7 +362,7 @@ watch([() => route.query.subjectCode, () => route.query.entry], () => {
 
 // 选中态与科目管理变化只写入本地记忆(按账号),URL 不在此回写。
 watch([activeSubjectCode, expandedEntryKey, subjectOrder, hiddenSubjectCodes], () => {
-  if (route.name !== ROUTE_NAMES.practiceHome) return
+  if (route.name !== 'home') return
   writeBrowseState(auth.session?.user.id ?? '', 'home', {
     subjectCode: activeSubject.value?.code ?? '',
     entry: expandedEntryKey.value || 'baseline',
@@ -379,21 +372,25 @@ watch([activeSubjectCode, expandedEntryKey, subjectOrder, hiddenSubjectCodes], (
 })
 
 watch(
-  () => auth.session?.user.id,
-  (userId) => {
+  () => auth.session?.token,
+  () => {
+    const userId = auth.session?.user.id
     entryLoadSequence++
     const state = readBrowseState(userId ?? '', 'home')
-    const selection = homeSelection({}, state)
+    const selection = parseHomeSelection({}, state)
     browseScroll.reset()
-    // plan 缓存已由 auth store 按会话清空,这里重置本页状态并拉取新账号计划
+    // 每次会话变化都重载计划；浏览记忆仍按账号隔离。
     entries.value = []
     entriesLoading.value = false
     activeSubjectId.value = ''
+    settingsModalOpen.value = false
+    subjectPanelOpen.value = false
+    planModalOpen.value = false
     subjectOrder.value = state.subjectOrder
     hiddenSubjectCodes.value = new Set(state.hiddenSubjectCodes)
     activeSubjectCode.value = selection.subjectCode
     expandedEntryKey.value = selection.entry
-    if (userId) void practicePlanStore.load()
+    if (userId && auth.isAuthenticated) void practicePlanStore.load()
   },
 )
 

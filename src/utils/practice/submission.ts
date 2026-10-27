@@ -4,13 +4,13 @@ import type {
   PracticeSubmission,
   SubmitPracticePaperBody,
 } from '@/types'
-import { isPracticeRecordCurrent } from '@/utils/practice-record-control'
+import { isPracticeRecordCurrent } from './record-control'
 
 type SubmissionPlan =
   | { kind: 'report'; submissionId: string; record: PracticeRecord }
   | {
       kind: 'submit'
-      pending: PracticePendingSubmission & { payload: SubmitPracticePaperBody }
+      pending: PracticePendingSubmission
       record: PracticeRecord
     }
 
@@ -38,7 +38,7 @@ export function preparePracticeSubmission(
     submissionId,
     answerRevision: record.answerRevision,
     payload:
-      existing?.answerRevision === record.answerRevision && existing.payload
+      existing?.answerRevision === record.answerRevision
         ? existing.payload
         : {
             submissionId,

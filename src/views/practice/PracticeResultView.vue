@@ -5,15 +5,17 @@ import { useRoute, useRouter } from 'vue-router'
 
 import { fetchPracticePaper, fetchPracticeSubmission } from '@/api/practice'
 import BaseModal from '@/components/common/BaseModal.vue'
-import { practiceReturnTarget, returnFromPractice } from '@/utils/browse-state'
+import { resolvePracticeReturn, returnToPracticeList } from '@/utils/browse/navigation'
 import { QUESTION_TYPE_LABELS } from '@/constants/entity'
-import { buildSubmissionResult } from '@/utils/practice-result'
+import { buildSubmissionResult } from '@/utils/practice/result'
 import type {
   PracticeResultQuestion,
   PracticeResultQuestionStatus,
   PracticeSubmissionResult,
   QuestionType,
 } from '@/types'
+
+const props = defineProps<{ paperId: string; submissionId: string }>()
 
 const router = useRouter()
 const route = useRoute()
@@ -27,12 +29,6 @@ const resultFilter = ref<'all' | 'review'>('all')
 let loadRequestId = 0
 const hasGradedQuestions = computed(() =>
   Boolean(result.value && result.value.correctCount + result.value.wrongCount > 0),
-)
-const submissionId = computed(() =>
-  typeof route.query.submissionId === 'string' ? route.query.submissionId : '',
-)
-const paperId = computed(() =>
-  typeof route.params.paperId === 'string' ? route.params.paperId : '',
 )
 
 const filteredQuestions = computed(() => {
@@ -64,7 +60,7 @@ async function loadResult() {
   loading.value = true
   loadError.value = false
   result.value = null
-  if (!paperId.value || !submissionId.value) {
+  if (!props.paperId || !props.submissionId) {
     loadError.value = true
     loading.value = false
     return
@@ -72,14 +68,14 @@ async function loadResult() {
 
   try {
     const [detail, submission] = await Promise.all([
-      fetchPracticePaper(paperId.value),
-      fetchPracticeSubmission(paperId.value, submissionId.value),
+      fetchPracticePaper(props.paperId),
+      fetchPracticeSubmission(props.paperId, props.submissionId),
     ])
     if (requestId !== loadRequestId) return
     result.value = buildSubmissionResult(
       detail,
       submission,
-      paperId.value,
+      props.paperId,
       typeof route.query.subjectName === 'string' ? route.query.subjectName : '',
     )
   } catch {
@@ -116,11 +112,11 @@ function openQuestion(question: PracticeResultQuestion) {
 }
 
 function returnToPractice() {
-  returnFromPractice(router, practiceReturnTarget(route.query, false))
+  returnToPracticeList(router, resolvePracticeReturn(route.query, 'practice'))
 }
 
 watch(
-  [paperId, submissionId],
+  [() => props.paperId, () => props.submissionId],
   () => {
     void loadResult()
   },

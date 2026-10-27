@@ -6,7 +6,7 @@ import AuthField from '@/components/auth/AuthField.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
 import { useAuthStore } from '@/stores/auth'
 import { showSuccessToast } from '@/utils/toast'
-import { EMAIL_PATTERN } from '@/utils/validation'
+import { EMAIL_PATTERN } from '@/utils/auth/validation'
 
 const model = defineModel<boolean>({ default: false })
 

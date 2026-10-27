@@ -11,7 +11,7 @@ import type { PracticeRecordClearScope } from '@/types'
 
 const model = defineModel<boolean>({ default: false })
 const auth = useAuthStore()
-const { records, legacyCount, refresh } = useLocalPracticeRecords()
+const { records, refresh } = useLocalPracticeRecords()
 const clearOpen = ref(false)
 const clearScope = ref<PracticeRecordClearScope | null>(null)
 const clearLabel = ref('')
@@ -27,7 +27,7 @@ const categories = computed(() =>
 const collectionCount = computed(
   () => records.value.filter((record) => record.source !== 'practice').length,
 )
-const totalCount = computed(() => records.value.length + legacyCount.value)
+const totalCount = computed(() => records.value.length)
 
 watch(clearOpen, (open, previous) => {
   if (!open && previous) model.value = true
@@ -58,7 +58,7 @@ function requestClear(type?: keyof typeof PRACTICE_CATEGORY_LABELS) {
         <button
           class="btn btn-square btn-ghost btn-sm text-base-content/55"
           type="button"
-          :disabled="category.count === 0 && legacyCount === 0"
+          :disabled="category.count === 0"
           :aria-label="`清除${category.label}记录`"
           @click="requestClear(category.type)"
         >
@@ -68,9 +68,6 @@ function requestClear(type?: keyof typeof PRACTICE_CATEGORY_LABELS) {
     </div>
     <p v-if="collectionCount" class="mt-3 text-xs text-base-content/45">
       收藏与错题练习：{{ collectionCount }} 份本地作答，清除全部时一并处理。
-    </p>
-    <p v-if="legacyCount" class="mt-3 text-xs text-base-content/45">
-      另有 {{ legacyCount }} 份旧记录，清除全部时一并处理。
     </p>
     <p v-if="!totalCount" class="mt-3 text-center text-xs text-base-content/45">暂无本地刷题记录</p>
     <template #footer>

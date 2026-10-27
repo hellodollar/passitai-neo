@@ -3,7 +3,7 @@ import test from 'node:test'
 
 import { loadSource } from './helpers/load-source.mjs'
 
-const { preparePracticePaper } = await loadSource('utils/practice-paper.ts')
+const { preparePracticePaper } = await loadSource('utils/practice/paper.ts')
 
 function paperWithSections(counts) {
   let index = 0

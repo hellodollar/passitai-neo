@@ -11,7 +11,7 @@ const {
   restorePracticeRecord,
   updatePracticeRecord,
   writePracticeRecord,
-} = await loadSource('utils/practice-record.ts')
+} = await loadSource('utils/practice/record.ts')
 
 class MemoryStorage {
   items = new Map()
@@ -60,7 +60,7 @@ const submissionId = 'rec123456abcdef'
 const legacyKey = (record = context) =>
   `passitai:practice-draft:v1:${record.userId}:${record.paperId}`
 const recordKey = (record = context) =>
-  `passitai:practice-record:v2:${encodeURIComponent(record.userId)}:${record.source}:${encodeURIComponent(record.paperId)}`
+  `passitai:practice-record:v3:${encodeURIComponent(record.userId)}:${record.source}:${encodeURIComponent(record.paperId)}`
 const legacyDraft = (overrides = {}) => ({
   version: 1,
   userId: context.userId,
@@ -94,91 +94,66 @@ afterEach(() => {
   else globalThis.window = previousWindow
 })
 
-test('v1 迁移保留答案、未确认输入、位置、时间与待提交 ID，补齐分类信息', () => {
-  storage.setItem(legacyKey(), JSON.stringify(legacyDraft()))
-  const record = readPracticeRecord(context)
-  assert.equal(record.version, 2)
-  assert.equal(record.subjectId, 'subone')
-  assert.equal(record.paperType, 'pastExam')
-  assert.deepEqual(record.answers, { [answer.questionId]: answer })
-  assert.deepEqual(record.inputs, { [input.questionId]: input })
-  assert.equal(record.currentQuestionId, input.questionId)
-  assert.equal(record.startedAt, now)
-  assert.equal(record.savedAt, now)
-  assert.equal(record.pendingSubmission.submissionId, submissionId)
-  assert.equal(record.pendingSubmission.payload, null)
-  assert.equal(record.pendingSubmission.answerRevision, record.answerRevision)
-  assert.equal(record.lastSubmission, null)
-  assert.equal(storage.getItem(legacyKey()), null)
-  assert.deepEqual(JSON.parse(storage.getItem(recordKey())), record)
-  assert.deepEqual(readPracticeRecord(context), record)
-})
-
-test('迁移写入失败仍可在内存恢复；旧草稿保留，恢复写入后可以重试迁移', () => {
-  const original = JSON.stringify(legacyDraft())
-  storage.setItem(legacyKey(), original)
-  storage.failWrites = true
-  assert.deepEqual(readPracticeRecord(context).answers, { [answer.questionId]: answer })
-  assert.equal(storage.getItem(legacyKey()), original)
-  assert.equal(storage.getItem(recordKey()), null)
-  storage.failWrites = false
-  assert.equal(readPracticeRecord(context).version, 2)
-  assert.equal(storage.getItem(legacyKey()), null)
-})
-
-test('写入没有落盘或旧键删除失败时不会丢失迁移数据', () => {
-  const original = JSON.stringify(legacyDraft())
-  storage.setItem(legacyKey(), original)
-  const originalSet = storage.setItem.bind(storage)
-  storage.setItem = () => {}
-  assert.equal(readPracticeRecord(context).version, 2)
-  assert.equal(storage.getItem(legacyKey()), original)
-  storage.setItem = originalSet
-  storage.failRemovals = true
-  assert.equal(readPracticeRecord(context).version, 2)
-  assert.equal(storage.getItem(legacyKey()), original)
-  assert.ok(storage.getItem(recordKey()))
-})
-
-test('已经存在的 v2 优先读取，不被再次出现的 v1 草稿覆盖', () => {
-  const record = updatePracticeRecord(createPracticeRecord(context, now), progress())
+test('当前版本完整保存答案、未确认输入、位置及提交快照，刷新后直接恢复', () => {
+  const record = updatePracticeRecord(
+    createPracticeRecord(context, now),
+    progress({
+      currentQuestionId: input.questionId,
+      inputs: { [input.questionId]: input },
+      pendingSubmissionId: submissionId,
+    }),
+  )
+  assert.equal(record.version, 3)
   assert.equal(writePracticeRecord(record), true)
-  storage.setItem(legacyKey(), JSON.stringify(legacyDraft({ answers: {}, inputs: {} })))
   assert.deepEqual(readPracticeRecord(context), record)
+  assert.deepEqual(record.pendingSubmission.payload, {
+    submissionId,
+    userAnswers: { [answer.questionId]: 'A' },
+    startTime: new Date(now).toISOString(),
+  })
 })
 
-test('新键损坏但旧草稿仍在时，从旧数据恢复并重新完成迁移', () => {
-  storage.setItem(recordKey(), '{invalid')
-  storage.setItem(legacyKey(), JSON.stringify(legacyDraft()))
-  const record = readPracticeRecord(context)
-  assert.deepEqual(record.answers, { [answer.questionId]: answer })
-  assert.deepEqual(JSON.parse(storage.getItem(recordKey())), record)
-  assert.equal(storage.getItem(legacyKey()), null)
+test('v1 草稿和 v2 记录不会被读取、迁移或删除', () => {
+  const oldDraft = JSON.stringify(legacyDraft())
+  const oldRecordKey = recordKey().replace(':v3:', ':v2:')
+  const oldRecord = JSON.stringify({ ...createPracticeRecord(context, now), version: 2 })
+  storage.setItem(legacyKey(), oldDraft)
+  storage.setItem(oldRecordKey, oldRecord)
+  assert.equal(readPracticeRecord(context), null)
+  assert.equal(storage.getItem(recordKey()), null)
+  assert.equal(storage.getItem(legacyKey()), oldDraft)
+  assert.equal(storage.getItem(oldRecordKey), oldRecord)
 })
 
-test('损坏、版本不符或用户不符的旧数据不迁移、不删除', () => {
-  for (const raw of [
-    'bad json',
-    JSON.stringify(legacyDraft({ version: 0 })),
-    JSON.stringify(legacyDraft({ userId: 'usrother' })),
+test('当前键中的错误版本、缺失清理代际或身份不符的记录不能恢复', () => {
+  const valid = createPracticeRecord(context, now)
+  for (const invalid of [
+    { ...valid, version: 2 },
+    { ...valid, clearToken: undefined },
+    { ...valid, userId: 'usrother' },
   ]) {
-    storage.setItem(legacyKey(), raw)
+    storage.setItem(recordKey(), JSON.stringify(invalid))
     assert.equal(readPracticeRecord(context), null)
-    assert.equal(storage.getItem(legacyKey()), raw)
-    assert.equal(storage.getItem(recordKey()), null)
   }
 })
 
-test('新记录按用户、题集和训练来源隔离，包括相同 fav: ID', () => {
+test('当前记录损坏时不回退读取旧草稿', () => {
+  storage.setItem(recordKey(), '{invalid')
+  storage.setItem(legacyKey(), JSON.stringify(legacyDraft()))
+  assert.equal(readPracticeRecord(context), null)
+  assert.equal(storage.getItem(recordKey()), '{invalid')
+})
+
+test('新记录按用户、题集和练习来源隔离，包括相同集合标识', () => {
   const identities = [
-    { ...context, source: 'favorites', paperId: 'fav:subone', paperType: null },
-    { ...context, source: 'wrong-questions', paperId: 'fav:subone', paperType: null },
-    { ...context, source: 'favorites', paperId: 'fav:papone', paperType: null },
+    { ...context, source: 'favorites', paperId: 'collection:subject:subone', paperType: null },
+    { ...context, source: 'mistakes', paperId: 'collection:subject:subone', paperType: null },
+    { ...context, source: 'favorites', paperId: 'collection:paper:papone', paperType: null },
     {
       ...context,
       userId: 'usrother',
       source: 'favorites',
-      paperId: 'fav:subone',
+      paperId: 'collection:subject:subone',
       paperType: null,
     },
   ]
@@ -194,30 +169,6 @@ test('新记录按用户、题集和训练来源隔离，包括相同 fav: ID', 
   clearPracticeRecords({ kind: 'paper', identity: identities[0] })
   assert.equal(readPracticeRecord(identities[0]), null)
   assert.ok(readPracticeRecord(identities[1]))
-})
-
-test('v1 的共享集合草稿只迁移到首次访问来源，不复制给另一个来源', () => {
-  const favorites = { ...context, source: 'favorites', paperId: 'fav:subone', paperType: null }
-  const wrong = { ...favorites, source: 'wrong-questions' }
-  storage.setItem(
-    legacyKey(favorites),
-    JSON.stringify(legacyDraft({ paperId: favorites.paperId, pendingSubmissionId: '' })),
-  )
-  assert.equal(readPracticeRecord(favorites).source, 'favorites')
-  assert.equal(readPracticeRecord(wrong), null)
-})
-
-test('旧集合键删除失败，也不会再次迁移到另一个训练来源', () => {
-  const favorites = { ...context, source: 'favorites', paperId: 'fav:subone', paperType: null }
-  const wrong = { ...favorites, source: 'wrong-questions' }
-  storage.setItem(
-    legacyKey(favorites),
-    JSON.stringify(legacyDraft({ paperId: favorites.paperId, pendingSubmissionId: '' })),
-  )
-  storage.failRemovals = true
-  assert.ok(readPracticeRecord(favorites))
-  assert.ok(storage.getItem(legacyKey(favorites)))
-  assert.equal(readPracticeRecord(wrong), null)
 })
 
 test('只在确认答案变化时递增版本，切题和未确认输入不改变版本', () => {
@@ -272,26 +223,34 @@ test('待提交请求快照独立于输入对象，并在同一次提交的保�
   assert.equal(changed.pendingSubmission, null)
 })
 
-test('旧待提交 ID 在当前题目加载后补齐快照，保持原始 ID 和答案版本', () => {
-  storage.setItem(legacyKey(), JSON.stringify(legacyDraft()))
-  const migrated = readPracticeRecord(context)
-  const updated = updatePracticeRecord(migrated, progress({ pendingSubmissionId: submissionId }))
-  assert.equal(updated.answerRevision, migrated.answerRevision)
-  assert.deepEqual(updated.pendingSubmission.payload, {
+test('缺少固定快照的待提交信息被丢弃，已确认答案仍可恢复', () => {
+  const record = updatePracticeRecord(createPracticeRecord(context, now), progress())
+  record.pendingSubmission = {
     submissionId,
-    userAnswers: { [answer.questionId]: 'A' },
-    startTime: new Date(now).toISOString(),
-  })
+    answerRevision: record.answerRevision,
+    payload: null,
+  }
+  writePracticeRecord(record)
+  const restored = readPracticeRecord(context)
+  assert.deepEqual(restored.answers, record.answers)
+  assert.equal(restored.pendingSubmission, null)
 })
 
-test('迁移、按题目恢复、页面保存、刷新读取的完整链路保留作答', () => {
-  storage.setItem(legacyKey(), JSON.stringify(legacyDraft()))
-  const migrated = readPracticeRecord(context)
+test('按题目恢复、页面保存、刷新读取的完整链路保留作答', () => {
+  const initial = updatePracticeRecord(
+    createPracticeRecord(context, now),
+    progress({
+      currentQuestionId: input.questionId,
+      inputs: { [input.questionId]: input },
+    }),
+  )
+  writePracticeRecord(initial)
+  const loaded = readPracticeRecord(context)
   const questions = [
     { id: answer.questionId, questionType: 'single', A: '选项A', B: '选项B' },
     { id: input.questionId, questionType: 'essay' },
   ]
-  const restored = restorePracticeRecord(migrated, questions, {
+  const restored = restorePracticeRecord(loaded, questions, {
     [answer.questionId]: answer.fingerprint,
     [input.questionId]: input.fingerprint,
   })
@@ -308,7 +267,7 @@ test('迁移、按题目恢复、页面保存、刷新读取的完整链路保�
   )
   assert.equal(writePracticeRecord(saved), true)
   assert.deepEqual(readPracticeRecord(context), saved)
-  assert.equal(saved.answerRevision, migrated.answerRevision)
+  assert.equal(saved.answerRevision, loaded.answerRevision)
 })
 
 test('题目变更剔除失效答案、输入和位置，使待提交失效，保留上次报告信息', () => {
@@ -341,20 +300,17 @@ test('题目变更剔除失效答案、输入和位置，使待提交失效，�
   assert.deepEqual(restored.record.lastSubmission, record.lastSubmission)
 })
 
-test('登出清理当前账号所有来源及未迁移草稿，不影响其他账号或其他本地数据', () => {
-  for (const source of ['practice', 'favorites', 'wrong-questions']) {
+test('登出清理当前账号所有来源，不影响其他账号或其他本地数据', () => {
+  for (const source of ['practice', 'favorites', 'mistakes']) {
     writePracticeRecord(createPracticeRecord({ ...context, source }, now))
   }
   const other = { ...context, userId: 'usrother' }
   writePracticeRecord(createPracticeRecord(other, now))
-  storage.setItem(legacyKey(), JSON.stringify(legacyDraft()))
-  storage.setItem(legacyKey(other), 'other legacy')
   storage.setItem('passitai:auth-session', 'session')
   clearUserPracticeRecords(context.userId)
-  // 三份非目标数据仍在，另保留一份本账号的清理屏障。
-  assert.equal(storage.length, 4)
+  // 另一个账号和登录信息仍在，同时保留本账号的清理屏障。
+  assert.equal(storage.length, 3)
   assert.ok(readPracticeRecord(other))
-  assert.equal(storage.getItem(legacyKey(other)), 'other legacy')
   assert.equal(storage.getItem('passitai:auth-session'), 'session')
 })
 

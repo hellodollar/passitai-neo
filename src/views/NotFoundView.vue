@@ -10,7 +10,9 @@ import { RouterLink } from 'vue-router'
         <Compass :size="36" class="text-primary" />
         <h1 class="mt-4 text-xl font-semibold">页面不存在</h1>
         <p class="text-base-content/65">当前访问地址已失效或不存在。</p>
-        <RouterLink class="btn btn-primary mt-4 h-11 rounded-full" to="/">返回首页</RouterLink>
+        <RouterLink class="btn btn-primary mt-4 h-11 rounded-full" :to="{ name: 'home' }"
+          >返回首页</RouterLink
+        >
       </div>
     </section>
   </main>

@@ -1,7 +1,7 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import { fetchPracticeEntries } from '@/api/practice'
-import { currentSessionToken } from '@/utils/auth-session'
+import { currentSessionToken } from '@/utils/auth/session'
 import type { PracticeEntry } from '@/types'
 
 /** 题集入口按当前会话和科目缓存；不承担用户资料、刷题计划或设置。 */

@@ -1,4 +1,4 @@
-import type { DomainValue } from '@/generated/domain-values'
+import type { DomainValue } from '@/constants/domain-values'
 
 // ---- Enums ----
 
@@ -7,7 +7,7 @@ export type QuestionType = DomainValue<'questionType'>
 // ---- Collection（收藏 / 错题）----
 
 /** 收藏或错题集合来源 */
-export type ReviewSource = 'favorites' | 'wrong-questions'
+export type CollectionSource = 'favorites' | 'mistakes'
 export type CollectionGroupBy = 'subject' | 'paper'
 export type CollectionOrder = 'desc' | 'asc'
 

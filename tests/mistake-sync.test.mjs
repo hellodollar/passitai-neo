@@ -49,16 +49,14 @@ class MemoryStorage {
 const previousFetch = globalThis.fetch
 let requests
 let resolveSettings
+let resolveMistake
 
 function envelope(data, { status = 200 } = {}) {
   const ok = status >= 200 && status < 300
-  return new Response(
-    JSON.stringify(ok ? { ok, data } : { ok, message: '资源不存在', data }),
-    {
-      status,
-      headers: { 'content-type': 'application/json' },
-    },
-  )
+  return new Response(JSON.stringify(ok ? { ok, data } : { ok, message: '资源不存在', data }), {
+    status,
+    headers: { 'content-type': 'application/json' },
+  })
 }
 
 /** 通过真实 API 模块与统一 HTTP 客户端发出请求，仅在 fetch 边界记录并应答。 */
@@ -66,9 +64,11 @@ function installFetch({
   settings = DEFAULT_SETTINGS,
   mistakeStatus = 200,
   deferSettings = false,
+  deferMistake = false,
 } = {}) {
   requests = []
   resolveSettings = null
+  resolveMistake = null
   globalThis.fetch = async (url, options = {}) => {
     const href = String(url)
     if (href.endsWith('/practice/settings')) {
@@ -81,6 +81,11 @@ function installFetch({
     }
     const method = (options.method ?? 'GET').toUpperCase()
     requests.push({ method, href, body: options.body ? JSON.parse(options.body) : undefined })
+    if (deferMistake) {
+      return new Promise((resolve) => {
+        resolveMistake = () => resolve(envelope(null, { status: mistakeStatus }))
+      })
+    }
     if (mistakeStatus !== 200) return envelope(null, { status: mistakeStatus })
     return envelope(null)
   }
@@ -111,13 +116,14 @@ function answer(questionId, values, text = '') {
 function setup({
   session = SESSION,
   context = () => ({ questionId: 'qstone', subjectId: 'subone', paperId: 'papone' }),
+  scopeKey = () => 'practice:papone',
   ...fetchOptions
 } = {}) {
   installFetch(fetchOptions)
   const auth = useAuthStore()
   if (session) auth.session = session
   const settingsStore = usePracticeSettingsStore()
-  const sync = useMistakeSync({ context })
+  const sync = useMistakeSync({ context, scopeKey })
   return { auth, settingsStore, sync }
 }
 
@@ -218,4 +224,84 @@ test('同步失败只提示一次，后续不再重复打扰', async () => {
   const toasts = useToasts().value
   assert.equal(toasts.length, 1)
   assert.match(toasts[0].message, /错题记录失败/)
+})
+
+test('等待设置期间切换题集，不把上一题集答案提交到新上下文', async () => {
+  let scope = 'practice:papa'
+  let context = { questionId: 'qstone', subjectId: 'suba', paperId: 'papa' }
+  const { sync } = setup({
+    deferSettings: true,
+    scopeKey: () => scope,
+    context: () => context,
+  })
+  const pending = sync.syncOnAnswered(question(), answer('qstone', ['B']))
+  await new Promise(setImmediate)
+  assert.ok(resolveSettings, '设置请求应已发出')
+  scope = 'practice:papb'
+  context = { questionId: 'qstone', subjectId: 'subb', paperId: 'papb' }
+  resolveSettings()
+  await pending
+  assert.deepEqual(requests, [])
+
+  await sync.syncOnAnswered(question(), answer('qstone', ['B']))
+  assert.deepEqual(
+    requests.map((request) => request.body),
+    [context],
+  )
+})
+
+test('等待设置期间收藏切换错题练习，旧答案不再收录或移除', async () => {
+  let scope = 'favorites:subject:subone'
+  const { sync } = setup({
+    deferSettings: true,
+    settings: { ...DEFAULT_SETTINGS, removeMistakeOnCorrect: true },
+    scopeKey: () => scope,
+  })
+  const wrong = sync.syncOnAnswered(question(), answer('qstone', ['B']))
+  const correct = sync.syncOnAnswered(question(), answer('qstone', ['A']))
+  await new Promise(setImmediate)
+  assert.ok(resolveSettings, '设置请求应已发出')
+  scope = 'mistakes:subject:subone'
+  resolveSettings()
+  await Promise.all([wrong, correct])
+  assert.deepEqual(requests, [])
+  assert.deepEqual(useToasts().value, [])
+})
+
+test('旧练习请求迟到失败不提示，新练习失败仍能提示一次', async () => {
+  let scope = 'practice:papa'
+  const { sync, settingsStore } = setup({
+    deferMistake: true,
+    mistakeStatus: 500,
+    scopeKey: () => scope,
+  })
+  settingsStore.settings = DEFAULT_SETTINGS
+  settingsStore.isLoaded = true
+  const previous = sync.syncOnAnswered(question(), answer('qstone', ['B']))
+  await new Promise(setImmediate)
+  assert.ok(resolveMistake, '错题请求应已发出')
+  scope = 'practice:papb'
+  resolveMistake()
+  await previous
+  assert.deepEqual(useToasts().value, [])
+
+  const current = sync.syncOnAnswered(question(), answer('qstone', ['B']))
+  await new Promise(setImmediate)
+  resolveMistake()
+  await current
+  assert.equal(useToasts().value.length, 1)
+  assert.match(useToasts().value[0].message, /错题记录失败/)
+})
+
+test('同账号重新登录后，旧会话失败不在新会话显示提示', async () => {
+  const { auth, sync, settingsStore } = setup({ deferMistake: true, mistakeStatus: 500 })
+  settingsStore.settings = DEFAULT_SETTINGS
+  settingsStore.isLoaded = true
+  const pending = sync.syncOnAnswered(question(), answer('qstone', ['B']))
+  await new Promise(setImmediate)
+  assert.ok(resolveMistake, '错题请求应已发出')
+  auth.session = { ...SESSION, token: 'new-token' }
+  resolveMistake()
+  await pending
+  assert.deepEqual(useToasts().value, [])
 })

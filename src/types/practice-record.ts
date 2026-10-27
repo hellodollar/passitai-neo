@@ -1,10 +1,9 @@
 import type { PRACTICE_RECORD_VERSION } from '@/constants/practice'
-import type { DomainValue } from '@/generated/domain-values'
-import type { ReviewSource } from './entity'
-import type { SubmitPracticePaperBody } from './practice'
+import type { DomainValue } from '@/constants/domain-values'
+import type { PracticeSource, SubmitPracticePaperBody } from './practice'
 
 /** 本地作答来源 = 普通刷题 + 两类集合来源；集合来源复用领域层定义。 */
-export type PracticeRecordSource = 'practice' | ReviewSource
+export type PracticeRecordSource = PracticeSource
 
 export type PracticeRecordIdentity = {
   userId: string
@@ -33,8 +32,8 @@ export type PracticeRecordAnswer = PracticeAnswerRecord & {
 export type PracticePendingSubmission = {
   submissionId: string
   answerRevision: number
-  /** v1 只有提交 ID；加载题目后补齐快照，再用于提交重试。 */
-  payload: SubmitPracticePaperBody | null
+  /** 固定的提交请求快照，重试沿用同一份内容。 */
+  payload: SubmitPracticePaperBody
 }
 
 export type PracticeLastSubmission = {
@@ -46,7 +45,7 @@ export type PracticeLastSubmission = {
 /** 本地做题记录与服务端交卷记录独立；交卷状态不能作为答案是否存在的依据。 */
 export type PracticeRecord = PracticeRecordContext & {
   version: typeof PRACTICE_RECORD_VERSION
-  /** 清理代际；旧 v2 缺失时按空串迁移，已清理的内存记录不能回写。 */
+  /** 清理代际；已清理的内存记录不能回写。 */
   clearToken: string
   startedAt: number
   currentQuestionId: string

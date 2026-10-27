@@ -26,9 +26,8 @@ import {
   removeFavorite,
   removeFavoriteByRecord,
 } from '@/api/favorites'
-import { fetchMistakePractice } from '@/api/wrong-questions'
-import { ROUTE_NAMES } from '@/constants/app'
-import { practiceReturnTarget, returnFromPractice } from '@/utils/browse-state'
+import { fetchMistakePractice } from '@/api/mistakes'
+import { resolvePracticeReturn, returnToPracticeList } from '@/utils/browse/navigation'
 import { useAuthStore } from '@/stores/auth'
 import { usePracticeSettingsStore } from '@/stores/practice-settings'
 import { fetchPracticePaper, fetchPracticeSubmission, submitPracticePaper } from '@/api/practice'
@@ -38,19 +37,20 @@ import {
   restorePracticeRecord,
   updatePracticeRecord,
   writePracticeRecord,
-} from '@/utils/practice-record'
+} from '@/utils/practice/record'
 import {
   isPracticeRecordCurrent,
   subscribePracticeRecordChanges,
-} from '@/utils/practice-record-control'
+} from '@/utils/practice/record-control'
 import type {
   CollectionContext,
+  CollectionGroupBy,
+  PracticeSource,
   PracticeAnswerRecord,
   PracticePaperItem,
   PracticeRecord,
   PracticeRecordAnswer,
   PracticeRecordContext,
-  PracticeRecordSource,
   PracticeSubmission,
   QuestionListItem,
 } from '@/types'
@@ -60,25 +60,31 @@ import {
   getReferenceAnswer,
   isAnswerCorrect,
   isChoiceQuestionType,
-} from '@/utils/practice-question'
-import { preparePracticePaper, type QuestionSheetGroup } from '@/utils/practice-paper'
+} from '@/utils/practice/question'
+import { preparePracticePaper, type QuestionSheetGroup } from '@/utils/practice/paper'
 import { showErrorToast } from '@/utils/toast'
-import { toSubmissionAnswers } from '@/utils/submission-answers'
-import { preparePracticeSubmission, settlePracticeSubmission } from '@/utils/practice-submission'
+import { toSubmissionAnswers } from '@/utils/practice/submission-answers'
+import { preparePracticeSubmission, settlePracticeSubmission } from '@/utils/practice/submission'
+
+const props = defineProps<{
+  source: PracticeSource
+  paperId?: string
+  groupBy?: CollectionGroupBy
+  groupId?: string
+}>()
 
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
 const practiceSettingsStore = usePracticeSettingsStore()
-
-/** 收藏/错题练习模式：路由 paperId 形如 fav:<subxxx|papxxx>，query.source 指明集合 */
-const COLLECTION_PAPER_PREFIX = 'fav:'
-const collectionMode = computed(() => {
-  const paperId = route.params.paperId
-  return typeof paperId === 'string' && paperId.startsWith(COLLECTION_PAPER_PREFIX)
-})
-const collectionSource = computed(() =>
-  route.query.source === 'wrong-questions' ? 'wrong-questions' : 'favorites',
+const collectionMode = computed(() => props.source !== 'practice')
+/** 普通题集使用真实 ID；集合练习用分组和资源 ID 标识本地作答。 */
+const practiceId = computed(() =>
+  props.source === 'practice'
+    ? (props.paperId ?? '')
+    : props.groupBy && props.groupId
+      ? `collection:${props.groupBy}:${props.groupId}`
+      : '',
 )
 
 type PaperLoadState = 'loading' | 'ready' | 'missing' | 'empty' | 'error'
@@ -260,10 +266,10 @@ const wrongCount = computed(
     }).length,
 )
 
-/** 收藏/记错上下文：真实题集取路由参数；fav: 虚拟题集取题目固化的收录上下文 */
+/** 普通练习使用当前题集；集合练习使用题目携带的收录上下文。 */
 function collectionContext(questionId: string): CollectionContext | null {
-  const routePaperId = String(route.params.paperId ?? '')
-  if (routePaperId.startsWith('pap')) {
+  const routePaperId = String(practiceId.value ?? '')
+  if (!collectionMode.value) {
     const subjectId = currentQuestions.value[0]?.subjectId ?? ''
     if (!subjectId) return null
     return { questionId, subjectId, paperId: routePaperId }
@@ -274,7 +280,10 @@ function collectionContext(questionId: string): CollectionContext | null {
   return { questionId, subjectId: item.subjectId, paperId: item.paperId }
 }
 
-const { syncOnAnswered } = useMistakeSync({ context: collectionContext })
+const { syncOnAnswered } = useMistakeSync({
+  context: collectionContext,
+  scopeKey: () => `${loadSequence}:${auth.session?.user.id ?? ''}`,
+})
 
 function clearRecordSaveTimer() {
   if (recordSaveTimer !== null) {
@@ -528,7 +537,7 @@ function requestSubmitPaper() {
 async function confirmSubmitPaper() {
   if (submitting.value) return
 
-  const paperIdParam = route.params.paperId
+  const paperIdParam = practiceId.value
   saveRecordNow()
   const record = localRecord.value
   if (
@@ -574,12 +583,11 @@ async function confirmSubmitPaper() {
     if (!isCurrentSubmissionContext(sequence, record)) return
     submitConfirmOpen.value = false
     await router.replace({
-      name: ROUTE_NAMES.practicePaperResult,
-      params: { paperId: paperIdParam },
+      name: 'practice-result',
+      params: { paperId: paperIdParam, submissionId },
       query: {
-        submissionId,
         subjectName: subjectName || undefined,
-        returnTo: practiceReturnTarget(route.query, false),
+        returnTo: resolvePracticeReturn(route.query, 'practice'),
       },
     })
   } catch (error) {
@@ -595,7 +603,7 @@ function isCurrentSubmissionContext(sequence: number, record: PracticeRecord) {
   return (
     sequence === loadSequence &&
     recordReady.value &&
-    route.params.paperId === record.paperId &&
+    practiceId.value === record.paperId &&
     !collectionMode.value &&
     isPracticeRecordCurrent(record) &&
     auth.session?.user.id === record.userId &&
@@ -638,7 +646,7 @@ function goToQuestion(index: number) {
 
 function exitPractice() {
   saveRecordNow()
-  returnFromPractice(router, practiceReturnTarget(route.query, collectionMode.value))
+  returnToPracticeList(router, resolvePracticeReturn(route.query, props.source))
 }
 
 function handlePaperStateAction() {
@@ -650,18 +658,21 @@ function handlePaperStateAction() {
   exitPractice()
 }
 
-/** 收藏/错题练习数据加载：fav:<subxxx> 按科目 / fav:<papxxx> 按题集 */
-async function loadCollectionPaper(paperId: string) {
-  const originId = paperId.slice(COLLECTION_PAPER_PREFIX.length)
-  const params = originId.startsWith('pap') ? { paperId: originId } : { subjectId: originId }
+/** 集合练习直接按明确的分组资源请求，不从 ID 前缀推断分组。 */
+async function loadCollectionPaper() {
+  const params =
+    props.groupBy === 'paper' ? { paperId: props.groupId } : { subjectId: props.groupId }
   const { paper } =
-    collectionSource.value === 'wrong-questions'
+    props.source === 'mistakes'
       ? await fetchMistakePractice(params)
       : await fetchFavoritePractice(params)
   return { paper, paperType: null, favoriteQuestionIds: [] as string[] }
 }
 
 async function loadPaperData() {
+  clearAutoAdvance()
+  questionSheetOpen.value = false
+  settingsModalOpen.value = false
   saveRecordNow()
   recordReady.value = false
   clearRecordSaveTimer()
@@ -688,13 +699,15 @@ async function loadPaperData() {
   paperTitle.value = ''
   clearRecordConfirmOpen.value = false
 
-  const paperIdParam = route.params.paperId
+  const paperIdParam = practiceId.value
   const userId = auth.session?.user.id
-  const source: PracticeRecordSource = collectionMode.value ? collectionSource.value : 'practice'
-  if (typeof paperIdParam !== 'string' || !paperIdParam) {
+  const sessionToken = auth.session?.token
+  const source = props.source
+  if (!userId || !auth.isAuthenticated || typeof paperIdParam !== 'string' || !paperIdParam) {
     paperLoadState.value = 'missing'
     return
   }
+  void practiceSettingsStore.load()
 
   try {
     const loaded =
@@ -703,8 +716,8 @@ async function loadPaperData() {
             ...detail,
             paperType: detail.paper.type,
           }))
-        : await loadCollectionPaper(paperIdParam)
-    if (sequence !== loadSequence) return
+        : await loadCollectionPaper()
+    if (sequence !== loadSequence || sessionToken !== auth.session?.token) return
     const { paper } = loaded
     paperTitle.value = paper.name
     const { questions, groups, fingerprints, itemsById } = preparePracticePaper(paper)
@@ -716,11 +729,6 @@ async function loadPaperData() {
     resetFavorites(loaded.favoriteQuestionIds, [...itemsById.values()])
     if (questions.length === 0) {
       paperLoadState.value = 'empty'
-      return
-    }
-
-    if (!userId || auth.session?.user.id !== userId) {
-      paperLoadState.value = 'ready'
       return
     }
 
@@ -762,7 +770,6 @@ async function loadPaperData() {
 }
 
 onMounted(() => {
-  void practiceSettingsStore.load()
   window.addEventListener('pagehide', saveRecordNow)
   document.addEventListener('visibilitychange', saveRecordWhenHidden)
   unsubscribeRecordChanges = subscribePracticeRecordChanges(handleRecordChanges)
@@ -790,12 +797,9 @@ watch(
   },
 )
 
-watch(
-  [() => route.params.paperId, () => (collectionMode.value ? collectionSource.value : 'practice')],
-  () => {
-    void loadPaperData()
-  },
-)
+watch([practiceId, () => props.source, () => auth.session?.token], () => {
+  void loadPaperData()
+})
 
 watch(questionSheetOpen, (open) => {
   if (open) clearAutoAdvance()

@@ -1,4 +1,4 @@
-import { domainValues } from '@/generated/domain-values'
+import { domainValues } from '@/constants/domain-values'
 import type {
   PracticeAnswerRecord,
   PracticePaperItem,
@@ -11,24 +11,17 @@ import type {
   QuestionListItem,
 } from '@/types'
 import { PRACTICE_RECORD_VERSION } from '@/constants/practice'
-import {
-  getPreviewOptions,
-  getQuestionOptions,
-  isChoiceQuestionType,
-} from '@/utils/practice-question'
+import { getPreviewOptions, getQuestionOptions, isChoiceQuestionType } from './question'
 import {
   RECORD_PREFIX,
-  LEGACY_DRAFT_PREFIX,
   practiceRecordKey as recordKey,
-  legacyPracticeRecordKey as legacyKey,
   currentPracticeClearToken,
   isPracticeRecordCurrent,
-  isLegacyPracticeRecordCleared,
   markPracticeRecordsCleared,
   notifyPracticeRecordChange,
-} from '@/utils/practice-record-control'
+} from './record-control'
 
-const SOURCES = ['practice', 'favorites', 'wrong-questions'] as const
+const SOURCES = ['practice', 'favorites', 'mistakes'] as const
 const SUBMISSION_ID_PATTERN = /^rec[0-9a-f]{12}$/
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -105,9 +98,6 @@ function parsePendingSubmission(
 ): PracticeRecord['pendingSubmission'] {
   if (!isObject(value) || !isSubmissionId(value.submissionId) || value.answerRevision !== revision)
     return null
-  // 旧版本没有请求快照，只保留 ID，等待题目加载后补齐。
-  if (value.payload === null)
-    return { submissionId: value.submissionId, answerRevision: revision, payload: null }
   const raw = value.payload
   if (
     !isObject(raw) ||
@@ -139,6 +129,7 @@ function parseRecord(value: unknown, identity: PracticeRecordIdentity): Practice
     value.paperId !== identity.paperId ||
     value.source !== identity.source ||
     !SOURCES.includes(identity.source) ||
+    typeof value.clearToken !== 'string' ||
     typeof value.subjectId !== 'string' ||
     !isPaperType(value.paperType) ||
     !isStartedAt(value.startedAt) ||
@@ -167,7 +158,7 @@ function parseRecord(value: unknown, identity: PracticeRecordIdentity): Practice
   return {
     ...identity,
     version: PRACTICE_RECORD_VERSION,
-    clearToken: typeof value.clearToken === 'string' ? value.clearToken : '',
+    clearToken: value.clearToken,
     subjectId: value.subjectId,
     paperType: value.paperType,
     startedAt: value.startedAt,
@@ -218,70 +209,17 @@ export function createPracticeRecord(
   }
 }
 
-/** 新键写入并确认成功后才允许移除 v1，失败时继续保留旧草稿。 */
+/** 只读取当前版本记录，按最新题集上下文核对清理代际。 */
 export function readPracticeRecord(context: PracticeRecordContext): PracticeRecord | null {
   try {
-    const storage = window.localStorage
-    const record = parseStoredRecord(storage.getItem(recordKey(context)), context)
-    if (record) {
-      const contextualRecord = {
-        ...record,
-        subjectId: context.subjectId,
-        paperType: context.paperType,
-      }
-      return isPracticeRecordCurrent(contextualRecord) ? contextualRecord : null
+    const record = parseStoredRecord(window.localStorage.getItem(recordKey(context)), context)
+    if (!record) return null
+    const contextualRecord = {
+      ...record,
+      subjectId: context.subjectId,
+      paperType: context.paperType,
     }
-    // v1 没有分类和清理代际；已清理作用域内的旧草稿不能在延迟迁移时复活。
-    if (isLegacyPracticeRecordCleared(context)) return null
-    if (context.source !== 'practice') {
-      const other = {
-        ...context,
-        source:
-          context.source === 'favorites' ? ('wrong-questions' as const) : ('favorites' as const),
-      }
-      // 旧键删除失败时，已迁移到另一来源的记录也不能再复制一次。
-      if (parseStoredRecord(storage.getItem(recordKey(other)), other)) return null
-    }
-
-    const oldKey = legacyKey(context)
-    const raw = storage.getItem(oldKey)
-    if (!raw) return null
-    const legacy: unknown = JSON.parse(raw)
-    if (
-      !isObject(legacy) ||
-      legacy.version !== 1 ||
-      legacy.userId !== context.userId ||
-      legacy.paperId !== context.paperId ||
-      !isStartedAt(legacy.startedAt)
-    )
-      return null
-    const answers = parseAnswers(legacy.answers)
-    const revision = Object.keys(answers).length > 0 ? 1 : 0
-    const migratedRecord: PracticeRecord = {
-      ...createPracticeRecord(context, legacy.startedAt),
-      currentQuestionId:
-        typeof legacy.currentQuestionId === 'string' ? legacy.currentQuestionId : '',
-      answers,
-      inputs: parseAnswers(legacy.inputs),
-      answerRevision: revision,
-      pendingSubmission:
-        isSubmissionId(legacy.pendingSubmissionId) &&
-        isObject(legacy.answers) &&
-        Object.keys(answers).length === Object.keys(legacy.answers).length
-          ? { submissionId: legacy.pendingSubmissionId, answerRevision: revision, payload: null }
-          : null,
-      savedAt:
-        typeof legacy.savedAt === 'number' && Number.isFinite(legacy.savedAt) ? legacy.savedAt : 0,
-    }
-    // v1 聚合训练没有来源，只归属首次打开的来源，不能复制给收藏和错题两边。
-    if (writePracticeRecord(migratedRecord)) {
-      try {
-        if (storage.getItem(oldKey) === raw) storage.removeItem(oldKey)
-      } catch {
-        // 新记录已保存；删除旧键失败不会影响恢复，后续仍优先读取 v2。
-      }
-    }
-    return migratedRecord
+    return isPracticeRecordCurrent(contextualRecord) ? contextualRecord : null
   } catch {
     return null
   }
@@ -317,9 +255,7 @@ export function updatePracticeRecord(
   const pendingSubmission =
     !id || (changed && existing?.submissionId === id)
       ? null
-      : existing?.submissionId === id &&
-          existing.answerRevision === answerRevision &&
-          existing.payload
+      : existing?.submissionId === id && existing.answerRevision === answerRevision
         ? existing
         : {
             submissionId: id,
@@ -432,7 +368,7 @@ export function restorePracticeRecord(
   return { answers, inputs, currentIndex, record: restoredRecord }
 }
 
-/** 登出同时清理 v2 和尚未访问、尚未迁移的 v1，且只处理当前账号。 */
+/** 登出清理当前账号的本地记录。 */
 export function clearUserPracticeRecords(userId: string) {
   if (clearPracticeRecords({ kind: 'all', userId })) return true
   // 登出不能被存储额度不足阻断；先尽力删除本账号数据，再尝试补写屏障。
@@ -452,20 +388,16 @@ export function clearUserPracticeRecords(userId: string) {
 
 function storedUserKeys(userId: string) {
   const storage = window.localStorage
-  const prefixes = [
-    `${RECORD_PREFIX}${encodeURIComponent(userId)}:`,
-    `${LEGACY_DRAFT_PREFIX}${userId}:`,
-  ]
+  const prefix = `${RECORD_PREFIX}${encodeURIComponent(userId)}:`
   return Array.from({ length: storage.length }, (_, index) => storage.key(index)).filter(
-    (key): key is string => Boolean(key && prefixes.some((prefix) => key.startsWith(prefix))),
+    (key): key is string => Boolean(key && key.startsWith(prefix)),
   )
 }
 
-/** 只读取当前用户的有效 v2 记录；不请求接口、不猜测旧草稿的分类。 */
+/** 只读取当前用户当前版本的有效记录。 */
 export function listPracticeRecords(userId: string): PracticeRecord[] {
   try {
     return storedUserKeys(userId).flatMap((key) => {
-      if (!key.startsWith(RECORD_PREFIX)) return []
       try {
         const raw: unknown = JSON.parse(window.localStorage.getItem(key) ?? '')
         if (
@@ -491,14 +423,6 @@ export function listPracticeRecords(userId: string): PracticeRecord[] {
   }
 }
 
-export function countLegacyPracticeRecords(userId: string) {
-  try {
-    return storedUserKeys(userId).filter((key) => key.startsWith(LEGACY_DRAFT_PREFIX)).length
-  } catch {
-    return 0
-  }
-}
-
 /** 先持久化清理屏障，再移除数据；删除失败也不会恢复已清理的旧答案。 */
 export function clearPracticeRecords(scope: PracticeRecordClearScope) {
   try {
@@ -507,12 +431,10 @@ export function clearPracticeRecords(scope: PracticeRecordClearScope) {
     const targets = storedUserKeys(userId)
       .filter((key) => {
         if (scope.kind === 'all') return true
-        if (scope.kind === 'paper')
-          return key === recordKey(scope.identity) || key === legacyKey(scope.identity)
+        if (scope.kind === 'paper') return key === recordKey(scope.identity)
         try {
           const raw: unknown = JSON.parse(storage.getItem(key) ?? '')
           return (
-            key.startsWith(RECORD_PREFIX) &&
             isObject(raw) &&
             raw.userId === userId &&
             raw.source === 'practice' &&

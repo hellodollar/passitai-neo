@@ -3,12 +3,12 @@ import { Trash2 } from '@lucide/vue'
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 
 import type { PracticeAnswerRecord, QuestionListItem } from '@/types'
-import type { QuestionSheetGroup } from '@/utils/practice-paper'
+import type { QuestionSheetGroup } from '@/utils/practice/paper'
 import {
   getReferenceAnswer,
   isAnswerCorrect,
   isChoiceQuestionType,
-} from '@/utils/practice-question'
+} from '@/utils/practice/question'
 
 /** 答题卡：完整题号按题型连续展示，仅题号区滚动。 */
 const props = defineProps<{

@@ -1,3 +1,4 @@
+import { PRACTICE_RECORD_VERSION } from '@/constants/practice'
 import type {
   PracticeRecord,
   PracticeRecordClearScope,
@@ -5,17 +6,12 @@ import type {
   PracticeRecordIdentity,
 } from '@/types'
 
-export const RECORD_PREFIX = 'passitai:practice-record:v2:'
-export const LEGACY_DRAFT_PREFIX = 'passitai:practice-draft:v1:'
-const CLEAR_PREFIX = 'passitai:practice-record-clear:v1:'
+export const RECORD_PREFIX = `passitai:practice-record:v${PRACTICE_RECORD_VERSION}:`
+const CLEAR_PREFIX = `passitai:practice-record-clear:v${PRACTICE_RECORD_VERSION}:`
 const CHANGE_EVENT = 'passitai:practice-record-change'
 
 export function practiceRecordKey(identity: PracticeRecordIdentity) {
   return `${RECORD_PREFIX}${encodeURIComponent(identity.userId)}:${identity.source}:${encodeURIComponent(identity.paperId)}`
-}
-
-export function legacyPracticeRecordKey(identity: PracticeRecordIdentity) {
-  return `${LEGACY_DRAFT_PREFIX}${identity.userId}:${identity.paperId}`
 }
 
 function clearKey(scope: PracticeRecordClearScope) {
@@ -43,28 +39,11 @@ export function currentPracticeClearToken(context: PracticeRecordContext) {
 
 export function isPracticeRecordCurrent(record: PracticeRecord) {
   try {
-    return (record.clearToken ?? '') === currentPracticeClearToken(record)
+    return record.clearToken === currentPracticeClearToken(record)
   } catch {
     // 读存储失败时保留内存作答，写入仍会明确失败，不误当成已被清理。
     return true
   }
-}
-
-export function isLegacyPracticeRecordCleared(context: PracticeRecordContext) {
-  if (currentPracticeClearToken(context)) return true
-  if (context.source === 'practice') return false
-  // v1 的收藏/错题共用一份草稿；任一来源明确清理后，残留旧键不再迁移给另一来源。
-  return Boolean(
-    window.localStorage.getItem(
-      clearKey({
-        kind: 'paper',
-        identity: {
-          ...context,
-          source: context.source === 'favorites' ? 'wrong-questions' : 'favorites',
-        },
-      }),
-    ),
-  )
 }
 
 export function markPracticeRecordsCleared(scope: PracticeRecordClearScope) {
@@ -83,9 +62,7 @@ export function subscribePracticeRecordChanges(listener: () => void) {
   const onStorage = (event: StorageEvent) => {
     if (
       event.key === null ||
-      [RECORD_PREFIX, LEGACY_DRAFT_PREFIX, CLEAR_PREFIX].some((prefix) =>
-        event.key!.startsWith(prefix),
-      )
+      [RECORD_PREFIX, CLEAR_PREFIX].some((prefix) => event.key!.startsWith(prefix))
     )
       listener()
   }

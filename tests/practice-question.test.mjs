@@ -4,7 +4,7 @@ import test from 'node:test'
 import { loadSource } from './helpers/load-source.mjs'
 
 const { getCorrectOptionValues, getQuestionOptions, isAnswerCorrect } =
-  await loadSource('utils/practice-question.ts')
+  await loadSource('utils/practice/question.ts')
 
 const question = {
   id: 'qst000000000001',

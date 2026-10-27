@@ -22,7 +22,7 @@ export type {
   QuestionContent,
   QuestionListItem,
   QuestionType,
-  ReviewSource,
+  CollectionSource,
 } from './entity'
 export type {
   CollectionPracticePaper,
@@ -35,6 +35,7 @@ export type {
   PracticeResultQuestion,
   PracticeResultQuestionStatus,
   PracticeSettings,
+  PracticeSource,
   PracticeSubmission,
   PracticeSubmissionResult,
   PracticePlan,

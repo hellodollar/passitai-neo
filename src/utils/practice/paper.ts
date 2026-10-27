@@ -1,7 +1,7 @@
 import { QUESTION_TYPE_LABELS } from '@/constants/entity'
 import type { PracticePaperItem, PracticePaperLite, QuestionListItem } from '@/types'
-import { questionFingerprint } from '@/utils/practice-record'
-import { toQuestionListItem } from '@/utils/practice-question'
+import { questionFingerprint } from './record'
+import { toQuestionListItem } from './question'
 
 export type QuestionSheetGroup = {
   key: string

@@ -1,4 +1,4 @@
-import type { DomainValue } from '@/generated/domain-values'
+import type { DomainValue } from '@/constants/domain-values'
 
 // ---- Auth & User ----
 

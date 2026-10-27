@@ -19,9 +19,9 @@ import type {
   EmailChangeBody,
   PasswordChangeBody,
 } from '@/types'
-import { currentSessionToken, isActiveSession } from '@/utils/auth-session'
-import { clearUserPracticeRecords } from '@/utils/practice-record'
-import { clearBrowseState } from '@/utils/browse-state'
+import { currentSessionToken, isActiveSession } from '@/utils/auth/session'
+import { clearUserPracticeRecords } from '@/utils/practice/record'
+import { clearBrowseState } from '@/utils/browse/state'
 import { readStorage, removeStorage, writeStorage } from '@/utils/storage'
 import { showErrorToast } from '@/utils/toast'
 

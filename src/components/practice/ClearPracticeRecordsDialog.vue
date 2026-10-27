@@ -2,7 +2,7 @@
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import { useAuthStore } from '@/stores/auth'
 import type { PracticeRecordClearScope } from '@/types'
-import { clearPracticeRecords } from '@/utils/practice-record'
+import { clearPracticeRecords } from '@/utils/practice/record'
 import { showErrorToast, showSuccessToast } from '@/utils/toast'
 
 const model = defineModel<boolean>({ default: false })

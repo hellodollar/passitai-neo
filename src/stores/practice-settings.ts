@@ -1,7 +1,7 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import { SessionChangedError } from '@/api/http'
-import { currentSessionToken } from '@/utils/auth-session'
+import { currentSessionToken } from '@/utils/auth/session'
 
 import { fetchPracticeSettings, updatePracticeSettings } from '@/api/practice'
 import type { PracticeSettings } from '@/types'

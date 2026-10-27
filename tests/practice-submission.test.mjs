@@ -4,7 +4,7 @@ import { afterEach, beforeEach, test } from 'node:test'
 import { loadSource } from './helpers/load-source.mjs'
 
 const { preparePracticeSubmission, settlePracticeSubmission } = await loadSource(
-  'utils/practice-submission.ts',
+  'utils/practice/submission.ts',
 )
 const {
   createPracticeRecord,
@@ -12,9 +12,9 @@ const {
   writePracticeRecord,
   readPracticeRecord,
   restorePracticeRecord,
-} = await loadSource('utils/practice-record.ts')
-const { toSubmissionAnswers } = await loadSource('utils/submission-answers.ts')
-const { buildSubmissionResult } = await loadSource('utils/practice-result.ts')
+} = await loadSource('utils/practice/record.ts')
+const { toSubmissionAnswers } = await loadSource('utils/practice/submission-answers.ts')
+const { buildSubmissionResult } = await loadSource('utils/practice/result.ts')
 
 const startedAt = Date.now() - 1000
 const context = {
@@ -164,18 +164,6 @@ test('请求失败、刷新后重试固定 ID、答案和开始时间，不采�
   assert.equal(retry.pending.payload.startTime, new Date(startedAt).toISOString())
 })
 
-test('旧迁移记录补齐快照时沿用原待提交 ID', () => {
-  const record = createRecord({ que_one: single })
-  record.pendingSubmission = {
-    submissionId: id1,
-    answerRevision: record.answerRevision,
-    payload: null,
-  }
-  const plan = preparePracticeSubmission(record, { que_one: 'A' }, () => assert.fail('不要重建 ID'))
-  assert.equal(plan.pending.submissionId, id1)
-  assert.deepEqual(plan.pending.payload.userAnswers, { que_one: 'A' })
-})
-
 test('超时提交恢复成功只登记报告，不清除本地作答；下次交卷可复用结果', () => {
   const plan = preparePracticeSubmission(
     createRecord({ que_one: single }),
@@ -235,7 +223,7 @@ test('其他账号、题集、来源或不匹配的交卷响应不能登记到�
   assert.throws(() =>
     settlePracticeSubmission(plan.record, plan.record, response(plan, { paperId: 'paptwo' })),
   )
-  assert.throws(() => preparePracticeSubmission({ ...plan.record, source: 'wrong-questions' }, {}))
+  assert.throws(() => preparePracticeSubmission({ ...plan.record, source: 'mistakes' }, {}))
 })
 
 test('默认生成的提交 ID 满足接口格式，缺失交卷时间时使用确认时间', () => {

@@ -10,8 +10,8 @@ import { APP_NAME } from '@/constants/app'
     <section class="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center py-2">
       <div class="mb-5 flex justify-center">
         <RouterLink
-          to="/login"
-          :aria-label="`${APP_NAME}首页`"
+          :to="{ name: 'login' }"
+          :aria-label="`${APP_NAME}登录`"
           class="transition-opacity hover:opacity-80"
         >
           <img :src="logoPassitai" :alt="APP_NAME" class="h-11 w-auto" />

@@ -4,7 +4,7 @@ import test from 'node:test'
 import { loadSource } from './helpers/load-source.mjs'
 
 const { useQuestionFavorites } = await loadSource('composables/useQuestionFavorites.ts')
-const { preparePracticePaper } = await loadSource('utils/practice-paper.ts')
+const { preparePracticePaper } = await loadSource('utils/practice/paper.ts')
 
 const question = {
   id: 'qstone',
