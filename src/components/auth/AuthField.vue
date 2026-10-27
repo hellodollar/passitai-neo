@@ -43,7 +43,7 @@ const id = useId()
         :value="modelValue"
         :aria-invalid="error ? 'true' : undefined"
         :aria-describedby="error ? `${id}-error` : undefined"
-        class="grow bg-transparent text-sm outline-none placeholder:text-base-content/30"
+        class="min-w-0 grow bg-transparent text-sm outline-none placeholder:text-base-content/30"
         @input="$emit('update:modelValue', ($event.target as HTMLInputElement).value)"
         @blur="$emit('blur')"
       />

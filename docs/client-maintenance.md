@@ -7,8 +7,8 @@
 - `src/App.vue`：页面外壳、底栏显示和全局提示。
 - `src/main.ts`：启动 Vue、Pinia 和路由。
 - `src/router/index.ts`：一份路由表，直接处理登录判断、会话失效和滚动。
-- `src/views/`：登录和注册放在 `auth/`，刷题和结果放在 `practice/`；其余页面直接放在此目录。只按实际相关页面分组，不附加多层子目录。
-- `src/components/`：组件，沿用 `common`、`auth`、`practice`、`settings` 分组；底栏为 `BottomTabBar.vue`。
+- `src/views/`：按现有业务分为 `auth/`、`practice/`、`favorites/`、`mistakes/`；首页、我的和未找到页直接放在此目录。不附加多层子目录。
+- `src/components/`：组件，沿用 `common`、`auth`、`practice`、`settings` 分组；我的页面专属组件放在 `me/`，底栏为 `BottomTabBar.vue`。
 - `src/composables/`：响应式逻辑，例如切题、手势、收藏和错题同步。
 - `src/api/`、`src/stores/`：接口和共享状态。
 - `src/utils/`：按 `practice/`、`auth/`、`browse/` 分组；组内文件使用 `record.ts`、`session.ts` 等直接名称，通用的 `storage.ts` 和 `toast.ts` 保留在根目录。
@@ -23,13 +23,18 @@
 | 首页 | `/` | `HomeView.vue` |
 | 刷题 | `/practice/:paperId` | `practice/PracticeView.vue` |
 | 刷题结果 | `/practice/:paperId/result/:submissionId` | `practice/PracticeResultView.vue` |
-| 收藏、错题 | `/favorites`、`/mistakes` | `QuestionCollectionView.vue` |
+| 我的收藏 | `/favorites` | `favorites/FavoritesView.vue` |
+| 我的错题 | `/mistakes` | `mistakes/MistakesView.vue` |
 | 收藏、错题练习 | `/favorites/practice/:groupBy/:groupId`、`/mistakes/practice/:groupBy/:groupId` | `practice/PracticeView.vue` |
 | 我的 | `/me` | `MeView.vue` |
 | 登录、注册 | `/login`、`/register` | `auth/LoginView.vue`、`auth/RegisterView.vue` |
 | 其他地址 | 未匹配地址 | `NotFoundView.vue` |
 
 静态链接直接写路径，带参数的跳转使用路由自身的 name；不再另设路由名常量或路径映射表。登录、注册和未找到页公开，其余页面需要登录。底栏只在首页、收藏、错题和我的显示，由 `App.vue` 直接判断，不使用自定义路由 meta 或多套布局。
+
+收藏和错题是独立业务页面，各自维护列表、筛选、清空操作和练习入口。页面不接收来源参数，也不因布局相似而合成通用页面；共用已有的基础组件、接口类型和浏览记忆工具。
+
+修改密码和更换邮箱分别使用 `me/ChangePasswordDialog.vue`、`me/ChangeEmailDialog.vue`，作为居中表单对话框。账户面板关闭后再打开，提供取消与保存。密码修改成功后按现有规则重新登录；邮箱修改成功后更新用户快照并保持登录。
 
 集合练习的 `groupBy` 只接受 `subject` 或 `paper`；来源、分组和资源 ID 通过路由 props 传入。作答页不从 ID 前缀猜测来源，报告 ID 使用路径参数。旧地址和旧导出不提供兼容别名。
 

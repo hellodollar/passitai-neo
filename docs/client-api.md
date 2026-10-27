@@ -188,6 +188,7 @@ interface ChangeEmailBody {
 
 ```ts
 interface PracticePlan {
+  provinceCode: string // 六位省级地区代码，如 440000
   majorId: string
   majorName: string
   majorCode: string
@@ -201,19 +202,25 @@ interface PracticePlan {
 }
 
 interface UpdatePracticePlanBody {
+  provinceCode: string // 必填，须与所选专业的省份一致
   majorId: string
   subjectIds?: string[]
 }
 ```
 
-计划独立存于 `users.practicePlan`，只保存 `{ majorId, subjectIds }`；未设置为SQL NULL。
-不重复保存专业或科目的名称、代码。响应中的展示字段实时从题库读取。
+计划独立存于 `users.practicePlan`，只保存 `{ provinceCode, majorId, subjectIds }`；未设置为SQL NULL。
+省份代码独立保存用于回显，不重复保存专业或科目的名称、代码。响应中的展示字段实时从题库读取。
 `PUT` 严格接受上述请求字段，未知字段（包括旧majorCode）返回400；省略subjectIds视为空数组，
 数组最多100项，重复ID按首次出现顺序去重。
+省份代码仅接受统一省份常量中的六位字符串（如440000）；缺失、数字类型、城市代码或未收录代码返回400。
+API源为src/constants/province.ts，通过pnpm sync同步到Neo的src/constants/domain-values.ts；
+前端使用provinceOptions（code/name）进行选择和回显，ProvinceCode为对应代码类型。
+字典包含的地区不表示已有可用题库；专业候选项仍由启用且未删除的业务数据决定。
+当前仍为单专业计划，majorId必填；provinceCode必须与专业记录一致，不一致返回400且不改写计划。
 专业必须启用且未删除，否则返回404。每个科目必须属于该专业、启用且未删除，
 任一不符合返回400且不改写计划。`educationLevel`、`nextExamDate` 从所选专业读取。
 
-未设置计划、专业不存在、禁用或删除时，GET返回 `data: null`；需用户手动设置计划。
+未设置计划、专业不存在、禁用、删除或省份归属已变化时，GET返回 `data: null`；需用户手动设置计划。
 读取时过滤已失效的科目并保留选择顺序。返回专业和科目ID，Client直接使用ID，
 不再通过code额外请求字典接口反查。科目不返回学分。
 保存计划不改写偏好、不修改会话版本，也不清理已有刷题记录、收藏或错题。
@@ -489,7 +496,7 @@ interface PracticeSubmission {
 
 | Method | Path                                     | 说明                     | 状态 |
 | ------ | ---------------------------------------- | ------------------------ | ---- |
-| `GET`  | `/api/options/majors?code=`              | 获取专业选项（code 选填） | 可用 |
+| `GET`  | `/api/options/majors?provinceCode=&code=`              | 获取专业选项（省份和code选填） | 可用 |
 | `GET`  | `/api/options/subjects?majorId=majxxx`  | 根据专业获取科目选项     | 可用 |
 
 统一返回：
@@ -502,8 +509,8 @@ interface OptionItem {
 }
 ```
 
-仅返回启用且未删除的数据。`/api/options/majors` 支持 `code` 精确过滤；`/api/options/subjects`
-支持单个 `majorId` 过滤，精确匹配科目 `majorIds` 数组中的专业 ID。
+仅返回启用且未删除的数据。`/api/options/majors` 支持 `provinceCode`（同计划中的省份代码格式）
+和 `code` 精确过滤，组合使用时取交集；`/api/options/subjects` 支持单个 `majorId` 过滤，精确匹配科目 `majorIds` 数组中的专业 ID。
 
 ## 8. 接口总表
 

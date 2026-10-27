@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { Mail, ShieldCheck } from '@lucide/vue'
-import { reactive, ref, watch } from 'vue'
+import { reactive, ref, useId, watch } from 'vue'
 
 import AuthField from '@/components/auth/AuthField.vue'
-import BaseModal from '@/components/common/BaseModal.vue'
+import BaseDialog from '@/components/common/BaseDialog.vue'
 import { useAuthStore } from '@/stores/auth'
 import { showSuccessToast } from '@/utils/toast'
 import { EMAIL_PATTERN } from '@/utils/auth/validation'
@@ -11,6 +11,7 @@ import { EMAIL_PATTERN } from '@/utils/auth/validation'
 const model = defineModel<boolean>({ default: false })
 
 const auth = useAuthStore()
+const formId = useId()
 
 const form = reactive({
   password: '',
@@ -89,8 +90,13 @@ async function submit() {
 </script>
 
 <template>
-  <BaseModal v-model="model" title="更换邮箱" compact-footer>
-    <form class="grid gap-2" novalidate @submit.prevent="submit">
+  <BaseDialog
+    v-model="model"
+    title="更换邮箱"
+    :close-on-backdrop="!submitting"
+    :close-on-escape="!submitting"
+  >
+    <form :id="formId" class="grid gap-2" novalidate @submit.prevent="submit">
       <div class="flex items-center gap-2.5 rounded-2xl bg-base-200/70 px-4 py-3">
         <Mail :size="17" class="shrink-0 text-base-content/35" />
         <span class="min-w-0">
@@ -101,39 +107,49 @@ async function submit() {
         </span>
       </div>
 
-      <AuthField
-        v-model="form.password"
-        label="当前密码"
-        :icon="ShieldCheck"
-        :error="errors.password"
-        type="password"
-        autocomplete="current-password"
-        placeholder="验证身份"
-        @blur="validatePassword"
-      />
+      <fieldset class="grid gap-2" :disabled="submitting">
+        <AuthField
+          v-model="form.password"
+          label="当前密码"
+          :icon="ShieldCheck"
+          :error="errors.password"
+          type="password"
+          autocomplete="current-password"
+          placeholder="验证身份"
+          @blur="validatePassword"
+        />
 
-      <AuthField
-        v-model="form.newEmail"
-        label="新邮箱"
-        :icon="Mail"
-        :error="errors.newEmail"
-        inputmode="email"
-        autocomplete="email"
-        placeholder="new@example.com"
-        @blur="validateNewEmail"
-      />
+        <AuthField
+          v-model="form.newEmail"
+          label="新邮箱"
+          :icon="Mail"
+          :error="errors.newEmail"
+          inputmode="email"
+          autocomplete="email"
+          placeholder="new@example.com"
+          @blur="validateNewEmail"
+        />
+      </fieldset>
     </form>
 
     <template #footer>
       <button
-        class="btn btn-primary h-8 min-h-8 flex-1 rounded-lg text-sm"
+        class="btn h-10 min-h-10 flex-1 rounded-xl border-base-200 bg-base-100 text-sm"
         type="button"
         :disabled="submitting"
-        @click="submit"
+        @click="model = false"
+      >
+        取消
+      </button>
+      <button
+        class="btn btn-primary h-10 min-h-10 flex-1 rounded-xl text-sm"
+        type="submit"
+        :form="formId"
+        :disabled="submitting"
       >
         <span v-if="submitting" class="loading loading-spinner loading-xs"></span>
-        保存新邮箱
+        {{ submitting ? '保存中' : '保存' }}
       </button>
     </template>
-  </BaseModal>
+  </BaseDialog>
 </template>

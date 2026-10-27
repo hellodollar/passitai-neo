@@ -110,7 +110,7 @@ test('收藏和错题练习从路径得到来源和分组，不依赖 query 或 
       assert.equal(location.name, name)
       assert.deepEqual(pageProps(location), { source, groupBy, groupId: 'resource-one' })
     }
-    assert.deepEqual(pageProps(router.resolve(`/${source}`)), { source })
+    assert.equal(pageProps(router.resolve(`/${source}`)), false)
     assert.equal(router.resolve(`/${source}/practice/unknown/resource-one`).name, 'not-found')
   }
 })

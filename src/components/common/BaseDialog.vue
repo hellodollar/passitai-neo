@@ -34,9 +34,12 @@ function handleEscape() {
 }
 
 function handleTab(event: KeyboardEvent) {
-  const buttons = dialogRef.value?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')
-  const first = buttons?.[0]
-  const last = buttons?.[buttons.length - 1]
+  const elements = dialogRef.value?.querySelectorAll<HTMLElement>(
+    'button:not(:disabled), input:not(:disabled):not([type="hidden"]), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex]',
+  )
+  const focusable = Array.from(elements ?? []).filter((element) => element.tabIndex >= 0)
+  const first = focusable[0]
+  const last = focusable[focusable.length - 1]
   if (!first || !last) {
     event.preventDefault()
     return
@@ -47,7 +50,10 @@ function handleTab(event: KeyboardEvent) {
   ) {
     event.preventDefault()
     last.focus()
-  } else if (!event.shiftKey && document.activeElement === last) {
+  } else if (
+    !event.shiftKey &&
+    (document.activeElement === last || document.activeElement === dialogRef.value)
+  ) {
     event.preventDefault()
     first.focus()
   }
@@ -80,9 +86,9 @@ watch(model, async (open) => {
       @keydown.tab="handleTab"
     >
       <div
-        class="modal-box w-full max-w-sm overflow-hidden rounded-2xl border border-base-200 bg-base-100 p-0 shadow-none"
+        class="modal-box flex max-h-[calc(100dvh-2.5rem)] w-full max-w-sm flex-col overflow-hidden rounded-2xl border border-base-200 bg-base-100 p-0 shadow-none"
       >
-        <div class="flex items-center justify-between gap-4 px-5 pb-2 pt-5">
+        <div class="flex shrink-0 items-center justify-between gap-4 px-5 pb-2 pt-5">
           <h3 class="text-base font-semibold leading-tight">{{ title }}</h3>
           <button
             v-if="showClose"
@@ -95,11 +101,11 @@ watch(model, async (open) => {
           </button>
         </div>
 
-        <div class="px-5 pb-5 pt-2">
+        <div class="min-h-0 overflow-y-auto px-5 pb-5 pt-2">
           <slot></slot>
         </div>
 
-        <div v-if="$slots.footer" class="flex gap-2 border-t border-base-200 px-4 py-3">
+        <div v-if="$slots.footer" class="flex shrink-0 gap-2 border-t border-base-200 px-4 py-3">
           <slot name="footer"></slot>
         </div>
       </div>

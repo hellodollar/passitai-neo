@@ -10,11 +10,11 @@ import {
   Settings2,
   UserRound,
 } from '@lucide/vue'
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
-import AccountEmailContent from '@/components/auth/AccountEmailContent.vue'
-import AccountPasswordContent from '@/components/auth/AccountPasswordContent.vue'
+import ChangeEmailDialog from '@/components/me/ChangeEmailDialog.vue'
+import ChangePasswordDialog from '@/components/me/ChangePasswordDialog.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
 import PracticePlanModal from '@/components/practice/PracticePlanModal.vue'
 import PracticeSettingsModal from '@/components/settings/PracticeSettingsModal.vue'
@@ -29,8 +29,8 @@ const practiceSettingsStore = usePracticeSettingsStore()
 const router = useRouter()
 const signingOut = ref(false)
 const accountModalOpen = ref(false)
-const passwordModalOpen = ref(false)
-const emailModalOpen = ref(false)
+const passwordDialogOpen = ref(false)
+const emailDialogOpen = ref(false)
 const planModalOpen = ref(false)
 const practiceSettingsModalOpen = ref(false)
 const notificationModalOpen = ref(false)
@@ -99,10 +99,13 @@ function openMenuItem(action: SettingsAction) {
   } else notificationModalOpen.value = true
 }
 
-function openAccountAction(action: 'password' | 'email') {
+async function openAccountAction(action: 'password' | 'email') {
+  const token = auth.session?.token
   accountModalOpen.value = false
-  if (action === 'password') passwordModalOpen.value = true
-  else emailModalOpen.value = true
+  await nextTick()
+  if (!auth.isAuthenticated || token !== auth.session?.token) return
+  if (action === 'password') passwordDialogOpen.value = true
+  else emailDialogOpen.value = true
 }
 
 async function logout() {
@@ -118,8 +121,8 @@ watch(
   (token, previous) => {
     if (previous && token !== previous) {
       accountModalOpen.value = false
-      passwordModalOpen.value = false
-      emailModalOpen.value = false
+      passwordDialogOpen.value = false
+      emailDialogOpen.value = false
       planModalOpen.value = false
       practiceSettingsModalOpen.value = false
       notificationModalOpen.value = false
@@ -239,9 +242,9 @@ watch(
       </div>
     </BaseModal>
 
-    <AccountPasswordContent v-model="passwordModalOpen" />
+    <ChangePasswordDialog v-model="passwordDialogOpen" />
 
-    <AccountEmailContent v-model="emailModalOpen" />
+    <ChangeEmailDialog v-model="emailDialogOpen" />
 
     <PracticePlanModal v-model="planModalOpen" />
     <PracticeSettingsModal v-model="practiceSettingsModalOpen" show-mistake-settings />

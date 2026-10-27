@@ -7,7 +7,7 @@ const toasts = useToasts()
 </script>
 
 <template>
-  <div v-if="toasts.length" class="toast toast-top toast-center z-50">
+  <div v-if="toasts.length" class="toast toast-top toast-center z-[1000]">
     <div
       v-for="toast in toasts"
       :key="toast.id"

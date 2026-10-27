@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { KeyRound, Lock, ShieldCheck } from '@lucide/vue'
-import { reactive, ref, watch } from 'vue'
+import { reactive, ref, useId, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import AuthField from '@/components/auth/AuthField.vue'
-import BaseModal from '@/components/common/BaseModal.vue'
+import BaseDialog from '@/components/common/BaseDialog.vue'
 import { showSuccessToast } from '@/utils/toast'
 import { PASSWORD_PATTERN } from '@/utils/auth/validation'
 import { useAuthStore } from '@/stores/auth'
@@ -12,6 +12,7 @@ import { useAuthStore } from '@/stores/auth'
 const model = defineModel<boolean>({ default: false })
 const auth = useAuthStore()
 const router = useRouter()
+const formId = useId()
 
 const form = reactive({
   currentPassword: '',
@@ -103,52 +104,67 @@ async function submit() {
 </script>
 
 <template>
-  <BaseModal v-model="model" title="修改密码" compact-footer>
-    <form class="grid gap-2" novalidate @submit.prevent="submit">
-      <AuthField
-        v-model="form.currentPassword"
-        label="当前密码"
-        :icon="Lock"
-        :error="errors.currentPassword"
-        type="password"
-        autocomplete="current-password"
-        placeholder="输入当前密码"
-        @blur="validateCurrentPassword"
-      />
+  <BaseDialog
+    v-model="model"
+    title="修改密码"
+    :close-on-backdrop="!submitting"
+    :close-on-escape="!submitting"
+  >
+    <form :id="formId" novalidate @submit.prevent="submit">
+      <fieldset class="grid gap-2" :disabled="submitting">
+        <AuthField
+          v-model="form.currentPassword"
+          label="当前密码"
+          :icon="Lock"
+          :error="errors.currentPassword"
+          type="password"
+          autocomplete="current-password"
+          placeholder="输入当前密码"
+          @blur="validateCurrentPassword"
+        />
 
-      <AuthField
-        v-model="form.newPassword"
-        label="新密码"
-        :icon="KeyRound"
-        :error="errors.newPassword"
-        type="password"
-        autocomplete="new-password"
-        placeholder="6-20 位，包含字母和数字"
-        @blur="validateNewPassword"
-      />
+        <AuthField
+          v-model="form.newPassword"
+          label="新密码"
+          :icon="KeyRound"
+          :error="errors.newPassword"
+          type="password"
+          autocomplete="new-password"
+          placeholder="6-20 位，包含字母和数字"
+          @blur="validateNewPassword"
+        />
 
-      <AuthField
-        v-model="form.confirmPassword"
-        label="确认新密码"
-        :icon="ShieldCheck"
-        :error="errors.confirmPassword"
-        type="password"
-        autocomplete="new-password"
-        placeholder="再次输入新密码"
-        @blur="validateConfirmPassword"
-      />
+        <AuthField
+          v-model="form.confirmPassword"
+          label="确认新密码"
+          :icon="ShieldCheck"
+          :error="errors.confirmPassword"
+          type="password"
+          autocomplete="new-password"
+          placeholder="再次输入新密码"
+          @blur="validateConfirmPassword"
+        />
+      </fieldset>
     </form>
 
     <template #footer>
       <button
-        class="btn btn-primary h-8 min-h-8 flex-1 rounded-lg text-sm"
+        class="btn h-10 min-h-10 flex-1 rounded-xl border-base-200 bg-base-100 text-sm"
         type="button"
         :disabled="submitting"
-        @click="submit"
+        @click="model = false"
+      >
+        取消
+      </button>
+      <button
+        class="btn btn-primary h-10 min-h-10 flex-1 rounded-xl text-sm"
+        type="submit"
+        :form="formId"
+        :disabled="submitting"
       >
         <span v-if="submitting" class="loading loading-spinner loading-xs"></span>
-        保存新密码
+        {{ submitting ? '保存中' : '保存' }}
       </button>
     </template>
-  </BaseModal>
+  </BaseDialog>
 </template>

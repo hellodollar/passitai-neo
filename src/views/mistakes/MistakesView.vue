@@ -2,7 +2,6 @@
 import {
   AlertCircle,
   ArrowDownUp,
-  BookMarked,
   Check,
   ChevronRight,
   FileStack,
@@ -14,7 +13,6 @@ import { zhCN } from 'date-fns/locale'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import { clearFavorites, fetchFavoriteAggregate } from '@/api/favorites'
 import { clearMistakes, fetchMistakeAggregate } from '@/api/mistakes'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
@@ -22,25 +20,19 @@ import PagePlaceholder from '@/components/common/PagePlaceholder.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useBrowseScroll } from '@/composables/useBrowseScroll'
 import { parseCollectionFilters, readBrowseState, writeBrowseState } from '@/utils/browse/state'
-import type {
-  CollectionAggregateItem,
-  CollectionGroupBy,
-  CollectionOrder,
-  CollectionSource,
-} from '@/types'
+import type { CollectionAggregateItem, CollectionGroupBy, CollectionOrder } from '@/types'
 import { showErrorToast, showSuccessToast } from '@/utils/toast'
 
 type SortField = 'count' | 'recent'
 
-const props = defineProps<{ source: CollectionSource }>()
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
 const browseScroll = useBrowseScroll(
   () => auth.session?.user.id ?? '',
-  () => props.source,
+  () => 'mistakes',
 )
-let loadedContext = ''
+let loadedToken: string | undefined
 
 const items = ref<CollectionAggregateItem[]>([])
 const totalQuestionCount = ref(0)
@@ -66,12 +58,6 @@ const displayedGroupMode = ref<CollectionGroupBy>('subject')
 const displayedSortField = ref<SortField>('recent')
 const displayedSortOrder = ref<CollectionOrder>('desc')
 
-const isFavorites = computed(() => props.source === 'favorites')
-const pageTitle = computed(() => (isFavorites.value ? '我的收藏' : '我的错题'))
-const emptyTitle = computed(() => (isFavorites.value ? '暂无收藏' : '暂无错题'))
-const emptyDescription = computed(() =>
-  isFavorites.value ? '练习时收藏的题目会出现在这里。' : '答错的题目会收集到这里。',
-)
 const groupLabel = computed(() => (displayedGroupMode.value === 'subject' ? '科目' : '题集'))
 
 const SORT_OPTIONS: Array<{ field: SortField; order: CollectionOrder; label: string }> = [
@@ -95,16 +81,12 @@ function collectedTimeText(item: CollectionAggregateItem) {
   return `${distance.replace(/^大约\s*/, '').replace(/\s+/g, '')}前收录`
 }
 
-async function loadSubjects() {
+async function loadMistakes() {
   const sequence = ++loadSequence
   const userId = auth.session?.user.id ?? ''
   const token = auth.session?.token
-  const source = props.source
   const isCurrent = () =>
-    sequence === loadSequence &&
-    token === auth.session?.token &&
-    source === props.source &&
-    auth.isAuthenticated
+    sequence === loadSequence && token === auth.session?.token && auth.isAuthenticated
   const requestedGroup = groupMode.value
   const requestedField = sortField.value
   const requestedOrder = sortOrder.value
@@ -118,8 +100,7 @@ async function loadSubjects() {
   }
   loading.value = true
   try {
-    const aggregate = isFavorites.value ? fetchFavoriteAggregate : fetchMistakeAggregate
-    const result = await aggregate({
+    const result = await fetchMistakeAggregate({
       groupBy: requestedGroup,
       sort: requestedField,
       order: requestedOrder,
@@ -130,7 +111,7 @@ async function loadSubjects() {
     displayedGroupMode.value = requestedGroup
     displayedSortField.value = requestedField
     displayedSortOrder.value = requestedOrder
-    writeBrowseState(userId, source, {
+    writeBrowseState(userId, 'mistakes', {
       groupBy: requestedGroup,
       sort: requestedField,
       order: requestedOrder,
@@ -180,7 +161,7 @@ function selectGroupMode(mode: CollectionGroupBy) {
   if (loading.value || groupMode.value === mode) return
   closeSortMenu()
   groupMode.value = mode
-  void loadSubjects()
+  void loadMistakes()
 }
 
 function selectSortOption(field: SortField, order: CollectionOrder) {
@@ -188,7 +169,7 @@ function selectSortOption(field: SortField, order: CollectionOrder) {
   if (loading.value || (sortField.value === field && sortOrder.value === order)) return
   sortField.value = field
   sortOrder.value = order
-  void loadSubjects()
+  void loadMistakes()
 }
 
 async function openSortMenu(position: 'selected' | 'first' | 'last' = 'selected') {
@@ -278,7 +259,7 @@ onBeforeUnmount(() => {
   document.removeEventListener('keydown', handleEscape)
 })
 
-/** 集合来源、分组和资源 ID 在路由中明确表达。 */
+/** 按当前分组进入错题练习，返回时保留筛选条件。 */
 function startPractice(item: CollectionAggregateItem) {
   if (!auth.isAuthenticated || loading.value || clearing.value) return
   const originId = displayedGroupMode.value === 'paper' ? item.paperId : item.subjectId
@@ -293,7 +274,7 @@ function startPractice(item: CollectionAggregateItem) {
     },
   }).fullPath
   void router.push({
-    name: isFavorites.value ? 'favorite-practice' : 'mistake-practice',
+    name: 'mistake-practice',
     params: { groupBy: displayedGroupMode.value, groupId: originId },
     query: { subjectName: item.subjectName, returnTo },
   })
@@ -303,20 +284,15 @@ async function confirmClear() {
   if (clearing.value || !auth.isAuthenticated) return
   const sequence = ++clearSequence
   const token = auth.session?.token
-  const source = props.source
   const isCurrent = () =>
-    sequence === clearSequence &&
-    token === auth.session?.token &&
-    source === props.source &&
-    auth.isAuthenticated
+    sequence === clearSequence && token === auth.session?.token && auth.isAuthenticated
   clearing.value = true
   try {
-    if (source === 'favorites') await clearFavorites()
-    else await clearMistakes()
+    await clearMistakes()
     if (!isCurrent()) return
-    showSuccessToast(source === 'favorites' ? '收藏已清空' : '错题已清空')
+    showSuccessToast('错题已清空')
     clearConfirmOpen.value = false
-    await loadSubjects()
+    await loadMistakes()
   } catch {
     if (isCurrent()) showErrorToast('清空失败，请稍后重试。')
   } finally {
@@ -326,7 +302,6 @@ async function confirmClear() {
 
 watch(
   [
-    () => props.source,
     () => auth.session?.token,
     () => route.query.groupBy,
     () => route.query.sort,
@@ -334,16 +309,16 @@ watch(
   ],
   () => {
     const userId = auth.session?.user.id ?? ''
-    const context = `${auth.session?.token ?? ''}:${props.source}`
-    const filters = parseCollectionFilters(route.query, readBrowseState(userId, props.source))
+    const token = auth.session?.token ?? ''
+    const filters = parseCollectionFilters(route.query, readBrowseState(userId, 'mistakes'))
     if (
-      context === loadedContext &&
+      token === loadedToken &&
       filters.groupBy === groupMode.value &&
       filters.sort === sortField.value &&
       filters.order === sortOrder.value
     )
       return
-    if (context !== loadedContext) {
+    if (token !== loadedToken) {
       clearSequence++
       clearing.value = false
       loaded.value = false
@@ -354,13 +329,13 @@ watch(
       displayedSortField.value = filters.sort
       displayedSortOrder.value = filters.order
     }
-    loadedContext = context
+    loadedToken = token
     groupMode.value = filters.groupBy
     sortField.value = filters.sort
     sortOrder.value = filters.order
     closeSortMenu()
     clearConfirmOpen.value = false
-    void loadSubjects()
+    void loadMistakes()
   },
   { immediate: true },
 )
@@ -370,7 +345,7 @@ watch(
   <section class="relative flex min-h-[calc(100dvh-8rem)] flex-col" :aria-busy="loading">
     <header class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
       <div class="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
-        <h2 class="shrink-0 text-lg font-semibold leading-tight">{{ pageTitle }}</h2>
+        <h2 class="shrink-0 text-lg font-semibold leading-tight">我的错题</h2>
         <p
           v-if="loaded && totalQuestionCount > 0"
           class="text-xs leading-snug text-base-content/65"
@@ -384,7 +359,7 @@ watch(
         class="flex h-10 items-center justify-self-end gap-1 rounded-lg pl-2 text-[13px] text-primary transition-colors hover:text-primary active:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-40"
         type="button"
         :disabled="loading || clearing"
-        :aria-label="`清空全部${isFavorites ? '收藏' : '错题'}`"
+        aria-label="清空全部错题"
         @click="clearConfirmOpen = true"
       >
         <Trash2 :size="14" />
@@ -430,7 +405,7 @@ watch(
           type="button"
           :aria-disabled="loading"
           :aria-label="`排序方式：${activeSortLabel}`"
-          aria-controls="collection-sort-options"
+          aria-controls="mistakes-sort-options"
           aria-haspopup="menu"
           :aria-expanded="sortMenuOpen"
           @click="toggleSortMenu"
@@ -448,7 +423,7 @@ watch(
         </button>
         <div
           v-if="sortMenuOpen"
-          id="collection-sort-options"
+          id="mistakes-sort-options"
           ref="sortOptionsRef"
           class="absolute right-0 top-full z-20 mt-1 min-w-36 rounded-xl border border-base-300 bg-base-100 p-1"
           role="menu"
@@ -493,15 +468,15 @@ watch(
         title="加载失败"
         description="请检查网络后重试。"
         action-label="重新加载"
-        @action="loadSubjects"
+        @action="loadMistakes"
       />
     </PagePlaceholder>
 
     <PagePlaceholder v-else-if="items.length === 0">
       <EmptyState
-        :icon="isFavorites ? BookMarked : XCircle"
-        :title="emptyTitle"
-        :description="emptyDescription"
+        :icon="XCircle"
+        title="暂无错题"
+        description="答错的题目会收集到这里。"
         action-label="去练习"
         @action="router.push({ name: 'home' })"
       />
@@ -514,7 +489,7 @@ watch(
         role="status"
       >
         <span>更新失败，已保留原列表。</span>
-        <button class="min-h-11 px-2 text-primary" type="button" @click="loadSubjects">重试</button>
+        <button class="min-h-11 px-2 text-primary" type="button" @click="loadMistakes">重试</button>
       </div>
       <button
         v-for="item in items"
@@ -550,7 +525,7 @@ watch(
 
     <BaseDialog v-model="clearConfirmOpen" title="确认清空">
       <p class="text-sm leading-6 text-base-content/70">
-        将清空全部{{ isFavorites ? '收藏' : '错题' }}（{{ totalQuestionCount }} 道），操作不可恢复。
+        将清空全部错题（{{ totalQuestionCount }} 道），操作不可恢复。
       </p>
       <template #footer>
         <button

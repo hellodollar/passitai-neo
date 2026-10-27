@@ -33,8 +33,7 @@ export function createAppRouter(history: RouterHistory) {
       {
         path: '/favorites',
         name: 'favorites',
-        component: () => import('@/views/QuestionCollectionView.vue'),
-        props: { source: 'favorites' },
+        component: () => import('@/views/favorites/FavoritesView.vue'),
       },
       {
         path: '/favorites/practice/:groupBy(subject|paper)/:groupId',
@@ -49,8 +48,7 @@ export function createAppRouter(history: RouterHistory) {
       {
         path: '/mistakes',
         name: 'mistakes',
-        component: () => import('@/views/QuestionCollectionView.vue'),
-        props: { source: 'mistakes' },
+        component: () => import('@/views/mistakes/MistakesView.vue'),
       },
       {
         path: '/mistakes/practice/:groupBy(subject|paper)/:groupId',
