@@ -236,7 +236,7 @@ API源为src/constants/province.ts，通过pnpm sync同步到Neo的src/constants
 | ------- | ------------------------------------------------------------- | ------------------------------ | -------- |
 | `GET`   | `/api/practice/settings`                                      | 获取用户刷题设置               | 可用     |
 | `PATCH` | `/api/practice/settings`                                      | 修改用户刷题设置               | 可用     |
-| `GET`   | `/api/practice/entries?subjectId=subxxx`                     | 获取该科目下的练习入口         | 部分可用 |
+| `GET`   | `/api/practice/entries?subjectId=&provinceCode=subxxx`                     | 获取该科目下的练习入口         | 部分可用 |
 | `GET`   | `/api/practice/papers/:paperId`                               | 获取题集内容及最近真实练习记录 | 可用     |
 | `POST`  | `/api/practice/papers/:paperId/submissions`                   | 交卷并创建练习记录             | 可用     |
 | `GET`   | `/api/practice/papers/:paperId/submissions/:submissionId`    | 获取本次交卷记录               | 可用     |
@@ -261,7 +261,7 @@ interface PracticeSettings {
 
 ### 练习入口
 
-`subjectId` 必填。固定返回 `baseline`（专项训练）、`pastExam`（历年真题）、`mock`（考前模拟）、
+`subjectId` 必填，`provinceCode` 可选且必须为统一省份字典中的省级代码；提供时仅返回该省份题集，省略时保持跨省查询，不隐式读取或修改刷题计划。固定返回 `baseline`（专项训练）、`pastExam`（历年真题）、`mock`（考前模拟）、
 `ai`（AI训练）四个入口；`type` 与题集 `type` 使用同一组取值。
 
 `pastExam`、`mock`、`ai` 的 `children` 分别来自该科目下同类型、启用且未删除的题集，只包含平台题集
@@ -297,6 +297,7 @@ interface PracticePaperDetail {
     id: string
     name: string
     subjectId: string
+    provinceCode: string // 题集所属省级地区代码
     type: 'baseline' | 'pastExam' | 'mock' | 'ai'
     assessmentType: string
     questionCount: number
