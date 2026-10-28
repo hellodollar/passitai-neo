@@ -187,22 +187,29 @@ interface ChangeEmailBody {
 | `PUT`  | `/api/practice/plan` | 更新当前刷题计划 | 可用 |
 
 ```ts
+interface SubjectNextExam {
+  subjectId: string
+  period: string // 考试期次 YYYY-MM，如 2027-04
+  examDate: string // 考试日期 YYYY-MM-DD，如 2027-04-11
+}
+
 interface PracticePlan {
-  provinceCode: string // 六位省级地区代码，如 440000
+  provinceCode: string // 六位省级地区代码（报考省份），如 440000
   majorId: string
   majorName: string
   majorCode: string
   educationLevel: '本科' | '专科' // 来自 majors.educationLevel
-  nextExamDate: string | null // 来自 majors.nextExamDate，YYYY-MM-DD
+  nextExam: SubjectNextExam | null // 计划科目中最近一场未考的考试，无安排为 null
   subjects: {
     id: string
     name: string
     code: string
+    nextExam: SubjectNextExam | null // 该科目在报考省份最近一场未考的考试
   }[]
 }
 
 interface UpdatePracticePlanBody {
-  provinceCode: string // 必填，须与所选专业的省份一致
+  provinceCode: string // 必填，报考省份；决定题集与考期的省份上下文，不约束专业
   majorId: string
   subjectIds?: string[]
 }
@@ -216,11 +223,16 @@ interface UpdatePracticePlanBody {
 API源为src/constants/province.ts，通过pnpm sync同步到Neo的src/generated/domain-values.ts；
 前端使用provinceOptions（code/name）进行选择和回显，ProvinceCode为对应代码类型。
 字典包含的地区不表示已有可用题库；专业候选项仍由启用且未删除的业务数据决定。
-当前仍为单专业计划，majorId必填；provinceCode必须与专业记录一致，不一致返回400且不改写计划。
+当前仍为单专业计划，majorId必填。专业与科目全国一套目录，不再校验专业归属省份；
 专业必须启用且未删除，否则返回404。每个科目必须属于该专业、启用且未删除，
-任一不符合返回400且不改写计划。`educationLevel`、`nextExamDate` 从所选专业读取。
+任一不符合返回400且不改写计划。`educationLevel` 从所选专业读取。
 
-未设置计划、专业不存在、禁用、删除或省份归属已变化时，GET返回 `data: null`；需用户手动设置计划。
+考试时间是读取时计算的派生数据，不随计划落库：按报考省份从考试日历
+（exam_schedules，Dash 通过低频导入工具维护）取每个科目 `examDate >= 今天` 的最近一场，
+同日按期次先后。`nextExam` 为全体科目中最近的一场，用于计划级提醒；
+查不到任何未来安排时对应值为 `null`，客户端展示“待公布”。场次（上午/下午）暂不提供。
+
+未设置计划、专业不存在、禁用或删除时，GET返回 `data: null`；需用户手动设置计划。
 读取时过滤已失效的科目并保留选择顺序。返回专业和科目ID，Client直接使用ID，
 不再通过code额外请求字典接口反查。科目不返回学分。
 保存计划不改写偏好、不修改会话版本，也不清理已有刷题记录、收藏或错题。
@@ -264,7 +276,9 @@ interface PracticeSettings {
 `subjectId` 必填，`provinceCode` 可选且必须为统一省份字典中的省级代码；提供时仅返回该省份题集，省略时保持跨省查询，不隐式读取或修改刷题计划。固定返回 `baseline`（专项训练）、`pastExam`（历年真题）、`mock`（考前模拟）、
 `ai`（AI训练）四个入口；`type` 与题集 `type` 使用同一组取值。
 
-`pastExam`、`mock`、`ai` 的 `children` 分别来自该科目下同类型、启用且未删除的题集，只包含平台题集
+`pastExam`、`mock`、`ai` 的 `children` 分别来自该科目下同类型、启用且未删除的题集，按题集
+内容期次（contentPeriod）倒序、同期按 ID 倒序排列——真题的期次取来源年月，自建/AI 题集取
+业务创建时刻，因此最近内容的题集排在最前。每个入口只包含平台题集
 或当前用户自己的题集。每个子项返回 `{ paperId, name, questionCount, answeredCount }`，其中
 `name` 直接取题集存储的名称（如 `2024年10月真题`），不拼接科目名称；
 `questionCount` 为题集 `sections` 内全部题目数之和，`answeredCount` 暂为 `0`；父项的
@@ -279,7 +293,7 @@ interface PracticeSettings {
 
 `overall` → `highFrequency` → `errorProne`。该顺序由 `PaperAssessmentPreset` 定义；
 `assessmentType` 只用于排序和客户端图标，不覆盖题集名称。其他自定义考查类型也是合法的子项，
-排在上述预设类型之后，统一按题集创建时间倒序、ID 倒序排列，不会被丢弃。
+排在上述预设类型之后，统一按题集内容期次（contentPeriod）倒序、ID 倒序排列，不会被丢弃。
 
 baseline 子项额外返回 `assessmentType: string`（预设值或自定义值），供客户端做差异化展示；
 该科目缺少某 `assessmentType` 的 baseline 题集时跳过对应类型。四类入口的作答进度尚未接入练习记录。
@@ -497,7 +511,7 @@ interface PracticeSubmission {
 
 | Method | Path                                     | 说明                     | 状态 |
 | ------ | ---------------------------------------- | ------------------------ | ---- |
-| `GET`  | `/api/options/majors?provinceCode=&code=`              | 获取专业选项（省份和code选填） | 可用 |
+| `GET`  | `/api/options/majors?code=`              | 获取专业选项（code选填） | 可用 |
 | `GET`  | `/api/options/subjects?majorId=majxxx`  | 根据专业获取科目选项     | 可用 |
 
 统一返回：
@@ -510,8 +524,9 @@ interface OptionItem {
 }
 ```
 
-仅返回启用且未删除的数据。`/api/options/majors` 支持 `provinceCode`（同计划中的省份代码格式）
-和 `code` 精确过滤，组合使用时取交集；`/api/options/subjects` 支持单个 `majorId` 过滤，精确匹配科目 `majorIds` 数组中的专业 ID。
+仅返回启用且未删除的数据。专业与科目是全国一套目录，`/api/options/majors` 不再支持省份过滤，
+仅支持 `code` 精确过滤；`/api/options/subjects` 支持单个 `majorId` 过滤，精确匹配科目 `majorIds` 数组中的专业 ID。
+省份只影响题集与考期，不影响专业候选项。
 
 ## 8. 接口总表
 
