@@ -94,7 +94,7 @@ test('普通登出仍先带原 Token 请求服务端，即使撤销失败也清�
   assert.equal(window.localStorage.getItem(STORAGE_KEYS.authSession), null)
 })
 
-test('修改邮箱由账户 Store 更新唯一用户快照，不追加 GET user', async () => {
+test('修改邮箱由账户 Store 更新唯一用户快照，不追加 GET profile', async () => {
   const requests = []
   globalThis.fetch = async (url, options) => {
     requests.push({ url: String(url), method: options.method })
@@ -108,7 +108,7 @@ test('修改邮箱由账户 Store 更新唯一用户快照，不追加 GET user'
     'updated@example.invalid')
   assert.equal(requests.length, 1)
   assert.equal(requests[0].method, 'PUT')
-  assert.ok(requests[0].url.endsWith('/user/email'))
+  assert.ok(requests[0].url.endsWith('/profile/email'))
 })
 
 test('修改密码由账户 Store 清理会话，不再请求资料或登出', async () => {
@@ -123,5 +123,5 @@ test('修改密码由账户 Store 清理会话，不再请求资料或登出', a
   assert.equal(auth.session, null)
   assert.equal(requests.length, 1)
   assert.equal(requests[0].method, 'PUT')
-  assert.ok(requests[0].url.endsWith('/user/password'))
+  assert.ok(requests[0].url.endsWith('/profile/password'))
 })

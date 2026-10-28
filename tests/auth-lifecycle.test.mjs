@@ -184,7 +184,7 @@ test('迟到的旧 refreshUser 不覆盖新登录用户，用户只有一个快�
   persist(sessionFor('a'))
   const old = defer()
   const newSession = sessionFor('b')
-  handler = (url) => (url.endsWith('/user') ? old.promise : envelope(newSession))
+  handler = (url) => (url.endsWith('/profile') ? old.promise : envelope(newSession))
   const auth = useAuthStore()
   const refreshUser = auth.refreshUser()
   await flush()
@@ -255,7 +255,7 @@ test('更换邮箱后迟到的 refreshUser 不能覆盖新的用户快照与持�
   const initial = sessionFor('a')
   persist(initial)
   const old = defer()
-  handler = (url) => url.endsWith('/user/email')
+  handler = (url) => url.endsWith('/profile/email')
     ? envelope({ userId: initial.user.id, email: 'updated@example.invalid' }) : old.promise
   const auth = useAuthStore()
   auth.initialize()

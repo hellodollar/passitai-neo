@@ -3,7 +3,7 @@ import { KeyRound, Lock, ShieldCheck } from '@lucide/vue'
 import { reactive, ref, useId, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
-import AuthField from '@/components/auth/AuthField.vue'
+import FormField from '@/components/common/FormField.vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import { showSuccessToast } from '@/utils/toast'
 import { PASSWORD_PATTERN } from '@/utils/auth/validation'
@@ -112,7 +112,7 @@ async function submit() {
   >
     <form :id="formId" novalidate @submit.prevent="submit">
       <fieldset class="grid gap-2" :disabled="submitting">
-        <AuthField
+        <FormField
           v-model="form.currentPassword"
           label="当前密码"
           :icon="Lock"
@@ -123,7 +123,7 @@ async function submit() {
           @blur="validateCurrentPassword"
         />
 
-        <AuthField
+        <FormField
           v-model="form.newPassword"
           label="新密码"
           :icon="KeyRound"
@@ -134,7 +134,7 @@ async function submit() {
           @blur="validateNewPassword"
         />
 
-        <AuthField
+        <FormField
           v-model="form.confirmPassword"
           label="确认新密码"
           :icon="ShieldCheck"

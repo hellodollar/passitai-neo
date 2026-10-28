@@ -1,5 +1,6 @@
-import type { DomainValue } from '@/constants/domain-values'
-import type { CollectionSource, QuestionContent, QuestionType } from './entity'
+import type { DomainValue } from '@/generated/domain-values'
+import type { CollectionSource } from './collection'
+import type { QuestionContent, QuestionType } from './question'
 
 // ---- Practice plan ----
 

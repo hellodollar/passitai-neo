@@ -7,7 +7,7 @@ import type {
   User,
 } from '@/types'
 
-export function fetchUser() {
+export function fetchProfile() {
   return request<User>('/profile', { retry: 0, timeout: 10_000 })
 }
 

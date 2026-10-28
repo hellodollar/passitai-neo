@@ -15,10 +15,10 @@ import { useRouter } from 'vue-router'
 
 import ChangeEmailDialog from '@/components/me/ChangeEmailDialog.vue'
 import ChangePasswordDialog from '@/components/me/ChangePasswordDialog.vue'
-import BaseModal from '@/components/common/BaseModal.vue'
-import PracticePlanModal from '@/components/practice/PracticePlanModal.vue'
-import PracticeSettingsModal from '@/components/settings/PracticeSettingsModal.vue'
-import PracticeRecordsModal from '@/components/practice/PracticeRecordsModal.vue'
+import BasePopup from '@/components/common/BasePopup.vue'
+import PracticePlanPopup from '@/components/practice/PracticePlanPopup.vue'
+import PracticeSettingsPopup from '@/components/practice/PracticeSettingsPopup.vue'
+import PracticeRecordsPopup from '@/components/practice/PracticeRecordsPopup.vue'
 import { useAuthStore } from '@/stores/auth'
 import { usePracticePlanStore } from '@/stores/practice-plan'
 import { usePracticeSettingsStore } from '@/stores/practice-settings'
@@ -28,13 +28,13 @@ const practicePlanStore = usePracticePlanStore()
 const practiceSettingsStore = usePracticeSettingsStore()
 const router = useRouter()
 const signingOut = ref(false)
-const accountModalOpen = ref(false)
+const accountPopupOpen = ref(false)
 const passwordDialogOpen = ref(false)
 const emailDialogOpen = ref(false)
-const planModalOpen = ref(false)
-const practiceSettingsModalOpen = ref(false)
-const notificationModalOpen = ref(false)
-const recordsModalOpen = ref(false)
+const planPopupOpen = ref(false)
+const practiceSettingsPopupOpen = ref(false)
+const notificationPopupOpen = ref(false)
+const recordsPopupOpen = ref(false)
 
 type SettingsAction = 'account' | 'plan' | 'practice' | 'notification' | 'records'
 const displayName = computed(() => {
@@ -71,8 +71,8 @@ const menuGroups = computed(() => [
               : '答题方式与错题设置',
       },
       {
-        title: '本地刷题记录',
-        subtitle: '本机作答，不影响交卷报告',
+        title: '刷题记录',
+        subtitle: '查看与管理作答记录',
         icon: Eraser,
         action: 'records' as const,
       },
@@ -88,20 +88,20 @@ const menuGroups = computed(() => [
 ])
 
 function openMenuItem(action: SettingsAction) {
-  if (action === 'records') recordsModalOpen.value = true
-  else if (action === 'account') accountModalOpen.value = true
+  if (action === 'records') recordsPopupOpen.value = true
+  else if (action === 'account') accountPopupOpen.value = true
   else if (action === 'plan') {
     if (practicePlanStore.error) void practicePlanStore.load()
-    planModalOpen.value = true
+    planPopupOpen.value = true
   } else if (action === 'practice') {
     if (practiceSettingsStore.error) void practiceSettingsStore.load()
-    practiceSettingsModalOpen.value = true
-  } else notificationModalOpen.value = true
+    practiceSettingsPopupOpen.value = true
+  } else notificationPopupOpen.value = true
 }
 
 async function openAccountAction(action: 'password' | 'email') {
   const token = auth.session?.token
-  accountModalOpen.value = false
+  accountPopupOpen.value = false
   await nextTick()
   if (!auth.isAuthenticated || token !== auth.session?.token) return
   if (action === 'password') passwordDialogOpen.value = true
@@ -120,13 +120,13 @@ watch(
   () => auth.session?.token,
   (token, previous) => {
     if (previous && token !== previous) {
-      accountModalOpen.value = false
+      accountPopupOpen.value = false
       passwordDialogOpen.value = false
       emailDialogOpen.value = false
-      planModalOpen.value = false
-      practiceSettingsModalOpen.value = false
-      notificationModalOpen.value = false
-      recordsModalOpen.value = false
+      planPopupOpen.value = false
+      practiceSettingsPopupOpen.value = false
+      notificationPopupOpen.value = false
+      recordsPopupOpen.value = false
     }
     if (token) void Promise.allSettled([practicePlanStore.load(), practiceSettingsStore.load()])
   },
@@ -204,7 +204,7 @@ watch(
       </button>
     </div>
 
-    <BaseModal v-model="accountModalOpen" title="账户">
+    <BasePopup v-model="accountPopupOpen" title="账户">
       <div class="grid gap-2">
         <button
           class="grid w-full grid-cols-[2.5rem_minmax(0,1fr)_1.125rem] items-center gap-2 rounded-2xl bg-base-200/70 p-3 text-left transition-colors active:bg-base-300/70"
@@ -240,17 +240,17 @@ watch(
           <ChevronRight :size="16" class="justify-self-end text-base-content/30" />
         </button>
       </div>
-    </BaseModal>
+    </BasePopup>
 
     <ChangePasswordDialog v-model="passwordDialogOpen" />
 
     <ChangeEmailDialog v-model="emailDialogOpen" />
 
-    <PracticePlanModal v-model="planModalOpen" />
-    <PracticeSettingsModal v-model="practiceSettingsModalOpen" show-mistake-settings />
-    <BaseModal v-model="notificationModalOpen" title="通知">
+    <PracticePlanPopup v-model="planPopupOpen" />
+    <PracticeSettingsPopup v-model="practiceSettingsPopupOpen" show-mistake-settings />
+    <BasePopup v-model="notificationPopupOpen" title="通知">
       <p class="py-4 text-center text-sm text-base-content/60">通知功能暂未开放</p>
-    </BaseModal>
-    <PracticeRecordsModal v-model="recordsModalOpen" />
+    </BasePopup>
+    <PracticeRecordsPopup v-model="recordsPopupOpen" />
   </section>
 </template>

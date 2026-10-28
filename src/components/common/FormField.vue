@@ -3,6 +3,8 @@ import { CircleAlert } from '@lucide/vue'
 import type { Component } from 'vue'
 import { useId } from 'vue'
 
+const model = defineModel<string>({ required: true })
+
 defineProps<{
   label: string
   icon: Component
@@ -10,12 +12,10 @@ defineProps<{
   inputmode?: 'text' | 'email' | 'numeric'
   autocomplete?: string
   placeholder?: string
-  modelValue: string
   error?: string
 }>()
 
 defineEmits<{
-  'update:modelValue': [value: string]
   blur: []
 }>()
 
@@ -40,11 +40,10 @@ const id = useId()
         :inputmode="inputmode"
         :autocomplete="autocomplete"
         :placeholder="placeholder"
-        :value="modelValue"
+        v-model="model"
         :aria-invalid="error ? 'true' : undefined"
         :aria-describedby="error ? `${id}-error` : undefined"
         class="min-w-0 grow bg-transparent text-sm outline-none placeholder:text-base-content/30"
-        @input="$emit('update:modelValue', ($event.target as HTMLInputElement).value)"
         @blur="$emit('blur')"
       />
     </span>

@@ -3,10 +3,10 @@ import { defineStore } from 'pinia'
 
 import { login as loginApi, logout as logoutApi, register as registerApi } from '@/api/auth'
 import {
-  fetchUser,
+  fetchProfile,
   changeEmail as changeEmailApi,
   changePassword as changePasswordApi,
-} from '@/api/user'
+} from '@/api/profile'
 import { SessionChangedError } from '@/api/http'
 import { AUTH_INVALIDATED_EVENT, STORAGE_KEYS } from '@/constants/app'
 import { usePracticePlanStore } from '@/stores/practice-plan'
@@ -182,7 +182,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
     const requestGeneration = generation
     const requestUserRevision = userRevision
-    const promise = fetchUser()
+    const promise = fetchProfile()
       .then((nextUser) => {
         if (
           generation !== requestGeneration ||

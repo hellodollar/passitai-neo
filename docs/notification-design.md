@@ -32,7 +32,7 @@
 
 ## 2. 现状与可复用部分
 
-- Neo 的通知目前只有“暂未开放”弹窗，见 [MeView.vue](../src/views/MeView.vue)。
+- Neo 的通知目前只有“暂未开放”弹窗，见 [MeView.vue](../src/views/me/MeView.vue)。
 - 当前用户通知设置接口并未开放，见 [客户端契约](client-api.md)。这里提出的接口都是新增设计。
 - 后端已有 Telegram 发送、超时、错误脱敏和管理员测试能力，见 [发送实现](../../passitai-api/src/infra/telegram.ts)。可复用发送函数，不必重写一套 TG SDK。
 - 现有 Telegram 设置只有一个固定 `chatId`，服务于管理员/Bot 运维通知；没有用户绑定，也没有 Webhook，见 [管理端 Telegram 契约](../../passitai-api/docs/dash-api.md#telegram-消息推送)。

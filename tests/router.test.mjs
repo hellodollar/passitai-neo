@@ -102,8 +102,8 @@ test('首页、我的、作答与报告深链解析到明确页面，报告 ID �
 
 test('收藏和错题练习从路径得到来源和分组，不依赖 query 或 ID 前缀', () => {
   for (const [source, name] of [
-    ['favorites', 'favorite-practice'],
-    ['mistakes', 'mistake-practice'],
+    ['favorites', 'favorites-practice'],
+    ['mistakes', 'mistakes-practice'],
   ]) {
     for (const groupBy of ['subject', 'paper']) {
       const location = router.resolve(`/${source}/practice/${groupBy}/resource-one?source=ignored`)

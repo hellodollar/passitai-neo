@@ -4,7 +4,7 @@ export const domainValues = {
   sourceType: ['system', 'crawler', 'manual', 'import', 'ai'],
   userRole: ['admin', 'user'],
   educationLevel: ['本科', '专科'],
-  examType: ['written', 'machine', 'practical'],
+  examType: ['written', 'practical'],
   examStatus: ['open', 'closed'],
   recordStatus: ['notStarted', 'inProgress', 'completed'],
   questionType: ['single', 'multiple', 'judge', 'nounExplain', 'shortAnswer', 'essay'],

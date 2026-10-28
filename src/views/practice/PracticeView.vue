@@ -14,8 +14,8 @@ import { useRoute, useRouter } from 'vue-router'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import ClearPracticeRecordsDialog from '@/components/practice/ClearPracticeRecordsDialog.vue'
 import PracticeQuestionPanel from '@/components/practice/PracticeQuestionPanel.vue'
-import QuestionSheetModal from '@/components/practice/QuestionSheetModal.vue'
-import PracticeSettingsModal from '@/components/settings/PracticeSettingsModal.vue'
+import AnswerSheetPopup from '@/components/practice/AnswerSheetPopup.vue'
+import PracticeSettingsPopup from '@/components/practice/PracticeSettingsPopup.vue'
 import { usePracticeNavigation } from '@/composables/usePracticeNavigation'
 import { useQuestionSwipe } from '@/composables/useQuestionSwipe'
 import { useQuestionFavorites } from '@/composables/useQuestionFavorites'
@@ -61,7 +61,7 @@ import {
   isAnswerCorrect,
   isChoiceQuestionType,
 } from '@/utils/practice/question'
-import { preparePracticePaper, type QuestionSheetGroup } from '@/utils/practice/paper'
+import { preparePracticePaper, type AnswerSheetGroup } from '@/utils/practice/paper'
 import { showErrorToast } from '@/utils/toast'
 import { toSubmissionAnswers } from '@/utils/practice/submission-answers'
 import { preparePracticeSubmission, settlePracticeSubmission } from '@/utils/practice/submission'
@@ -89,8 +89,8 @@ const practiceId = computed(() =>
 
 type PaperLoadState = 'loading' | 'ready' | 'missing' | 'empty' | 'error'
 
-const settingsModalOpen = ref(false)
-const questionSheetOpen = ref(false)
+const settingsPopupOpen = ref(false)
+const answerSheetOpen = ref(false)
 const submitConfirmOpen = ref(false)
 const clearRecordConfirmOpen = ref(false)
 const submitting = ref(false)
@@ -100,7 +100,7 @@ const paperTitle = ref('')
 const practiceStartedAt = ref(Date.now())
 
 const currentQuestions = ref<QuestionListItem[]>([])
-const questionSheetGroups = ref<QuestionSheetGroup[]>([])
+const answerSheetGroups = ref<AnswerSheetGroup[]>([])
 const currentIndex = ref(0)
 const selectedOptionValues = ref<Set<string>>(new Set())
 const textAnswer = ref('')
@@ -123,8 +123,8 @@ const questionStage = ref<HTMLElement | null>(null)
 /** 悬浮层打开或试卷未就绪时,横滑与键盘切题一并挂起 */
 const navigationSuspended = () =>
   paperLoadState.value !== 'ready' ||
-  questionSheetOpen.value ||
-  settingsModalOpen.value ||
+  answerSheetOpen.value ||
+  settingsPopupOpen.value ||
   submitConfirmOpen.value ||
   clearRecordConfirmOpen.value
 
@@ -384,7 +384,7 @@ function resetClearedRecord() {
   clearRecordConfirmOpen.value = false
   submitting.value = false
   submitError.value = ''
-  questionSheetOpen.value = false
+  answerSheetOpen.value = false
   syncCurrentInput()
 }
 
@@ -504,8 +504,8 @@ async function submitCurrentAnswer() {
       settings?.autoNext &&
       sequence === loadSequence &&
       currentIndex.value === answeredIndex &&
-      !questionSheetOpen.value &&
-      !settingsModalOpen.value &&
+      !answerSheetOpen.value &&
+      !settingsPopupOpen.value &&
       !submitConfirmOpen.value
     ) {
       scheduleAutoAdvance()
@@ -641,7 +641,7 @@ function goToQuestion(index: number) {
   if (index < 0 || index >= currentQuestions.value.length) return
   clearAutoAdvance()
   jumpToQuestion(index)
-  questionSheetOpen.value = false
+  answerSheetOpen.value = false
 }
 
 function exitPractice() {
@@ -671,8 +671,8 @@ async function loadCollectionPaper() {
 
 async function loadPaperData() {
   clearAutoAdvance()
-  questionSheetOpen.value = false
-  settingsModalOpen.value = false
+  answerSheetOpen.value = false
+  settingsPopupOpen.value = false
   saveRecordNow()
   recordReady.value = false
   clearRecordSaveTimer()
@@ -684,7 +684,7 @@ async function loadPaperData() {
   resetSwipe()
   currentIndex.value = 0
   currentQuestions.value = []
-  questionSheetGroups.value = []
+  answerSheetGroups.value = []
   selectedOptionValues.value = new Set()
   textAnswer.value = ''
   answerRecords.value = {}
@@ -723,7 +723,7 @@ async function loadPaperData() {
     const { questions, groups, fingerprints, itemsById } = preparePracticePaper(paper)
 
     currentQuestions.value = questions
-    questionSheetGroups.value = groups
+    answerSheetGroups.value = groups
     questionFingerprints.value = fingerprints
     paperItemsById.value = itemsById
     resetFavorites(loaded.favoriteQuestionIds, [...itemsById.values()])
@@ -764,7 +764,7 @@ async function loadPaperData() {
   } catch {
     if (sequence !== loadSequence) return
     currentQuestions.value = []
-    questionSheetGroups.value = []
+    answerSheetGroups.value = []
     paperLoadState.value = 'error'
   }
 }
@@ -801,7 +801,7 @@ watch([practiceId, () => props.source, () => auth.session?.token], () => {
   void loadPaperData()
 })
 
-watch(questionSheetOpen, (open) => {
+watch(answerSheetOpen, (open) => {
   if (open) clearAutoAdvance()
 })
 </script>
@@ -986,7 +986,7 @@ watch(questionSheetOpen, (open) => {
           class="flex h-12 min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] font-medium tabular-nums text-base-content/70 transition active:bg-base-200"
           type="button"
           aria-label="打开答题卡"
-          @click="questionSheetOpen = true"
+          @click="answerSheetOpen = true"
         >
           <Grid2X2 :size="19" />
           <span>{{ currentQuestionPosition }}/{{ currentQuestions.length }}</span>
@@ -996,7 +996,7 @@ watch(questionSheetOpen, (open) => {
           class="flex h-12 min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] font-medium text-base-content/70 transition active:bg-base-200"
           type="button"
           aria-label="答题设置"
-          @click="settingsModalOpen = true"
+          @click="settingsPopupOpen = true"
         >
           <Settings :size="19" />
           <span>设置</span>
@@ -1004,10 +1004,10 @@ watch(questionSheetOpen, (open) => {
       </div>
     </div>
 
-    <QuestionSheetModal
-      v-model="questionSheetOpen"
+    <AnswerSheetPopup
+      v-model="answerSheetOpen"
       :questions="currentQuestions"
-      :groups="questionSheetGroups"
+      :groups="answerSheetGroups"
       :current-index="currentIndex"
       :answer-records="answerRecords"
       :answered-count="answeredCount"
@@ -1057,7 +1057,7 @@ watch(questionSheetOpen, (open) => {
       </template>
     </BaseDialog>
 
-    <PracticeSettingsModal v-model="settingsModalOpen" />
+    <PracticeSettingsPopup v-model="settingsPopupOpen" />
     <ClearPracticeRecordsDialog
       v-if="canClearRecord"
       v-model="clearRecordConfirmOpen"

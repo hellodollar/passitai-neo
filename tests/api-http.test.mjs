@@ -184,7 +184,7 @@ test('受保护接口 401 清除会话并派发一次失效事件', async () => 
   const invalidations = countInvalidations()
   handler = () => envelope(null, { message: '登录已过期，请重新登录', status: 401 })
 
-  await assert.rejects(request('/user'), (error) => {
+  await assert.rejects(request('/profile'), (error) => {
     assert.ok(error instanceof ApiError)
     assert.equal(error.status, 401)
     assert.equal(error.message, '登录已过期，请重新登录')
@@ -198,7 +198,7 @@ test('401 且无会话时不派发事件', async () => {
   const invalidations = countInvalidations()
   handler = () => envelope(null, { status: 401 })
 
-  await assert.rejects(request('/user'))
+  await assert.rejects(request('/profile'))
   assert.equal(invalidations(), 0)
 })
 
@@ -213,8 +213,8 @@ test('并发受保护请求 401 只清除并派发一次事件', async () => {
     return calls === 1 ? first.promise : second.promise
   }
 
-  const request1 = request('/user').catch(() => null)
-  const request2 = request('/user').catch(() => null)
+  const request1 = request('/profile').catch(() => null)
+  const request2 = request('/profile').catch(() => null)
   await flush()
   assert.equal(requests.length, 2)
   assert.equal(requests[0].authorization, 'Bearer tok_1')
@@ -234,7 +234,7 @@ test('旧 token 的迟到 401 不会清除新登录的会话', async () => {
   const pending = defer()
   handler = () => pending.promise
 
-  const stale = request('/user').catch(() => null)
+  const stale = request('/profile').catch(() => null)
   await flush()
   persist('tok_new')
 
@@ -276,7 +276,7 @@ test('请求创建即捕获 Token，迟到成功不泄露到新账号界面', as
   persist('tok_old')
   const pending = defer()
   handler = () => pending.promise
-  const oldRequest = request('/user')
+  const oldRequest = request('/profile')
   persist('tok_new')
   await flush()
   assert.equal(requests[0].authorization, 'Bearer tok_old')

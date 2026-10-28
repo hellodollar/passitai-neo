@@ -1,5 +1,5 @@
 import type { PRACTICE_RECORD_VERSION } from '@/constants/practice'
-import type { DomainValue } from '@/constants/domain-values'
+import type { DomainValue } from '@/generated/domain-values'
 import type { PracticeSource, SubmitPracticePaperBody } from './practice'
 
 /** 本地作答来源 = 普通刷题 + 两类集合来源；集合来源复用领域层定义。 */

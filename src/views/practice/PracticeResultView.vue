@@ -4,9 +4,9 @@ import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { fetchPracticePaper, fetchPracticeSubmission } from '@/api/practice'
-import BaseModal from '@/components/common/BaseModal.vue'
+import BasePopup from '@/components/common/BasePopup.vue'
 import { resolvePracticeReturn, returnToPracticeList } from '@/utils/browse/navigation'
-import { QUESTION_TYPE_LABELS } from '@/constants/entity'
+import { questionTypeLabels } from '@/generated/domain-values'
 import { buildSubmissionResult } from '@/utils/practice/result'
 import type {
   PracticeResultQuestion,
@@ -276,7 +276,7 @@ watch(
           <div v-if="questionGroups.length > 0" class="grid gap-4 p-4">
             <div v-for="[type, questions] in questionGroups" :key="type">
               <p class="mb-2 text-xs font-medium text-base-content/65">
-                {{ QUESTION_TYPE_LABELS[type] }}（{{ questions.length }}题）
+                {{ questionTypeLabels[type] }}（{{ questions.length }}题）
               </p>
               <div
                 class="grid grid-cols-[repeat(auto-fill,minmax(1.75rem,1fr))] justify-items-center gap-x-1 gap-y-1.5"
@@ -311,12 +311,12 @@ watch(
       </template>
     </main>
 
-    <BaseModal v-model="detailOpen" title="题目详情">
+    <BasePopup v-model="detailOpen" title="题目详情">
       <template v-if="selectedQuestion">
         <div class="flex items-center justify-between gap-3">
           <span class="text-xs font-medium text-base-content/65">
             第 {{ selectedQuestion.index }} 题 ·
-            {{ QUESTION_TYPE_LABELS[selectedQuestion.questionType] }}
+            {{ questionTypeLabels[selectedQuestion.questionType] }}
           </span>
           <span
             class="rounded-full px-2 py-1 text-[11px] font-semibold"
@@ -355,6 +355,6 @@ watch(
           </p>
         </div>
       </template>
-    </BaseModal>
+    </BasePopup>
   </section>
 </template>

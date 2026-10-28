@@ -1,4 +1,4 @@
-import type { DomainValue } from '@/constants/domain-values'
+import type { DomainValue } from '@/generated/domain-values'
 
 export const PRACTICE_CATEGORY_LABELS: Record<DomainValue<'paperType'>, string> = {
   baseline: '专项训练',

@@ -1,4 +1,4 @@
-import { domainValues } from '@/constants/domain-values'
+import { domainValues } from '@/generated/domain-values'
 import type {
   PracticeAnswerRecord,
   PracticePaperItem,

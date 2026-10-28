@@ -2,6 +2,8 @@
 import { X } from '@lucide/vue'
 import { nextTick, ref, watch } from 'vue'
 
+import { restoreOverlayFocus, trapOverlayFocus } from './overlay'
+
 const model = defineModel<boolean>({ default: false })
 
 const props = withDefaults(
@@ -33,42 +35,25 @@ function handleEscape() {
   if (props.closeOnEscape) close()
 }
 
-function handleTab(event: KeyboardEvent) {
-  const elements = dialogRef.value?.querySelectorAll<HTMLElement>(
-    'button:not(:disabled), input:not(:disabled):not([type="hidden"]), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex]',
-  )
-  const focusable = Array.from(elements ?? []).filter((element) => element.tabIndex >= 0)
-  const first = focusable[0]
-  const last = focusable[focusable.length - 1]
-  if (!first || !last) {
-    event.preventDefault()
-    return
-  }
-  if (
-    event.shiftKey &&
-    (document.activeElement === first || document.activeElement === dialogRef.value)
-  ) {
-    event.preventDefault()
-    last.focus()
-  } else if (
-    !event.shiftKey &&
-    (document.activeElement === last || document.activeElement === dialogRef.value)
-  ) {
-    event.preventDefault()
-    first.focus()
-  }
-}
-
-watch(model, async (open) => {
-  if (!open) {
+watch(
+  model,
+  async (open, wasOpen) => {
+    if (!open) {
+      if (!wasOpen) return
+      await nextTick()
+      // 同一轮父状态可能已重新打开，等子组件接收新值后再恢复。
+      await nextTick()
+      if (model.value) return
+      restoreOverlayFocus(previousFocus)
+      previousFocus = null
+      return
+    }
+    previousFocus ??= document.activeElement instanceof HTMLElement ? document.activeElement : null
     await nextTick()
-    if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true })
-    return
-  }
-  previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
-  await nextTick()
-  dialogRef.value?.focus({ preventScroll: true })
-})
+    if (model.value) dialogRef.value?.focus({ preventScroll: true })
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
@@ -83,7 +68,7 @@ watch(model, async (open) => {
       tabindex="-1"
       @click.self="handleBackdropClick"
       @keydown.esc.stop.prevent="handleEscape"
-      @keydown.tab="handleTab"
+      @keydown.tab="trapOverlayFocus($event, dialogRef)"
     >
       <div
         class="modal-box flex max-h-[calc(100dvh-2.5rem)] w-full max-w-sm flex-col overflow-hidden rounded-2xl border border-base-200 bg-base-100 p-0 shadow-none"

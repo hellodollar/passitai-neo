@@ -2,7 +2,7 @@
 import { Mail, ShieldCheck } from '@lucide/vue'
 import { reactive, ref, useId, watch } from 'vue'
 
-import AuthField from '@/components/auth/AuthField.vue'
+import FormField from '@/components/common/FormField.vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import { useAuthStore } from '@/stores/auth'
 import { showSuccessToast } from '@/utils/toast'
@@ -108,7 +108,7 @@ async function submit() {
       </div>
 
       <fieldset class="grid gap-2" :disabled="submitting">
-        <AuthField
+        <FormField
           v-model="form.password"
           label="当前密码"
           :icon="ShieldCheck"
@@ -119,7 +119,7 @@ async function submit() {
           @blur="validatePassword"
         />
 
-        <AuthField
+        <FormField
           v-model="form.newEmail"
           label="新邮箱"
           :icon="Mail"

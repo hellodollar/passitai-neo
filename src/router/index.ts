@@ -16,7 +16,7 @@ export function createAppRouter(history: RouterHistory) {
       {
         path: '/',
         name: 'home',
-        component: () => import('@/views/HomeView.vue'),
+        component: () => import('@/views/home/HomeView.vue'),
       },
       {
         path: '/practice/:paperId',
@@ -37,7 +37,7 @@ export function createAppRouter(history: RouterHistory) {
       },
       {
         path: '/favorites/practice/:groupBy(subject|paper)/:groupId',
-        name: 'favorite-practice',
+        name: 'favorites-practice',
         component: () => import('@/views/practice/PracticeView.vue'),
         props: (route) => ({
           source: 'favorites',
@@ -52,7 +52,7 @@ export function createAppRouter(history: RouterHistory) {
       },
       {
         path: '/mistakes/practice/:groupBy(subject|paper)/:groupId',
-        name: 'mistake-practice',
+        name: 'mistakes-practice',
         component: () => import('@/views/practice/PracticeView.vue'),
         props: (route) => ({
           source: 'mistakes',
@@ -63,7 +63,7 @@ export function createAppRouter(history: RouterHistory) {
       {
         path: '/me',
         name: 'me',
-        component: () => import('@/views/MeView.vue'),
+        component: () => import('@/views/me/MeView.vue'),
       },
       {
         path: '/login',

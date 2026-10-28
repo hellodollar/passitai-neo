@@ -1,22 +1,15 @@
 <script setup lang="ts">
-import {
-  AlertCircle,
-  ArrowDownUp,
-  BookMarked,
-  Check,
-  ChevronRight,
-  FileStack,
-  Trash2,
-} from '@lucide/vue'
+import { AlertCircle, BookMarked, ChevronRight, FileStack, Trash2 } from '@lucide/vue'
 import { formatDistanceToNow } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { clearFavorites, fetchFavoriteAggregate } from '@/api/favorites'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import PagePlaceholder from '@/components/common/PagePlaceholder.vue'
+import SortMenu from '@/components/common/SortMenu.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useBrowseScroll } from '@/composables/useBrowseScroll'
 import { parseCollectionFilters, readBrowseState, writeBrowseState } from '@/utils/browse/state'
@@ -41,12 +34,6 @@ const loaded = ref(false)
 const loadError = ref(false)
 const clearing = ref(false)
 const clearConfirmOpen = ref(false)
-const sortMenuOpen = ref(false)
-const sortMenuRef = ref<HTMLElement | null>(null)
-const sortButtonRef = ref<HTMLButtonElement | null>(null)
-const sortOptionsRef = ref<HTMLElement | null>(null)
-const focusedSortIndex = ref(0)
-let sortTriggerWasOpen = false
 let loadSequence = 0
 let clearSequence = 0
 
@@ -60,19 +47,17 @@ const displayedSortOrder = ref<CollectionOrder>('desc')
 
 const groupLabel = computed(() => (displayedGroupMode.value === 'subject' ? '科目' : '题集'))
 
-const SORT_OPTIONS: Array<{ field: SortField; order: CollectionOrder; label: string }> = [
-  { field: 'recent', order: 'desc', label: '最近收录' },
-  { field: 'recent', order: 'asc', label: '最早收录' },
-  { field: 'count', order: 'desc', label: '题目最多' },
-  { field: 'count', order: 'asc', label: '题目最少' },
+const SORT_OPTIONS: Array<{
+  value: string
+  field: SortField
+  order: CollectionOrder
+  label: string
+}> = [
+  { value: 'recent-desc', field: 'recent', order: 'desc', label: '最近收录' },
+  { value: 'recent-asc', field: 'recent', order: 'asc', label: '最早收录' },
+  { value: 'count-desc', field: 'count', order: 'desc', label: '题目最多' },
+  { value: 'count-asc', field: 'count', order: 'asc', label: '题目最少' },
 ]
-const activeSortLabel = computed(
-  () =>
-    SORT_OPTIONS.find(
-      (option) => option.field === sortField.value && option.order === sortOrder.value,
-    )?.label ?? '最近收录',
-)
-
 /** 时间距离文案：如“3小时前收录”。 */
 function collectedTimeText(item: CollectionAggregateItem) {
   const collectedAt = new Date(item.lastCollectedAt)
@@ -159,104 +144,26 @@ async function loadFavorites() {
 
 function selectGroupMode(mode: CollectionGroupBy) {
   if (loading.value || groupMode.value === mode) return
-  closeSortMenu()
   groupMode.value = mode
   void loadFavorites()
 }
 
-function selectSortOption(field: SortField, order: CollectionOrder) {
-  closeSortMenu(true)
-  if (loading.value || (sortField.value === field && sortOrder.value === order)) return
-  sortField.value = field
-  sortOrder.value = order
+function selectSortOption(value: string) {
+  const option = SORT_OPTIONS.find((item) => item.value === value)
+  if (
+    !option ||
+    loading.value ||
+    (sortField.value === option.field && sortOrder.value === option.order)
+  )
+    return
+  sortField.value = option.field
+  sortOrder.value = option.order
   void loadFavorites()
 }
-
-async function openSortMenu(position: 'selected' | 'first' | 'last' = 'selected') {
-  if (loading.value) return
-  const selectedIndex = SORT_OPTIONS.findIndex(
-    (option) => option.field === sortField.value && option.order === sortOrder.value,
-  )
-  focusedSortIndex.value =
-    position === 'first'
-      ? 0
-      : position === 'last'
-        ? SORT_OPTIONS.length - 1
-        : Math.max(0, selectedIndex)
-  sortMenuOpen.value = true
-  await nextTick()
-  if (sortMenuOpen.value) focusSortOption(focusedSortIndex.value)
-}
-
-function closeSortMenu(restoreFocus = false) {
-  sortMenuOpen.value = false
-  if (restoreFocus) sortButtonRef.value?.focus()
-}
-
-function toggleSortMenu() {
-  const wasOpen = sortTriggerWasOpen
-  sortTriggerWasOpen = false
-  if (loading.value) return
-  if (wasOpen || sortMenuOpen.value) closeSortMenu()
-  else void openSortMenu()
-}
-
-function rememberSortMenuState() {
-  // 点击触发按钮会先使菜单失焦，保留按下时的状态以正确执行收起。
-  sortTriggerWasOpen = sortMenuOpen.value
-}
-
-function focusSortOption(index: number) {
-  const buttons = sortOptionsRef.value?.querySelectorAll<HTMLButtonElement>('button')
-  if (!buttons?.length) return
-  focusedSortIndex.value = (index + buttons.length) % buttons.length
-  buttons[focusedSortIndex.value]?.focus()
-}
-
-function handleSortMenuKeydown(event: KeyboardEvent) {
-  const destinations: Record<string, number> = {
-    ArrowDown: focusedSortIndex.value + 1,
-    ArrowUp: focusedSortIndex.value - 1,
-    Home: 0,
-    End: SORT_OPTIONS.length - 1,
-  }
-  const index = destinations[event.key]
-  if (index === undefined) return
-  event.preventDefault()
-  focusSortOption(index)
-}
-
-function handleSortMenuFocusOut(event: FocusEvent) {
-  if (
-    !(event.relatedTarget instanceof Node) ||
-    !sortOptionsRef.value?.contains(event.relatedTarget)
-  ) {
-    closeSortMenu()
-  }
-}
-
-function handleOutsideClick(event: PointerEvent) {
-  const target = event.target
-  if (!(target instanceof Node)) return
-  if (!sortMenuRef.value?.contains(target)) closeSortMenu()
-}
-
-function handleEscape(event: KeyboardEvent) {
-  if (event.key !== 'Escape' || !sortMenuOpen.value) return
-  event.preventDefault()
-  closeSortMenu(true)
-}
-
-onMounted(() => {
-  document.addEventListener('pointerdown', handleOutsideClick)
-  document.addEventListener('keydown', handleEscape)
-})
 
 onBeforeUnmount(() => {
   ++loadSequence
   ++clearSequence
-  document.removeEventListener('pointerdown', handleOutsideClick)
-  document.removeEventListener('keydown', handleEscape)
 })
 
 /** 按当前分组进入收藏练习，返回时保留筛选条件。 */
@@ -274,7 +181,7 @@ function startPractice(item: CollectionAggregateItem) {
     },
   }).fullPath
   void router.push({
-    name: 'favorite-practice',
+    name: 'favorites-practice',
     params: { groupBy: displayedGroupMode.value, groupId: originId },
     query: { subjectName: item.subjectName, returnTo },
   })
@@ -333,7 +240,6 @@ watch(
     groupMode.value = filters.groupBy
     sortField.value = filters.sort
     sortOrder.value = filters.order
-    closeSortMenu()
     clearConfirmOpen.value = false
     void loadFavorites()
   },
@@ -398,60 +304,12 @@ watch(
         </button>
       </div>
 
-      <div ref="sortMenuRef" class="relative justify-self-end">
-        <button
-          ref="sortButtonRef"
-          class="flex h-10 items-center gap-1 rounded-lg pl-2 text-[13px] text-base-content/65 transition-colors hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary aria-disabled:cursor-wait"
-          type="button"
-          :aria-disabled="loading"
-          :aria-label="`排序方式：${activeSortLabel}`"
-          aria-controls="favorites-sort-options"
-          aria-haspopup="menu"
-          :aria-expanded="sortMenuOpen"
-          @click="toggleSortMenu"
-          @pointerdown="rememberSortMenuState"
-          @keydown.down.prevent="openSortMenu('first')"
-          @keydown.up.prevent="openSortMenu('last')"
-        >
-          <span
-            v-if="loading"
-            class="loading loading-spinner size-[14px] text-primary"
-            aria-hidden="true"
-          ></span>
-          <ArrowDownUp v-else :size="14" />
-          {{ activeSortLabel }}
-        </button>
-        <div
-          v-if="sortMenuOpen"
-          id="favorites-sort-options"
-          ref="sortOptionsRef"
-          class="absolute right-0 top-full z-20 mt-1 min-w-36 rounded-xl border border-base-300 bg-base-100 p-1"
-          role="menu"
-          aria-label="排序方式"
-          @keydown="handleSortMenuKeydown"
-          @focusout="handleSortMenuFocusOut"
-        >
-          <button
-            v-for="(option, index) in SORT_OPTIONS"
-            :key="`${option.field}-${option.order}`"
-            class="flex min-h-11 w-full items-center justify-between gap-4 rounded-lg px-3 text-left text-sm hover:bg-base-200/70 focus-visible:bg-primary/5 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary"
-            :class="
-              sortField === option.field && sortOrder === option.order
-                ? 'font-medium text-primary'
-                : 'text-base-content/75'
-            "
-            type="button"
-            role="menuitemradio"
-            :tabindex="focusedSortIndex === index ? 0 : -1"
-            :aria-checked="sortField === option.field && sortOrder === option.order"
-            @click="selectSortOption(option.field, option.order)"
-            @focus="focusedSortIndex = index"
-          >
-            {{ option.label }}
-            <Check v-if="sortField === option.field && sortOrder === option.order" :size="15" />
-          </button>
-        </div>
-      </div>
+      <SortMenu
+        :model-value="`${sortField}-${sortOrder}`"
+        :options="SORT_OPTIONS"
+        :loading="loading"
+        @update:model-value="selectSortOption"
+      />
     </div>
 
     <p v-if="loading && items.length > 0" class="sr-only" role="status">正在加载列表</p>
@@ -525,7 +383,12 @@ watch(
       </button>
     </div>
 
-    <BaseDialog v-model="clearConfirmOpen" title="确认清空">
+    <BaseDialog
+      v-model="clearConfirmOpen"
+      title="确认清空"
+      :close-on-backdrop="!clearing"
+      :close-on-escape="!clearing"
+    >
       <p class="text-sm leading-6 text-base-content/70">
         将清空全部收藏（{{ totalQuestionCount }} 道），操作不可恢复。
       </p>

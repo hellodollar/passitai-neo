@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import {
   AlertCircle,
-  ArrowDown,
-  ArrowUp,
   BookOpenCheck,
   ChevronRight,
   ClipboardCheck,
@@ -19,11 +17,11 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import logoPassitai from '@/assets/icons/icon-passitai.svg'
-import BaseModal from '@/components/common/BaseModal.vue'
+import SubjectManagerPopup from '@/components/home/SubjectManagerPopup.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import PagePlaceholder from '@/components/common/PagePlaceholder.vue'
-import PracticePlanModal from '@/components/practice/PracticePlanModal.vue'
-import PracticeSettingsModal from '@/components/settings/PracticeSettingsModal.vue'
+import PracticePlanPopup from '@/components/practice/PracticePlanPopup.vue'
+import PracticeSettingsPopup from '@/components/practice/PracticeSettingsPopup.vue'
 import { useLocalPracticeRecords } from '@/composables/useLocalPracticeRecords'
 import { BASELINE_CHILD_ICONS } from '@/constants/practice-icons'
 import { useAuthStore } from '@/stores/auth'
@@ -46,9 +44,9 @@ const initialSelection = parseHomeSelection(route.query, initialBrowse)
 const { records } = useLocalPracticeRecords()
 const activeSubjectId = ref('')
 
-const settingsModalOpen = ref(false)
-const subjectPanelOpen = ref(false)
-const planModalOpen = ref(false)
+const settingsPopupOpen = ref(false)
+const subjectManagerOpen = ref(false)
+const planPopupOpen = ref(false)
 // 计划与题集目录来自 plan store:有缓存时挂载即渲染,仅在首次加载(未成功也未失败)时显示整页加载态
 const practicePlanStore = usePracticePlanStore()
 const practiceEntriesStore = usePracticeEntriesStore()
@@ -383,9 +381,9 @@ watch(
     entries.value = []
     entriesLoading.value = false
     activeSubjectId.value = ''
-    settingsModalOpen.value = false
-    subjectPanelOpen.value = false
-    planModalOpen.value = false
+    settingsPopupOpen.value = false
+    subjectManagerOpen.value = false
+    planPopupOpen.value = false
     subjectOrder.value = state.subjectOrder
     hiddenSubjectCodes.value = new Set(state.hiddenSubjectCodes)
     activeSubjectCode.value = selection.subjectCode
@@ -449,7 +447,7 @@ watch(
         title="暂无练习计划"
         description="先选择报考专业与刷题科目。"
         action-label="设置计划"
-        @action="planModalOpen = true"
+        @action="planPopupOpen = true"
       />
     </PagePlaceholder>
 
@@ -509,7 +507,7 @@ watch(
             class="flex h-10 items-center justify-center gap-1.5 text-xs font-medium text-base-content/60 transition active:bg-base-200/50"
             type="button"
             aria-label="刷题计划"
-            @click="planModalOpen = true"
+            @click="planPopupOpen = true"
           >
             <ClipboardList :size="15" />
             刷题计划
@@ -518,7 +516,7 @@ watch(
             class="flex h-10 items-center justify-center gap-1.5 text-xs font-medium text-base-content/60 transition active:bg-base-200/50"
             type="button"
             aria-label="刷题设置"
-            @click="settingsModalOpen = true"
+            @click="settingsPopupOpen = true"
           >
             <Settings2 :size="15" />
             刷题设置
@@ -535,7 +533,7 @@ watch(
           class="flex shrink-0 items-center gap-0.5 text-sm font-medium text-primary transition-opacity active:opacity-70"
           type="button"
           aria-label="科目管理"
-          @click="subjectPanelOpen = true"
+          @click="subjectManagerOpen = true"
         >
           管理
           <ChevronRight :size="15" class="-mr-0.5 mt-px" />
@@ -580,7 +578,7 @@ watch(
             description="在科目管理中恢复需要展示的科目。"
             action-label="管理科目"
             embedded
-            @action="subjectPanelOpen = true"
+            @action="subjectManagerOpen = true"
           />
         </div>
 
@@ -695,79 +693,18 @@ watch(
       </section>
     </template>
 
-    <BaseModal v-model="subjectPanelOpen" title="科目管理">
-      <div>
-        <p class="text-xs text-base-content/65">勾选显示，使用箭头调整顺序</p>
-      </div>
+    <SubjectManagerPopup
+      v-model="subjectManagerOpen"
+      :subjects="orderedSubjects"
+      :active-subject-code="activeSubject?.code"
+      :hidden-subject-codes="hiddenSubjectCodes"
+      @select="selectSubject"
+      @toggle-visibility="toggleSubjectVisibility"
+      @move="moveSubject"
+    />
 
-      <div class="mt-3 border-y border-base-200 divide-y divide-base-200">
-        <div
-          v-for="(subject, index) in orderedSubjects"
-          :key="subject.code"
-          class="flex min-h-14 min-w-0 items-center gap-2 py-1.5"
-        >
-          <label class="flex size-8 shrink-0 cursor-pointer items-center justify-center">
-            <input
-              type="checkbox"
-              class="checkbox checkbox-xs checkbox-primary"
-              :checked="!hiddenSubjectCodes.has(subject.code)"
-              :aria-label="`${subject.name}显示状态`"
-              @change="toggleSubjectVisibility(subject.code)"
-            />
-          </label>
+    <PracticeSettingsPopup v-model="settingsPopupOpen" />
 
-          <button
-            class="min-w-0 flex-1 text-left"
-            :class="[
-              activeSubject?.code === subject.code ? 'text-primary' : '',
-              hiddenSubjectCodes.has(subject.code) ? 'text-base-content/35' : '',
-            ]"
-            type="button"
-            @click="selectSubject(subject.code)"
-          >
-            <span class="block truncate text-sm font-medium">{{ subject.name }}</span>
-            <span
-              v-if="subject.code"
-              class="mt-0.5 block truncate text-[11px] text-base-content/40"
-            >
-              {{ subject.code }}
-            </span>
-          </button>
-
-          <div class="flex shrink-0 items-center gap-0.5">
-            <button
-              class="btn btn-square btn-ghost btn-sm text-base-content/55"
-              type="button"
-              aria-label="上移科目"
-              :disabled="index === 0"
-              @click="moveSubject(subject.code, -1)"
-            >
-              <ArrowUp :size="15" />
-            </button>
-            <button
-              class="btn btn-square btn-ghost btn-sm text-base-content/55"
-              type="button"
-              aria-label="下移科目"
-              :disabled="index === orderedSubjects.length - 1"
-              @click="moveSubject(subject.code, 1)"
-            >
-              <ArrowDown :size="15" />
-            </button>
-          </div>
-        </div>
-
-        <EmptyState
-          v-if="orderedSubjects.length === 0"
-          :icon="Target"
-          title="暂无可管理科目"
-          description="暂无练习计划科目。"
-          embedded
-        />
-      </div>
-    </BaseModal>
-
-    <PracticeSettingsModal v-model="settingsModalOpen" />
-
-    <PracticePlanModal v-model="planModalOpen" />
+    <PracticePlanPopup v-model="planPopupOpen" />
   </section>
 </template>

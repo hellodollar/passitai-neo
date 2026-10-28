@@ -1,9 +1,9 @@
-import { QUESTION_TYPE_LABELS } from '@/constants/entity'
+import { questionTypeLabels } from '@/generated/domain-values'
 import type { PracticePaperItem, PracticePaperLite, QuestionListItem } from '@/types'
 import { questionFingerprint } from './record'
 import { toQuestionListItem } from './question'
 
-export type QuestionSheetGroup = {
+export type AnswerSheetGroup = {
   key: string
   label: string
   startIndex: number
@@ -13,7 +13,7 @@ export type QuestionSheetGroup = {
 /** 将 API 题集按原 Section/题目顺序整理为练习页所需的题目、分组与指纹。 */
 export function preparePracticePaper(paper: PracticePaperLite) {
   const questions: QuestionListItem[] = []
-  const groups: QuestionSheetGroup[] = []
+  const groups: AnswerSheetGroup[] = []
   const fingerprints: Record<string, string> = {}
   const itemsById = new Map<string, PracticePaperItem>()
 
@@ -27,9 +27,7 @@ export function preparePracticePaper(paper: PracticePaperLite) {
       key: `${paper.id ?? paper.subjectId}-${index}`,
       label:
         section.name ||
-        (section.questionType
-          ? QUESTION_TYPE_LABELS[section.questionType]
-          : `Section ${index + 1}`),
+        (section.questionType ? questionTypeLabels[section.questionType] : `Section ${index + 1}`),
       startIndex: questions.length,
       questions: groupQuestions,
     })

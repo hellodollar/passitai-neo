@@ -213,7 +213,7 @@ interface UpdatePracticePlanBody {
 `PUT` 严格接受上述请求字段，未知字段（包括旧majorCode）返回400；省略subjectIds视为空数组，
 数组最多100项，重复ID按首次出现顺序去重。
 省份代码仅接受统一省份常量中的六位字符串（如440000）；缺失、数字类型、城市代码或未收录代码返回400。
-API源为src/constants/province.ts，通过pnpm sync同步到Neo的src/constants/domain-values.ts；
+API源为src/constants/province.ts，通过pnpm sync同步到Neo的src/generated/domain-values.ts；
 前端使用provinceOptions（code/name）进行选择和回显，ProvinceCode为对应代码类型。
 字典包含的地区不表示已有可用题库；专业候选项仍由启用且未删除的业务数据决定。
 当前仍为单专业计划，majorId必填；provinceCode必须与专业记录一致，不一致返回400且不改写计划。
@@ -349,7 +349,7 @@ Section 的所有题目都与 `questionType` 一致；缺失 `questionType` 表�
 分页限制；收藏或取消收藏成功后，再次获取本接口会反映最新状态。
 
 题型和同类型 Section 的默认中文文案由 API `src/constants/question.ts` 的 `QuestionTypeLabels`
-维护，同步到 Neo 的 `src/constants/domain-values.ts` 与 Dash 的 `src/generated/domain-values.ts`：`single`→`单选题`、
+维护，同步到 Neo 的 `src/generated/domain-values.ts` 与 Dash 的 `src/generated/domain-values.ts`：`single`→`单选题`、
 `multiple`→`多选题`、`judge`→`判断题`、`nounExplain`→`名词解释`、
 `shortAnswer`→`简答题`、`essay`→`论述题`。这只是展示/输入建议；Section 的 `name`
 如已自定义，客户端须原样展示，不用默认文案覆盖。

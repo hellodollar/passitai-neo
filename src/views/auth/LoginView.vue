@@ -3,7 +3,7 @@ import { LockKeyhole, Mail } from '@lucide/vue'
 import { reactive, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
-import AuthField from '@/components/auth/AuthField.vue'
+import FormField from '@/components/common/FormField.vue'
 import AuthFrame from '@/components/auth/AuthFrame.vue'
 import { useAuthStore } from '@/stores/auth'
 import { resolveLoginRedirect } from '@/utils/browse/navigation'
@@ -74,7 +74,7 @@ async function submit() {
 <template>
   <AuthFrame>
     <form class="grid gap-1" novalidate @submit.prevent="submit">
-      <AuthField
+      <FormField
         v-model="form.email"
         label="邮箱"
         :icon="Mail"
@@ -85,7 +85,7 @@ async function submit() {
         @blur="validateEmail"
       />
 
-      <AuthField
+      <FormField
         v-model="form.password"
         label="密码"
         :icon="LockKeyhole"

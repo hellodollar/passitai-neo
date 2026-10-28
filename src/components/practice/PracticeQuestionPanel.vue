@@ -2,7 +2,7 @@
 import { CheckCircle2, ClipboardCheck, XCircle } from '@lucide/vue'
 import { computed } from 'vue'
 
-import { QUESTION_TYPE_LABELS } from '@/constants/entity'
+import { questionTypeLabels } from '@/generated/domain-values'
 import type { PracticeAnswerRecord, QuestionListItem } from '@/types'
 import {
   getCorrectOptionValues,
@@ -32,7 +32,7 @@ const emit = defineEmits<{
 
 const expectsChoiceQuestion = computed(() => isChoiceQuestionType(props.question.questionType))
 const isMultipleQuestion = computed(() => props.question.questionType === 'multiple')
-const typeLabel = computed(() => QUESTION_TYPE_LABELS[props.question.questionType])
+const typeLabel = computed(() => questionTypeLabels[props.question.questionType])
 const displayTitle = computed(() => parseQuestionTitle(props.question).title)
 
 const resolvedOptions = computed<NormalizedQuestionOption[]>(() => {

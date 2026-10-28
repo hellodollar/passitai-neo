@@ -11,19 +11,16 @@ export type {
   UserRole,
 } from './auth'
 export type {
-  AppPreferences,
+  CollectionSource,
   CollectionAggregate,
   CollectionAggregateItem,
   CollectionContext,
   CollectionGroupBy,
   CollectionOrder,
   FavoriteMutationResult,
-  OptionItem,
-  QuestionContent,
-  QuestionListItem,
-  QuestionType,
-  CollectionSource,
-} from './entity'
+} from './collection'
+export type { OptionItem } from './catalog'
+export type { QuestionContent, QuestionListItem, QuestionType } from './question'
 export type {
   CollectionPracticePaper,
   PracticeEntry,
