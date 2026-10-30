@@ -16,7 +16,7 @@ import { differenceInCalendarDays, format } from 'date-fns'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import logoPassitai from '@/assets/icons/icon-passitai.svg'
+import LogoPassitai from '@/components/common/LogoPassitai.vue'
 import SubjectManagerPopup from '@/components/home/SubjectManagerPopup.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import PagePlaceholder from '@/components/common/PagePlaceholder.vue'
@@ -423,7 +423,7 @@ watch(
     class="relative flex min-h-[calc(100dvh-8rem)] w-full min-w-0 max-w-full flex-col gap-4 overflow-x-hidden"
   >
     <header class="flex h-9 shrink-0 items-center">
-      <img :src="logoPassitai" alt="Passitai" class="h-8 w-auto" />
+      <LogoPassitai role="img" aria-label="Passitai" class="h-8 w-auto text-base-content" />
     </header>
 
     <PagePlaceholder v-if="planLoading" role="status" aria-live="polite">

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
 
-import logoPassitai from '@/assets/icons/icon-passitai.svg'
+import LogoPassitai from '@/components/common/LogoPassitai.vue'
 import { APP_NAME } from '@/constants/app'
 </script>
 
@@ -14,7 +14,11 @@ import { APP_NAME } from '@/constants/app'
           :aria-label="`${APP_NAME}登录`"
           class="transition-opacity hover:opacity-80"
         >
-          <img :src="logoPassitai" :alt="APP_NAME" class="h-11 w-auto" />
+          <LogoPassitai
+            role="img"
+            :aria-label="APP_NAME"
+            class="h-11 w-auto text-base-content"
+          />
         </RouterLink>
       </div>
 

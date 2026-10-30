@@ -2,8 +2,6 @@
 import { X } from '@lucide/vue'
 import { nextTick, ref, watch } from 'vue'
 
-import { restoreOverlayFocus, trapOverlayFocus } from './overlay'
-
 const model = defineModel<boolean>({ default: false })
 
 const props = withDefaults(
@@ -20,59 +18,46 @@ const props = withDefaults(
   },
 )
 
-const dialogRef = ref<HTMLElement | null>(null)
-let previousFocus: HTMLElement | null = null
+/**
+ * 原生 <dialog> + daisyUI modal:焦点陷阱、Esc 关闭、关闭后焦点归还、
+ * 背景惰性化均由浏览器提供,不再手写 overlay 焦点管理。
+ */
+const dialogRef = ref<HTMLDialogElement | null>(null)
+
+watch(
+  model,
+  async (open) => {
+    await nextTick()
+    const dialog = dialogRef.value
+    if (!dialog) return
+    if (open && !dialog.open) dialog.showModal()
+    else if (!open && dialog.open) dialog.close()
+  },
+  { immediate: true },
+)
 
 function close() {
   model.value = false
 }
 
-function handleBackdropClick() {
-  if (props.closeOnBackdrop) close()
+/** Esc:不允许关闭时拦截浏览器默认行为,dialog 保持打开 */
+function handleCancel(event: Event) {
+  if (!props.closeOnEscape) event.preventDefault()
 }
-
-function handleEscape() {
-  if (props.closeOnEscape) close()
-}
-
-watch(
-  model,
-  async (open, wasOpen) => {
-    if (!open) {
-      if (!wasOpen) return
-      await nextTick()
-      // 同一轮父状态可能已重新打开，等子组件接收新值后再恢复。
-      await nextTick()
-      if (model.value) return
-      restoreOverlayFocus(previousFocus)
-      previousFocus = null
-      return
-    }
-    previousFocus ??= document.activeElement instanceof HTMLElement ? document.activeElement : null
-    await nextTick()
-    if (model.value) dialogRef.value?.focus({ preventScroll: true })
-  },
-  { immediate: true },
-)
 </script>
 
 <template>
   <Teleport to="body">
-    <div
-      v-if="model"
+    <dialog
       ref="dialogRef"
-      class="modal modal-open modal-middle px-5"
-      role="dialog"
-      aria-modal="true"
+      class="modal modal-middle px-5"
       :aria-label="title"
-      tabindex="-1"
-      @click.self="handleBackdropClick"
-      @keydown.esc.stop.prevent="handleEscape"
-      @keydown.tab="trapOverlayFocus($event, dialogRef)"
+      @click.self="props.closeOnBackdrop && close()"
+      @cancel="handleCancel"
+      @close="model = false"
     >
-      <div
-        class="modal-box flex max-h-[calc(100dvh-2.5rem)] w-full max-w-sm flex-col overflow-hidden rounded-2xl border border-base-200 bg-base-100 p-0 shadow-none"
-      >
+      <!-- 内容随开合挂载/销毁,关闭即重置内部状态;dialog 本体常驻以保留原生行为 -->
+      <div v-if="model" class="modal-box flex max-h-[calc(100dvh-2.5rem)] w-full max-w-sm flex-col overflow-hidden rounded-2xl border border-base-200 bg-base-100 p-0 shadow-none">
         <div class="flex shrink-0 items-center justify-between gap-4 px-5 pb-2 pt-5">
           <h3 class="text-base font-semibold leading-tight">{{ title }}</h3>
           <button
@@ -94,6 +79,6 @@ watch(
           <slot name="footer"></slot>
         </div>
       </div>
-    </div>
+    </dialog>
   </Teleport>
 </template>

@@ -83,7 +83,7 @@ async function scrollToCurrentQuestion() {
   <BasePopup
     v-model="model"
     aria-label="答题进度"
-    class="h-[min(65dvh,32rem)]"
+    box-class="h-[min(65dvh,32rem)]"
     @opened="scrollToCurrentQuestion"
   >
     <template #header>
