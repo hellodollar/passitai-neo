@@ -88,8 +88,8 @@ async function loadResult() {
 
 function questionStatusClasses(status: PracticeResultQuestionStatus) {
   const map = {
-    correct: 'border-success bg-success text-white',
-    wrong: 'border-error bg-error text-white',
+    correct: 'border-success bg-success text-success-content',
+    wrong: 'border-error bg-error text-error-content',
     unanswered: 'border-base-300 bg-base-100 text-base-content/65',
     pending: 'border-secondary/30 bg-secondary/10 text-secondary',
   }

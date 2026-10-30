@@ -60,8 +60,8 @@ function questionResultClasses(question: QuestionListItem) {
   }
 
   return isAnswerCorrect(record, question)
-    ? 'border-success bg-success text-white font-semibold'
-    : 'border-error bg-error text-white font-semibold'
+    ? 'border-success bg-success text-success-content font-semibold'
+    : 'border-error bg-error text-error-content font-semibold'
 }
 
 async function scrollToCurrentQuestion() {

@@ -1,9 +1,8 @@
 @import 'tailwindcss';
 
+/* 只使用下方自定义的 neo / neo-dark 主题;主题切换由应用设置 data-theme 驱动 */
 @plugin "daisyui" {
-  themes:
-    emerald --default,
-    business --prefersdark;
+  themes: false;
 }
 
 @plugin "daisyui/theme" {
@@ -32,6 +31,42 @@
   --color-warning-content: oklch(27.9% 0.061 68.6);
   --color-error: oklch(58% 0.18 28);
   --color-error-content: oklch(100% 0 0);
+  /* AI 入口语义色:与 primary/secondary/accent 同构,深浅主题各配一档 */
+  --color-ai: oklch(56% 0.24 302);
+  --radius-selector: 1rem;
+  --radius-field: 1rem;
+  --radius-box: 1rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
+}
+
+/* 深色主题:表面保持 270 蓝调中性拉大明度层级;品牌色相同色相提亮,*-content 反转为深字 */
+@plugin "daisyui/theme" {
+  name: 'neo-dark';
+  color-scheme: dark;
+  --color-base-100: oklch(20.5% 0.018 270);
+  --color-base-200: oklch(25% 0.02 270);
+  --color-base-300: oklch(31% 0.022 270);
+  --color-base-400: oklch(42% 0.02 270);
+  --color-base-content: oklch(93% 0.006 270);
+  --color-primary: oklch(70% 0.16 277);
+  --color-primary-content: oklch(15% 0.02 277);
+  --color-secondary: oklch(70% 0.12 235);
+  --color-secondary-content: oklch(15% 0.02 235);
+  --color-accent: oklch(72% 0.11 186);
+  --color-accent-content: oklch(15% 0.02 186);
+  --color-neutral: oklch(30% 0.02 270);
+  --color-neutral-content: oklch(93% 0.006 270);
+  --color-info: oklch(72% 0.13 230);
+  --color-info-content: oklch(15% 0.02 230);
+  --color-success: oklch(72% 0.14 158);
+  --color-success-content: oklch(15% 0.02 158);
+  --color-warning: oklch(78% 0.15 78);
+  --color-warning-content: oklch(27.9% 0.061 68.6);
+  --color-error: oklch(68% 0.17 25);
+  --color-error-content: oklch(15% 0.02 25);
+  --color-ai: oklch(75% 0.15 302);
   --radius-selector: 1rem;
   --radius-field: 1rem;
   --radius-box: 1rem;

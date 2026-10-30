@@ -108,10 +108,10 @@ const entryToneStyles: Record<
     chevron: 'group-active:text-accent',
   },
   ai: {
-    icon: 'bg-fuchsia-50 text-fuchsia-700',
-    active: 'bg-fuchsia-50 text-fuchsia-700 ring-fuchsia-300',
-    progress: 'bg-fuchsia-600',
-    chevron: 'group-active:text-fuchsia-700',
+    icon: 'bg-ai/10 text-ai',
+    active: 'bg-ai/10 text-ai ring-ai/40',
+    progress: 'bg-ai',
+    chevron: 'group-active:text-ai',
   },
 }
 

@@ -8,17 +8,20 @@ import {
   LogOut,
   Mail,
   Settings2,
+  SunMoon,
   UserRound,
 } from '@lucide/vue'
 import { computed, nextTick, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
+import AppearancePopup from '@/components/me/AppearancePopup.vue'
 import ChangeEmailDialog from '@/components/me/ChangeEmailDialog.vue'
 import ChangePasswordDialog from '@/components/me/ChangePasswordDialog.vue'
 import BasePopup from '@/components/common/BasePopup.vue'
 import PracticePlanPopup from '@/components/practice/PracticePlanPopup.vue'
 import PracticeSettingsPopup from '@/components/practice/PracticeSettingsPopup.vue'
 import PracticeRecordsPopup from '@/components/practice/PracticeRecordsPopup.vue'
+import { useAppearance } from '@/composables/useAppearance'
 import { useAuthStore } from '@/stores/auth'
 import { usePracticePlanStore } from '@/stores/practice-plan'
 import { usePracticeSettingsStore } from '@/stores/practice-settings'
@@ -26,6 +29,7 @@ import { usePracticeSettingsStore } from '@/stores/practice-settings'
 const auth = useAuthStore()
 const practicePlanStore = usePracticePlanStore()
 const practiceSettingsStore = usePracticeSettingsStore()
+const { appearanceLabel } = useAppearance()
 const router = useRouter()
 const signingOut = ref(false)
 const accountPopupOpen = ref(false)
@@ -35,8 +39,15 @@ const planPopupOpen = ref(false)
 const practiceSettingsPopupOpen = ref(false)
 const notificationPopupOpen = ref(false)
 const recordsPopupOpen = ref(false)
+const appearancePopupOpen = ref(false)
 
-type SettingsAction = 'account' | 'plan' | 'practice' | 'notification' | 'records'
+type SettingsAction =
+  | 'account'
+  | 'plan'
+  | 'practice'
+  | 'notification'
+  | 'records'
+  | 'appearance'
 const displayName = computed(() => {
   const name = auth.user?.email.split('@')[0]
   return name ? name.replace(/[._-]+/g, ' ') : 'PassIt AI'
@@ -82,6 +93,7 @@ const menuGroups = computed(() => [
     title: '账户与偏好',
     items: [
       { title: '账户与安全', subtitle: '密码与邮箱', icon: UserRound, action: 'account' as const },
+      { title: '外观', subtitle: appearanceLabel.value, icon: SunMoon, action: 'appearance' as const },
       { title: '通知', subtitle: '暂未开放', icon: Bell, action: 'notification' as const },
     ],
   },
@@ -90,6 +102,7 @@ const menuGroups = computed(() => [
 function openMenuItem(action: SettingsAction) {
   if (action === 'records') recordsPopupOpen.value = true
   else if (action === 'account') accountPopupOpen.value = true
+  else if (action === 'appearance') appearancePopupOpen.value = true
   else if (action === 'plan') {
     if (practicePlanStore.error) void practicePlanStore.load()
     planPopupOpen.value = true
@@ -251,6 +264,7 @@ watch(
     <BasePopup v-model="notificationPopupOpen" title="通知">
       <p class="py-4 text-center text-sm text-base-content/60">通知功能暂未开放</p>
     </BasePopup>
+    <AppearancePopup v-model="appearancePopupOpen" />
     <PracticeRecordsPopup v-model="recordsPopupOpen" />
   </section>
 </template>
