@@ -206,7 +206,7 @@ watch(
       </div>
 
       <button
-        class="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg text-sm text-base-content/55 transition-colors active:bg-error/5 active:text-error disabled:opacity-50"
+        class="mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-base-200 bg-base-100 text-sm font-medium text-base-content/65 transition-colors active:bg-base-200/60 disabled:opacity-50"
         type="button"
         :disabled="signingOut"
         @click="logout"

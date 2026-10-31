@@ -52,16 +52,24 @@ function questionResultLabel(question: QuestionListItem) {
   return isAnswerCorrect(record, question) ? '正确' : '错误'
 }
 
-function questionResultClasses(question: QuestionListItem) {
+function questionResultClasses(question: QuestionListItem, current: boolean) {
   const record = props.answerRecords[question.id]
-  if (!record) return 'border-base-300 bg-base-100 text-base-content/70'
-  if (!isChoiceQuestionType(question.questionType) || !getReferenceAnswer(question)) {
-    return 'border-secondary/30 bg-secondary/10 text-secondary'
+  let content = 'bg-base-100 text-base-content/70'
+  let border = 'border-base-300'
+  if (record) {
+    if (!isChoiceQuestionType(question.questionType) || !getReferenceAnswer(question)) {
+      content = 'bg-secondary/10 text-secondary'
+      border = 'border-secondary/30'
+    } else if (isAnswerCorrect(record, question)) {
+      content = 'bg-success text-success-content font-semibold'
+      border = 'border-success'
+    } else {
+      content = 'bg-error text-error-content font-semibold'
+      border = 'border-error'
+    }
   }
-
-  return isAnswerCorrect(record, question)
-    ? 'border-success bg-success text-success-content font-semibold'
-    : 'border-error bg-error text-error-content font-semibold'
+  // 当前题直接替换圆圈自身边框，不在外侧再叠一圈。
+  return `${content} ${current ? 'border-primary' : border}`
 }
 
 async function scrollToCurrentQuestion() {
@@ -138,12 +146,7 @@ async function scrollToCurrentQuestion() {
               v-for="(question, offset) in group.questions"
               :key="group.startIndex + offset"
               class="flex size-7 items-center justify-center rounded-full border text-xs font-medium tabular-nums transition-colors active:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-              :class="[
-                questionResultClasses(question),
-                currentIndex === group.startIndex + offset
-                  ? 'outline-2 outline-offset-1 outline-primary'
-                  : '',
-              ]"
+              :class="questionResultClasses(question, currentIndex === group.startIndex + offset)"
               type="button"
               :aria-label="`第 ${group.startIndex + offset + 1} 题，${questionResultLabel(question)}`"
               :aria-current="currentIndex === group.startIndex + offset ? 'step' : undefined"
