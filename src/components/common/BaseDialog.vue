@@ -57,7 +57,10 @@ function handleCancel(event: Event) {
       @close="model = false"
     >
       <!-- 内容随开合挂载/销毁,关闭即重置内部状态;dialog 本体常驻以保留原生行为 -->
-      <div v-if="model" class="modal-box flex max-h-[calc(100dvh-2.5rem)] w-full max-w-sm flex-col overflow-hidden rounded-2xl border border-base-200 bg-base-100 p-0 shadow-none">
+      <div
+        v-if="model"
+        class="modal-box flex max-h-[calc(100dvh-2.5rem)] w-full max-w-sm flex-col overflow-hidden rounded-2xl border border-base-200 bg-base-100 p-0 shadow-none"
+      >
         <div class="flex shrink-0 items-center justify-between gap-4 px-5 pb-2 pt-5">
           <h3 class="text-base font-semibold leading-tight">{{ title }}</h3>
           <button

@@ -14,11 +14,7 @@ import { APP_NAME } from '@/constants/app'
           :aria-label="`${APP_NAME}登录`"
           class="transition-opacity hover:opacity-80"
         >
-          <LogoPassitai
-            role="img"
-            :aria-label="APP_NAME"
-            class="h-11 w-auto text-base-content"
-          />
+          <LogoPassitai role="img" :aria-label="APP_NAME" class="h-11 w-auto text-base-content" />
         </RouterLink>
       </div>
 

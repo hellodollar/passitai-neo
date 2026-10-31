@@ -18,7 +18,9 @@ export default defineConfig(({ command, mode }) => {
     }
 
     if (apiUrl?.protocol !== 'https:') {
-      throw new Error('生产构建需要配置 VITE_API_BASE_URL，值必须是完整的 HTTPS API 地址。请在 Cloudflare Workers 的 Settings > Build 中设置构建变量。')
+      throw new Error(
+        '生产构建需要配置 VITE_API_BASE_URL，值必须是完整的 HTTPS API 地址。请在 Cloudflare Workers 的 Settings > Build 中设置构建变量。',
+      )
     }
   }
 

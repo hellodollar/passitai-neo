@@ -41,13 +41,7 @@ const notificationPopupOpen = ref(false)
 const recordsPopupOpen = ref(false)
 const appearancePopupOpen = ref(false)
 
-type SettingsAction =
-  | 'account'
-  | 'plan'
-  | 'practice'
-  | 'notification'
-  | 'records'
-  | 'appearance'
+type SettingsAction = 'account' | 'plan' | 'practice' | 'notification' | 'records' | 'appearance'
 const displayName = computed(() => {
   const name = auth.user?.email.split('@')[0]
   return name ? name.replace(/[._-]+/g, ' ') : 'PassIt AI'
@@ -93,7 +87,12 @@ const menuGroups = computed(() => [
     title: '账户与偏好',
     items: [
       { title: '账户与安全', subtitle: '密码与邮箱', icon: UserRound, action: 'account' as const },
-      { title: '外观', subtitle: appearanceLabel.value, icon: SunMoon, action: 'appearance' as const },
+      {
+        title: '外观',
+        subtitle: appearanceLabel.value,
+        icon: SunMoon,
+        action: 'appearance' as const,
+      },
       { title: '通知', subtitle: '暂未开放', icon: Bell, action: 'notification' as const },
     ],
   },

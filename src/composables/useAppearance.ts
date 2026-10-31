@@ -49,9 +49,7 @@ function applyTheme() {
   if (typeof document === 'undefined') return
   const theme = resolveThemeName(preference.value, systemDark.value)
   document.documentElement.setAttribute('data-theme', theme)
-  document
-    .querySelector('meta[name="theme-color"]')
-    ?.setAttribute('content', THEME_COLOR[theme])
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', THEME_COLOR[theme])
 }
 
 /** main.ts 启动时调用:读取偏好、应用主题并监听系统深浅变化(幂等) */
