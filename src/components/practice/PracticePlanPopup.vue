@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 import { fetchMajorOptions, fetchSubjectOptions } from '@/api/options'
 import BasePopup from '@/components/common/BasePopup.vue'
+import { provinceOptions, type ProvinceCode } from '@/generated/domain-values'
 import { useAuthStore } from '@/stores/auth'
 import { usePracticePlanStore } from '@/stores/practice-plan'
 import type { OptionItem } from '@/types'
@@ -13,6 +14,7 @@ const auth = useAuthStore()
 const practicePlanStore = usePracticePlanStore()
 const majorOptions = ref<OptionItem[]>([])
 const subjectOptions = ref<OptionItem[]>([])
+const draftProvinceCode = ref<ProvinceCode | ''>('')
 const draftMajorId = ref('')
 const draftSubjectIds = ref(new Set<string>())
 const loading = ref(false)
@@ -27,6 +29,7 @@ let saveSequence = 0
 
 const canSave = computed(
   () =>
+    Boolean(draftProvinceCode.value) &&
     Boolean(draftMajorId.value) &&
     !loading.value &&
     !saving.value &&
@@ -87,6 +90,7 @@ async function loadDraft() {
   majorOptionsError.value = false
   subjectOptionsError.value = false
   subjectOptionsLoading.value = false
+  draftProvinceCode.value = ''
   draftMajorId.value = ''
   draftSubjectIds.value = new Set()
   subjectOptions.value = []
@@ -94,12 +98,18 @@ async function loadDraft() {
     await Promise.all([loadMajorOptions(sequence, token), practicePlanStore.load()])
     if (!isCurrent() || practicePlanStore.error || majorOptionsError.value) return
     const plan = practicePlanStore.plan
+    draftProvinceCode.value = plan?.provinceCode ?? ''
     draftMajorId.value = plan?.majorId ?? ''
     draftSubjectIds.value = new Set(plan?.subjects.map((subject) => subject.id) ?? [])
     await loadSubjectOptions(draftMajorId.value)
   } finally {
     if (isCurrent()) loading.value = false
   }
+}
+
+function selectProvince(event: Event) {
+  if (loading.value || saving.value) return
+  draftProvinceCode.value = (event.target as HTMLSelectElement).value as ProvinceCode | ''
 }
 
 async function selectMajor(event: Event) {
@@ -117,7 +127,7 @@ function toggleSubject(id: string) {
 }
 
 async function savePlan() {
-  if (!canSave.value) return
+  if (!canSave.value || !draftProvinceCode.value) return
   const sequence = ++saveSequence
   const opening = loadSequence
   const token = auth.session?.token
@@ -129,6 +139,7 @@ async function savePlan() {
   saving.value = true
   try {
     await practicePlanStore.save({
+      provinceCode: draftProvinceCode.value,
       majorId: draftMajorId.value,
       subjectIds: [...draftSubjectIds.value],
     })
@@ -167,6 +178,7 @@ watch(
     majorOptionsLoaded = false
     majorOptions.value = []
     subjectOptions.value = []
+    draftProvinceCode.value = ''
     draftMajorId.value = ''
     draftSubjectIds.value = new Set()
   },
@@ -191,11 +203,24 @@ onBeforeUnmount(invalidateRequests)
         <button type="button" class="btn btn-ghost btn-sm mt-1" @click="loadDraft">重试</button>
       </div>
       <fieldset :disabled="loading || saving || majorOptionsError">
-        <section class="border-b border-base-200 px-0.5 pb-4">
-          <p class="text-sm font-medium">报考专业</p>
-          <p class="mt-0.5 text-xs text-base-content/65">选择后可配置对应的刷题科目</p>
+        <section class="px-0.5">
+          <p class="text-sm font-medium">报考省份</p>
           <select
-            class="select mt-3 h-10 min-h-10 w-full rounded-xl border border-base-300 bg-base-100 text-sm focus:border-primary focus:outline-none"
+            class="select mt-2 h-10 min-h-10 w-full rounded-xl border border-base-300 bg-base-100 text-sm focus:border-primary focus:outline-none"
+            :value="draftProvinceCode"
+            @change="selectProvince"
+          >
+            <option value="">{{ loading ? '正在加载…' : '请选择报考省份' }}</option>
+            <option v-for="province in provinceOptions" :key="province.code" :value="province.code">
+              {{ province.name }}
+            </option>
+          </select>
+        </section>
+
+        <section class="px-0.5 pt-3">
+          <p class="text-sm font-medium">报考专业</p>
+          <select
+            class="select mt-2 h-10 min-h-10 w-full rounded-xl border border-base-300 bg-base-100 text-sm focus:border-primary focus:outline-none"
             :value="draftMajorId"
             @change="selectMajor"
           >
@@ -206,10 +231,9 @@ onBeforeUnmount(invalidateRequests)
           </select>
         </section>
 
-        <section class="px-0.5 pt-4">
+        <section class="px-0.5 pt-3">
           <p class="text-sm font-medium">刷题科目</p>
-          <p class="mt-0.5 text-xs text-base-content/65">选择刷题页需要展示的科目</p>
-          <div class="mt-3 min-h-36 overflow-hidden rounded-xl border border-base-200">
+          <div class="mt-2 min-h-36 overflow-hidden rounded-xl border border-base-200">
             <div
               v-if="loading || subjectOptionsLoading"
               class="flex min-h-36 items-center justify-center"

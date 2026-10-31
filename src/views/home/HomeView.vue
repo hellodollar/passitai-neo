@@ -24,6 +24,7 @@ import PracticePlanPopup from '@/components/practice/PracticePlanPopup.vue'
 import PracticeSettingsPopup from '@/components/practice/PracticeSettingsPopup.vue'
 import { useLocalPracticeRecords } from '@/composables/useLocalPracticeRecords'
 import { BASELINE_CHILD_ICONS } from '@/constants/practice-icons'
+import { provinceOptions } from '@/generated/domain-values'
 import { useAuthStore } from '@/stores/auth'
 import { usePracticePlanStore } from '@/stores/practice-plan'
 import { usePracticeEntriesStore } from '@/stores/practice-entries'
@@ -121,6 +122,9 @@ function entryStyle(type: PracticeEntry['type']) {
 
 const planMajorName = computed(() => plan.value?.majorName ?? '')
 const planMajorCode = computed(() => plan.value?.majorCode ?? '')
+const planProvinceName = computed(
+  () => provinceOptions.find((province) => province.code === plan.value?.provinceCode)?.name ?? '',
+)
 const planSubjects = computed(() => plan.value?.subjects ?? [])
 const planEducationLevel = computed(() => plan.value?.educationLevel ?? '')
 const nextExamDate = computed(() => {
@@ -304,7 +308,7 @@ async function loadEntries() {
   entriesLoading.value = true
   try {
     const subjectId = subject.id
-    const loadedEntries = await practiceEntriesStore.load(subjectId)
+    const loadedEntries = await practiceEntriesStore.load(subjectId, plan.value?.provinceCode)
     if (!isCurrent()) return
     activeSubjectId.value = subjectId
     entries.value = loadedEntries ?? []
@@ -410,7 +414,7 @@ watch(
 )
 
 watch(
-  () => [plan.value?.majorId, activeSubject.value?.id ?? ''],
+  () => [plan.value?.provinceCode, plan.value?.majorId, activeSubject.value?.id ?? ''],
   () => {
     void loadEntries()
   },
@@ -465,8 +469,13 @@ watch(
                   {{ planEducationLevel }}
                 </span>
               </div>
-              <p v-if="planMajorCode" class="mt-1.5 text-xs text-base-content/65">
-                专业代码 {{ planMajorCode }}
+              <p
+                v-if="planProvinceName || planMajorCode"
+                class="mt-1.5 text-xs text-base-content/65"
+              >
+                <template v-if="planProvinceName">{{ planProvinceName }}</template>
+                <template v-if="planProvinceName && planMajorCode"> · </template>
+                <template v-if="planMajorCode">专业代码 {{ planMajorCode }}</template>
               </p>
             </div>
             <span

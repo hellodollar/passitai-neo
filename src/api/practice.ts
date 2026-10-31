@@ -7,10 +7,10 @@ import type {
   SubmitPracticePaperBody,
 } from '@/types'
 
-/** 文档:GET /api/practice/entries?subjectId= */
-export function fetchPracticeEntries(subjectId: string) {
+/** 文档:GET /api/practice/entries?subjectId=&provinceCode= */
+export function fetchPracticeEntries(subjectId: string, provinceCode?: string) {
   return request<PracticeEntry[]>('/practice/entries', {
-    query: { subjectId },
+    query: { subjectId, provinceCode },
   })
 }
 

@@ -7,6 +7,7 @@ const { usePracticePlanStore } = await loadSource('stores/practice-plan.ts')
 
 const previousFetch = globalThis.fetch
 const planFixture = {
+  provinceCode: '440000',
   majorId: 'maj-1',
   majorName: '汉语言文学',
   majorCode: 'maj-c',
@@ -85,7 +86,7 @@ test('save 返回的新计划作废在途读取，迟到响应不能覆盖保存
   }
   const store = usePracticePlanStore()
   const pending = store.load()
-  await store.save({ majorId: 'maj-1', subjectIds: ['sub-id-1'] })
+  await store.save({ provinceCode: '440000', majorId: 'maj-1', subjectIds: ['sub-id-1'] })
   release()
   assert.equal(await pending, null)
   assert.equal(store.plan.majorName, '新专业')
@@ -111,6 +112,22 @@ test('save 失败不覆盖已经加载的计划', async () => {
   await store.load()
   globalThis.fetch = async () => new Response(JSON.stringify({ ok: false, message: '冲突', data: null }),
     { status: 409 })
-  await assert.rejects(store.save({ majorId: 'maj-1', subjectIds: [] }))
+  await assert.rejects(store.save({ provinceCode: '440000', majorId: 'maj-1', subjectIds: [] }))
   assert.deepEqual(store.plan, planFixture)
+})
+
+test('save 将报考省份与专业一起提交', async () => {
+  let body
+  globalThis.fetch = async (_url, options) => {
+    body = JSON.parse(options.body)
+    return jsonResponse({ ...planFixture, provinceCode: '110000' })
+  }
+  const store = usePracticePlanStore()
+  await store.save({ provinceCode: '110000', majorId: 'maj-1', subjectIds: ['sub-id-1'] })
+  assert.deepEqual(body, {
+    provinceCode: '110000',
+    majorId: 'maj-1',
+    subjectIds: ['sub-id-1'],
+  })
+  assert.equal(store.plan.provinceCode, '110000')
 })

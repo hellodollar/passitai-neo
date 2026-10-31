@@ -1,4 +1,4 @@
-import type { DomainValue } from '@/generated/domain-values'
+import type { DomainValue, ProvinceCode } from '@/generated/domain-values'
 import type { CollectionSource } from './collection'
 import type { QuestionContent, QuestionType } from './question'
 
@@ -11,6 +11,8 @@ export type PracticePlanSubject = {
 }
 
 export type PracticePlan = {
+  /** 报考省份；决定题集与考期的省份上下文。 */
+  provinceCode: ProvinceCode
   majorId: string
   majorName: string
   majorCode: string
@@ -20,6 +22,7 @@ export type PracticePlan = {
 }
 
 export type UpdatePracticePlanBody = {
+  provinceCode: ProvinceCode
   majorId: string
   subjectIds?: string[]
 }

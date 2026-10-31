@@ -4,30 +4,35 @@ import { fetchPracticeEntries } from '@/api/practice'
 import { currentSessionToken } from '@/utils/auth/session'
 import type { PracticeEntry } from '@/types'
 
-/** 题集入口按当前会话和科目缓存；不承担用户资料、刷题计划或设置。 */
+/** 题集入口按当前会话、省份和科目缓存；不承担用户资料、刷题计划或设置。 */
 export const usePracticeEntriesStore = defineStore('practice-entries', () => {
   const entriesBySubjectId = ref(new Map<string, PracticeEntry[]>())
   const entriesPending = new Map<string, Promise<PracticeEntry[] | null>>()
   let generation = 0
 
-  function load(subjectId: string): Promise<PracticeEntry[] | null> {
-    const cached = entriesBySubjectId.value.get(subjectId)
+  function cacheKey(subjectId: string, provinceCode?: string) {
+    return `${provinceCode ?? ''}|${subjectId}`
+  }
+
+  function load(subjectId: string, provinceCode?: string): Promise<PracticeEntry[] | null> {
+    const key = cacheKey(subjectId, provinceCode)
+    const cached = entriesBySubjectId.value.get(key)
     if (cached) return Promise.resolve(cached)
-    const pendingEntry = entriesPending.get(subjectId)
+    const pendingEntry = entriesPending.get(key)
     if (pendingEntry) return pendingEntry
     const requestGeneration = generation
     const token = currentSessionToken()
-    const promise = fetchPracticeEntries(subjectId)
+    const promise = fetchPracticeEntries(subjectId, provinceCode)
       .then((next) => {
         if (requestGeneration !== generation || token !== currentSessionToken()) return null
-        entriesBySubjectId.value = new Map(entriesBySubjectId.value).set(subjectId, next)
+        entriesBySubjectId.value = new Map(entriesBySubjectId.value).set(key, next)
         return next
       })
       .catch(() => null)
       .finally(() => {
-        if (entriesPending.get(subjectId) === promise) entriesPending.delete(subjectId)
+        if (entriesPending.get(key) === promise) entriesPending.delete(key)
       })
-    entriesPending.set(subjectId, promise)
+    entriesPending.set(key, promise)
     return promise
   }
 
