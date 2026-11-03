@@ -23,7 +23,6 @@
   },
   "dependencies": {
     "@lucide/vue": "^1.66.0",
-    "@vue/devtools-api": "^8.2.1",
     "date-fns": "^4.4.0",
     "ofetch": "^1.5.1",
     "pinia": "^4.1.0",
@@ -39,7 +38,6 @@
     "@vue/tsconfig": "^0.9.1",
     "daisyui": "^5.7.50",
     "eslint": "^10.14.0",
-    "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-oxlint": "~1.90.0",
     "eslint-plugin-vue": "~10.12.0",
     "jiti": "^2.6.1",
@@ -56,6 +54,7 @@
     "node": ">=24.0.0"
   },
   "volta": {
-    "node": "26.13.0"
+    "node": "26.13.0",
+    "pnpm": "12.16.1"
   }
 }
