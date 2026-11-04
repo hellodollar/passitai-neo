@@ -1,14 +1,14 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import { fetchPracticeEntries } from '@/api/practice'
-import { currentSessionToken } from '@/utils/auth/session'
+import { createSessionGuard } from '@/utils/session-guard'
 import type { PracticeEntry } from '@/types'
 
 /** 题集入口按当前会话、省份和科目缓存；不承担用户资料、刷题计划或设置。 */
 export const usePracticeEntriesStore = defineStore('practice-entries', () => {
   const entriesBySubjectId = ref(new Map<string, PracticeEntry[]>())
   const entriesPending = new Map<string, Promise<PracticeEntry[] | null>>()
-  let generation = 0
+  const guard = createSessionGuard()
 
   function cacheKey(subjectId: string, provinceCode?: string) {
     return `${provinceCode ?? ''}|${subjectId}`
@@ -20,11 +20,10 @@ export const usePracticeEntriesStore = defineStore('practice-entries', () => {
     if (cached) return Promise.resolve(cached)
     const pendingEntry = entriesPending.get(key)
     if (pendingEntry) return pendingEntry
-    const requestGeneration = generation
-    const token = currentSessionToken()
+    const isCurrent = guard.captureRead()
     const promise = fetchPracticeEntries(subjectId, provinceCode)
       .then((next) => {
-        if (requestGeneration !== generation || token !== currentSessionToken()) return null
+        if (!isCurrent()) return null
         entriesBySubjectId.value = new Map(entriesBySubjectId.value).set(key, next)
         return next
       })
@@ -37,7 +36,7 @@ export const usePracticeEntriesStore = defineStore('practice-entries', () => {
   }
 
   function reset() {
-    generation++
+    guard.reset()
     entriesPending.clear()
     entriesBySubjectId.value = new Map()
   }
