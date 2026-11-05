@@ -16,7 +16,7 @@ const NETWORK_MESSAGE = '网络连接失败，请检查网络后重试'
 // 这些接口的 401 不应触发全局会话失效广播（避免重复清理/跳转）。
 const AUTH_ROUTES = ['/login', '/register', '/logout']
 
-export type RequestOptions = FetchOptions<'json'> & {
+type RequestOptions = FetchOptions<'json'> & {
   /** 请求失败时是否弹出全局错误提示，默认关闭，避免后台同步等静默请求被打扰 */
   notify?: boolean
 }

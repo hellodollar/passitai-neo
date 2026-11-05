@@ -7,7 +7,7 @@ import { onBeforeUnmount, ref, type Ref } from 'vue'
  */
 
 /** 手势轴:判定前不跟手,避免与纵向滚动抢手势 */
-export type SwipeAxis = 'undecided' | 'horizontal' | 'vertical'
+type SwipeAxis = 'undecided' | 'horizontal' | 'vertical'
 
 /** 判定为横向的最小位移(px),需大于常见点按抖动 */
 const AXIS_LOCK_DISTANCE = 12

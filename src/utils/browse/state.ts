@@ -1,11 +1,11 @@
 export type BrowsePage = 'home' | 'favorites' | 'mistakes'
-export type CollectionFilters = {
+type CollectionFilters = {
   groupBy: 'subject' | 'paper'
   sort: 'count' | 'recent'
   order: 'asc' | 'desc'
 }
-export type HomeSelection = { subjectCode: string; entry: string }
-export type BrowseState = CollectionFilters &
+type HomeSelection = { subjectCode: string; entry: string }
+type BrowseState = CollectionFilters &
   HomeSelection & {
     scrollTop: number
     subjectOrder: string[]

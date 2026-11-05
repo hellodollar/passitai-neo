@@ -1,8 +1,8 @@
 import { ref } from 'vue'
 
-export type ToastType = 'error' | 'success'
+type ToastType = 'error' | 'success'
 
-export type ToastItem = {
+type ToastItem = {
   id: number
   type: ToastType
   message: string
