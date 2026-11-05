@@ -61,3 +61,9 @@ export const provinceOptions = [
 ] as const
 
 export type ProvinceCode = (typeof provinceOptions)[number]['code']
+
+export const openedProvinceOptions = [
+  { code: '440000', name: '广东省' },
+] as const
+
+export type OpenedProvinceCode = (typeof openedProvinceOptions)[number]['code']

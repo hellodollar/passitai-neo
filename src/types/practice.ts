@@ -23,6 +23,8 @@ export type PracticePlan = {
 
 export type UpdatePracticePlanBody = {
   provinceCode: ProvinceCode
+  /** 报考学历层次,默认本科;所选专业必须属于该层次 */
+  educationLevel?: DomainValue<'educationLevel'>
   majorId: string
   subjectIds?: string[]
 }

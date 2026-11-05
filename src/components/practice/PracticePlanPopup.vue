@@ -3,7 +3,11 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 import { fetchMajorOptions, fetchSubjectOptions } from '@/api/options'
 import BasePopup from '@/components/common/BasePopup.vue'
-import { provinceOptions, type ProvinceCode } from '@/generated/domain-values'
+import {
+  openedProvinceOptions,
+  type DomainValue,
+  type ProvinceCode,
+} from '@/generated/domain-values'
 import { useAuthStore } from '@/stores/auth'
 import { usePracticePlanStore } from '@/stores/practice-plan'
 import type { OptionItem } from '@/types'
@@ -15,6 +19,7 @@ const practicePlanStore = usePracticePlanStore()
 const majorOptions = ref<OptionItem[]>([])
 const subjectOptions = ref<OptionItem[]>([])
 const draftProvinceCode = ref<ProvinceCode | ''>('')
+const draftEducationLevel = ref<DomainValue<'educationLevel'>>('本科')
 const draftMajorId = ref('')
 const draftSubjectIds = ref(new Set<string>())
 const loading = ref(false)
@@ -23,11 +28,15 @@ const majorOptionsLoading = ref(false)
 const majorOptionsError = ref(false)
 const subjectOptionsError = ref(false)
 const saving = ref(false)
-let loadedProvince = ''
+/** 专业选项缓存键:省份+学历任一变化都重新拉取 */
+let loadedMajorScope = ''
 let majorSequence = 0
 let loadSequence = 0
 let subjectSequence = 0
 let saveSequence = 0
+
+/** 学历层次固定两档,与 api 的 educationLevel 枚举一致 */
+const EDUCATION_LEVELS = ['本科', '专科'] as const satisfies readonly DomainValue<'educationLevel'>[]
 
 const canSave = computed(
   () =>
@@ -45,22 +54,24 @@ const canSave = computed(
 async function loadMajorOptions(sequence: number, token: string | undefined) {
   const version = ++majorSequence
   const provinceCode = draftProvinceCode.value
+  const educationLevel = draftEducationLevel.value
+  const scope = `${provinceCode}|${educationLevel}`
   majorOptionsError.value = false
   if (!provinceCode) {
     majorOptions.value = []
-    loadedProvince = ''
+    loadedMajorScope = ''
     majorOptionsLoading.value = false
     return
   }
-  if (loadedProvince === provinceCode) {
+  if (loadedMajorScope === scope) {
     majorOptionsLoading.value = false
     return
   }
   majorOptionsLoading.value = true
   majorOptions.value = []
-  loadedProvince = ''
+  loadedMajorScope = ''
   try {
-    const options = await fetchMajorOptions({ provinceCode })
+    const options = await fetchMajorOptions({ provinceCode, educationLevel })
     if (
       sequence !== loadSequence ||
       version !== majorSequence ||
@@ -69,7 +80,7 @@ async function loadMajorOptions(sequence: number, token: string | undefined) {
     )
       return
     majorOptions.value = options
-    loadedProvince = provinceCode
+    loadedMajorScope = scope
   } catch {
     if (
       sequence === loadSequence &&
@@ -122,6 +133,7 @@ async function loadDraft() {
   subjectOptionsError.value = false
   subjectOptionsLoading.value = false
   draftProvinceCode.value = ''
+  draftEducationLevel.value = '本科'
   draftMajorId.value = ''
   draftSubjectIds.value = new Set()
   subjectOptions.value = []
@@ -130,6 +142,7 @@ async function loadDraft() {
     if (!isCurrent() || practicePlanStore.error || majorOptionsError.value) return
     const plan = practicePlanStore.plan
     draftProvinceCode.value = plan?.provinceCode ?? ''
+    draftEducationLevel.value = plan?.educationLevel ?? '本科'
     await loadMajorOptions(sequence, token)
     if (!isCurrent() || majorOptionsError.value) return
     draftMajorId.value = majorOptions.value.some((option) => option.id === plan?.majorId)
@@ -148,7 +161,19 @@ async function selectProvince(event: Event) {
   draftMajorId.value = ''
   draftSubjectIds.value = new Set()
   majorOptions.value = []
-  loadedProvince = ''
+  loadedMajorScope = ''
+  majorOptionsError.value = false
+  await Promise.all([loadSubjectOptions(''), loadMajorOptions(loadSequence, auth.session?.token)])
+}
+
+/** 切换学历会更换专业候选,等价于换省:清空已选专业与科目后重拉 */
+async function selectEducationLevel(level: DomainValue<'educationLevel'>) {
+  if (loading.value || saving.value || draftEducationLevel.value === level) return
+  draftEducationLevel.value = level
+  draftMajorId.value = ''
+  draftSubjectIds.value = new Set()
+  majorOptions.value = []
+  loadedMajorScope = ''
   majorOptionsError.value = false
   await Promise.all([loadSubjectOptions(''), loadMajorOptions(loadSequence, auth.session?.token)])
 }
@@ -181,6 +206,7 @@ async function savePlan() {
   try {
     await practicePlanStore.save({
       provinceCode: draftProvinceCode.value,
+      educationLevel: draftEducationLevel.value,
       majorId: draftMajorId.value,
       subjectIds: [...draftSubjectIds.value],
     })
@@ -218,10 +244,11 @@ watch(
   () => {
     model.value = false
     invalidateRequests()
-    loadedProvince = ''
+    loadedMajorScope = ''
     majorOptions.value = []
     subjectOptions.value = []
     draftProvinceCode.value = ''
+    draftEducationLevel.value = '本科'
     draftMajorId.value = ''
     draftSubjectIds.value = new Set()
   },
@@ -254,10 +281,31 @@ onBeforeUnmount(invalidateRequests)
             @change="selectProvince"
           >
             <option value="">{{ loading ? '正在加载…' : '请选择报考省份' }}</option>
-            <option v-for="province in provinceOptions" :key="province.code" :value="province.code">
+            <option v-for="province in openedProvinceOptions" :key="province.code" :value="province.code">
               {{ province.name }}
             </option>
           </select>
+        </section>
+
+        <section class="px-0.5 pt-3">
+          <p class="text-sm font-medium">报考学历</p>
+          <div class="mt-2 grid grid-cols-2 gap-2" role="group" aria-label="报考学历">
+            <button
+              v-for="level in EDUCATION_LEVELS"
+              :key="level"
+              class="h-10 rounded-xl border text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              :class="
+                draftEducationLevel === level
+                  ? 'border-primary/50 bg-primary/5 text-primary'
+                  : 'border-base-300 text-base-content/65 active:bg-base-200/60'
+              "
+              type="button"
+              :aria-pressed="draftEducationLevel === level"
+              @click="selectEducationLevel(level)"
+            >
+              {{ level }}
+            </button>
+          </div>
         </section>
 
         <section class="px-0.5 pt-3">

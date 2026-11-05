@@ -198,7 +198,7 @@ interface PracticePlan {
   majorId: string
   majorName: string
   majorCode: string
-  educationLevel: '本科' | '专科' // 来自 majors.educationLevel
+  educationLevel: '本科' | '专科' // 用户选择的报考学历，保存时校验与专业一致
   nextExam: SubjectNextExam | null // 计划科目中最近一场未考的考试，无安排为 null
   subjects: {
     id: string
@@ -209,13 +209,14 @@ interface PracticePlan {
 }
 
 interface UpdatePracticePlanBody {
-  provinceCode: string // 必填，报考省份；决定题集与考期的省份上下文，不约束专业
+  provinceCode: string // 必填，报考省份；仅允许已开通省份（见下方白名单说明）
+  educationLevel?: '本科' | '专科' // 报考学历，默认本科；所选专业必须属于该层次
   majorId: string
   subjectIds?: string[]
 }
 ```
 
-计划独立存于 `users.practicePlan`，只保存 `{ provinceCode, majorId, subjectIds }`；未设置为SQL NULL。
+计划独立存于 `users.practicePlan`，只保存 `{ provinceCode, educationLevel, majorId, subjectIds }`；未设置为SQL NULL。
 省份代码独立保存用于回显，不重复保存专业或科目的名称、代码。响应中的展示字段实时从题库读取。
 `PUT` 严格接受上述请求字段，未知字段（包括旧majorCode）返回400；省略subjectIds视为空数组，
 数组最多100项，重复ID按首次出现顺序去重。
@@ -224,8 +225,12 @@ API源为src/constants/province.ts，通过pnpm sync同步到Neo的src/generated
 前端使用provinceOptions（code/name）进行选择和回显，ProvinceCode为对应代码类型。
 字典包含的地区不表示已有可用题库；专业候选项仍由启用且未删除的业务数据决定。
 当前为单专业计划，majorId必填。专业、科目必须与计划 provinceCode 一致；不同省份可有同代码的不同记录。
-专业必须启用且未删除，否则返回404。每个科目必须属于该专业、启用且未删除，
-任一不符合返回400且不改写计划。`educationLevel` 从所选专业读取。
+专业必须启用且未删除，否则返回404。`educationLevel` 由用户选择（默认本科），
+专业的 educationLevel 必须与之一致，否则返回400且不改写计划。
+每个科目必须属于该专业、启用且未删除，任一不符合返回400且不改写计划。
+报考省份仅接受已开通白名单 openedProvinceCodes（当前仅 440000 广东省；
+题库/考期数据就绪后在 src/constants/province.ts 逐个放开，经 pnpm sync 同步到前端 openedProvinceOptions），
+未开通省份返回400「该省份暂未开通」。
 
 考试时间是读取时计算的派生数据，不随计划落库：按报考省份从考试日历
 （exam_schedules，Dash 通过低频导入工具维护）取每个科目 `examDate >= 今天` 的最近一场，
@@ -526,7 +531,8 @@ interface OptionItem {
 
 仅返回启用且未删除的数据，结构仍为 `{id,code,name}[]`。
 `/api/options/majors` 和 `/api/options/subjects` 均支持 `provinceCode` 精确过滤，可与 id/ids/code/codes 组合。
-科目另支持 `majorId`，精确匹配 majorIds；客户端先选省份，再加载该省专业及科目。换省清空原专业和科目选择。
+majors 另支持 `educationLevel`（本科/专科）过滤；科目另支持 `majorId`，精确匹配 majorIds。
+客户端先选省份与学历，再加载该省该层次的专业及科目。换省或换学历清空原专业和科目选择。
 
 ## 8. 接口总表
 
