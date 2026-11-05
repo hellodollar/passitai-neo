@@ -63,7 +63,7 @@ watch(
       <template v-if="settings">
         <SettingsToggleItem
           :model-value="settings.autoNext"
-          title="答题正确自动下一题"
+          title="答对自动下一题"
           description="答对后自动跳转下一题"
           @update:model-value="saveSetting('autoNext', $event)"
         />

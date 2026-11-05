@@ -33,13 +33,16 @@ export function usePracticeNavigation(options: {
     options.currentIndex.value--
   }
 
+  /** 答对后短暂停留展示反馈,再自动切题;总观感 = 停留 + 横滑吸附动画(250ms) */
+  const AUTO_ADVANCE_DELAY_MS = 300
+
   function scheduleAutoAdvance() {
     clearAutoAdvance()
     if (options.currentIndex.value >= options.questionCount() - 1) return
     autoAdvanceTimer = window.setTimeout(() => {
       autoAdvanceTimer = null
       if (!options.suspended()) nextQuestion()
-    }, 800)
+    }, AUTO_ADVANCE_DELAY_MS)
   }
 
   function handleKeydown(event: KeyboardEvent) {
