@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 import { fetchMajorOptions, fetchSubjectOptions } from '@/api/options'
 import BasePopup from '@/components/common/BasePopup.vue'
+import OptionSheet from '@/components/common/OptionSheet.vue'
 import {
   openedProvinceOptions,
   type DomainValue,
@@ -35,8 +36,18 @@ let loadSequence = 0
 let subjectSequence = 0
 let saveSequence = 0
 
+/** 省份选项静态,OptionSheet 直接消费 */
+const PROVINCE_FIELD_OPTIONS = openedProvinceOptions.map((province) => ({
+  value: province.code,
+  label: province.name,
+}))
+
 /** 学历层次固定两档,与 api 的 educationLevel 枚举一致 */
 const EDUCATION_LEVELS = ['本科', '专科'] as const satisfies readonly DomainValue<'educationLevel'>[]
+
+const majorFieldOptions = computed(() =>
+  majorOptions.value.map((major) => ({ value: major.id, label: major.name })),
+)
 
 const canSave = computed(
   () =>
@@ -155,9 +166,9 @@ async function loadDraft() {
   }
 }
 
-async function selectProvince(event: Event) {
+async function selectProvince(code: string) {
   if (loading.value || saving.value) return
-  draftProvinceCode.value = (event.target as HTMLSelectElement).value as ProvinceCode | ''
+  draftProvinceCode.value = (code || '') as ProvinceCode | ''
   draftMajorId.value = ''
   draftSubjectIds.value = new Set()
   majorOptions.value = []
@@ -178,9 +189,9 @@ async function selectEducationLevel(level: DomainValue<'educationLevel'>) {
   await Promise.all([loadSubjectOptions(''), loadMajorOptions(loadSequence, auth.session?.token)])
 }
 
-async function selectMajor(event: Event) {
+async function selectMajor(majorId: string) {
   if (loading.value || saving.value) return
-  draftMajorId.value = (event.target as HTMLSelectElement).value
+  draftMajorId.value = majorId
   draftSubjectIds.value = new Set()
   await loadSubjectOptions(draftMajorId.value)
 }
@@ -275,16 +286,14 @@ onBeforeUnmount(invalidateRequests)
       <fieldset :disabled="loading || saving">
         <section class="px-0.5">
           <p class="text-sm font-medium">报考省份</p>
-          <select
-            class="select mt-2 h-10 min-h-10 w-full rounded-xl border border-base-300 bg-base-100 text-sm focus:border-primary focus:outline-none"
-            :value="draftProvinceCode"
-            @change="selectProvince"
-          >
-            <option value="">{{ loading ? '正在加载…' : '请选择报考省份' }}</option>
-            <option v-for="province in openedProvinceOptions" :key="province.code" :value="province.code">
-              {{ province.name }}
-            </option>
-          </select>
+          <OptionSheet
+            v-model="draftProvinceCode"
+            class="mt-2"
+            title="选择报考省份"
+            :placeholder="loading ? '正在加载…' : '请选择报考省份'"
+            :options="PROVINCE_FIELD_OPTIONS"
+            @update:model-value="selectProvince"
+          />
         </section>
 
         <section class="px-0.5 pt-3">
@@ -310,19 +319,23 @@ onBeforeUnmount(invalidateRequests)
 
         <section class="px-0.5 pt-3">
           <p class="text-sm font-medium">报考专业</p>
-          <select
-            class="select mt-2 h-10 min-h-10 w-full rounded-xl border border-base-300 bg-base-100 text-sm focus:border-primary focus:outline-none"
-            :value="draftMajorId"
+          <OptionSheet
+            v-model="draftMajorId"
+            class="mt-2"
+            title="选择报考专业"
+            :placeholder="
+              loading || majorOptionsLoading
+                ? '正在加载…'
+                : majorOptionsError
+                  ? '专业加载失败'
+                  : !draftProvinceCode
+                    ? '请先选择报考省份'
+                    : '请选择报考专业'
+            "
             :disabled="majorOptionsLoading || majorOptionsError || !draftProvinceCode"
-            @change="selectMajor"
-          >
-            <option value="">
-              {{ loading || majorOptionsLoading ? '正在加载…' : '请选择报考专业' }}
-            </option>
-            <option v-for="major in majorOptions" :key="major.id" :value="major.id">
-              {{ major.name }}
-            </option>
-          </select>
+            :options="majorFieldOptions"
+            @update:model-value="selectMajor"
+          />
         </section>
 
         <section class="px-0.5 pt-3">
