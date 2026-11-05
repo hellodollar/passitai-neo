@@ -19,10 +19,12 @@ const draftMajorId = ref('')
 const draftSubjectIds = ref(new Set<string>())
 const loading = ref(false)
 const subjectOptionsLoading = ref(false)
+const majorOptionsLoading = ref(false)
 const majorOptionsError = ref(false)
 const subjectOptionsError = ref(false)
 const saving = ref(false)
-let majorOptionsLoaded = false
+let loadedProvince = ''
+let majorSequence = 0
 let loadSequence = 0
 let subjectSequence = 0
 let saveSequence = 0
@@ -34,23 +36,52 @@ const canSave = computed(
     !loading.value &&
     !saving.value &&
     !subjectOptionsLoading.value &&
+    !majorOptionsLoading.value &&
     !majorOptionsError.value &&
     !subjectOptionsError.value &&
     !practicePlanStore.error,
 )
 
 async function loadMajorOptions(sequence: number, token: string | undefined) {
-  if (majorOptionsLoaded) return
+  const version = ++majorSequence
+  const provinceCode = draftProvinceCode.value
+  majorOptionsError.value = false
+  if (!provinceCode) {
+    majorOptions.value = []
+    loadedProvince = ''
+    majorOptionsLoading.value = false
+    return
+  }
+  if (loadedProvince === provinceCode) {
+    majorOptionsLoading.value = false
+    return
+  }
+  majorOptionsLoading.value = true
+  majorOptions.value = []
+  loadedProvince = ''
   try {
-    const options = await fetchMajorOptions()
-    if (sequence !== loadSequence || token !== auth.session?.token || !model.value) return
+    const options = await fetchMajorOptions({ provinceCode })
+    if (
+      sequence !== loadSequence ||
+      version !== majorSequence ||
+      token !== auth.session?.token ||
+      !model.value
+    )
+      return
     majorOptions.value = options
-    majorOptionsLoaded = true
+    loadedProvince = provinceCode
   } catch {
-    if (sequence === loadSequence && token === auth.session?.token && model.value) {
+    if (
+      sequence === loadSequence &&
+      version === majorSequence &&
+      token === auth.session?.token &&
+      model.value
+    ) {
       majorOptions.value = []
       majorOptionsError.value = true
     }
+  } finally {
+    if (version === majorSequence) majorOptionsLoading.value = false
   }
 }
 
@@ -65,7 +96,7 @@ async function loadSubjectOptions(majorId: string) {
   subjectOptionsLoading.value = Boolean(majorId)
   if (!majorId) return
   try {
-    const options = await fetchSubjectOptions(majorId)
+    const options = await fetchSubjectOptions(majorId, draftProvinceCode.value || undefined)
     if (!isCurrent()) return
     draftSubjectIds.value = new Set(
       options.filter((option) => draftSubjectIds.value.has(option.id)).map((option) => option.id),
@@ -95,11 +126,15 @@ async function loadDraft() {
   draftSubjectIds.value = new Set()
   subjectOptions.value = []
   try {
-    await Promise.all([loadMajorOptions(sequence, token), practicePlanStore.load()])
+    await practicePlanStore.load()
     if (!isCurrent() || practicePlanStore.error || majorOptionsError.value) return
     const plan = practicePlanStore.plan
     draftProvinceCode.value = plan?.provinceCode ?? ''
-    draftMajorId.value = plan?.majorId ?? ''
+    await loadMajorOptions(sequence, token)
+    if (!isCurrent() || majorOptionsError.value) return
+    draftMajorId.value = majorOptions.value.some((option) => option.id === plan?.majorId)
+      ? plan!.majorId
+      : ''
     draftSubjectIds.value = new Set(plan?.subjects.map((subject) => subject.id) ?? [])
     await loadSubjectOptions(draftMajorId.value)
   } finally {
@@ -107,9 +142,15 @@ async function loadDraft() {
   }
 }
 
-function selectProvince(event: Event) {
+async function selectProvince(event: Event) {
   if (loading.value || saving.value) return
   draftProvinceCode.value = (event.target as HTMLSelectElement).value as ProvinceCode | ''
+  draftMajorId.value = ''
+  draftSubjectIds.value = new Set()
+  majorOptions.value = []
+  loadedProvince = ''
+  majorOptionsError.value = false
+  await Promise.all([loadSubjectOptions(''), loadMajorOptions(loadSequence, auth.session?.token)])
 }
 
 async function selectMajor(event: Event) {
@@ -154,11 +195,13 @@ async function savePlan() {
 }
 
 function invalidateRequests() {
+  ++majorSequence
   ++loadSequence
   ++subjectSequence
   ++saveSequence
   loading.value = false
   subjectOptionsLoading.value = false
+  majorOptionsLoading.value = false
   saving.value = false
 }
 
@@ -175,7 +218,7 @@ watch(
   () => {
     model.value = false
     invalidateRequests()
-    majorOptionsLoaded = false
+    loadedProvince = ''
     majorOptions.value = []
     subjectOptions.value = []
     draftProvinceCode.value = ''
@@ -202,7 +245,7 @@ onBeforeUnmount(invalidateRequests)
         <p>{{ majorOptionsError ? '专业加载失败' : '刷题计划加载失败' }}</p>
         <button type="button" class="btn btn-ghost btn-sm mt-1" @click="loadDraft">重试</button>
       </div>
-      <fieldset :disabled="loading || saving || majorOptionsError">
+      <fieldset :disabled="loading || saving">
         <section class="px-0.5">
           <p class="text-sm font-medium">报考省份</p>
           <select
@@ -222,9 +265,12 @@ onBeforeUnmount(invalidateRequests)
           <select
             class="select mt-2 h-10 min-h-10 w-full rounded-xl border border-base-300 bg-base-100 text-sm focus:border-primary focus:outline-none"
             :value="draftMajorId"
+            :disabled="majorOptionsLoading || majorOptionsError || !draftProvinceCode"
             @change="selectMajor"
           >
-            <option value="">{{ loading ? '正在加载…' : '请选择报考专业' }}</option>
+            <option value="">
+              {{ loading || majorOptionsLoading ? '正在加载…' : '请选择报考专业' }}
+            </option>
             <option v-for="major in majorOptions" :key="major.id" :value="major.id">
               {{ major.name }}
             </option>

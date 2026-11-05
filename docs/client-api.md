@@ -223,7 +223,7 @@ interface UpdatePracticePlanBody {
 API源为src/constants/province.ts，通过pnpm sync同步到Neo的src/generated/domain-values.ts；
 前端使用provinceOptions（code/name）进行选择和回显，ProvinceCode为对应代码类型。
 字典包含的地区不表示已有可用题库；专业候选项仍由启用且未删除的业务数据决定。
-当前仍为单专业计划，majorId必填。专业与科目全国一套目录，不再校验专业归属省份；
+当前为单专业计划，majorId必填。专业、科目必须与计划 provinceCode 一致；不同省份可有同代码的不同记录。
 专业必须启用且未删除，否则返回404。每个科目必须属于该专业、启用且未删除，
 任一不符合返回400且不改写计划。`educationLevel` 从所选专业读取。
 
@@ -524,9 +524,9 @@ interface OptionItem {
 }
 ```
 
-仅返回启用且未删除的数据。专业与科目是全国一套目录，`/api/options/majors` 不再支持省份过滤，
-仅支持 `code` 精确过滤；`/api/options/subjects` 支持单个 `majorId` 过滤，精确匹配科目 `majorIds` 数组中的专业 ID。
-省份只影响题集与考期，不影响专业候选项。
+仅返回启用且未删除的数据，结构仍为 `{id,code,name}[]`。
+`/api/options/majors` 和 `/api/options/subjects` 均支持 `provinceCode` 精确过滤，可与 id/ids/code/codes 组合。
+科目另支持 `majorId`，精确匹配 majorIds；客户端先选省份，再加载该省专业及科目。换省清空原专业和科目选择。
 
 ## 8. 接口总表
 
