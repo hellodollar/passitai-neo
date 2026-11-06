@@ -33,6 +33,8 @@ Workers Builds 的构建命令为 `pnpm run build`，部署命令为 `npx wrangl
 
 ## 检查
 
+页面结构与组件职责见 [客户端维护约定](docs/client-maintenance.md) 和 [页面与组件复审](docs/frontend-review.md)。
+
 提交前运行统一检查：
 
 ```sh

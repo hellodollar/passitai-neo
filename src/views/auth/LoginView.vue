@@ -56,6 +56,7 @@ watch(
 )
 
 async function submit() {
+  if (auth.isLoading) return
   submitted = true
   const valid = Object.values(validators)
     .map((validate) => validate())
@@ -72,7 +73,7 @@ async function submit() {
 </script>
 
 <template>
-  <AuthFrame>
+  <AuthFrame title="登录">
     <form class="grid gap-1" novalidate @submit.prevent="submit">
       <FormField
         v-model="form.email"

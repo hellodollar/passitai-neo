@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import {
-  ArrowLeft,
   Bookmark,
   CircleAlert,
   ClipboardCheck,
@@ -20,6 +19,7 @@ import {
 import { fetchMistakePractice } from '@/api/mistakes'
 import { fetchPracticePaper, fetchPracticeSubmission, submitPracticePaper } from '@/api/practice'
 import BaseDialog from '@/components/common/BaseDialog.vue'
+import PageHeader from '@/components/common/PageHeader.vue'
 import AnswerSheetPopup from '@/components/practice/AnswerSheetPopup.vue'
 import ClearPracticeRecordsDialog from '@/components/practice/ClearPracticeRecordsDialog.vue'
 import PracticeQuestionPanel from '@/components/practice/PracticeQuestionPanel.vue'
@@ -183,10 +183,7 @@ const unansweredCount = computed(() =>
 const currentQuestionPosition = computed(() =>
   currentQuestions.value.length === 0 ? 0 : currentIndex.value + 1,
 )
-const progressPercent = computed(() => {
-  if (currentQuestions.value.length === 0) return 0
-  return (currentQuestionPosition.value / currentQuestions.value.length) * 100
-})
+
 const {
   currentQuestionFavorited,
   currentQuestionFavoritePending,
@@ -697,36 +694,18 @@ watch(answerSheetOpen, (open) => {
 
 <template>
   <section class="flex min-h-dvh w-full min-w-0 max-w-full flex-col overflow-x-hidden">
-    <header
-      class="fixed left-1/2 top-0 z-40 w-full max-w-[32rem] -translate-x-1/2 border-b border-base-200/80 bg-base-100/95 pt-[env(safe-area-inset-top)] backdrop-blur-xl"
-    >
-      <div class="grid h-14 grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-2 px-3">
-        <button
-          class="flex size-10 items-center justify-center rounded-full text-base-content transition active:bg-base-200"
-          type="button"
-          aria-label="退出练习"
-          @click="exitPractice"
-        >
-          <ArrowLeft :size="21" />
-        </button>
-
-        <h1 class="truncate text-center text-[15px] font-semibold leading-tight">
-          {{ currentPaperTitle }}
-        </h1>
-
-        <span aria-hidden="true"></span>
-      </div>
-      <div class="h-0.5 bg-base-200">
-        <div
-          class="h-full bg-primary transition-[width] duration-300"
-          :style="{ width: `${progressPercent}%` }"
-        ></div>
-      </div>
-    </header>
+    <PageHeader :title="currentPaperTitle" back-label="退出练习" @back="exitPractice">
+      <progress
+        class="progress progress-primary block h-0.5 w-full rounded-none bg-base-200"
+        :value="currentQuestionPosition"
+        :max="Math.max(1, currentQuestions.length)"
+        aria-label="当前题目进度"
+      ></progress>
+    </PageHeader>
 
     <section
       v-if="paperLoadState === 'loading'"
-      class="-mx-5 flex flex-1 items-center justify-center px-6 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-[calc(5rem+env(safe-area-inset-top))]"
+      class="flex flex-1 items-center justify-center px-6 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-[calc(5rem+env(safe-area-inset-top))]"
     >
       <div class="text-center" role="status" aria-live="polite">
         <span class="loading loading-spinner loading-md text-primary"></span>
@@ -737,7 +716,7 @@ watch(answerSheetOpen, (open) => {
     <!-- 题目舞台:上一题/当前题/下一题三栏,横滑跟手,相邻题随拖拽露出 -->
     <article
       v-else-if="currentQuestion"
-      class="-mx-5 flex min-w-0 flex-1 flex-col pb-[calc(5rem+env(safe-area-inset-bottom))] pt-[calc(3.85rem+env(safe-area-inset-top))]"
+      class="flex min-w-0 flex-1 flex-col pb-[calc(5rem+env(safe-area-inset-bottom))] pt-[calc(3.85rem+env(safe-area-inset-top))]"
     >
       <div
         ref="questionStage"
@@ -799,7 +778,7 @@ watch(answerSheetOpen, (open) => {
     <!-- 空态/失效/失败占位:与加载态、题目舞台互斥,v-else-if 链不可被其他节点打断 -->
     <section
       v-else-if="paperLoadState !== 'ready'"
-      class="-mx-5 flex flex-1 items-center justify-center px-7 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-[calc(5rem+env(safe-area-inset-top))]"
+      class="flex flex-1 items-center justify-center px-7 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-[calc(5rem+env(safe-area-inset-top))]"
     >
       <div class="w-full max-w-sm text-center">
         <span

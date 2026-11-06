@@ -3,6 +3,7 @@ import { RouterLink } from 'vue-router'
 
 import LogoPassitai from '@/components/common/LogoPassitai.vue'
 import { APP_NAME } from '@/constants/app'
+defineProps<{ title: string }>()
 </script>
 
 <template>
@@ -18,6 +19,7 @@ import { APP_NAME } from '@/constants/app'
         </RouterLink>
       </div>
 
+      <h1 class="mb-4 text-center text-xl font-semibold">{{ title }}</h1>
       <slot></slot>
     </section>
 

@@ -9,6 +9,7 @@ import { clearFavorites, fetchFavoriteAggregate } from '@/api/favorites'
 import { clearMistakes, fetchMistakeAggregate } from '@/api/mistakes'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
+import PageContainer from '@/components/common/PageContainer.vue'
 import PagePlaceholder from '@/components/common/PagePlaceholder.vue'
 import SortMenu from '@/components/common/SortMenu.vue'
 import { useBrowseScroll } from '@/composables/useBrowseScroll'
@@ -299,169 +300,172 @@ watch(
 </script>
 
 <template>
-  <section class="relative flex min-h-[calc(100dvh-8rem)] flex-col" :aria-busy="loading">
-    <header class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
-      <div class="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
-        <h2 class="shrink-0 text-lg font-semibold leading-tight">{{ sourceConfig.pageTitle }}</h2>
-        <p
+  <PageContainer>
+    <section class="flex flex-col" :aria-busy="loading">
+      <header class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+        <div class="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
+          <h1 class="shrink-0 text-lg font-semibold leading-tight">{{ sourceConfig.pageTitle }}</h1>
+          <p
+            v-if="loaded && totalQuestionCount > 0"
+            class="text-xs leading-snug text-base-content/65"
+          >
+            {{ totalQuestionCount }} 道题 · {{ items.length }} 个{{ groupLabel }}
+          </p>
+        </div>
+
+        <button
           v-if="loaded && totalQuestionCount > 0"
-          class="text-xs leading-snug text-base-content/65"
-        >
-          {{ totalQuestionCount }} 道题 · {{ items.length }} 个{{ groupLabel }}
-        </p>
-      </div>
-
-      <button
-        v-if="loaded && totalQuestionCount > 0"
-        class="flex h-10 items-center justify-self-end gap-1 rounded-lg pl-2 text-[13px] text-primary transition-colors hover:text-primary active:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-40"
-        type="button"
-        :disabled="loading || clearing"
-        :aria-label="`清空全部${sourceConfig.collectionLabel}`"
-        @click="clearConfirmOpen = true"
-      >
-        <Trash2 :size="14" />
-        清空
-      </button>
-    </header>
-
-    <!-- 分组切换 + 排序 -->
-    <div
-      v-if="loaded && totalQuestionCount > 0"
-      class="mt-1 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1"
-    >
-      <div
-        class="inline-flex justify-self-start rounded-full bg-base-200/70 p-0.5"
-        role="group"
-        aria-label="分组方式"
-      >
-        <button
-          v-for="mode in [
-            { value: 'subject', label: '按科目' },
-            { value: 'paper', label: '按题集' },
-          ]"
-          :key="mode.value"
-          class="flex h-8 items-center rounded-full px-3 text-[13px] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary aria-disabled:opacity-60"
-          :class="
-            groupMode === mode.value
-              ? 'bg-base-100 text-primary'
-              : 'text-base-content/65 hover:text-base-content'
-          "
+          class="flex h-10 items-center justify-self-end gap-1 rounded-lg pl-2 text-[13px] text-primary transition-colors hover:text-primary active:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-40"
           type="button"
-          :aria-disabled="loading"
-          :aria-pressed="groupMode === mode.value"
-          @click="selectGroupMode(mode.value as CollectionGroupBy)"
+          :disabled="loading || clearing"
+          :aria-label="`清空全部${sourceConfig.collectionLabel}`"
+          @click="clearConfirmOpen = true"
         >
-          {{ mode.label }}
-        </button>
-      </div>
-
-      <SortMenu
-        :model-value="`${sortField}-${sortOrder}`"
-        :options="SORT_OPTIONS"
-        :loading="loading"
-        @update:model-value="selectSortOption"
-      />
-    </div>
-
-    <p v-if="loading && items.length > 0" class="sr-only" role="status">正在加载列表</p>
-
-    <PagePlaceholder v-if="loading && items.length === 0" role="status">
-      <span class="loading loading-spinner loading-md text-primary"></span>
-      <p class="text-sm font-medium text-base-content/65">正在加载…</p>
-    </PagePlaceholder>
-
-    <PagePlaceholder v-else-if="loadError && items.length === 0">
-      <EmptyState
-        :icon="AlertCircle"
-        tone="error"
-        title="加载失败"
-        description="请检查网络后重试。"
-        action-label="重新加载"
-        @action="loadCollection"
-      />
-    </PagePlaceholder>
-
-    <PagePlaceholder v-else-if="items.length === 0">
-      <EmptyState
-        :icon="sourceConfig.emptyIcon"
-        :title="sourceConfig.emptyTitle"
-        :description="sourceConfig.emptyDescription"
-        action-label="去练习"
-        @action="router.push({ name: 'home' })"
-      />
-    </PagePlaceholder>
-
-    <div v-else class="mt-2 grid content-start gap-2">
-      <div
-        v-if="loadError"
-        class="flex flex-wrap items-center justify-between gap-2 text-xs text-base-content/65"
-        role="status"
-      >
-        <span>更新失败，已保留原列表。</span>
-        <button class="min-h-11 px-2 text-primary" type="button" @click="loadCollection">
-          重试
-        </button>
-      </div>
-      <button
-        v-for="item in items"
-        :key="displayedGroupMode === 'paper' ? item.paperId : item.subjectId"
-        class="flex w-full min-w-0 items-center gap-2.5 rounded-xl border border-base-200 bg-base-100 px-3 py-3 text-left transition-colors hover:border-base-300 active:bg-base-200/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-        type="button"
-        :aria-label="`${displayedGroupMode === 'paper' ? item.paperName : item.subjectName}，${item.questionCount}题，开始练习`"
-        @click="startPractice(item)"
-      >
-        <span
-          class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"
-        >
-          <FileStack :size="18" />
-        </span>
-
-        <span class="min-w-0 flex-1">
-          <span class="line-clamp-2 break-words text-[15px] font-semibold leading-snug">
-            {{ displayedGroupMode === 'paper' ? item.paperName : item.subjectName }}
-          </span>
-          <span class="mt-1 block truncate text-xs leading-snug text-base-content/65">
-            <template v-if="displayedGroupMode === 'paper'">{{ item.subjectName }} · </template>
-            {{ collectedTimeText(item) || '已收录' }}
-          </span>
-        </span>
-
-        <span class="shrink-0 text-sm font-medium tabular-nums text-base-content/65">
-          {{ item.questionCount }} 题
-        </span>
-
-        <ChevronRight :size="18" class="shrink-0 text-base-content/35" />
-      </button>
-    </div>
-
-    <BaseDialog
-      v-model="clearConfirmOpen"
-      title="确认清空"
-      :close-on-backdrop="!clearing"
-      :close-on-escape="!clearing"
-    >
-      <p class="text-sm leading-6 text-base-content/70">
-        将清空全部{{ sourceConfig.collectionLabel }}（{{ totalQuestionCount }} 道），操作不可恢复。
-      </p>
-      <template #footer>
-        <button
-          class="btn h-10 min-h-10 flex-1 rounded-xl border-base-200 bg-base-100 text-sm"
-          type="button"
-          :disabled="clearing"
-          @click="clearConfirmOpen = false"
-        >
-          取消
-        </button>
-        <button
-          class="btn btn-error h-10 min-h-10 flex-1 rounded-xl text-sm"
-          type="button"
-          :disabled="clearing"
-          @click="confirmClear"
-        >
-          <span v-if="clearing" class="loading loading-spinner loading-xs"></span>
+          <Trash2 :size="14" />
           清空
         </button>
-      </template>
-    </BaseDialog>
-  </section>
+      </header>
+
+      <!-- 分组切换 + 排序 -->
+      <div
+        v-if="loaded && totalQuestionCount > 0"
+        class="mt-1 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1"
+      >
+        <div
+          class="inline-flex justify-self-start rounded-full bg-base-200/70 p-0.5"
+          role="group"
+          aria-label="分组方式"
+        >
+          <button
+            v-for="mode in [
+              { value: 'subject', label: '按科目' },
+              { value: 'paper', label: '按题集' },
+            ]"
+            :key="mode.value"
+            class="flex h-8 items-center rounded-full px-3 text-[13px] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary aria-disabled:opacity-60"
+            :class="
+              groupMode === mode.value
+                ? 'bg-base-100 text-primary'
+                : 'text-base-content/65 hover:text-base-content'
+            "
+            type="button"
+            :aria-disabled="loading"
+            :aria-pressed="groupMode === mode.value"
+            @click="selectGroupMode(mode.value as CollectionGroupBy)"
+          >
+            {{ mode.label }}
+          </button>
+        </div>
+
+        <SortMenu
+          :model-value="`${sortField}-${sortOrder}`"
+          :options="SORT_OPTIONS"
+          :loading="loading"
+          @update:model-value="selectSortOption"
+        />
+      </div>
+
+      <p v-if="loading && items.length > 0" class="sr-only" role="status">正在加载列表</p>
+
+      <PagePlaceholder v-if="loading && items.length === 0" role="status">
+        <span class="loading loading-spinner loading-md text-primary"></span>
+        <p class="text-sm font-medium text-base-content/65">正在加载…</p>
+      </PagePlaceholder>
+
+      <PagePlaceholder v-else-if="loadError && items.length === 0">
+        <EmptyState
+          :icon="AlertCircle"
+          tone="error"
+          title="加载失败"
+          description="请检查网络后重试。"
+          action-label="重新加载"
+          @action="loadCollection"
+        />
+      </PagePlaceholder>
+
+      <PagePlaceholder v-else-if="items.length === 0">
+        <EmptyState
+          :icon="sourceConfig.emptyIcon"
+          :title="sourceConfig.emptyTitle"
+          :description="sourceConfig.emptyDescription"
+          action-label="去练习"
+          @action="router.push({ name: 'home' })"
+        />
+      </PagePlaceholder>
+
+      <div v-else class="mt-2 grid content-start gap-2">
+        <div
+          v-if="loadError"
+          class="flex flex-wrap items-center justify-between gap-2 text-xs text-base-content/65"
+          role="status"
+        >
+          <span>更新失败，已保留原列表。</span>
+          <button class="min-h-11 px-2 text-primary" type="button" @click="loadCollection">
+            重试
+          </button>
+        </div>
+        <button
+          v-for="item in items"
+          :key="displayedGroupMode === 'paper' ? item.paperId : item.subjectId"
+          class="flex w-full min-w-0 items-center gap-2.5 rounded-xl border border-base-200 bg-base-100 px-3 py-3 text-left transition-colors hover:border-base-300 active:bg-base-200/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          type="button"
+          :aria-label="`${displayedGroupMode === 'paper' ? item.paperName : item.subjectName}，${item.questionCount}题，开始练习`"
+          @click="startPractice(item)"
+        >
+          <span
+            class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"
+          >
+            <FileStack :size="18" />
+          </span>
+
+          <span class="min-w-0 flex-1">
+            <span class="line-clamp-2 break-words text-[15px] font-semibold leading-snug">
+              {{ displayedGroupMode === 'paper' ? item.paperName : item.subjectName }}
+            </span>
+            <span class="mt-1 block truncate text-xs leading-snug text-base-content/65">
+              <template v-if="displayedGroupMode === 'paper'">{{ item.subjectName }} · </template>
+              {{ collectedTimeText(item) || '已收录' }}
+            </span>
+          </span>
+
+          <span class="shrink-0 text-sm font-medium tabular-nums text-base-content/65">
+            {{ item.questionCount }} 题
+          </span>
+
+          <ChevronRight :size="18" class="shrink-0 text-base-content/35" />
+        </button>
+      </div>
+
+      <BaseDialog
+        v-model="clearConfirmOpen"
+        title="确认清空"
+        :close-on-backdrop="!clearing"
+        :close-on-escape="!clearing"
+      >
+        <p class="text-sm leading-6 text-base-content/70">
+          将清空全部{{ sourceConfig.collectionLabel }}（{{ totalQuestionCount }}
+          道），操作不可恢复。
+        </p>
+        <template #footer>
+          <button
+            class="btn h-10 min-h-10 flex-1 rounded-xl border-base-200 bg-base-100 text-sm"
+            type="button"
+            :disabled="clearing"
+            @click="clearConfirmOpen = false"
+          >
+            取消
+          </button>
+          <button
+            class="btn btn-error h-10 min-h-10 flex-1 rounded-xl text-sm"
+            type="button"
+            :disabled="clearing"
+            @click="confirmClear"
+          >
+            <span v-if="clearing" class="loading loading-spinner loading-xs"></span>
+            清空
+          </button>
+        </template>
+      </BaseDialog>
+    </section>
+  </PageContainer>
 </template>

@@ -99,7 +99,7 @@ async function submit() {
 </script>
 
 <template>
-  <AuthFrame>
+  <AuthFrame title="创建账号">
     <form class="grid gap-1" novalidate @submit.prevent="submit">
       <FormField
         v-model="form.email"

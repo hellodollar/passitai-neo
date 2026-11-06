@@ -11,7 +11,7 @@ const items = [
 </script>
 
 <template>
-  <nav class="grid grid-flow-col auto-cols-fr gap-1">
+  <nav class="grid grid-flow-col auto-cols-fr gap-1" aria-label="主导航">
     <RouterLink
       v-for="item in items"
       :key="item.label"

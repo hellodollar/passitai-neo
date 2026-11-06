@@ -1,4 +1,12 @@
 import type { DomainValue } from '@/generated/domain-values'
+import type { PracticeResultQuestionStatus } from '@/types'
+
+export const RESULT_STATUS_LABELS: Record<PracticeResultQuestionStatus, string> = {
+  correct: '回答正确',
+  wrong: '回答错误',
+  unanswered: '未作答',
+  pending: '待批阅',
+}
 
 export const PRACTICE_CATEGORY_LABELS: Record<DomainValue<'paperType'>, string> = {
   baseline: '专项训练',

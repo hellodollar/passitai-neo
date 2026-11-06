@@ -153,7 +153,7 @@ watch(
 
 <template>
   <section
-    class="relative -mx-5 -mb-24 -mt-5 flex min-h-dvh flex-col overflow-x-hidden bg-base-200/35 pb-24"
+    class="relative flex min-h-dvh flex-col overflow-x-hidden bg-base-200/35 pb-[calc(6rem+env(safe-area-inset-bottom))]"
   >
     <div
       class="pointer-events-none absolute inset-x-0 top-0 h-72 overflow-hidden bg-gradient-to-br from-primary/20 via-info/10 to-transparent [mask-image:linear-gradient(to_bottom,black_0%,black_62%,transparent_100%)]"

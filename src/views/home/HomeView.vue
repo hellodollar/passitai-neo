@@ -5,6 +5,7 @@ import { useRoute, useRouter } from 'vue-router'
 
 import EmptyState from '@/components/common/EmptyState.vue'
 import LogoPassitai from '@/components/common/LogoPassitai.vue'
+import PageContainer from '@/components/common/PageContainer.vue'
 import PagePlaceholder from '@/components/common/PagePlaceholder.vue'
 import HomePlanCard from '@/components/home/HomePlanCard.vue'
 import HomePracticeEntries from '@/components/home/HomePracticeEntries.vue'
@@ -314,128 +315,130 @@ watch(
 </script>
 
 <template>
-  <section
-    class="relative flex min-h-[calc(100dvh-8rem)] w-full min-w-0 max-w-full flex-col gap-4 overflow-x-hidden"
-  >
-    <header class="flex h-9 shrink-0 items-center">
-      <LogoPassitai role="img" aria-label="Passitai" class="h-8 w-auto text-base-content" />
-    </header>
+  <PageContainer>
+    <section class="flex w-full min-w-0 max-w-full flex-col gap-4 overflow-x-hidden">
+      <h1 class="sr-only">练习首页</h1>
+      <header class="flex h-9 shrink-0 items-center">
+        <LogoPassitai role="img" aria-label="Passitai" class="h-8 w-auto text-base-content" />
+      </header>
 
-    <PagePlaceholder v-if="planLoading" role="status" aria-live="polite">
-      <span class="loading loading-spinner loading-md text-primary"></span>
-      <p class="text-sm font-medium text-base-content/65">正在获取练习计划…</p>
-    </PagePlaceholder>
+      <PagePlaceholder v-if="planLoading" role="status" aria-live="polite">
+        <span class="loading loading-spinner loading-md text-primary"></span>
+        <p class="text-sm font-medium text-base-content/65">正在获取练习计划…</p>
+      </PagePlaceholder>
 
-    <PagePlaceholder v-else-if="practicePlanStore.error">
-      <EmptyState
-        :icon="AlertCircle"
-        :title="practicePlanStore.error"
-        description="请重试加载刷题计划。"
-        action-label="重试"
-        @action="practicePlanStore.load()"
-      />
-    </PagePlaceholder>
-
-    <PagePlaceholder v-else-if="!hasPracticePlan">
-      <EmptyState
-        :icon="Target"
-        title="暂无练习计划"
-        description="先选择报考专业与刷题科目。"
-        action-label="设置计划"
-        @action="planPopupOpen = true"
-      />
-    </PagePlaceholder>
-
-    <template v-else>
-      <HomePlanCard
-        v-if="plan"
-        :plan="plan"
-        @edit-plan="planPopupOpen = true"
-        @edit-settings="settingsPopupOpen = true"
-      />
-
-      <div class="flex items-end justify-between gap-3 px-0.5">
-        <div class="flex items-baseline gap-2">
-          <h2 class="text-[17px] font-semibold leading-tight">刷题科目</h2>
-          <span class="text-xs text-base-content/65">{{ planSubjects.length }}个</span>
-        </div>
-        <button
-          class="flex shrink-0 items-center gap-0.5 text-sm font-medium text-primary transition-opacity active:opacity-70"
-          type="button"
-          aria-label="科目管理"
-          @click="subjectManagerOpen = true"
-        >
-          管理
-          <ChevronRight :size="15" class="-mr-0.5 mt-px" />
-        </button>
-      </div>
-
-      <section class="overflow-hidden rounded-2xl border border-base-200 bg-base-100">
-        <div v-if="visibleSubjects.length > 0" class="relative">
-          <div
-            ref="chipsRow"
-            class="no-scrollbar flex gap-2 overflow-x-auto px-4 py-3"
-            @scroll.passive="updateChipsScrollHint"
-          >
-            <button
-              v-for="subject in visibleSubjects"
-              :key="subject.code"
-              class="max-w-[9.5rem] shrink-0 truncate rounded-full px-3.5 py-1.5 text-[13px] font-medium transition-colors"
-              :class="
-                activeSubject?.code === subject.code
-                  ? 'bg-primary text-primary-content'
-                  : 'bg-base-200/60 text-base-content/60 active:bg-base-200'
-              "
-              type="button"
-              :aria-pressed="activeSubject?.code === subject.code"
-              @click="selectSubject(subject.code)"
-            >
-              {{ subject.name }}
-            </button>
-          </div>
-          <!-- 右侧渐隐提示还有更多科目可横滑 -->
-          <span
-            v-if="chipsCanScrollRight"
-            class="pointer-events-none absolute inset-y-2 right-0 w-9 rounded-r-2xl bg-gradient-to-l from-base-100 via-base-100/85 to-transparent"
-            aria-hidden="true"
-          ></span>
-        </div>
-
-        <div v-if="!activeSubject">
-          <EmptyState
-            :icon="EyeOff"
-            title="所有科目已隐藏"
-            description="在科目管理中恢复需要展示的科目。"
-            action-label="管理科目"
-            embedded
-            @action="subjectManagerOpen = true"
-          />
-        </div>
-
-        <HomePracticeEntries
-          v-else
-          :entries="localEntries"
-          :selected-entry="expandedEntryKey"
-          :loading="entriesLoading"
-          :subject-name="activeSubject.name"
-          @select-entry="selectEntry"
-          @start-paper="startEntryPaper"
+      <PagePlaceholder v-else-if="practicePlanStore.error">
+        <EmptyState
+          :icon="AlertCircle"
+          tone="error"
+          :title="practicePlanStore.error"
+          description="请重试加载刷题计划。"
+          action-label="重试"
+          @action="practicePlanStore.load()"
         />
-      </section>
-    </template>
+      </PagePlaceholder>
 
-    <SubjectManagerPopup
-      v-model="subjectManagerOpen"
-      :subjects="orderedSubjects"
-      :active-subject-code="activeSubject?.code"
-      :hidden-subject-codes="hiddenSubjectCodes"
-      @select="selectSubject"
-      @toggle-visibility="toggleSubjectVisibility"
-      @move="moveSubject"
-    />
+      <PagePlaceholder v-else-if="!hasPracticePlan">
+        <EmptyState
+          :icon="Target"
+          title="暂无练习计划"
+          description="先选择报考专业与刷题科目。"
+          action-label="设置计划"
+          @action="planPopupOpen = true"
+        />
+      </PagePlaceholder>
 
-    <PracticeSettingsPopup v-model="settingsPopupOpen" />
+      <template v-else>
+        <HomePlanCard
+          v-if="plan"
+          :plan="plan"
+          @edit-plan="planPopupOpen = true"
+          @edit-settings="settingsPopupOpen = true"
+        />
 
-    <PracticePlanPopup v-model="planPopupOpen" />
-  </section>
+        <div class="flex items-end justify-between gap-3 px-0.5">
+          <div class="flex items-baseline gap-2">
+            <h2 class="text-[17px] font-semibold leading-tight">刷题科目</h2>
+            <span class="text-xs text-base-content/65">{{ planSubjects.length }}个</span>
+          </div>
+          <button
+            class="flex shrink-0 items-center gap-0.5 text-sm font-medium text-primary transition-opacity active:opacity-70"
+            type="button"
+            aria-label="科目管理"
+            @click="subjectManagerOpen = true"
+          >
+            管理
+            <ChevronRight :size="15" class="-mr-0.5 mt-px" />
+          </button>
+        </div>
+
+        <section class="overflow-hidden rounded-2xl border border-base-200 bg-base-100">
+          <div v-if="visibleSubjects.length > 0" class="relative">
+            <div
+              ref="chipsRow"
+              class="no-scrollbar flex gap-2 overflow-x-auto px-4 py-3"
+              @scroll.passive="updateChipsScrollHint"
+            >
+              <button
+                v-for="subject in visibleSubjects"
+                :key="subject.code"
+                class="max-w-[9.5rem] shrink-0 truncate rounded-full px-3.5 py-1.5 text-[13px] font-medium transition-colors"
+                :class="
+                  activeSubject?.code === subject.code
+                    ? 'bg-primary text-primary-content'
+                    : 'bg-base-200/60 text-base-content/60 active:bg-base-200'
+                "
+                type="button"
+                :aria-pressed="activeSubject?.code === subject.code"
+                @click="selectSubject(subject.code)"
+              >
+                {{ subject.name }}
+              </button>
+            </div>
+            <!-- 右侧渐隐提示还有更多科目可横滑 -->
+            <span
+              v-if="chipsCanScrollRight"
+              class="pointer-events-none absolute inset-y-2 right-0 w-9 rounded-r-2xl bg-gradient-to-l from-base-100 via-base-100/85 to-transparent"
+              aria-hidden="true"
+            ></span>
+          </div>
+
+          <div v-if="!activeSubject">
+            <EmptyState
+              :icon="EyeOff"
+              title="所有科目已隐藏"
+              description="在科目管理中恢复需要展示的科目。"
+              action-label="管理科目"
+              embedded
+              @action="subjectManagerOpen = true"
+            />
+          </div>
+
+          <HomePracticeEntries
+            v-else
+            :entries="localEntries"
+            :selected-entry="expandedEntryKey"
+            :loading="entriesLoading"
+            :subject-name="activeSubject.name"
+            @select-entry="selectEntry"
+            @start-paper="startEntryPaper"
+          />
+        </section>
+      </template>
+
+      <SubjectManagerPopup
+        v-model="subjectManagerOpen"
+        :subjects="orderedSubjects"
+        :active-subject-code="activeSubject?.code"
+        :hidden-subject-codes="hiddenSubjectCodes"
+        @select="selectSubject"
+        @toggle-visibility="toggleSubjectVisibility"
+        @move="moveSubject"
+      />
+
+      <PracticeSettingsPopup v-model="settingsPopupOpen" />
+
+      <PracticePlanPopup v-model="planPopupOpen" />
+    </section>
+  </PageContainer>
 </template>

@@ -1,32 +1,29 @@
 <script setup lang="ts">
-import { ArrowLeft, CircleAlert, Clock3 } from '@lucide/vue'
+import { CircleAlert, Clock3 } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import { fetchPracticePaper, fetchPracticeSubmission } from '@/api/practice'
-import BasePopup from '@/components/common/BasePopup.vue'
+import EmptyState from '@/components/common/EmptyState.vue'
+import PageHeader from '@/components/common/PageHeader.vue'
+import PracticeResultQuestionPopup from '@/components/practice/PracticeResultQuestionPopup.vue'
+import { usePracticeResult } from '@/composables/usePracticeResult'
+import { RESULT_STATUS_LABELS } from '@/constants/practice'
 import { questionTypeLabels } from '@/generated/domain-values'
-import type {
-  PracticeResultQuestion,
-  PracticeResultQuestionStatus,
-  PracticeSubmissionResult,
-  QuestionType,
-} from '@/types'
+import type { PracticeResultQuestion, PracticeResultQuestionStatus, QuestionType } from '@/types'
 import { resolvePracticeReturn, returnToPracticeList } from '@/utils/browse/navigation'
-import { buildSubmissionResult } from '@/utils/practice/result'
 
 const props = defineProps<{ paperId: string; submissionId: string }>()
 
 const router = useRouter()
 const route = useRoute()
+const { result, loading, loadError, loadResult } = usePracticeResult({
+  paperId: () => props.paperId,
+  submissionId: () => props.submissionId,
+  subjectName: () => (typeof route.query.subjectName === 'string' ? route.query.subjectName : ''),
+})
 
-const result = ref<PracticeSubmissionResult | null>(null)
-const loading = ref(true)
-const loadError = ref(false)
-const detailOpen = ref(false)
 const selectedQuestion = ref<PracticeResultQuestion | null>(null)
 const resultFilter = ref<'all' | 'review'>('all')
-let loadRequestId = 0
 const hasGradedQuestions = computed(() =>
   Boolean(result.value && result.value.correctCount + result.value.wrongCount > 0),
 )
@@ -55,37 +52,6 @@ const elapsedText = computed(() => {
   return minutes > 0 ? `${minutes}分${restSeconds}秒` : `${restSeconds}秒`
 })
 
-async function loadResult() {
-  const requestId = ++loadRequestId
-  loading.value = true
-  loadError.value = false
-  result.value = null
-  if (!props.paperId || !props.submissionId) {
-    loadError.value = true
-    loading.value = false
-    return
-  }
-
-  try {
-    const [detail, submission] = await Promise.all([
-      fetchPracticePaper(props.paperId),
-      fetchPracticeSubmission(props.paperId, props.submissionId),
-    ])
-    if (requestId !== loadRequestId) return
-    result.value = buildSubmissionResult(
-      detail,
-      submission,
-      props.paperId,
-      typeof route.query.subjectName === 'string' ? route.query.subjectName : '',
-    )
-  } catch {
-    if (requestId !== loadRequestId) return
-    loadError.value = true
-  } finally {
-    if (requestId === loadRequestId) loading.value = false
-  }
-}
-
 function questionStatusClasses(status: PracticeResultQuestionStatus) {
   const map = {
     correct: 'border-success bg-success text-success-content',
@@ -96,75 +62,44 @@ function questionStatusClasses(status: PracticeResultQuestionStatus) {
   return map[status]
 }
 
-function statusLabel(status: PracticeResultQuestionStatus) {
-  const map = {
-    correct: '回答正确',
-    wrong: '回答错误',
-    unanswered: '未作答',
-    pending: '待批阅',
-  }
-  return map[status]
-}
-
-function openQuestion(question: PracticeResultQuestion) {
-  selectedQuestion.value = question
-  detailOpen.value = true
-}
-
 function returnToPractice() {
   returnToPracticeList(router, resolvePracticeReturn(route.query, 'practice'))
 }
 
 watch(
-  [() => props.paperId, () => props.submissionId],
+  result,
   () => {
-    void loadResult()
+    selectedQuestion.value = null
+    resultFilter.value = 'all'
   },
-  { immediate: true },
+  { flush: 'sync' },
 )
 </script>
 
 <template>
-  <section class="-mx-5 min-h-dvh bg-base-200/35 pb-[calc(2rem+env(safe-area-inset-bottom))]">
-    <header
-      class="fixed left-1/2 top-0 z-40 w-full max-w-[32rem] -translate-x-1/2 border-b border-base-200/80 bg-base-100/95 pt-[env(safe-area-inset-top)] backdrop-blur-xl"
-    >
-      <div class="grid h-14 grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-2 px-3">
-        <button
-          class="flex size-10 items-center justify-center rounded-full transition active:bg-base-200"
-          type="button"
-          aria-label="返回练习"
-          @click="returnToPractice"
-        >
-          <ArrowLeft :size="21" />
-        </button>
-        <h1 class="truncate text-center text-[15px] font-semibold">练习报告</h1>
-        <span aria-hidden="true"></span>
-      </div>
-    </header>
+  <section class="min-h-dvh bg-base-200/35 pb-[calc(2rem+env(safe-area-inset-bottom))]">
+    <PageHeader title="练习报告" back-label="返回练习" @back="returnToPractice" />
 
-    <main class="px-5 pt-[calc(4.5rem+env(safe-area-inset-top))]">
-      <div v-if="loading" class="flex min-h-[70dvh] items-center justify-center">
+    <div class="px-5 pt-[calc(4.5rem+env(safe-area-inset-top))]">
+      <div
+        v-if="loading"
+        class="flex min-h-[70dvh] items-center justify-center"
+        role="status"
+        aria-label="正在加载练习报告"
+      >
         <span class="loading loading-spinner loading-md text-primary"></span>
       </div>
 
       <div v-else-if="loadError || !result" class="flex min-h-[70dvh] items-center justify-center">
-        <div class="max-w-xs text-center">
-          <span
-            class="mx-auto flex size-14 items-center justify-center rounded-2xl bg-error/10 text-error"
-          >
-            <CircleAlert :size="27" />
-          </span>
-          <h2 class="mt-4 text-lg font-semibold">报告加载失败</h2>
-          <p class="mt-2 text-sm leading-6 text-base-content/65">暂时无法获取本次作答结果。</p>
-          <button
-            class="btn btn-primary mt-5 h-10 min-h-10 rounded-xl px-6 text-sm"
-            type="button"
-            @click="loadResult"
-          >
-            重新加载
-          </button>
-        </div>
+        <EmptyState
+          :icon="CircleAlert"
+          tone="error"
+          title="报告加载失败"
+          description="暂时无法获取本次作答结果。"
+          action-label="重新加载"
+          embedded
+          @action="loadResult"
+        />
       </div>
 
       <template v-else>
@@ -232,23 +167,29 @@ watch(
               <h2 class="text-base font-semibold">作答明细</h2>
               <p class="mt-0.5 text-xs text-base-content/65">点击题号查看答案与解析</p>
             </div>
-            <div class="flex rounded-lg bg-base-200/70 p-0.5 text-xs">
+            <div
+              class="flex shrink-0 rounded-lg bg-base-200/70 p-0.5 text-xs"
+              role="group"
+              aria-label="作答筛选"
+            >
               <button
-                class="rounded-md px-2.5 py-1.5 font-medium transition"
+                class="whitespace-nowrap rounded-md px-2.5 py-1.5 font-medium transition"
                 :class="
                   resultFilter === 'all' ? 'bg-base-100 text-primary' : 'text-base-content/65'
                 "
                 type="button"
+                :aria-pressed="resultFilter === 'all'"
                 @click="resultFilter = 'all'"
               >
                 全部
               </button>
               <button
-                class="rounded-md px-2.5 py-1.5 font-medium transition"
+                class="whitespace-nowrap rounded-md px-2.5 py-1.5 font-medium transition"
                 :class="
                   resultFilter === 'review' ? 'bg-base-100 text-error' : 'text-base-content/65'
                 "
                 type="button"
+                :aria-pressed="resultFilter === 'review'"
                 @click="resultFilter = 'review'"
               >
                 需复习
@@ -287,8 +228,8 @@ watch(
                   class="flex size-7 items-center justify-center rounded-full border text-xs font-semibold tabular-nums transition-colors active:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                   :class="questionStatusClasses(question.status)"
                   type="button"
-                  :aria-label="`第 ${question.index} 题，${statusLabel(question.status)}`"
-                  @click="openQuestion(question)"
+                  :aria-label="`第 ${question.index} 题，${RESULT_STATUS_LABELS[question.status]}`"
+                  @click="selectedQuestion = question"
                 >
                   {{ question.index }}
                 </button>
@@ -309,52 +250,8 @@ watch(
           返回练习
         </button>
       </template>
-    </main>
+    </div>
 
-    <BasePopup v-model="detailOpen" title="题目详情">
-      <template v-if="selectedQuestion">
-        <div class="flex items-center justify-between gap-3">
-          <span class="text-xs font-medium text-base-content/65">
-            第 {{ selectedQuestion.index }} 题 ·
-            {{ questionTypeLabels[selectedQuestion.questionType] }}
-          </span>
-          <span
-            class="rounded-full px-2 py-1 text-[11px] font-semibold"
-            :class="{
-              'bg-success/10 text-success': selectedQuestion.status === 'correct',
-              'bg-error/10 text-error': selectedQuestion.status === 'wrong',
-              'bg-base-200 text-base-content/45': selectedQuestion.status === 'unanswered',
-              'bg-secondary/10 text-secondary': selectedQuestion.status === 'pending',
-            }"
-          >
-            {{ statusLabel(selectedQuestion.status) }}
-          </span>
-        </div>
-
-        <h3 class="mt-3 whitespace-pre-line text-sm font-medium leading-6">
-          {{ selectedQuestion.title }}
-        </h3>
-
-        <dl class="mt-4 overflow-hidden rounded-xl border border-base-200 divide-y divide-base-200">
-          <div class="grid grid-cols-[5rem_minmax(0,1fr)] gap-3 px-3 py-2.5 text-sm">
-            <dt class="text-base-content/65">我的答案</dt>
-            <dd :class="selectedQuestion.status === 'wrong' ? 'text-error' : ''">
-              {{ selectedQuestion.userAnswer || '未作答' }}
-            </dd>
-          </div>
-          <div class="grid grid-cols-[5rem_minmax(0,1fr)] gap-3 px-3 py-2.5 text-sm">
-            <dt class="text-base-content/65">正确答案</dt>
-            <dd class="text-success">{{ selectedQuestion.correctAnswer || '待批阅' }}</dd>
-          </div>
-        </dl>
-
-        <div class="mt-4 border-t border-base-200 pt-3">
-          <h4 class="text-sm font-semibold">题目解析</h4>
-          <p class="mt-1.5 whitespace-pre-line text-sm leading-6 text-base-content/60">
-            {{ selectedQuestion.explanation || '暂无解析' }}
-          </p>
-        </div>
-      </template>
-    </BasePopup>
+    <PracticeResultQuestionPopup v-model="selectedQuestion" />
   </section>
 </template>

@@ -26,14 +26,19 @@ const id = useId()
   <div>
     <label class="mb-1 block text-sm font-medium text-base-content/70" :for="id">{{ label }}</label>
     <span
-      class="flex h-12 w-full items-center gap-2.5 rounded-2xl border px-4"
+      class="input h-12 w-full gap-2.5 rounded-2xl px-4"
       :class="
         error
-          ? 'border-error/60 bg-error/5 focus-within:ring-2 focus-within:ring-error/15'
-          : 'border-base-300 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15'
+          ? 'input-error bg-error/5'
+          : 'border-base-300 focus-within:border-primary focus-within:outline-primary'
       "
     >
-      <component :is="icon" :size="17" :class="error ? 'text-error/70' : 'text-base-content/35'" />
+      <component
+        :is="icon"
+        :size="17"
+        aria-hidden="true"
+        :class="error ? 'text-error/70' : 'text-base-content/35'"
+      />
       <input
         :id="id"
         :type="type ?? 'text'"

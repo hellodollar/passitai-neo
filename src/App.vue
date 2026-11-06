@@ -17,9 +17,9 @@ const showTabs = computed(() =>
 <template>
   <div v-if="showShell" class="min-h-screen overflow-x-hidden bg-base-100 text-base-content">
     <div
-      class="mx-auto min-h-screen w-full max-w-[32rem] overflow-x-hidden bg-base-100 [--app-header-height:0rem] md:border-x md:border-base-300"
+      class="mx-auto min-h-screen w-full max-w-[32rem] overflow-x-hidden bg-base-100 md:border-x md:border-base-300"
     >
-      <main class="overflow-x-hidden px-5" :class="showTabs ? 'pb-24 pt-5' : 'pb-0 pt-0'">
+      <main class="min-w-0 overflow-x-hidden">
         <RouterView />
       </main>
       <BottomTabBar
