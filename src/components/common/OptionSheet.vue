@@ -4,6 +4,8 @@ import { computed, ref } from 'vue'
 
 import BasePopup from '@/components/common/BasePopup.vue'
 
+defineOptions({ inheritAttrs: false })
+
 /**
  * 字段式选项选择:点击打开弹层单选列表,替代原生 select。
  * 原生下拉的展开列表无法样式化且会被视口裁剪,弹层方案与全局深浅主题一致。
@@ -38,6 +40,7 @@ function pick(value: string) {
 
 <template>
   <button
+    v-bind="$attrs"
     class="flex h-10 min-h-10 w-full items-center justify-between gap-2 rounded-xl border border-base-300 bg-base-100 px-3.5 text-left text-sm transition-colors disabled:opacity-50"
     :class="modelValue ? 'text-base-content' : 'text-base-content/45'"
     type="button"

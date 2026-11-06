@@ -93,8 +93,6 @@ const displayedGroupMode = ref<CollectionGroupBy>('subject')
 const displayedSortField = ref<SortField>('recent')
 const displayedSortOrder = ref<CollectionOrder>('desc')
 
-const groupLabel = computed(() => (displayedGroupMode.value === 'subject' ? '科目' : '题集'))
-
 const SORT_OPTIONS: Array<{
   value: string
   field: SortField
@@ -303,15 +301,7 @@ watch(
   <PageContainer>
     <section class="flex flex-col" :aria-busy="loading">
       <header class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
-        <div class="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
-          <h1 class="shrink-0 text-lg font-semibold leading-tight">{{ sourceConfig.pageTitle }}</h1>
-          <p
-            v-if="loaded && totalQuestionCount > 0"
-            class="text-xs leading-snug text-base-content/65"
-          >
-            {{ totalQuestionCount }} 道题 · {{ items.length }} 个{{ groupLabel }}
-          </p>
-        </div>
+        <h1 class="min-w-0 text-lg font-semibold leading-tight">{{ sourceConfig.pageTitle }}</h1>
 
         <button
           v-if="loaded && totalQuestionCount > 0"
