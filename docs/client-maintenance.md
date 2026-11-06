@@ -49,7 +49,9 @@ JSONC 配置文件不使用尾随逗号，与 dash 的 `wrangler.jsonc` 风格�
 
 静态链接直接写路径，带参数的跳转使用路由自身的 name；不再另设路由名常量或路径映射表。登录、注册和未找到页公开，其余页面需要登录。底栏只在首页、收藏、错题和我的显示，由 `App.vue` 直接判断，不使用自定义路由 meta 或多套布局。
 
-收藏和错题共用 `components/collection/CollectionListView.vue`，加载、筛选、分组排序、清空确认和浏览记忆只实现一次；两个来源的文案、图标、接口与练习路由收敛在 `sourceConfig`，`favorites/FavoritesView.vue` 和 `mistakes/MistakesView.vue` 仅传入来源。排序菜单共用 `SortMenu`。
+收藏和错题共用 `components/collection/CollectionListView.vue`，加载、筛选、分组排序和浏览记忆只实现一次；两个来源的文案、图标、接口与练习路由收敛在 `sourceConfig`，`favorites/FavoritesView.vue` 和 `mistakes/MistakesView.vue` 仅传入来源。排序菜单共用 `SortMenu`。集合列表与“我的 → 数据清理”共用 `ClearCollectionDialog` 完成清空确认、请求及会话隔离。
+
+`me/DataCleanupPopup.vue` 集中提供作答记录、收藏与错题的清理入口；本机作答按类别或全部清除，收藏与错题分别清空当前账号的对应数据，没有混合清空所有数据的按钮。主面板只保留分组与操作，清理范围和不可恢复说明放在确认框。
 
 修改密码和更换邮箱分别使用 `me/ChangePasswordDialog.vue`、`me/ChangeEmailDialog.vue`，作为居中表单对话框。账户面板关闭后再打开，提供取消与保存。密码修改成功后按现有规则重新登录；邮箱修改成功后更新用户快照并保持登录。
 

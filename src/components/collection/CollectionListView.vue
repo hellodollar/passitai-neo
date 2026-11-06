@@ -1,13 +1,12 @@
 <script setup lang="ts">
-import { AlertCircle, BookMarked, ChevronRight, FileStack, Trash2, XCircle } from '@lucide/vue'
+import { AlertCircle, BookMarked, ChevronRight, FileStack, XCircle } from '@lucide/vue'
 import { formatDistanceToNow } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import { clearFavorites, fetchFavoriteAggregate } from '@/api/favorites'
-import { clearMistakes, fetchMistakeAggregate } from '@/api/mistakes'
-import BaseDialog from '@/components/common/BaseDialog.vue'
+import { fetchFavoriteAggregate } from '@/api/favorites'
+import { fetchMistakeAggregate } from '@/api/mistakes'
 import EmptyState from '@/components/common/EmptyState.vue'
 import PageContainer from '@/components/common/PageContainer.vue'
 import PagePlaceholder from '@/components/common/PagePlaceholder.vue'
@@ -22,7 +21,6 @@ import type {
   CollectionSource,
 } from '@/types'
 import { parseCollectionFilters, readBrowseState, writeBrowseState } from '@/utils/browse/state'
-import { showErrorToast, showSuccessToast } from '@/utils/toast'
 
 type SortField = 'count' | 'recent'
 
@@ -36,10 +34,8 @@ const sourceConfig = computed(() =>
   props.source === 'favorites'
     ? {
         pageTitle: '我的收藏',
-        collectionLabel: '收藏',
         emptyTitle: '暂无收藏',
         emptyDescription: '练习时收藏的题目会出现在这里。',
-        clearedToast: '收藏已清空',
         practiceRoute: 'favorites-practice',
         emptyIcon: BookMarked,
         fetch: fetchFavoriteAggregate as (params: {
@@ -47,14 +43,11 @@ const sourceConfig = computed(() =>
           sort: SortField
           order: CollectionOrder
         }) => Promise<CollectionAggregate>,
-        clear: clearFavorites,
       }
     : {
         pageTitle: '我的错题',
-        collectionLabel: '错题',
         emptyTitle: '暂无错题',
         emptyDescription: '答错的题目会收集到这里。',
-        clearedToast: '错题已清空',
         practiceRoute: 'mistakes-practice',
         emptyIcon: XCircle,
         fetch: fetchMistakeAggregate as (params: {
@@ -62,7 +55,6 @@ const sourceConfig = computed(() =>
           sort: SortField
           order: CollectionOrder
         }) => Promise<CollectionAggregate>,
-        clear: clearMistakes,
       },
 )
 
@@ -80,10 +72,7 @@ const totalQuestionCount = ref(0)
 const loading = ref(true)
 const loaded = ref(false)
 const loadError = ref(false)
-const clearing = ref(false)
-const clearConfirmOpen = ref(false)
 let loadSequence = 0
-let clearSequence = 0
 
 const groupMode = ref<CollectionGroupBy>('subject')
 const sortField = ref<SortField>('recent')
@@ -211,12 +200,11 @@ function selectSortOption(value: string) {
 
 onBeforeUnmount(() => {
   ++loadSequence
-  ++clearSequence
 })
 
 /** 按当前分组进入集合练习，返回时保留筛选条件。 */
 function startPractice(item: CollectionAggregateItem) {
-  if (!auth.isAuthenticated || loading.value || clearing.value) return
+  if (!auth.isAuthenticated || loading.value) return
   const originId = displayedGroupMode.value === 'paper' ? item.paperId : item.subjectId
   if (!originId) return
   const returnTo = router.resolve({
@@ -233,26 +221,6 @@ function startPractice(item: CollectionAggregateItem) {
     params: { groupBy: displayedGroupMode.value, groupId: originId },
     query: { subjectName: item.subjectName, returnTo },
   })
-}
-
-async function confirmClear() {
-  if (clearing.value || !auth.isAuthenticated) return
-  const sequence = ++clearSequence
-  const token = auth.session?.token
-  const isCurrent = () =>
-    sequence === clearSequence && token === auth.session?.token && auth.isAuthenticated
-  clearing.value = true
-  try {
-    await sourceConfig.value.clear()
-    if (!isCurrent()) return
-    showSuccessToast(`${sourceConfig.value.collectionLabel}已清空`)
-    clearConfirmOpen.value = false
-    await loadCollection()
-  } catch {
-    if (isCurrent()) showErrorToast('清空失败，请稍后重试。')
-  } finally {
-    if (isCurrent()) clearing.value = false
-  }
 }
 
 watch(
@@ -276,8 +244,6 @@ watch(
       return
     }
     if (token !== loadedToken) {
-      clearSequence++
-      clearing.value = false
       loaded.value = false
       items.value = []
       totalQuestionCount.value = 0
@@ -290,7 +256,6 @@ watch(
     groupMode.value = filters.groupBy
     sortField.value = filters.sort
     sortOrder.value = filters.order
-    clearConfirmOpen.value = false
     void loadCollection()
   },
   { immediate: true },
@@ -302,18 +267,6 @@ watch(
     <section class="flex flex-col" :aria-busy="loading">
       <header class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
         <h1 class="min-w-0 text-lg font-semibold leading-tight">{{ sourceConfig.pageTitle }}</h1>
-
-        <button
-          v-if="loaded && totalQuestionCount > 0"
-          class="flex h-10 items-center justify-self-end gap-1 rounded-lg pl-2 text-[13px] text-primary transition-colors hover:text-primary active:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-40"
-          type="button"
-          :disabled="loading || clearing"
-          :aria-label="`清空全部${sourceConfig.collectionLabel}`"
-          @click="clearConfirmOpen = true"
-        >
-          <Trash2 :size="14" />
-          清空
-        </button>
       </header>
 
       <!-- 分组切换 + 排序 -->
@@ -425,37 +378,6 @@ watch(
           <ChevronRight :size="18" class="shrink-0 text-base-content/35" />
         </button>
       </div>
-
-      <BaseDialog
-        v-model="clearConfirmOpen"
-        title="确认清空"
-        :close-on-backdrop="!clearing"
-        :close-on-escape="!clearing"
-      >
-        <p class="text-sm leading-6 text-base-content/70">
-          将清空全部{{ sourceConfig.collectionLabel }}（{{ totalQuestionCount }}
-          道），操作不可恢复。
-        </p>
-        <template #footer>
-          <button
-            class="btn h-10 min-h-10 flex-1 rounded-xl border-base-200 bg-base-100 text-sm"
-            type="button"
-            :disabled="clearing"
-            @click="clearConfirmOpen = false"
-          >
-            取消
-          </button>
-          <button
-            class="btn btn-error h-10 min-h-10 flex-1 rounded-xl text-sm"
-            type="button"
-            :disabled="clearing"
-            @click="confirmClear"
-          >
-            <span v-if="clearing" class="loading loading-spinner loading-xs"></span>
-            清空
-          </button>
-        </template>
-      </BaseDialog>
     </section>
   </PageContainer>
 </template>

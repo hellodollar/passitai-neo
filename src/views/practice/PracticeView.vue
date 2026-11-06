@@ -930,7 +930,7 @@ watch(answerSheetOpen, (open) => {
       v-if="canClearRecord"
       v-model="clearRecordConfirmOpen"
       :scope="clearRecordScope"
-      :label="`“${currentPaperTitle}”的刷题记录`"
+      :label="`“${currentPaperTitle}”的作答记录`"
     />
   </section>
 </template>

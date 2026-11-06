@@ -18,8 +18,8 @@ import BasePopup from '@/components/common/BasePopup.vue'
 import AppearancePopup from '@/components/me/AppearancePopup.vue'
 import ChangeEmailDialog from '@/components/me/ChangeEmailDialog.vue'
 import ChangePasswordDialog from '@/components/me/ChangePasswordDialog.vue'
+import DataCleanupPopup from '@/components/me/DataCleanupPopup.vue'
 import PracticePlanPopup from '@/components/practice/PracticePlanPopup.vue'
-import PracticeRecordsPopup from '@/components/practice/PracticeRecordsPopup.vue'
 import PracticeSettingsPopup from '@/components/practice/PracticeSettingsPopup.vue'
 import { useAppearance } from '@/composables/useAppearance'
 import { useAuthStore } from '@/stores/auth'
@@ -38,10 +38,10 @@ const emailDialogOpen = ref(false)
 const planPopupOpen = ref(false)
 const practiceSettingsPopupOpen = ref(false)
 const notificationPopupOpen = ref(false)
-const recordsPopupOpen = ref(false)
+const cleanupPopupOpen = ref(false)
 const appearancePopupOpen = ref(false)
 
-type SettingsAction = 'account' | 'plan' | 'practice' | 'notification' | 'records' | 'appearance'
+type SettingsAction = 'account' | 'plan' | 'practice' | 'notification' | 'cleanup' | 'appearance'
 const displayName = computed(() => {
   const name = auth.user?.email.split('@')[0]
   return name ? name.replace(/[._-]+/g, ' ') : 'PassIt AI'
@@ -76,10 +76,10 @@ const menuGroups = computed(() => [
               : '答题方式与错题设置',
       },
       {
-        title: '刷题记录',
-        subtitle: '查看与管理作答记录',
+        title: '数据清理',
+        subtitle: '',
         icon: Eraser,
-        action: 'records' as const,
+        action: 'cleanup' as const,
       },
     ],
   },
@@ -99,8 +99,8 @@ const menuGroups = computed(() => [
 ])
 
 function openMenuItem(action: SettingsAction) {
-  if (action === 'records') {
-    recordsPopupOpen.value = true
+  if (action === 'cleanup') {
+    cleanupPopupOpen.value = true
   } else if (action === 'account') {
     accountPopupOpen.value = true
   } else if (action === 'appearance') {
@@ -143,7 +143,7 @@ watch(
       planPopupOpen.value = false
       practiceSettingsPopupOpen.value = false
       notificationPopupOpen.value = false
-      recordsPopupOpen.value = false
+      cleanupPopupOpen.value = false
     }
     if (token) void Promise.allSettled([practicePlanStore.load(), practiceSettingsStore.load()])
   },
@@ -199,9 +199,11 @@ watch(
               />
               <span class="min-w-0 flex-1">
                 <span class="block truncate text-sm font-medium leading-5">{{ item.title }}</span>
-                <span class="block truncate text-xs leading-4 text-base-content/50">{{
-                  item.subtitle
-                }}</span>
+                <span
+                  v-if="item.subtitle"
+                  class="block truncate text-xs leading-4 text-base-content/50"
+                  >{{ item.subtitle }}</span
+                >
               </span>
               <ChevronRight :size="15" class="shrink-0 text-base-content/30" aria-hidden="true" />
             </button>
@@ -269,6 +271,6 @@ watch(
       <p class="py-4 text-center text-sm text-base-content/60">通知功能暂未开放</p>
     </BasePopup>
     <AppearancePopup v-model="appearancePopupOpen" />
-    <PracticeRecordsPopup v-model="recordsPopupOpen" />
+    <DataCleanupPopup v-model="cleanupPopupOpen" />
   </section>
 </template>
