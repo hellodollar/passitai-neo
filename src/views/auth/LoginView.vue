@@ -3,11 +3,11 @@ import { LockKeyhole, Mail } from '@lucide/vue'
 import { reactive, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
-import FormField from '@/components/common/FormField.vue'
 import AuthFrame from '@/components/auth/AuthFrame.vue'
+import FormField from '@/components/common/FormField.vue'
 import { useAuthStore } from '@/stores/auth'
-import { resolveLoginRedirect } from '@/utils/browse/navigation'
 import { EMAIL_PATTERN } from '@/utils/auth/validation'
+import { resolveLoginRedirect } from '@/utils/browse/navigation'
 
 const auth = useAuthStore()
 const route = useRoute()

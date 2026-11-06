@@ -1,16 +1,16 @@
-import { computed, onScopeDispose, ref } from 'vue'
 import { defineStore } from 'pinia'
+import { computed, onScopeDispose, ref } from 'vue'
 
 import { login as loginApi, logout as logoutApi, register as registerApi } from '@/api/auth'
+import { SessionChangedError } from '@/api/http'
 import {
   fetchProfile,
   changeEmail as changeEmailApi,
   changePassword as changePasswordApi,
 } from '@/api/profile'
-import { SessionChangedError } from '@/api/http'
 import { AUTH_INVALIDATED_EVENT, STORAGE_KEYS } from '@/constants/app'
-import { usePracticePlanStore } from '@/stores/practice-plan'
 import { usePracticeEntriesStore } from '@/stores/practice-entries'
+import { usePracticePlanStore } from '@/stores/practice-plan'
 import { usePracticeSettingsStore } from '@/stores/practice-settings'
 import type {
   AuthCredentials,
@@ -20,8 +20,8 @@ import type {
   PasswordChangeBody,
 } from '@/types'
 import { currentSessionToken, isActiveSession } from '@/utils/auth/session'
-import { clearUserPracticeRecords } from '@/utils/practice/record'
 import { clearBrowseState } from '@/utils/browse/state'
+import { clearUserPracticeRecords } from '@/utils/practice/record'
 import { readStorage, removeStorage, writeStorage } from '@/utils/storage'
 import { showErrorToast } from '@/utils/toast'
 
@@ -107,8 +107,9 @@ export const useAuthStore = defineStore('auth', () => {
       if (session.value) return clearSession()
       return false
     }
-    if (stored.token !== session.value?.token) replaceSession(stored)
-    else {
+    if (stored.token !== session.value?.token) {
+      replaceSession(stored)
+    } else {
       if (JSON.stringify(stored.user) !== JSON.stringify(session.value?.user)) {
         userRevision++
         userRequest = null
@@ -139,8 +140,9 @@ export const useAuthStore = defineStore('auth', () => {
         generation !== requestGeneration ||
         attempt !== authAttempt ||
         requestToken !== currentSessionToken()
-      )
+      ) {
         return false
+      }
       if (!isActiveSession(next)) {
         showErrorToast('登录响应无效，请重新登录')
         return false
@@ -188,8 +190,9 @@ export const useAuthStore = defineStore('auth', () => {
           generation !== requestGeneration ||
           userRevision !== requestUserRevision ||
           session.value?.token !== current.token
-        )
+        ) {
           return
+        }
         if (nextUser.id !== current.user.id) return
         session.value = { ...current, user: nextUser }
         writeStorage(STORAGE_KEYS.authSession, session.value)

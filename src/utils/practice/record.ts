@@ -1,3 +1,4 @@
+import { PRACTICE_RECORD_VERSION } from '@/constants/practice'
 import { domainValues } from '@/generated/domain-values'
 import type {
   PracticeAnswerRecord,
@@ -10,7 +11,7 @@ import type {
   PracticeRecordProgress,
   QuestionListItem,
 } from '@/types'
-import { PRACTICE_RECORD_VERSION } from '@/constants/practice'
+
 import { getPreviewOptions, getQuestionOptions, isChoiceQuestionType } from './question'
 import {
   RECORD_PREFIX,
@@ -58,8 +59,9 @@ function parseAnswers(value: unknown): Record<string, PracticeRecordAnswer> {
         !Array.isArray(raw.values) ||
         raw.values.length > 8 ||
         !raw.values.every((item) => typeof item === 'string' && item.length <= 32)
-      )
+      ) {
         return []
+      }
       return [
         [
           questionId,
@@ -96,8 +98,13 @@ function parsePendingSubmission(
   value: unknown,
   revision: number,
 ): PracticeRecord['pendingSubmission'] {
-  if (!isObject(value) || !isSubmissionId(value.submissionId) || value.answerRevision !== revision)
+  if (
+    !isObject(value) ||
+    !isSubmissionId(value.submissionId) ||
+    value.answerRevision !== revision
+  ) {
     return null
+  }
   const raw = value.payload
   if (
     !isObject(raw) ||
@@ -105,14 +112,18 @@ function parsePendingSubmission(
     typeof raw.startTime !== 'string' ||
     !Number.isFinite(Date.parse(raw.startTime)) ||
     !isObject(raw.userAnswers)
-  )
+  ) {
     return null
+  }
   const userAnswers: PracticeRecordProgress['submissionAnswers'] = {}
   for (const [id, answer] of Object.entries(raw.userAnswers)) {
-    if (typeof answer === 'string') userAnswers[id] = answer
-    else if (Array.isArray(answer) && answer.every((item) => typeof item === 'string'))
+    if (typeof answer === 'string') {
+      userAnswers[id] = answer
+    } else if (Array.isArray(answer) && answer.every((item) => typeof item === 'string')) {
       userAnswers[id] = [...answer]
-    else return null
+    } else {
+      return null
+    }
   }
   return {
     submissionId: value.submissionId,
@@ -134,8 +145,9 @@ function parseRecord(value: unknown, identity: PracticeRecordIdentity): Practice
     !isPaperType(value.paperType) ||
     !isStartedAt(value.startedAt) ||
     !isRevision(value.answerRevision)
-  )
+  ) {
     return null
+  }
   let lastSubmission: PracticeRecord['lastSubmission'] = null
   const last = value.lastSubmission
   if (
@@ -296,8 +308,9 @@ export function questionFingerprint(question: PracticePaperItem) {
     question.F,
   ].join('\u001f')
   let hash = 2166136261
-  for (let index = 0; index < content.length; index++)
+  for (let index = 0; index < content.length; index++) {
     hash = Math.imul(hash ^ content.charCodeAt(index), 16777619)
+  }
   return (hash >>> 0).toString(16).padStart(8, '0')
 }
 
@@ -320,9 +333,12 @@ function restoreRecordAnswer(
       new Set(raw.values).size !== raw.values.length ||
       (question.questionType !== 'multiple' && raw.values.length > 1) ||
       (confirmed && raw.values.length === 0)
-    )
+    ) {
       return null
-  } else if (raw.values.length > 0 || (confirmed && !raw.text.trim())) return null
+    }
+  } else if (raw.values.length > 0 || (confirmed && !raw.text.trim())) {
+    return null
+  }
   return { questionId: question.id, text: raw.text, values: [...raw.values] }
 }
 
@@ -351,8 +367,9 @@ export function restorePracticeRecord(
       question &&
       !answers[id] &&
       restoreRecordAnswer(raw, question, fingerprints[id] ?? '', false)
-    )
+    ) {
       inputs[id] = raw
+    }
   }
   const index = questions.findIndex((question) => question.id === record.currentQuestionId)
   const currentIndex = index >= 0 ? index : 0
@@ -404,8 +421,9 @@ export function listPracticeRecords(userId: string): PracticeRecord[] {
           !isObject(raw) ||
           typeof raw.paperId !== 'string' ||
           !SOURCES.includes(raw.source as PracticeRecord['source'])
-        )
+        ) {
           return []
+        }
         const identity = {
           userId,
           paperId: raw.paperId,

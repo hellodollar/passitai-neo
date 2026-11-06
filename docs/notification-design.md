@@ -8,12 +8,12 @@
 
 **一份消息内容，两个送达位置；学习、系统是分类，站内、TG 是渠道。**
 
-| 维度 | 取值 | 含义 |
-| --- | --- | --- |
-| 消息分类 `category` | `learning`、`system` | 学习消息、系统消息 |
-| 站内消息 | 始终保存 | 用户在消息中心查看，维护自己的已读状态 |
-| TG 推送 | 按需发送 | 同一条消息的提醒副本，需要用户绑定并主动开启 |
-| 接收对象 | 全体启用用户、指定用户 | 自动提醒直接确定对应用户，不提供复杂的人群规则编辑器 |
+| 维度                | 取值                   | 含义                                                 |
+| ------------------- | ---------------------- | ---------------------------------------------------- |
+| 消息分类 `category` | `learning`、`system`   | 学习消息、系统消息                                   |
+| 站内消息            | 始终保存               | 用户在消息中心查看，维护自己的已读状态               |
+| TG 推送             | 按需发送               | 同一条消息的提醒副本，需要用户绑定并主动开启         |
+| 接收对象            | 全体启用用户、指定用户 | 自动提醒直接确定对应用户，不提供复杂的人群规则编辑器 |
 
 管理端发送时只选择“仅站内”或“站内 + TG”。即使 TG 失败，站内消息仍然存在；TG 显示发送成功也不代表用户已读。
 
@@ -21,12 +21,12 @@
 
 ### 首批消息
 
-| 场景 | 分类 | 触发者 | 初期处理 |
-| --- | --- | --- | --- |
-| 系统维护、功能更新、使用说明 | 系统 | 管理员 | 支持站内，发布时可勾选 TG |
-| 学习资料、题集更新说明 | 学习 | 管理员 | 同上，可指定用户 |
-| 每日刷题提醒 | 学习 | 定时处理 | 用户主动开启，每天最多一条 |
-| 考试临近提醒 | 学习 | 定时处理 | 用户主动开启，按计划对应专业的考试日期提醒 |
+| 场景                         | 分类 | 触发者   | 初期处理                                   |
+| ---------------------------- | ---- | -------- | ------------------------------------------ |
+| 系统维护、功能更新、使用说明 | 系统 | 管理员   | 支持站内，发布时可勾选 TG                  |
+| 学习资料、题集更新说明       | 学习 | 管理员   | 同上，可指定用户                           |
+| 每日刷题提醒                 | 学习 | 定时处理 | 用户主动开启，每天最多一条                 |
+| 考试临近提醒                 | 学习 | 定时处理 | 用户主动开启，按计划对应专业的考试日期提醒 |
 
 第一版不提供富文本、附件、审批流、模板编辑器、TG 群发营销、WebSocket 或通知规则编排。普通交卷已有即时结果页，暂不再为每次交卷制造一条通知。
 
@@ -135,18 +135,18 @@ Webhook 地址由当前部署的固定 API 域名生成，管理端操作只提�
 
 ### `notifications`：消息内容
 
-| 字段 | 用途 |
-| --- | --- |
-| `id` | 通知 ID，建议 `ntf` 前缀，沿用现有实体 ID 规则 |
-| `category` | `learning` / `system` |
-| `title`、`content` | 标题与纯文本正文 |
-| `linkPath` | 可选站内相对路径；不接收外部 URL |
-| `source`、`eventKey` | 手动/每日提醒/考试提醒；自动事件去重键，手动为空 |
-| `audience`、`userIds` | 全体或指定用户；指定 ID 按项目现有 JSON 约定保存 |
-| `telegram` | 是否申请附加 TG |
-| `status` | `draft` / `published` |
-| `createdBy`、`createdAt`、`publishedAt` | 发布主体与时间；自动消息没有管理员创建者 |
-| `telegramExpiresAt` | 可选 TG 投递截止时间，过时提醒不再补推 |
+| 字段                                    | 用途                                             |
+| --------------------------------------- | ------------------------------------------------ |
+| `id`                                    | 通知 ID，建议 `ntf` 前缀，沿用现有实体 ID 规则   |
+| `category`                              | `learning` / `system`                            |
+| `title`、`content`                      | 标题与纯文本正文                                 |
+| `linkPath`                              | 可选站内相对路径；不接收外部 URL                 |
+| `source`、`eventKey`                    | 手动/每日提醒/考试提醒；自动事件去重键，手动为空 |
+| `audience`、`userIds`                   | 全体或指定用户；指定 ID 按项目现有 JSON 约定保存 |
+| `telegram`                              | 是否申请附加 TG                                  |
+| `status`                                | `draft` / `published`                            |
+| `createdBy`、`createdAt`、`publishedAt` | 发布主体与时间；自动消息没有管理员创建者         |
+| `telegramExpiresAt`                     | 可选 TG 投递截止时间，过时提醒不再补推           |
 
 `eventKey` 建唯一索引。发布后不可编辑消息内容与目标，防止站内内容和已发送 TG 不一致。
 
@@ -156,14 +156,14 @@ Webhook 地址由当前部署的固定 API 域名生成，管理端操作只提�
 
 同一行保存少量 TG 投递字段：`telegramStatus`、绑定版本快照、尝试次数、下一次尝试时间、处理租约、成功的 `messageId`、发送时间及脱敏错误。无需再拆一套多渠道投递表。
 
-| TG 状态 | 含义 |
-| --- | --- |
-| 空 | 这条消息仅站内展示 |
-| `pending` | 等待处理，包括已排定的限流重试 |
-| `sent` | Telegram 返回明确成功，并记录 messageId |
+| TG 状态   | 含义                                               |
+| --------- | -------------------------------------------------- |
+| 空        | 这条消息仅站内展示                                 |
+| `pending` | 等待处理，包括已排定的限流重试                     |
+| `sent`    | Telegram 返回明确成功，并记录 messageId            |
 | `skipped` | 未绑定、关闭订阅、账号停用、绑定变化或已过投递期限 |
-| `failed` | 明确失败，需要修正原因或人工处理 |
-| `unknown` | 发送结果不确定，不能安全假定“没发送” |
+| `failed`  | 明确失败，需要修正原因或人工处理                   |
+| `unknown` | 发送结果不确定，不能安全假定“没发送”               |
 
 建议索引：`(userId, notificationId)`、未读查询相关索引，以及 `(telegramStatus, nextAttemptAt)`。列表通过消息表的 `publishedAt, id` 稳定倒序，不为未读数另维护一份容易漂移的计数。
 
@@ -240,18 +240,18 @@ Cron 配置使用 UTC，业务日期和用户输入的时间按 `Asia/Shanghai` 
 
 ### 用户端：app scope
 
-| 方法 | 路径 | 用途 |
-| --- | --- | --- |
-| GET | `/api/notifications` | 列表，支持 category、unread、page、limit |
-| GET | `/api/notifications/unread-count` | 未读总数 |
-| GET | `/api/notifications/:id` | 当前用户收到的消息详情 |
-| PUT | `/api/notifications/read-all` | 将请求开始时已收到的消息标为已读 |
-| PUT | `/api/notifications/:id/read` | 幂等标记一条已读 |
-| GET / PATCH | `/api/user/settings/notifications` | 读取和部分修改通知偏好 |
-| GET | `/api/user/telegram` | 用户绑定状态、可用性、Bot 用户名 |
-| POST | `/api/user/telegram/bind-link` | 生成短期绑定链接 |
-| DELETE | `/api/user/telegram` | 解绑并使待发绑定版本失效 |
-| POST | `/api/user/telegram/test` | 向自己的当前绑定发送固定测试消息，正文 `{}` |
+| 方法        | 路径                               | 用途                                        |
+| ----------- | ---------------------------------- | ------------------------------------------- |
+| GET         | `/api/notifications`               | 列表，支持 category、unread、page、limit    |
+| GET         | `/api/notifications/unread-count`  | 未读总数                                    |
+| GET         | `/api/notifications/:id`           | 当前用户收到的消息详情                      |
+| PUT         | `/api/notifications/read-all`      | 将请求开始时已收到的消息标为已读            |
+| PUT         | `/api/notifications/:id/read`      | 幂等标记一条已读                            |
+| GET / PATCH | `/api/user/settings/notifications` | 读取和部分修改通知偏好                      |
+| GET         | `/api/user/telegram`               | 用户绑定状态、可用性、Bot 用户名            |
+| POST        | `/api/user/telegram/bind-link`     | 生成短期绑定链接                            |
+| DELETE      | `/api/user/telegram`               | 解绑并使待发绑定版本失效                    |
+| POST        | `/api/user/telegram/test`          | 向自己的当前绑定发送固定测试消息，正文 `{}` |
 
 列表 data 建议为 `{ items, total, unreadCount }`。每项包含 `id, category, title, contentPreview, publishedAt, readAt`；详情另含完整 `content` 和 `linkPath`。用户响应不暴露其他收件人或内部投递错误。
 
@@ -261,13 +261,13 @@ Cron 配置使用 UTC，业务日期和用户输入的时间按 `Asia/Shanghai` 
 
 ### 管理端：admin scope
 
-| 方法 | 路径 | 用途 |
-| --- | --- | --- |
-| GET / POST | `/api/dash/notifications` | 查询通知 / 新建草稿 |
-| GET / PUT / DELETE | `/api/dash/notifications/:id` | 详情 / 编辑草稿 / 删除草稿 |
-| POST | `/api/dash/notifications/:id/publish` | 幂等发布 |
-| GET | `/api/dash/notifications/:id/recipients` | 接收人与已读、TG 投递结果 |
-| POST | `/api/dash/notifications/:id/retry-telegram` | 重试符合条件的指定失败行 |
+| 方法               | 路径                                         | 用途                       |
+| ------------------ | -------------------------------------------- | -------------------------- |
+| GET / POST         | `/api/dash/notifications`                    | 查询通知 / 新建草稿        |
+| GET / PUT / DELETE | `/api/dash/notifications/:id`                | 详情 / 编辑草稿 / 删除草稿 |
+| POST               | `/api/dash/notifications/:id/publish`        | 幂等发布                   |
+| GET                | `/api/dash/notifications/:id/recipients`     | 接收人与已读、TG 投递结果  |
+| POST               | `/api/dash/notifications/:id/retry-telegram` | 重试符合条件的指定失败行   |
 
 新建草稿正文示例：
 
@@ -297,14 +297,14 @@ Cron 配置使用 UTC，业务日期和用户输入的时间按 `Asia/Shanghai` 
 
 命名统一使用 `notifications`，按现有目录放置，不建立独立微服务或消息框架。
 
-| 项目 | 主要落点 |
-| --- | --- |
-| API | `routes/client/notifications.ts`、`services/client/notification.ts`：用户收件箱与学习提醒生成；用户绑定接口挂现有 user 路由 |
-| API | `routes/dash/notifications.ts`、`services/dash/notification.ts`：草稿、发布与投递查看 |
-| API | `infra/notification.ts`：共用入库、待发处理；`infra/telegram.ts`：现有发送；定时入口直接调用共用处理 |
-| API | `db/schema/notifications.ts` 集中三张小表，`schemas/notification.ts` 放输入校验，按现有规则补数据库定义 |
-| Neo | `views/notifications/NotificationsView.vue`、`api/notifications.ts`；“我的”复用通知设置弹窗 |
-| Dash | `views/notifications/NotificationListView.vue`、`api/notifications.ts`；编辑与结果面板先放同一业务目录 |
+| 项目 | 主要落点                                                                                                                    |
+| ---- | --------------------------------------------------------------------------------------------------------------------------- |
+| API  | `routes/client/notifications.ts`、`services/client/notification.ts`：用户收件箱与学习提醒生成；用户绑定接口挂现有 user 路由 |
+| API  | `routes/dash/notifications.ts`、`services/dash/notification.ts`：草稿、发布与投递查看                                       |
+| API  | `infra/notification.ts`：共用入库、待发处理；`infra/telegram.ts`：现有发送；定时入口直接调用共用处理                        |
+| API  | `db/schema/notifications.ts` 集中三张小表，`schemas/notification.ts` 放输入校验，按现有规则补数据库定义                     |
+| Neo  | `views/notifications/NotificationsView.vue`、`api/notifications.ts`；“我的”复用通知设置弹窗                                 |
+| Dash | `views/notifications/NotificationListView.vue`、`api/notifications.ts`；编辑与结果面板先放同一业务目录                      |
 
 Client、Dash Service 各自处理权限与页面语义，共用通知基础能力不能反向依赖这些 Service。无需为了通知增加通用 Repository、渠道注册器或插件系统。
 
@@ -318,11 +318,11 @@ Client、Dash Service 各自处理权限与页面语义，共用通知基础能�
 
 ## 11. 实施顺序和验收
 
-| 阶段 | 交付 | 验收重点 |
-| --- | --- | --- |
-| 1 | 站内消息、管理员发布、用户消息中心 | 接收人权限、发布幂等、已读独立、换账号隔离 |
-| 2 | 用户 TG 绑定、设置和持久化投递 | 令牌一次性、私聊校验、真实目标、限流、失败与未知结果 |
-| 3 | 每日提醒、考试提醒 | 北京时间、有效计划、重复扫描去重、过时不补发 |
+| 阶段 | 交付                               | 验收重点                                             |
+| ---- | ---------------------------------- | ---------------------------------------------------- |
+| 1    | 站内消息、管理员发布、用户消息中心 | 接收人权限、发布幂等、已读独立、换账号隔离           |
+| 2    | 用户 TG 绑定、设置和持久化投递     | 令牌一次性、私聊校验、真实目标、限流、失败与未知结果 |
+| 3    | 每日提醒、考试提醒                 | 北京时间、有效计划、重复扫描去重、过时不补发         |
 
 关键回归：两个用户不能读取或标记彼此消息；同一通知重复发布不重复收件；发布后的新用户不收到旧广播；关闭订阅或解绑后不继续发送待发消息；TG 故障不影响站内阅读；超时不伪造成功；定时任务重复执行不生成第二条提醒；保存通知偏好不影响刷题设置；切换账号后旧请求不改写新账号界面。
 

@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict'
 import { afterEach, beforeEach, test } from 'node:test'
+
 import { loadSource } from './helpers/load-source.mjs'
 
-const { inviteCodeError, normalizeInviteCode, registrationPayload } =
-  await loadSource('utils/auth/registration.ts')
+const { inviteCodeError, normalizeInviteCode, registrationPayload } = await loadSource(
+  'utils/auth/registration.ts',
+)
 const { register } = await loadSource('api/auth.ts')
 const previousFetch = globalThis.fetch
 const previousWindow = globalThis.window

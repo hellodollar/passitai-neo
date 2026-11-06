@@ -1,13 +1,15 @@
 import assert from 'node:assert/strict'
 import { afterEach, beforeEach, test } from 'node:test'
+
 import { createPinia, setActivePinia } from 'pinia'
 import { createMemoryHistory } from 'vue-router'
 
 import { loadSource } from './helpers/load-source.mjs'
 
 const { createAppRouter } = await loadSource('router/index.ts')
-const { resolveLoginRedirect, resolvePracticeReturn, returnToPracticeList } =
-  await loadSource('utils/browse/navigation.ts')
+const { resolveLoginRedirect, resolvePracticeReturn, returnToPracticeList } = await loadSource(
+  'utils/browse/navigation.ts',
+)
 const { useAuthStore } = await loadSource('stores/auth.ts')
 const { AUTH_INVALIDATED_EVENT, STORAGE_KEYS } = await loadSource('constants/app.ts')
 const originalWindow = globalThis.window

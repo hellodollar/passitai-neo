@@ -63,8 +63,9 @@ export function subscribePracticeRecordChanges(listener: () => void) {
     if (
       event.key === null ||
       [RECORD_PREFIX, CLEAR_PREFIX].some((prefix) => event.key!.startsWith(prefix))
-    )
+    ) {
       listener()
+    }
   }
   const onVisible = () => {
     if (document.visibilityState === 'visible') listener()

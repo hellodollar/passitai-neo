@@ -11,15 +11,6 @@ import {
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import BaseDialog from '@/components/common/BaseDialog.vue'
-import ClearPracticeRecordsDialog from '@/components/practice/ClearPracticeRecordsDialog.vue'
-import PracticeQuestionPanel from '@/components/practice/PracticeQuestionPanel.vue'
-import AnswerSheetPopup from '@/components/practice/AnswerSheetPopup.vue'
-import PracticeSettingsPopup from '@/components/practice/PracticeSettingsPopup.vue'
-import { usePracticeNavigation } from '@/composables/usePracticeNavigation'
-import { useQuestionSwipe } from '@/composables/useQuestionSwipe'
-import { useQuestionFavorites } from '@/composables/useQuestionFavorites'
-import { useMistakeSync } from '@/composables/useMistakeSync'
 import {
   addFavorite,
   fetchFavoritePractice,
@@ -27,21 +18,19 @@ import {
   removeFavoriteByRecord,
 } from '@/api/favorites'
 import { fetchMistakePractice } from '@/api/mistakes'
-import { resolvePracticeReturn, returnToPracticeList } from '@/utils/browse/navigation'
+import { fetchPracticePaper, fetchPracticeSubmission, submitPracticePaper } from '@/api/practice'
+import BaseDialog from '@/components/common/BaseDialog.vue'
+import AnswerSheetPopup from '@/components/practice/AnswerSheetPopup.vue'
+import ClearPracticeRecordsDialog from '@/components/practice/ClearPracticeRecordsDialog.vue'
+import PracticeQuestionPanel from '@/components/practice/PracticeQuestionPanel.vue'
+import PracticeSettingsPopup from '@/components/practice/PracticeSettingsPopup.vue'
+import { useMistakeSync } from '@/composables/useMistakeSync'
+import { usePracticeNavigation } from '@/composables/usePracticeNavigation'
+import { usePracticeRecord } from '@/composables/usePracticeRecord'
+import { useQuestionFavorites } from '@/composables/useQuestionFavorites'
+import { useQuestionSwipe } from '@/composables/useQuestionSwipe'
 import { useAuthStore } from '@/stores/auth'
 import { usePracticeSettingsStore } from '@/stores/practice-settings'
-import { fetchPracticePaper, fetchPracticeSubmission, submitPracticePaper } from '@/api/practice'
-import {
-  createPracticeRecord,
-  readPracticeRecord,
-  restorePracticeRecord,
-  updatePracticeRecord,
-  writePracticeRecord,
-} from '@/utils/practice/record'
-import {
-  isPracticeRecordCurrent,
-  subscribePracticeRecordChanges,
-} from '@/utils/practice/record-control'
 import type {
   CollectionContext,
   CollectionGroupBy,
@@ -49,11 +38,12 @@ import type {
   PracticeAnswerRecord,
   PracticePaperItem,
   PracticeRecord,
-  PracticeRecordAnswer,
   PracticeRecordContext,
   PracticeSubmission,
   QuestionListItem,
 } from '@/types'
+import { resolvePracticeReturn, returnToPracticeList } from '@/utils/browse/navigation'
+import { preparePracticePaper, type AnswerSheetGroup } from '@/utils/practice/paper'
 import {
   getPreviewOptions,
   getQuestionOptions,
@@ -61,10 +51,9 @@ import {
   isAnswerCorrect,
   isChoiceQuestionType,
 } from '@/utils/practice/question'
-import { preparePracticePaper, type AnswerSheetGroup } from '@/utils/practice/paper'
-import { showErrorToast } from '@/utils/toast'
-import { toSubmissionAnswers } from '@/utils/practice/submission-answers'
+import { isPracticeRecordCurrent } from '@/utils/practice/record-control'
 import { preparePracticeSubmission, settlePracticeSubmission } from '@/utils/practice/submission'
+import { toSubmissionAnswers } from '@/utils/practice/submission-answers'
 
 const props = defineProps<{
   source: PracticeSource
@@ -95,25 +84,13 @@ const submitConfirmOpen = ref(false)
 const clearRecordConfirmOpen = ref(false)
 const submitting = ref(false)
 const submitError = ref('')
-const pendingSubmissionId = ref('')
 const paperTitle = ref('')
-const practiceStartedAt = ref(Date.now())
 
 const currentQuestions = ref<QuestionListItem[]>([])
 const answerSheetGroups = ref<AnswerSheetGroup[]>([])
-const currentIndex = ref(0)
 const selectedOptionValues = ref<Set<string>>(new Set())
 const textAnswer = ref('')
-const answerRecords = ref<Record<string, PracticeAnswerRecord>>({})
-const inputDrafts = ref<Record<string, PracticeRecordAnswer>>({})
-const questionFingerprints = ref<Record<string, string>>({})
-const localRecord = ref<PracticeRecord | null>(null)
-const recordReady = ref(false)
-let recordSaveTimer: number | null = null
-let recordSaveWarningShown = false
-let recordWasSaved = false
 let loadSequence = 0
-let unsubscribeRecordChanges = () => {}
 /** 加载时的原始题目数据（PracticePaperItem），供交卷本地快照使用 */
 const paperItemsById = ref<Map<string, PracticePaperItem>>(new Map())
 const paperLoadState = ref<PaperLoadState>('loading')
@@ -127,6 +104,26 @@ const navigationSuspended = () =>
   settingsPopupOpen.value ||
   submitConfirmOpen.value ||
   clearRecordConfirmOpen.value
+
+const {
+  currentIndex,
+  answers: answerRecords,
+  inputs: inputDrafts,
+  fingerprints: questionFingerprints,
+  pendingSubmissionId,
+  localRecord,
+  recordReady,
+  hasLocalRecordProgress,
+  saveRecordNow,
+  scheduleRecordSave,
+  loadSavedRecord,
+  resetRecordState,
+  markRecordReady,
+} = usePracticeRecord({
+  userId: () => auth.session?.user.id,
+  questions: currentQuestions,
+  onCleared: handleRecordCleared,
+})
 
 const {
   dragOffset: swipeOffset,
@@ -248,8 +245,9 @@ const correctCount = computed(() => {
       question &&
       isChoiceQuestionType(question.questionType) &&
       isAnswerCorrect(record, question)
-    )
+    ) {
       count++
+    }
   }
   return count
 })
@@ -285,63 +283,6 @@ const { syncOnAnswered } = useMistakeSync({
   scopeKey: () => `${loadSequence}:${auth.session?.user.id ?? ''}`,
 })
 
-function clearRecordSaveTimer() {
-  if (recordSaveTimer !== null) {
-    window.clearTimeout(recordSaveTimer)
-    recordSaveTimer = null
-  }
-}
-
-function saveRecordNow() {
-  clearRecordSaveTimer()
-  if (
-    !recordReady.value ||
-    !localRecord.value ||
-    auth.session?.user.id !== localRecord.value.userId
-  )
-    return
-  if (!isPracticeRecordCurrent(localRecord.value)) {
-    resetClearedRecord()
-    return
-  }
-
-  const answers = Object.fromEntries(
-    Object.values(answerRecords.value).flatMap((record) => {
-      const fingerprint = questionFingerprints.value[record.questionId]
-      return fingerprint
-        ? [[record.questionId, { ...record, fingerprint } satisfies PracticeRecordAnswer]]
-        : []
-    }),
-  )
-  localRecord.value = updatePracticeRecord(localRecord.value, {
-    startedAt: practiceStartedAt.value,
-    currentQuestionId: currentQuestion.value?.id ?? '',
-    answers,
-    inputs: inputDrafts.value,
-    pendingSubmissionId: pendingSubmissionId.value,
-    submissionAnswers: toSubmissionAnswers(answerRecords.value, currentQuestions.value),
-  })
-  pendingSubmissionId.value = localRecord.value.pendingSubmission?.submissionId ?? ''
-  // 清理后的空白首题无需立刻生成一份新记录，第一次输入、切题或交卷再保存。
-  if (!hasLocalRecordProgress.value && !recordWasSaved) return
-  const saved = writePracticeRecord(localRecord.value)
-  if (!saved && !recordSaveWarningShown) {
-    recordSaveWarningShown = true
-    showErrorToast('本地保存失败，离开后可能无法恢复本次作答。')
-  }
-  if (saved) {
-    recordWasSaved = true
-    recordSaveWarningShown = false
-  }
-}
-
-const hasLocalRecordProgress = computed(
-  () =>
-    Object.keys(answerRecords.value).length > 0 ||
-    Object.keys(inputDrafts.value).length > 0 ||
-    currentIndex.value > 0 ||
-    Boolean(localRecord.value?.pendingSubmission || localRecord.value?.lastSubmission),
-)
 // 所有真实题集都有独立本地记录；收藏/错题练习不展示清除入口。
 const canClearRecord = computed(
   () => !collectionMode.value && recordReady.value && localRecord.value?.source === 'practice',
@@ -365,37 +306,18 @@ function requestClearRecord() {
   clearRecordConfirmOpen.value = true
 }
 
-function resetClearedRecord() {
-  const record = localRecord.value
-  if (!record || auth.session?.user.id !== record.userId) return
+/** composable 已重置记录状态；页面只取消切题、失效请求并重置界面。 */
+function handleRecordCleared() {
   clearAutoAdvance()
-  clearRecordSaveTimer()
   // 失效正在进行的提交/恢复请求，不再让旧响应登记到新一轮作答。
   loadSequence++
-  answerRecords.value = {}
-  inputDrafts.value = {}
   resetSwipe()
-  currentIndex.value = 0
-  practiceStartedAt.value = Date.now()
-  localRecord.value = createPracticeRecord(record, practiceStartedAt.value)
-  recordWasSaved = false
-  pendingSubmissionId.value = ''
   submitConfirmOpen.value = false
   clearRecordConfirmOpen.value = false
   submitting.value = false
   submitError.value = ''
   answerSheetOpen.value = false
   syncCurrentInput()
-}
-
-function handleRecordChanges() {
-  if (localRecord.value && !isPracticeRecordCurrent(localRecord.value)) resetClearedRecord()
-}
-
-function scheduleRecordSave() {
-  if (!recordReady.value) return
-  clearRecordSaveTimer()
-  recordSaveTimer = window.setTimeout(saveRecordNow, 250)
 }
 
 function saveCurrentInput() {
@@ -674,26 +596,17 @@ async function loadPaperData() {
   answerSheetOpen.value = false
   settingsPopupOpen.value = false
   saveRecordNow()
-  recordReady.value = false
-  clearRecordSaveTimer()
+  resetRecordState()
   const sequence = ++loadSequence
   submitting.value = false
   submitConfirmOpen.value = false
   submitError.value = ''
   paperLoadState.value = 'loading'
   resetSwipe()
-  currentIndex.value = 0
   currentQuestions.value = []
   answerSheetGroups.value = []
   selectedOptionValues.value = new Set()
   textAnswer.value = ''
-  answerRecords.value = {}
-  inputDrafts.value = {}
-  questionFingerprints.value = {}
-  pendingSubmissionId.value = ''
-  practiceStartedAt.value = Date.now()
-  localRecord.value = null
-  recordWasSaved = false
   resetFavorites()
   paperItemsById.value = new Map()
   paperTitle.value = ''
@@ -724,7 +637,6 @@ async function loadPaperData() {
 
     currentQuestions.value = questions
     answerSheetGroups.value = groups
-    questionFingerprints.value = fingerprints
     paperItemsById.value = itemsById
     resetFavorites(loaded.favoriteQuestionIds, [...itemsById.values()])
     if (questions.length === 0) {
@@ -739,25 +651,13 @@ async function loadPaperData() {
       subjectId: paper.subjectId,
       paperType: loaded.paperType,
     }
-    const savedRecord = readPracticeRecord(context)
-    recordWasSaved = Boolean(savedRecord)
-    localRecord.value = savedRecord ?? createPracticeRecord(context)
+    const hasSavedRecord = loadSavedRecord(context, fingerprints)
     if (sequence !== loadSequence) return
-
-    if (savedRecord) {
-      const restored = restorePracticeRecord(savedRecord, questions, fingerprints)
-      localRecord.value = restored.record
-      answerRecords.value = restored.answers
-      inputDrafts.value = restored.inputs
-      practiceStartedAt.value = savedRecord.startedAt
-      pendingSubmissionId.value = restored.record.pendingSubmission?.submissionId ?? ''
-      currentIndex.value = restored.currentIndex
-    }
 
     syncCurrentInput()
     paperLoadState.value = 'ready'
-    recordReady.value = true
-    if (savedRecord) {
+    markRecordReady()
+    if (hasSavedRecord) {
       saveRecordNow()
       if (localRecord.value) void reconcilePendingSubmission(sequence, localRecord.value)
     }
@@ -770,23 +670,12 @@ async function loadPaperData() {
 }
 
 onMounted(() => {
-  window.addEventListener('pagehide', saveRecordNow)
-  document.addEventListener('visibilitychange', saveRecordWhenHidden)
-  unsubscribeRecordChanges = subscribePracticeRecordChanges(handleRecordChanges)
   loadPaperData()
 })
 
 onBeforeUnmount(() => {
-  saveRecordNow()
-  unsubscribeRecordChanges()
   loadSequence++
-  window.removeEventListener('pagehide', saveRecordNow)
-  document.removeEventListener('visibilitychange', saveRecordWhenHidden)
 })
-
-function saveRecordWhenHidden() {
-  if (document.visibilityState === 'hidden') saveRecordNow()
-}
 
 watch(
   () => currentQuestion.value?.id,

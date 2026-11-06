@@ -35,8 +35,9 @@ export function useBrowseScroll(userId: () => string, page: () => BrowsePage) {
       account !== userId() ||
       source !== page() ||
       path !== route.path
-    )
+    ) {
       return
+    }
     window.scrollTo({ top, left: 0, behavior: 'instant' })
     restored = true
   }

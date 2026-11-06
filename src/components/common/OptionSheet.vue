@@ -51,12 +51,20 @@ function pick(value: string) {
   </button>
 
   <BasePopup v-model="open" :title="title">
-    <div class="max-h-[52dvh] overflow-y-auto overscroll-contain" role="radiogroup" :aria-label="title">
+    <div
+      class="max-h-[52dvh] overflow-y-auto overscroll-contain"
+      role="radiogroup"
+      :aria-label="title"
+    >
       <button
         v-for="option in options"
         :key="option.value"
         class="flex min-h-12 w-full items-center justify-between gap-3 rounded-xl px-3.5 text-left text-sm transition-colors active:bg-base-200/60"
-        :class="option.value === modelValue ? 'bg-primary/5 font-medium text-primary' : 'text-base-content'"
+        :class="
+          option.value === modelValue
+            ? 'bg-primary/5 font-medium text-primary'
+            : 'text-base-content'
+        "
         type="button"
         role="radio"
         :aria-checked="option.value === modelValue"

@@ -27,8 +27,7 @@ class MemoryStorage {
 
 function setToken(token) {
   if (token === null) window.localStorage.removeItem(STORAGE_KEYS.authSession)
-  else
-    window.localStorage.setItem(STORAGE_KEYS.authSession, JSON.stringify({ token, user: {} }))
+  else window.localStorage.setItem(STORAGE_KEYS.authSession, JSON.stringify({ token, user: {} }))
 }
 
 beforeEach(() => {

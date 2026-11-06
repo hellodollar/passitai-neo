@@ -2,11 +2,11 @@
 import { Mail, ShieldCheck } from '@lucide/vue'
 import { reactive, ref, useId, watch } from 'vue'
 
-import FormField from '@/components/common/FormField.vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'
+import FormField from '@/components/common/FormField.vue'
 import { useAuthStore } from '@/stores/auth'
-import { showSuccessToast } from '@/utils/toast'
 import { EMAIL_PATTERN } from '@/utils/auth/validation'
+import { showSuccessToast } from '@/utils/toast'
 
 const model = defineModel<boolean>({ default: false })
 

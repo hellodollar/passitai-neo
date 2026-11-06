@@ -1,4 +1,5 @@
 import type { DomainValue, ProvinceCode } from '@/generated/domain-values'
+
 import type { CollectionSource } from './collection'
 import type { QuestionContent, QuestionType } from './question'
 

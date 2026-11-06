@@ -1,9 +1,10 @@
-import { ref } from 'vue'
 import { defineStore } from 'pinia'
-import { fetchPracticePlan, updatePracticePlan } from '@/api/practice-plan'
+import { ref } from 'vue'
+
 import { SessionChangedError } from '@/api/http'
-import { createSessionGuard } from '@/utils/session-guard'
+import { fetchPracticePlan, updatePracticePlan } from '@/api/practice-plan'
 import type { PracticePlan, UpdatePracticePlanBody } from '@/types'
+import { createSessionGuard } from '@/utils/session-guard'
 
 /** 刷题计划：load 按需缓存，save 保存并更新共享状态，reset 清理当前会话。 */
 export const usePracticePlanStore = defineStore('practice-plan', () => {

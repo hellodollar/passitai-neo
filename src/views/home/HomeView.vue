@@ -1,37 +1,24 @@
 <script setup lang="ts">
-import {
-  AlertCircle,
-  BookOpenCheck,
-  ChevronRight,
-  ClipboardCheck,
-  ClipboardList,
-  EyeOff,
-  GraduationCap,
-  ListChecks,
-  Settings2,
-  Sparkles,
-  Target,
-} from '@lucide/vue'
-import { differenceInCalendarDays, format } from 'date-fns'
+import { AlertCircle, ChevronRight, EyeOff, Target } from '@lucide/vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import LogoPassitai from '@/components/common/LogoPassitai.vue'
-import SubjectManagerPopup from '@/components/home/SubjectManagerPopup.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
+import LogoPassitai from '@/components/common/LogoPassitai.vue'
 import PagePlaceholder from '@/components/common/PagePlaceholder.vue'
+import HomePlanCard from '@/components/home/HomePlanCard.vue'
+import HomePracticeEntries from '@/components/home/HomePracticeEntries.vue'
+import SubjectManagerPopup from '@/components/home/SubjectManagerPopup.vue'
 import PracticePlanPopup from '@/components/practice/PracticePlanPopup.vue'
 import PracticeSettingsPopup from '@/components/practice/PracticeSettingsPopup.vue'
-import { useLocalPracticeRecords } from '@/composables/useLocalPracticeRecords'
-import { BASELINE_CHILD_ICONS } from '@/constants/practice-icons'
-import { provinceOptions } from '@/generated/domain-values'
-import { useAuthStore } from '@/stores/auth'
-import { usePracticePlanStore } from '@/stores/practice-plan'
-import { usePracticeEntriesStore } from '@/stores/practice-entries'
 import { useBrowseScroll } from '@/composables/useBrowseScroll'
+import { useLocalPracticeRecords } from '@/composables/useLocalPracticeRecords'
+import { useAuthStore } from '@/stores/auth'
+import { usePracticeEntriesStore } from '@/stores/practice-entries'
+import { usePracticePlanStore } from '@/stores/practice-plan'
+import type { PracticeEntry, PracticeEntryChild, PracticePlan } from '@/types'
 import { parseHomeSelection, readBrowseState, writeBrowseState } from '@/utils/browse/state'
 import { applyLocalPracticeProgress } from '@/utils/practice/progress'
-import type { PracticeEntry, PracticeEntryChild, PracticePlan } from '@/types'
 
 const router = useRouter()
 const route = useRoute()
@@ -77,71 +64,9 @@ function updateChipsScrollHint() {
   chipsCanScrollRight.value = el.scrollLeft + el.clientWidth < el.scrollWidth - 1
 }
 
-type EntryTone = 'primary' | 'secondary' | 'accent' | 'ai'
-
-const entryStyles: Record<PracticeEntry['type'], { tone: EntryTone; icon: typeof ListChecks }> = {
-  baseline: { tone: 'primary', icon: ListChecks },
-  pastExam: { tone: 'secondary', icon: BookOpenCheck },
-  mock: { tone: 'accent', icon: ClipboardCheck },
-  ai: { tone: 'ai', icon: Sparkles },
-}
-
-const entryToneStyles: Record<
-  EntryTone,
-  { icon: string; active: string; progress: string; chevron: string }
-> = {
-  primary: {
-    icon: 'bg-primary/10 text-primary',
-    active: 'bg-primary/10 text-primary ring-primary/40',
-    progress: 'bg-primary',
-    chevron: 'group-active:text-primary',
-  },
-  secondary: {
-    icon: 'bg-secondary/10 text-secondary',
-    active: 'bg-secondary/10 text-secondary ring-secondary/40',
-    progress: 'bg-secondary',
-    chevron: 'group-active:text-secondary',
-  },
-  accent: {
-    icon: 'bg-accent/15 text-accent',
-    active: 'bg-accent/15 text-accent ring-accent/40',
-    progress: 'bg-accent',
-    chevron: 'group-active:text-accent',
-  },
-  ai: {
-    icon: 'bg-ai/10 text-ai',
-    active: 'bg-ai/10 text-ai ring-ai/40',
-    progress: 'bg-ai',
-    chevron: 'group-active:text-ai',
-  },
-}
-
-function entryStyle(type: PracticeEntry['type']) {
-  return entryStyles[type]
-}
-
-const planMajorName = computed(() => plan.value?.majorName ?? '')
-const planMajorCode = computed(() => plan.value?.majorCode ?? '')
-const planProvinceName = computed(
-  () => provinceOptions.find((province) => province.code === plan.value?.provinceCode)?.name ?? '',
-)
 const planSubjects = computed(() => plan.value?.subjects ?? [])
-const planEducationLevel = computed(() => plan.value?.educationLevel ?? '')
-const nextExamDate = computed(() => {
-  const dateValue = plan.value?.nextExamDate
-  if (!dateValue) return null
-  const parsedDate = new Date(dateValue)
-  return Number.isNaN(parsedDate.getTime()) ? null : parsedDate
-})
 
 const hasPracticePlan = computed(() => planSubjects.value.length > 0)
-const daysUntilExam = computed(() => {
-  if (!nextExamDate.value) return null
-  return Math.max(0, differenceInCalendarDays(nextExamDate.value, new Date()))
-})
-const nextExamDateText = computed(() =>
-  nextExamDate.value ? format(nextExamDate.value, 'yyyy年M月d日') : '',
-)
 
 const orderedSubjects = computed(() => {
   const orderMap = new Map(subjectOrder.value.map((code, index) => [code, index]))
@@ -170,41 +95,6 @@ const localEntries = computed(() =>
     activeSubjectId.value,
   ),
 )
-const entryRows = computed(() =>
-  localEntries.value.map((entry) => ({
-    ...entry,
-    ...entryStyle(entry.type),
-  })),
-)
-const activeEntry = computed(
-  () =>
-    entryRows.value.find((entry) => entry.type === expandedEntryKey.value) ?? entryRows.value[0],
-)
-const activeEntryChildren = computed(() => {
-  const entry = activeEntry.value
-  if (!entry) return []
-
-  const tone = entryToneStyles[entry.tone]
-  return (entry.children ?? []).map((child) => ({
-    ...child,
-    icon:
-      entry.type === 'baseline'
-        ? ((child.assessmentType ? BASELINE_CHILD_ICONS[child.assessmentType] : undefined) ??
-          Target)
-        : entry.icon,
-    iconClass: tone.icon,
-    progressClass: tone.progress,
-    chevronClass: tone.chevron,
-    progressPercent:
-      child.questionCount > 0
-        ? Math.min(100, Math.round((child.answeredCount / child.questionCount) * 100))
-        : 0,
-  }))
-})
-
-function entryToneClasses(tone: EntryTone) {
-  return entryToneStyles[tone].icon
-}
 
 function selectSubject(code: string) {
   activeSubjectCode.value = code
@@ -300,8 +190,9 @@ async function loadEntries() {
     entries.value = []
     activeSubjectId.value = ''
     entriesLoading.value = false
-    if (auth.isAuthenticated && practicePlanStore.isLoaded && !planLoading.value)
+    if (auth.isAuthenticated && practicePlanStore.isLoaded && !planLoading.value) {
       void browseScroll.restore()
+    }
     return
   }
   // 切换科目时保留上一科目的内容与进度,仅在尚无内容时显示占位加载
@@ -456,82 +347,12 @@ watch(
     </PagePlaceholder>
 
     <template v-else>
-      <section class="overflow-hidden rounded-2xl border border-base-200 bg-base-100">
-        <div class="px-4 py-4">
-          <div class="flex min-w-0 items-start justify-between gap-3">
-            <div class="min-w-0">
-              <div class="flex min-w-0 items-center gap-2">
-                <h2 class="truncate text-lg font-semibold">{{ planMajorName }}</h2>
-                <span
-                  v-if="planEducationLevel"
-                  class="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary"
-                >
-                  {{ planEducationLevel }}
-                </span>
-              </div>
-              <p
-                v-if="planProvinceName || planMajorCode"
-                class="mt-1.5 text-xs text-base-content/65"
-              >
-                <template v-if="planProvinceName">{{ planProvinceName }}</template>
-                <template v-if="planProvinceName && planMajorCode"> · </template>
-                <template v-if="planMajorCode">专业代码 {{ planMajorCode }}</template>
-              </p>
-            </div>
-            <span
-              class="flex size-9 shrink-0 items-center justify-center rounded-xl bg-secondary/10 text-secondary"
-            >
-              <GraduationCap :size="17" />
-            </span>
-          </div>
-
-          <div
-            v-if="nextExamDate"
-            class="mt-4 grid grid-cols-2 overflow-hidden rounded-xl bg-base-200/40"
-          >
-            <div class="border-r border-base-200 px-3 py-2.5">
-              <p class="flex items-center gap-1.5 text-[11px] text-base-content/65">
-                <span class="size-1.5 rounded-full bg-info"></span>
-                考试时间
-              </p>
-              <p class="mt-1.5 text-sm font-semibold tabular-nums">{{ nextExamDateText }}</p>
-            </div>
-            <div class="px-3 py-2.5 text-right">
-              <p class="flex items-center justify-end gap-1.5 text-[11px] text-base-content/65">
-                <span class="size-1.5 rounded-full bg-primary"></span>
-                距离考试
-              </p>
-              <p class="mt-0.5 text-sm text-base-content/60">
-                <strong class="text-lg font-semibold text-primary tabular-nums">
-                  {{ daysUntilExam }}
-                </strong>
-                天
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-2 divide-x divide-base-200 border-t border-base-200">
-          <button
-            class="flex h-10 items-center justify-center gap-1.5 text-xs font-medium text-base-content/60 transition active:bg-base-200/50"
-            type="button"
-            aria-label="刷题计划"
-            @click="planPopupOpen = true"
-          >
-            <ClipboardList :size="15" />
-            刷题计划
-          </button>
-          <button
-            class="flex h-10 items-center justify-center gap-1.5 text-xs font-medium text-base-content/60 transition active:bg-base-200/50"
-            type="button"
-            aria-label="刷题设置"
-            @click="settingsPopupOpen = true"
-          >
-            <Settings2 :size="15" />
-            刷题设置
-          </button>
-        </div>
-      </section>
+      <HomePlanCard
+        v-if="plan"
+        :plan="plan"
+        @edit-plan="planPopupOpen = true"
+        @edit-settings="settingsPopupOpen = true"
+      />
 
       <div class="flex items-end justify-between gap-3 px-0.5">
         <div class="flex items-baseline gap-2">
@@ -591,114 +412,15 @@ watch(
           />
         </div>
 
-        <div
-          v-else-if="entriesLoading && entryRows.length === 0"
-          class="flex min-h-44 items-center justify-center border-t border-base-200"
-        >
-          <span class="loading loading-spinner loading-xs text-base-content/40"></span>
-        </div>
-
-        <div
-          v-else-if="entryRows.length === 0"
-          class="flex min-h-44 items-center justify-center border-t border-base-200 px-4 text-center"
-        >
-          <p class="text-sm text-base-content/65">{{ activeSubject.name }} 暂无可用练习内容</p>
-        </div>
-
-        <template v-else>
-          <!-- 切换科目加载期间保留上一科目内容:降透明提示更新中,点击由 entriesLoading 拦截 -->
-          <div
-            class="relative border-t border-base-200 px-4 py-3 transition-opacity"
-            :class="entriesLoading ? 'opacity-50' : 'opacity-100'"
-          >
-            <span
-              v-if="entriesLoading"
-              class="absolute right-3 top-3 loading loading-spinner loading-xs text-base-content/40"
-              aria-hidden="true"
-            ></span>
-            <div class="grid grid-cols-4 gap-1.5">
-              <button
-                v-for="entry in entryRows"
-                :key="entry.type"
-                class="flex min-w-0 flex-col items-center rounded-xl px-1 py-2 text-center transition-colors"
-                :class="
-                  activeEntry?.type === entry.type
-                    ? `ring-1 ${entryToneStyles[entry.tone].active}`
-                    : 'bg-base-200/45 text-base-content/60 active:bg-base-200/75'
-                "
-                type="button"
-                :aria-pressed="activeEntry?.type === entry.type"
-                @click="selectEntry(entry.type)"
-              >
-                <span
-                  class="flex size-7 items-center justify-center rounded-full"
-                  :class="entryToneClasses(entry.tone)"
-                >
-                  <component :is="entry.icon" :size="14" />
-                </span>
-                <span class="mt-1.5 block max-w-full truncate text-[11px] font-semibold">
-                  {{ entry.name }}
-                </span>
-              </button>
-            </div>
-          </div>
-
-          <!-- 题集列表保持统一最小高度:空态/单条/多条之间切换时卡片不塌陷、不跳动 -->
-          <div
-            v-if="activeEntryChildren.length > 0"
-            class="min-h-44 min-w-0 divide-y divide-base-200 border-t border-base-200"
-          >
-            <button
-              v-for="child in activeEntryChildren"
-              :key="child.paperId"
-              class="group flex w-full min-w-0 items-center gap-3 px-4 py-3 text-left transition active:bg-base-200/50"
-              type="button"
-              :aria-label="`${child.name}，进入详情`"
-              @click="startEntryPaper(child)"
-            >
-              <span
-                class="flex size-9 shrink-0 items-center justify-center rounded-xl"
-                :class="child.iconClass"
-              >
-                <component :is="child.icon" :size="17" />
-              </span>
-              <span class="min-w-0 flex-1">
-                <span class="flex min-w-0 items-center justify-between gap-2">
-                  <span class="truncate text-sm font-medium">{{ child.name }}</span>
-                  <span class="shrink-0 text-xs text-base-content/65 tabular-nums">
-                    {{ child.answeredCount }}/{{ child.questionCount }}
-                  </span>
-                </span>
-                <span class="mt-2 flex items-center">
-                  <span
-                    class="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-base-200"
-                    aria-hidden="true"
-                  >
-                    <span
-                      class="block h-full rounded-full transition-all"
-                      :class="child.progressClass"
-                      :style="{ width: `${child.progressPercent}%` }"
-                    ></span>
-                  </span>
-                </span>
-              </span>
-              <ChevronRight
-                :size="17"
-                class="shrink-0 text-base-content/30 transition group-active:translate-x-0.5"
-                :class="child.chevronClass"
-              />
-            </button>
-          </div>
-
-          <div
-            v-else-if="activeEntry"
-            class="flex min-h-44 items-center justify-center border-t border-base-200 px-5 text-center"
-          >
-            <p class="text-xs leading-relaxed text-base-content/45">
-              {{ activeEntry.description || '当前入口暂无可用内容' }}
-            </p>
-          </div>
-        </template>
+        <HomePracticeEntries
+          v-else
+          :entries="localEntries"
+          :selected-entry="expandedEntryKey"
+          :loading="entriesLoading"
+          :subject-name="activeSubject.name"
+          @select-entry="selectEntry"
+          @start-paper="startEntryPaper"
+        />
       </section>
     </template>
 

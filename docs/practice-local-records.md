@@ -8,19 +8,19 @@
 
 普通练习使用真实题集 ID；集合练习使用 `collection:<groupBy>:<groupId>` 作为本地资源标识，明确区分按科目和按题集聚合。收藏与错题通过来源隔离，即使资源相同也各自保存。
 
-| 字段 | 用途 |
-| --- | --- |
-| `version` | 当前结构版本 3 |
-| `clearToken` | 清理代际，阻止已清理页面或迟到响应回写 |
-| `userId`、`paperId`、`source` | 账号、资源及来源隔离 |
-| `subjectId`、`paperType` | 科目与分类；集合练习分类为 `null` |
-| `answers` | 已确认答案，每题带题目指纹 |
-| `inputs` | 尚未确认的输入，不计为已答 |
-| `currentQuestionId` | 当前题目位置 |
-| `startedAt`、`savedAt` | 开始及最近保存时间 |
-| `answerRevision` | 已确认答案版本 |
-| `pendingSubmission` | 待提交 ID、答案版本及固定请求快照 |
-| `lastSubmission` | 最近成功交卷 ID、答案版本及时间 |
+| 字段                          | 用途                                   |
+| ----------------------------- | -------------------------------------- |
+| `version`                     | 当前结构版本 3                         |
+| `clearToken`                  | 清理代际，阻止已清理页面或迟到响应回写 |
+| `userId`、`paperId`、`source` | 账号、资源及来源隔离                   |
+| `subjectId`、`paperType`      | 科目与分类；集合练习分类为 `null`      |
+| `answers`                     | 已确认答案，每题带题目指纹             |
+| `inputs`                      | 尚未确认的输入，不计为已答             |
+| `currentQuestionId`           | 当前题目位置                           |
+| `startedAt`、`savedAt`        | 开始及最近保存时间                     |
+| `answerRevision`              | 已确认答案版本                         |
+| `pendingSubmission`           | 待提交 ID、答案版本及固定请求快照      |
+| `lastSubmission`              | 最近成功交卷 ID、答案版本及时间        |
 
 只读取当前结构。不迁移 v1 草稿、v2 记录或旧来源名称，不保留空请求快照兼容分支。升级后旧记录不参与恢复、进度和数量统计；应用不在启动时主动删除旧版本存储。
 

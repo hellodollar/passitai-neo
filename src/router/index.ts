@@ -8,8 +8,9 @@ export function createAppRouter(history: RouterHistory) {
   const router = createRouter({
     history,
     scrollBehavior(to, from, savedPosition) {
-      if (['home', 'favorites', 'mistakes'].includes(String(to.name)) || to.path === from.path)
+      if (['home', 'favorites', 'mistakes'].includes(String(to.name)) || to.path === from.path) {
         return false
+      }
       return savedPosition ?? { left: 0, top: 0 }
     },
     routes: [

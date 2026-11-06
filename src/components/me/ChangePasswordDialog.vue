@@ -3,11 +3,11 @@ import { KeyRound, Lock, ShieldCheck } from '@lucide/vue'
 import { reactive, ref, useId, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
-import FormField from '@/components/common/FormField.vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'
-import { showSuccessToast } from '@/utils/toast'
-import { PASSWORD_PATTERN } from '@/utils/auth/validation'
+import FormField from '@/components/common/FormField.vue'
 import { useAuthStore } from '@/stores/auth'
+import { PASSWORD_PATTERN } from '@/utils/auth/validation'
+import { showSuccessToast } from '@/utils/toast'
 
 const model = defineModel<boolean>({ default: false })
 const auth = useAuthStore()
@@ -34,18 +34,24 @@ function validateCurrentPassword() {
 }
 
 function validateNewPassword() {
-  if (!form.newPassword) errors.newPassword = '请输入新密码'
-  else if (!PASSWORD_PATTERN.test(form.newPassword))
+  if (!form.newPassword) {
+    errors.newPassword = '请输入新密码'
+  } else if (!PASSWORD_PATTERN.test(form.newPassword)) {
     errors.newPassword = '密码需为 6-20 位，且包含字母和数字'
-  else errors.newPassword = ''
+  } else {
+    errors.newPassword = ''
+  }
   return !errors.newPassword
 }
 
 function validateConfirmPassword() {
-  if (!form.confirmPassword) errors.confirmPassword = '请再次输入新密码'
-  else if (form.confirmPassword !== form.newPassword)
+  if (!form.confirmPassword) {
+    errors.confirmPassword = '请再次输入新密码'
+  } else if (form.confirmPassword !== form.newPassword) {
     errors.confirmPassword = '两次输入的密码不一致'
-  else errors.confirmPassword = ''
+  } else {
+    errors.confirmPassword = ''
+  }
   return !errors.confirmPassword
 }
 

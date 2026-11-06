@@ -43,7 +43,7 @@ const PROVINCE_FIELD_OPTIONS = openedProvinceOptions.map((province) => ({
 }))
 
 /** 学历层次固定两档,与 api 的 educationLevel 枚举一致 */
-const EDUCATION_LEVELS = ['本科', '专科'] as const satisfies readonly DomainValue<'educationLevel'>[]
+const EDUCATION_LEVELS: readonly DomainValue<'educationLevel'>[] = ['本科', '专科']
 
 const majorFieldOptions = computed(() =>
   majorOptions.value.map((major) => ({ value: major.id, label: major.name })),
@@ -88,8 +88,9 @@ async function loadMajorOptions(sequence: number, token: string | undefined) {
       version !== majorSequence ||
       token !== auth.session?.token ||
       !model.value
-    )
+    ) {
       return
+    }
     majorOptions.value = options
     loadedMajorScope = scope
   } catch {

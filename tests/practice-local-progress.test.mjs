@@ -211,8 +211,9 @@ test('列表只包含当前版本，旧草稿与旧记录不会进入进度统�
 })
 
 test('清除全部含收藏和错题本地作答，不碰其他用户、登录和刷题设置', () => {
-  for (const source of ['practice', 'favorites', 'mistakes'])
+  for (const source of ['practice', 'favorites', 'mistakes']) {
     writePracticeRecord(makeRecord({ ...context, source }))
+  }
   const other = { ...context, userId: 'usrother' }
   writePracticeRecord(makeRecord(other))
   storage.setItem('passitai:auth-session', 'auth')

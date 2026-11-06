@@ -1,8 +1,9 @@
-import { ref } from 'vue'
 import { defineStore } from 'pinia'
+import { ref } from 'vue'
+
 import { fetchPracticeEntries } from '@/api/practice'
-import { createSessionGuard } from '@/utils/session-guard'
 import type { PracticeEntry } from '@/types'
+import { createSessionGuard } from '@/utils/session-guard'
 
 /** 题集入口按当前会话、省份和科目缓存；不承担用户资料、刷题计划或设置。 */
 export const usePracticeEntriesStore = defineStore('practice-entries', () => {

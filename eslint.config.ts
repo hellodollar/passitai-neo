@@ -1,7 +1,7 @@
-import { globalIgnores } from 'eslint/config'
 import { defineConfigWithVueTs, vueTsConfigs } from '@vue/eslint-config-typescript'
-import pluginVue from 'eslint-plugin-vue'
 import pluginOxlint from 'eslint-plugin-oxlint'
+import pluginVue from 'eslint-plugin-vue'
+import { globalIgnores } from 'eslint/config'
 
 export default defineConfigWithVueTs(
   {
@@ -15,4 +15,9 @@ export default defineConfigWithVueTs(
   vueTsConfigs.recommended,
 
   ...pluginOxlint.buildFromOxlintConfigFile('.oxlintrc.json'),
+  {
+    rules: {
+      curly: ['error', 'multi-line', 'consistent'],
+    },
+  },
 )

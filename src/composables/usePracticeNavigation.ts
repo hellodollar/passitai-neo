@@ -52,14 +52,16 @@ export function usePracticeNavigation(options: {
       event.ctrlKey ||
       event.metaKey ||
       options.suspended()
-    )
+    ) {
       return
+    }
     const target = event.target
     if (
       target instanceof HTMLElement &&
       (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
-    )
+    ) {
       return
+    }
 
     if (event.key === 'ArrowRight') {
       event.preventDefault()

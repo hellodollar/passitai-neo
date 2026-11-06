@@ -1,12 +1,11 @@
 import './assets/styles/app.css'
-
-import { createApp } from 'vue'
 import { createPinia } from 'pinia'
+import { createApp } from 'vue'
 import { createWebHistory } from 'vue-router'
 
 import App from './App.vue'
-import { createAppRouter } from './router'
 import { initializeAppearance } from './composables/useAppearance'
+import { createAppRouter } from './router'
 import { useAuthStore } from './stores/auth'
 
 const app = createApp(App)

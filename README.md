@@ -15,13 +15,13 @@ pnpm dev
 
 ## Cloudflare Workers
 
-| 配置 | 值 |
-| --- | --- |
-| Worker | `passitai-neo`（当前部署） |
-| 自定义域名 | 按部署配置 |
-| 构建命令 | `pnpm run build` |
-| 输出目录 | `dist` |
-| 构建变量 | `VITE_API_BASE_URL`，例如 `https://api.passitai.com/api` |
+| 配置       | 值                                                       |
+| ---------- | -------------------------------------------------------- |
+| Worker     | `passitai-neo`（当前部署）                               |
+| 自定义域名 | 按部署配置                                               |
+| 构建命令   | `pnpm run build`                                         |
+| 输出目录   | `dist`                                                   |
+| 构建变量   | `VITE_API_BASE_URL`，例如 `https://api.passitai.com/api` |
 
 无需提交 `.env.production`。在每个 Worker 的 **Settings > Build > Build variables and secrets** 中设置 `VITE_API_BASE_URL` 为该部署使用的完整 HTTPS API 地址，然后重新构建。截图中的 **Settings > Variables and Secrets** 是运行时变量，纯静态 Worker 不支持，但构建变量可以使用。Vite 会把此值编入静态资源；同一份代码部署到其他域名时，在对应构建中设置其 API 地址即可。生产构建如果缺少此变量或填成 `/api` 等相对路径，会直接失败，不会再静默请求前端域名。`VITE_API_PROXY_TARGET` 只用于本地开发。
 
@@ -33,9 +33,29 @@ Workers Builds 的构建命令为 `pnpm run build`，部署命令为 `npx wrangl
 
 ## 检查
 
+提交前运行统一检查：
+
 ```sh
-pnpm run type-check
-pnpm run test
-pnpm run lint
+pnpm run check
+```
+
+`check` 依次运行类型检查、测试、lint 检查和格式检查，不重复生产构建。
+
+需要单独执行或自动修复时：
+
+```sh
+pnpm type-check
+pnpm test
+pnpm lint           # 只检查，不修改
+pnpm lint:fix       # 自动修复 lint 问题
+pnpm format         # 写入格式
+pnpm format --check # 只检查格式
+```
+
+格式检查覆盖源代码、测试、配置和文档，排除 `src/generated/`、`pnpm-lock.yaml`、`dist/` 以及作为后端逐字节镜像的 `docs/client-api.md`。格式排除规则统一维护在 `.oxfmtrc.json`，构建与检查直接串行执行，不使用额外的脚本编排工具。
+
+使用明确的占位 HTTPS API 地址做本地生产构建（构建会校验 `VITE_API_BASE_URL`）：
+
+```sh
 VITE_API_BASE_URL=https://your-api.example/api pnpm run build
 ```

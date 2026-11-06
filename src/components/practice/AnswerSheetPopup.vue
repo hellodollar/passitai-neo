@@ -3,7 +3,6 @@ import { Trash2 } from '@lucide/vue'
 import { computed, nextTick, ref } from 'vue'
 
 import BasePopup from '@/components/common/BasePopup.vue'
-
 import type { PracticeAnswerRecord, QuestionListItem } from '@/types'
 import type { AnswerSheetGroup } from '@/utils/practice/paper'
 import {

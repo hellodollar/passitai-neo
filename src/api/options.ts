@@ -4,7 +4,11 @@ import type { OptionItem } from '@/types'
 
 /** 文档:GET /api/options/majors（支持按省份与学历层次过滤） */
 export function fetchMajorOptions(
-  query: { code?: string; provinceCode?: string; educationLevel?: DomainValue<'educationLevel'> } = {},
+  query: {
+    code?: string
+    provinceCode?: string
+    educationLevel?: DomainValue<'educationLevel'>
+  } = {},
 ) {
   return request<OptionItem[]>('/options/majors', {
     query,

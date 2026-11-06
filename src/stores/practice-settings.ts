@@ -1,10 +1,10 @@
-import { ref } from 'vue'
 import { defineStore } from 'pinia'
-import { SessionChangedError } from '@/api/http'
-import { createSessionGuard } from '@/utils/session-guard'
+import { ref } from 'vue'
 
+import { SessionChangedError } from '@/api/http'
 import { fetchPracticeSettings, updatePracticeSettings } from '@/api/practice'
 import type { PracticeSettings } from '@/types'
+import { createSessionGuard } from '@/utils/session-guard'
 
 /**
  * 刷题设置 Store：load 按需缓存，save 串行提交局部修改，reset 清理当前会话。

@@ -1,7 +1,8 @@
 import { questionTypeLabels } from '@/generated/domain-values'
 import type { PracticePaperItem, PracticePaperLite, QuestionListItem } from '@/types'
-import { questionFingerprint } from './record'
+
 import { toQuestionListItem } from './question'
+import { questionFingerprint } from './record'
 
 export type AnswerSheetGroup = {
   key: string

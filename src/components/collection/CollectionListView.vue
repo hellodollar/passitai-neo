@@ -11,9 +11,8 @@ import BaseDialog from '@/components/common/BaseDialog.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import PagePlaceholder from '@/components/common/PagePlaceholder.vue'
 import SortMenu from '@/components/common/SortMenu.vue'
-import { useAuthStore } from '@/stores/auth'
 import { useBrowseScroll } from '@/composables/useBrowseScroll'
-import { parseCollectionFilters, readBrowseState, writeBrowseState } from '@/utils/browse/state'
+import { useAuthStore } from '@/stores/auth'
 import type {
   CollectionAggregate,
   CollectionAggregateItem,
@@ -21,6 +20,7 @@ import type {
   CollectionOrder,
   CollectionSource,
 } from '@/types'
+import { parseCollectionFilters, readBrowseState, writeBrowseState } from '@/utils/browse/state'
 import { showErrorToast, showSuccessToast } from '@/utils/toast'
 
 type SortField = 'count' | 'recent'
@@ -202,8 +202,9 @@ function selectSortOption(value: string) {
     !option ||
     loading.value ||
     (sortField.value === option.field && sortOrder.value === option.order)
-  )
+  ) {
     return
+  }
   sortField.value = option.field
   sortOrder.value = option.order
   void loadCollection()
@@ -272,8 +273,9 @@ watch(
       filters.groupBy === groupMode.value &&
       filters.sort === sortField.value &&
       filters.order === sortOrder.value
-    )
+    ) {
       return
+    }
     if (token !== loadedToken) {
       clearSequence++
       clearing.value = false

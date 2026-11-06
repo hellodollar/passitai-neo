@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict'
 import { afterEach, beforeEach, test } from 'node:test'
+
 import { createPinia, setActivePinia } from 'pinia'
+
 import { loadSource } from './helpers/load-source.mjs'
 
 const { useAuthStore } = await loadSource('stores/auth.ts')
@@ -98,14 +100,21 @@ test('修改邮箱由账户 Store 更新唯一用户快照，不追加 GET profi
   const requests = []
   globalThis.fetch = async (url, options) => {
     requests.push({ url: String(url), method: options.method })
-    return new Response(JSON.stringify({ ok: true, data: { userId: session.user.id,
-      email: 'updated@example.invalid' } }), { headers: { 'content-type': 'application/json' } })
+    return new Response(
+      JSON.stringify({
+        ok: true,
+        data: { userId: session.user.id, email: 'updated@example.invalid' },
+      }),
+      { headers: { 'content-type': 'application/json' } },
+    )
   }
   const auth = useAuthStore()
   await auth.changeEmail({ password: 'fixture', newEmail: 'updated@example.invalid' })
   assert.equal(auth.user.email, 'updated@example.invalid')
-  assert.equal(JSON.parse(window.localStorage.getItem(STORAGE_KEYS.authSession)).user.email,
-    'updated@example.invalid')
+  assert.equal(
+    JSON.parse(window.localStorage.getItem(STORAGE_KEYS.authSession)).user.email,
+    'updated@example.invalid',
+  )
   assert.equal(requests.length, 1)
   assert.equal(requests[0].method, 'PUT')
   assert.ok(requests[0].url.endsWith('/profile/email'))
@@ -115,8 +124,10 @@ test('修改密码由账户 Store 清理会话，不再请求资料或登出', a
   const requests = []
   globalThis.fetch = async (url, options) => {
     requests.push({ url: String(url), method: options.method })
-    return new Response(JSON.stringify({ ok: true, data: { userId: session.user.id, changed: true } }),
-      { headers: { 'content-type': 'application/json' } })
+    return new Response(
+      JSON.stringify({ ok: true, data: { userId: session.user.id, changed: true } }),
+      { headers: { 'content-type': 'application/json' } },
+    )
   }
   const auth = useAuthStore()
   await auth.changePassword({ currentPassword: 'fixture', newPassword: 'Newfixture123' })

@@ -8,8 +8,9 @@
 - `src/main.ts`：启动 Vue、Pinia 和路由。
 - `src/router/index.ts`：一份路由表，直接处理登录判断、会话失效和滚动。
 - `src/views/`：按现有业务分为 `home/`、`auth/`、`practice/`、`favorites/`、`mistakes/`、`me/`；未找到页直接放在此目录。
-- `src/components/`：基础组件放 `common/`，业务组件放 `home/`、`auth/`、`practice/`、`me/`；底栏为 `BottomTabBar.vue`。
+- `src/components/`：基础组件放 `common/`，业务组件放 `collection/`、`home/`、`auth/`、`practice/`、`me/`；底栏为 `BottomTabBar.vue`。
 - `src/composables/`：响应式逻辑，例如切题、手势、收藏和错题同步。
+- 首页计划摘要与题集展示分别使用 `HomePlanCard`、`HomePracticeEntries`；请求、URL 筛选与浏览记忆仍由 `HomeView` 组织。练习本地记录由 `usePracticeRecord` 管理答案、草稿、位置、恢复、防抖保存和生命周期；`PracticeView` 保留题目输入、请求、交卷及导航。
 - `src/api/`、`src/stores/`：接口和共享状态。
 - `src/utils/`：按 `practice/`、`auth/`、`browse/` 分组；组内文件使用 `record.ts`、`session.ts` 等直接名称，通用的 `storage.ts` 和 `toast.ts` 保留在根目录。
 - `src/types/`、`src/constants/`、`src/assets/`：业务类型、手写常量和静态资源。
@@ -17,23 +18,27 @@
 
 组件使用 `PascalCase.vue`，组合式函数使用 `useXxx.ts`，普通模块使用 kebab-case。基础底部弹层用 `BasePopup`，居中确认或简短表单用 `BaseDialog`；业务组件按实际形态使用 `Popup` 或 `Dialog` 后缀。已有函数能表达清楚的功能直接使用函数；只有明确的重复或独立职责才提取组件和逻辑。
 
+代码统一使用 `pnpm format` 格式化，沿用两空格缩进、单引号和无分号；导入按来源自动排序，保留副作用导入顺序。单行守卫语句可以简写，多行判断与语句使用花括号，同一组条件分支保持一致，由 ESLint 检查。
+
+JSONC 配置文件不使用尾随逗号，与 dash 的 `wrangler.jsonc` 风格一致，由 `.oxfmtrc.json` 单独设置，避免格式化时重新添加。`package.json` 保留手工字段顺序，不自动重排。
+
 ## 页面与路由
 
-| 页面 | 地址 | 文件 |
-| --- | --- | --- |
-| 首页 | `/` | `home/HomeView.vue` |
-| 刷题 | `/practice/:paperId` | `practice/PracticeView.vue` |
-| 刷题结果 | `/practice/:paperId/result/:submissionId` | `practice/PracticeResultView.vue` |
-| 我的收藏 | `/favorites` | `favorites/FavoritesView.vue` |
-| 我的错题 | `/mistakes` | `mistakes/MistakesView.vue` |
-| 收藏、错题练习 | `/favorites/practice/:groupBy/:groupId`、`/mistakes/practice/:groupBy/:groupId` | `practice/PracticeView.vue` |
-| 我的 | `/me` | `me/MeView.vue` |
-| 登录、注册 | `/login`、`/register` | `auth/LoginView.vue`、`auth/RegisterView.vue` |
-| 其他地址 | 未匹配地址 | `NotFoundView.vue` |
+| 页面           | 地址                                                                            | 文件                                          |
+| -------------- | ------------------------------------------------------------------------------- | --------------------------------------------- |
+| 首页           | `/`                                                                             | `home/HomeView.vue`                           |
+| 刷题           | `/practice/:paperId`                                                            | `practice/PracticeView.vue`                   |
+| 刷题结果       | `/practice/:paperId/result/:submissionId`                                       | `practice/PracticeResultView.vue`             |
+| 我的收藏       | `/favorites`                                                                    | `favorites/FavoritesView.vue`                 |
+| 我的错题       | `/mistakes`                                                                     | `mistakes/MistakesView.vue`                   |
+| 收藏、错题练习 | `/favorites/practice/:groupBy/:groupId`、`/mistakes/practice/:groupBy/:groupId` | `practice/PracticeView.vue`                   |
+| 我的           | `/me`                                                                           | `me/MeView.vue`                               |
+| 登录、注册     | `/login`、`/register`                                                           | `auth/LoginView.vue`、`auth/RegisterView.vue` |
+| 其他地址       | 未匹配地址                                                                      | `NotFoundView.vue`                            |
 
 静态链接直接写路径，带参数的跳转使用路由自身的 name；不再另设路由名常量或路径映射表。登录、注册和未找到页公开，其余页面需要登录。底栏只在首页、收藏、错题和我的显示，由 `App.vue` 直接判断，不使用自定义路由 meta 或多套布局。
 
-收藏和错题是独立业务页面，各自维护列表、筛选、清空操作和练习入口。页面不接收来源参数，也不因布局相似而合成通用页面；排序菜单共用 `SortMenu`，业务请求和状态仍分别留在页面。
+收藏和错题共用 `components/collection/CollectionListView.vue`，加载、筛选、分组排序、清空确认和浏览记忆只实现一次；两个来源的文案、图标、接口与练习路由收敛在 `sourceConfig`，`favorites/FavoritesView.vue` 和 `mistakes/MistakesView.vue` 仅传入来源。排序菜单共用 `SortMenu`。
 
 修改密码和更换邮箱分别使用 `me/ChangePasswordDialog.vue`、`me/ChangeEmailDialog.vue`，作为居中表单对话框。账户面板关闭后再打开，提供取消与保存。密码修改成功后按现有规则重新登录；邮箱修改成功后更新用户快照并保持登录。
 
@@ -52,6 +57,6 @@
 
 ## 检查
 
-改完运行类型检查、测试、lint 和生产构建。涉及导航时检查直开与刷新、登录回跳、浏览器后退、练习退出及报告返回；涉及状态时检查换账号、旧请求和本地作答恢复。
+改完运行 `pnpm run check`（类型检查、测试、lint 检查和格式检查），再用明确的 HTTPS `VITE_API_BASE_URL` 做生产构建。`pnpm run lint` 与 `pnpm run format --check` 只检查不修改；`pnpm run lint:fix` 和 `pnpm run format` 分别自动修复、写入格式。涉及导航时检查直开与刷新、登录回跳、浏览器后退、练习退出及报告返回；涉及状态时检查换账号、旧请求和本地作答恢复。
 
 目录/科目加载失败的提示方式，以及 API 404 是否显示“练习已失效”，仍按独立的产品改动处理。

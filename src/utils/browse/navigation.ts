@@ -14,8 +14,9 @@ function internalUrl(value: unknown): URL | null {
       const code = character.charCodeAt(0)
       return code <= 32 || code === 127
     })
-  )
+  ) {
     return null
+  }
   try {
     const url = new URL(value, INTERNAL_ORIGIN)
     return url.origin === INTERNAL_ORIGIN ? url : null
@@ -34,8 +35,9 @@ export function resolveLoginRedirect(router: Router, value: unknown): string {
     target.name === 'not-found' ||
     target.name === 'login' ||
     target.name === 'register'
-  )
+  ) {
     return '/'
+  }
   return target.fullPath
 }
 

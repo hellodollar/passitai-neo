@@ -299,7 +299,8 @@ test('无 storage 事件时，排队请求也检查当前 Token', async () => {
 
 test('旧读取失败不能把新保存成功的设置标成加载失败', async () => {
   const old = defer()
-  handler = ({ method, body }) => method === 'GET' ? old.promise : envelope({ ...SETTINGS, ...body })
+  handler = ({ method, body }) =>
+    method === 'GET' ? old.promise : envelope({ ...SETTINGS, ...body })
   const store = practice()
   const reading = store.load()
   await flush()

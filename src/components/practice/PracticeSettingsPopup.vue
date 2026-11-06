@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+
 import BasePopup from '@/components/common/BasePopup.vue'
 import SettingsToggleItem from '@/components/common/SettingsToggleItem.vue'
 import { useAuthStore } from '@/stores/auth'

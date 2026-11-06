@@ -3,16 +3,16 @@ import { Lock, LockKeyhole, Mail, TicketPercent } from '@lucide/vue'
 import { reactive, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
-import FormField from '@/components/common/FormField.vue'
 import AuthFrame from '@/components/auth/AuthFrame.vue'
+import FormField from '@/components/common/FormField.vue'
 import { useAuthStore } from '@/stores/auth'
-import { resolveLoginRedirect } from '@/utils/browse/navigation'
 import {
   inviteCodeError,
   normalizeInviteCode,
   registrationPayload,
 } from '@/utils/auth/registration'
 import { EMAIL_PATTERN, PASSWORD_PATTERN } from '@/utils/auth/validation'
+import { resolveLoginRedirect } from '@/utils/browse/navigation'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -41,10 +41,13 @@ function validateEmail() {
 }
 
 function validatePassword() {
-  if (!form.password) errors.password = '请输入密码'
-  else if (!PASSWORD_PATTERN.test(form.password))
+  if (!form.password) {
+    errors.password = '请输入密码'
+  } else if (!PASSWORD_PATTERN.test(form.password)) {
     errors.password = '密码需为 6-20 位，且包含字母和数字'
-  else errors.password = ''
+  } else {
+    errors.password = ''
+  }
   return !errors.password
 }
 

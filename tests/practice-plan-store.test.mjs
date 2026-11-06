@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict'
 import { afterEach, beforeEach, test } from 'node:test'
+
 import { createPinia, setActivePinia } from 'pinia'
+
 import { loadSource } from './helpers/load-source.mjs'
 
 const { usePracticePlanStore } = await loadSource('stores/practice-plan.ts')
@@ -64,8 +66,13 @@ test('plan supplies IDs directly without options requests', async () => {
 
 test('reset 作废旧读取，不允许旧账号计划写回缓存', async () => {
   let release
-  const held = new Promise(resolve => { release = resolve })
-  globalThis.fetch = async () => { await held; return jsonResponse(planFixture) }
+  const held = new Promise((resolve) => {
+    release = resolve
+  })
+  globalThis.fetch = async () => {
+    await held
+    return jsonResponse(planFixture)
+  }
   const store = usePracticePlanStore()
   const pending = store.load()
   store.reset()
@@ -77,7 +84,9 @@ test('reset 作废旧读取，不允许旧账号计划写回缓存', async () =>
 
 test('save 返回的新计划作废在途读取，迟到响应不能覆盖保存结果', async () => {
   let release
-  const held = new Promise(resolve => { release = resolve })
+  const held = new Promise((resolve) => {
+    release = resolve
+  })
   const updated = { ...planFixture, majorName: '新专业' }
   globalThis.fetch = async (_url, options) => {
     if (options.method === 'PUT') return jsonResponse(updated)
@@ -95,8 +104,8 @@ test('save 返回的新计划作废在途读取，迟到响应不能覆盖保存
 })
 
 test('load 失败保留错误并允许重试，成功后缓存空计划', async () => {
-  globalThis.fetch = async () => new Response(JSON.stringify({ ok: false, message: '失败', data: null }),
-    { status: 500 })
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ ok: false, message: '失败', data: null }), { status: 500 })
   const store = usePracticePlanStore()
   assert.equal(await store.load(), null)
   assert.equal(store.isLoaded, false)
@@ -110,8 +119,8 @@ test('load 失败保留错误并允许重试，成功后缓存空计划', async 
 test('save 失败不覆盖已经加载的计划', async () => {
   const store = usePracticePlanStore()
   await store.load()
-  globalThis.fetch = async () => new Response(JSON.stringify({ ok: false, message: '冲突', data: null }),
-    { status: 409 })
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ ok: false, message: '冲突', data: null }), { status: 409 })
   await assert.rejects(store.save({ provinceCode: '440000', majorId: 'maj-1', subjectIds: [] }))
   assert.deepEqual(store.plan, planFixture)
 })

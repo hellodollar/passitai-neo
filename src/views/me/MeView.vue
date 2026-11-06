@@ -14,13 +14,13 @@ import {
 import { computed, nextTick, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
+import BasePopup from '@/components/common/BasePopup.vue'
 import AppearancePopup from '@/components/me/AppearancePopup.vue'
 import ChangeEmailDialog from '@/components/me/ChangeEmailDialog.vue'
 import ChangePasswordDialog from '@/components/me/ChangePasswordDialog.vue'
-import BasePopup from '@/components/common/BasePopup.vue'
 import PracticePlanPopup from '@/components/practice/PracticePlanPopup.vue'
-import PracticeSettingsPopup from '@/components/practice/PracticeSettingsPopup.vue'
 import PracticeRecordsPopup from '@/components/practice/PracticeRecordsPopup.vue'
+import PracticeSettingsPopup from '@/components/practice/PracticeSettingsPopup.vue'
 import { useAppearance } from '@/composables/useAppearance'
 import { useAuthStore } from '@/stores/auth'
 import { usePracticePlanStore } from '@/stores/practice-plan'
@@ -99,16 +99,21 @@ const menuGroups = computed(() => [
 ])
 
 function openMenuItem(action: SettingsAction) {
-  if (action === 'records') recordsPopupOpen.value = true
-  else if (action === 'account') accountPopupOpen.value = true
-  else if (action === 'appearance') appearancePopupOpen.value = true
-  else if (action === 'plan') {
+  if (action === 'records') {
+    recordsPopupOpen.value = true
+  } else if (action === 'account') {
+    accountPopupOpen.value = true
+  } else if (action === 'appearance') {
+    appearancePopupOpen.value = true
+  } else if (action === 'plan') {
     if (practicePlanStore.error) void practicePlanStore.load()
     planPopupOpen.value = true
   } else if (action === 'practice') {
     if (practiceSettingsStore.error) void practiceSettingsStore.load()
     practiceSettingsPopupOpen.value = true
-  } else notificationPopupOpen.value = true
+  } else {
+    notificationPopupOpen.value = true
+  }
 }
 
 async function openAccountAction(action: 'password' | 'email') {

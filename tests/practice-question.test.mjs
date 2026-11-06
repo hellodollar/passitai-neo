@@ -3,8 +3,9 @@ import test from 'node:test'
 
 import { loadSource } from './helpers/load-source.mjs'
 
-const { getCorrectOptionValues, getQuestionOptions, isAnswerCorrect } =
-  await loadSource('utils/practice/question.ts')
+const { getCorrectOptionValues, getQuestionOptions, isAnswerCorrect } = await loadSource(
+  'utils/practice/question.ts',
+)
 
 const question = {
   id: 'qst000000000001',
@@ -23,6 +24,15 @@ const question = {
 
 test('多选答案 ABC 解析为三个选项，少选 AB 判为错误', () => {
   assert.deepEqual(getCorrectOptionValues(question, getQuestionOptions(question)), ['A', 'B', 'C'])
-  assert.equal(isAnswerCorrect({ questionId: question.id, text: 'A、B', values: ['A', 'B'] }, question), false)
-  assert.equal(isAnswerCorrect({ questionId: question.id, text: 'C、A、B', values: ['C', 'A', 'B'] }, question), true)
+  assert.equal(
+    isAnswerCorrect({ questionId: question.id, text: 'A、B', values: ['A', 'B'] }, question),
+    false,
+  )
+  assert.equal(
+    isAnswerCorrect(
+      { questionId: question.id, text: 'C、A、B', values: ['C', 'A', 'B'] },
+      question,
+    ),
+    true,
+  )
 })

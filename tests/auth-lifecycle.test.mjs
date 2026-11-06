@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict'
 import { afterEach, beforeEach, test } from 'node:test'
+
 import { createPinia, setActivePinia } from 'pinia'
+
 import { loadSource } from './helpers/load-source.mjs'
 
 const { useAuthStore } = await loadSource('stores/auth.ts')
@@ -255,8 +257,10 @@ test('更换邮箱后迟到的 refreshUser 不能覆盖新的用户快照与持�
   const initial = sessionFor('a')
   persist(initial)
   const old = defer()
-  handler = (url) => url.endsWith('/profile/email')
-    ? envelope({ userId: initial.user.id, email: 'updated@example.invalid' }) : old.promise
+  handler = (url) =>
+    url.endsWith('/profile/email')
+      ? envelope({ userId: initial.user.id, email: 'updated@example.invalid' })
+      : old.promise
   const auth = useAuthStore()
   auth.initialize()
   const hydration = auth.refreshUser()

@@ -5,15 +5,15 @@ import { useRoute, useRouter } from 'vue-router'
 
 import { fetchPracticePaper, fetchPracticeSubmission } from '@/api/practice'
 import BasePopup from '@/components/common/BasePopup.vue'
-import { resolvePracticeReturn, returnToPracticeList } from '@/utils/browse/navigation'
 import { questionTypeLabels } from '@/generated/domain-values'
-import { buildSubmissionResult } from '@/utils/practice/result'
 import type {
   PracticeResultQuestion,
   PracticeResultQuestionStatus,
   PracticeSubmissionResult,
   QuestionType,
 } from '@/types'
+import { resolvePracticeReturn, returnToPracticeList } from '@/utils/browse/navigation'
+import { buildSubmissionResult } from '@/utils/practice/result'
 
 const props = defineProps<{ paperId: string; submissionId: string }>()
 
