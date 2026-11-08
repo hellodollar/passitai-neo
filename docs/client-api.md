@@ -279,9 +279,12 @@ interface PracticeSettings {
 ### 练习入口
 
 `subjectId` 必填，`provinceCode` 可选且必须为统一省份字典中的省级代码；提供时仅返回该省份题集，省略时保持跨省查询，不隐式读取或修改刷题计划。固定返回 `baseline`（专项训练）、`pastExam`（历年真题）、`mock`（考前模拟）、
-`ai`（AI训练）四个入口；`type` 与题集 `type` 使用同一组取值。
+`aiPractice`（AI练习）四个入口；`type` 与题集 `type` 使用同一组取值。
 
-`pastExam`、`mock`、`ai` 的 `children` 分别来自该科目下同类型、启用且未删除的题集，按题集
+入口只按业务类型分组，与题集来源和归属独立；AI 生成的专项训练、模拟卷仍分别进入 `baseline`、`mock`。
+`aiPractice` 的分类及读取已支持，用户信息收集和主动生成接口尚未接入。旧入口值 `ai` 不再使用。
+
+`pastExam`、`mock`、`aiPractice` 的 `children` 分别来自该科目下同类型、启用且未删除的题集，按题集
 内容期次（contentPeriod）倒序、同期按 ID 倒序排列——真题的期次取来源年月，自建/AI 题集取
 业务创建时刻，因此最近内容的题集排在最前。每个入口只包含平台题集
 或当前用户自己的题集。每个子项返回 `{ paperId, name, questionCount, answeredCount }`，其中
@@ -317,7 +320,7 @@ interface PracticePaperDetail {
     name: string
     subjectId: string
     provinceCode: string // 题集所属省级地区代码
-    type: 'baseline' | 'pastExam' | 'mock' | 'ai'
+    type: 'baseline' | 'pastExam' | 'mock' | 'aiPractice'
     assessmentType: string
     questionCount: number
     sections: PracticePaperSection[]

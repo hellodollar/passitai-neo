@@ -66,14 +66,15 @@ test('首页保留科目、练习类别、管理顺序和位置，单字段更�
   writeBrowseState('home', 'home', { entry: 'mock' })
   const state = readBrowseState('home', 'home')
   assert.deepEqual(parseHomeSelection({}, state), { subjectCode: '15044', entry: 'mock' })
-  assert.deepEqual(parseHomeSelection({ subjectCode: '15043', entry: 'ai' }, state), {
+  assert.deepEqual(parseHomeSelection({ subjectCode: '15043', entry: 'aiPractice' }, state), {
     subjectCode: '15043',
-    entry: 'ai',
+    entry: 'aiPractice',
   })
   assert.equal(state.scrollTop, 630)
   assert.deepEqual(state.subjectOrder, ['15044', '15043'])
   assert.deepEqual(state.hiddenSubjectCodes, ['15043'])
-  assert.deepEqual(parseHomeSelection({ subjectCode: '../bad', entry: ['ai'] }), {
+  assert.equal(parseHomeSelection({ entry: 'ai' }).entry, 'baseline')
+  assert.deepEqual(parseHomeSelection({ subjectCode: '../bad', entry: ['aiPractice'] }), {
     subjectCode: '',
     entry: 'baseline',
   })

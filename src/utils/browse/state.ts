@@ -14,7 +14,7 @@ type BrowseState = CollectionFilters &
 type Query = Record<string, unknown>
 const PREFIX = 'passitai:browse:'
 const memory = new Map<string, BrowseState>()
-const ENTRY_TYPES = ['baseline', 'pastExam', 'mock', 'ai']
+const ENTRY_TYPES = ['baseline', 'pastExam', 'mock', 'aiPractice']
 
 function text(value: unknown) {
   return typeof value === 'string' ? value : ''

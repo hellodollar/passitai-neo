@@ -8,7 +8,8 @@ export const domainValues = {
   examStatus: ['open', 'closed'],
   recordStatus: ['notStarted', 'inProgress', 'completed'],
   questionType: ['single', 'multiple', 'judge', 'nounExplain', 'shortAnswer', 'essay'],
-  paperType: ['baseline', 'mock', 'pastExam', 'ai'],
+  paperType: ['baseline', 'mock', 'pastExam', 'aiPractice'],
+  paperSourceType: ['system', 'ai'],
   paperAssessmentPreset: ['overall', 'highFrequency', 'errorProne'],
 } as const
 

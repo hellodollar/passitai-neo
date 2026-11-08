@@ -12,7 +12,7 @@ export const PRACTICE_CATEGORY_LABELS: Record<DomainValue<'paperType'>, string> 
   baseline: '专项训练',
   pastExam: '历年真题',
   mock: '考前模拟',
-  ai: 'AI训练',
+  aiPractice: 'AI练习',
 }
 
 /** 本地做题记录存储结构版本；存储约定见 docs/practice-local-records.md。 */

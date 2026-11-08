@@ -30,7 +30,7 @@ const entryStyles: Record<PracticeEntry['type'], { tone: EntryTone; icon: typeof
   baseline: { tone: 'primary', icon: ListChecks },
   pastExam: { tone: 'secondary', icon: BookOpenCheck },
   mock: { tone: 'accent', icon: ClipboardCheck },
-  ai: { tone: 'ai', icon: Sparkles },
+  aiPractice: { tone: 'ai', icon: Sparkles },
 }
 
 const entryToneStyles: Record<
