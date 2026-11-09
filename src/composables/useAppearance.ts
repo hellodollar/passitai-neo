@@ -11,7 +11,7 @@ import { STORAGE_KEYS } from '@/constants/app'
 export type AppearancePreference = 'system' | 'light' | 'dark'
 
 const THEMES = { light: 'neo', dark: 'neo-dark' } as const
-const THEME_COLOR = { neo: '#ffffff', 'neo-dark': '#1b1c20' } as const
+const THEME_COLOR = { neo: '#ffffff', 'neo-dark': '#2f3237' } as const
 const APPEARANCES: readonly AppearancePreference[] = ['system', 'light', 'dark']
 
 export const APPEARANCE_LABELS: Record<AppearancePreference, string> = {

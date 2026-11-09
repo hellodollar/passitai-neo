@@ -9,6 +9,7 @@ import {
 } from '@lucide/vue'
 import { computed } from 'vue'
 
+import AiPracticePanel from '@/components/home/AiPracticePanel.vue'
 import { BASELINE_CHILD_ICONS } from '@/constants/practice-icons'
 import type { PracticeEntry, PracticeEntryChild } from '@/types'
 
@@ -148,9 +149,12 @@ const activeEntryChildren = computed(() => {
       </div>
     </div>
 
+    <!-- AI 练习:静态还原面板(占位数据),后续由 AI 训练接口数据替换 -->
+    <AiPracticePanel v-if="activeEntry?.type === 'aiPractice'" :subject-name="props.subjectName" />
+
     <!-- 题集列表保持统一最小高度:空态/单条/多条之间切换时卡片不塌陷、不跳动 -->
     <div
-      v-if="activeEntryChildren.length > 0"
+      v-else-if="activeEntryChildren.length > 0"
       class="min-h-44 min-w-0 divide-y divide-base-200 border-t border-base-200"
     >
       <button

@@ -1,5 +1,12 @@
 @import 'tailwindcss';
 
+@theme {
+  /* AI 入口语义色:显式注册为 Tailwind 主题色。
+     自定义名不在 daisyUI 内置色表内,新版 daisyUI 不会为其生成 bg-ai/text-ai/ring-ai,
+     缺失时 ring/border 回退 currentcolor,表现为 AI 入口出现黑圈;深色值在 neo-dark 主题块内覆盖。 */
+  --color-ai: oklch(56% 0.24 302);
+}
+
 /* 只使用下方自定义的 neo / neo-dark 主题;主题切换由应用设置 data-theme 驱动 */
 @plugin "daisyui" {
   themes: false;
@@ -31,8 +38,6 @@
   --color-warning-content: oklch(27.9% 0.061 68.6);
   --color-error: oklch(58% 0.18 28);
   --color-error-content: oklch(100% 0 0);
-  /* AI 入口语义色:与 primary/secondary/accent 同构,深浅主题各配一档 */
-  --color-ai: oklch(56% 0.24 302);
   --radius-selector: 1rem;
   --radius-field: 1rem;
   --radius-box: 1rem;
