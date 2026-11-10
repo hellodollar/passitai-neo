@@ -47,7 +47,7 @@ const context = {
   paperId: 'papone',
   subjectId: 'subone',
   source: 'practice',
-  paperType: 'pastExam',
+  paperType: 'pastExams',
 }
 const answer = { questionId: 'que_one', fingerprint: 'fp1', text: '甲', values: ['A'] }
 const input = { questionId: 'que_two', fingerprint: 'fp2', text: '未确认', values: [] }
@@ -65,7 +65,7 @@ const makeRecord = (ctx = context) =>
   })
 const entries = [
   {
-    type: 'pastExam',
+    type: 'pastExams',
     name: '历年真题',
     answeredCount: 999,
     questionCount: 8,
@@ -101,7 +101,7 @@ test('首页进度只取本地已确认答案；没有记录为 0，接口进度
     { ...record, userId: 'usrother' },
     { ...record, subjectId: 'subother' },
     { ...record, source: 'favorites' },
-    { ...record, paperType: 'mock' },
+    { ...record, paperType: 'examSimulation' },
   ]) {
     assert.equal(
       applyLocalPracticeProgress(entries, [mismatch], context.userId, context.subjectId)[0]
@@ -176,14 +176,14 @@ test('分类清理跨科目覆盖全部目标题集，其他分类和收藏、�
   const contexts = [
     context,
     { ...context, paperId: 'paptwo', subjectId: 'subtwo' },
-    { ...context, paperId: 'papmock', paperType: 'mock' },
+    { ...context, paperId: 'papmock', paperType: 'examSimulation' },
     { ...context, paperId: 'collection:subject:subone', source: 'favorites', paperType: null },
     { ...context, paperId: 'collection:subject:subone', source: 'mistakes', paperType: null },
   ]
   const records = contexts.map((ctx) => makeRecord(ctx))
   records.forEach(writePracticeRecord)
   assert.equal(
-    clearPracticeRecords({ kind: 'category', userId: context.userId, paperType: 'pastExam' }),
+    clearPracticeRecords({ kind: 'category', userId: context.userId, paperType: 'pastExams' }),
     true,
   )
   assert.equal(readPracticeRecord(contexts[0]), null)
@@ -264,9 +264,9 @@ test('清理后的迟到交卷响应不能登记报告，也不能复用旧提�
 
 test('先后清理不同分类或单题集保留独立屏障，不使之前清理的记录重新有效', () => {
   const past = makeRecord()
-  const mock = makeRecord({ ...context, paperId: 'papmock', paperType: 'mock' })
-  clearPracticeRecords({ kind: 'category', userId: context.userId, paperType: 'pastExam' })
-  clearPracticeRecords({ kind: 'category', userId: context.userId, paperType: 'mock' })
+  const mock = makeRecord({ ...context, paperId: 'papmock', paperType: 'examSimulation' })
+  clearPracticeRecords({ kind: 'category', userId: context.userId, paperType: 'pastExams' })
+  clearPracticeRecords({ kind: 'category', userId: context.userId, paperType: 'examSimulation' })
   clearPracticeRecords({ kind: 'paper', identity: { ...context, paperId: 'papother' } })
   assert.equal(isPracticeRecordCurrent(past), false)
   assert.equal(isPracticeRecordCurrent(mock), false)

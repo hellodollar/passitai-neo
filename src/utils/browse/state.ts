@@ -1,3 +1,5 @@
+import { domainValues } from '@/generated/domain-values'
+
 export type BrowsePage = 'home' | 'favorites' | 'mistakes'
 type CollectionFilters = {
   groupBy: 'subject' | 'paper'
@@ -14,7 +16,6 @@ type BrowseState = CollectionFilters &
 type Query = Record<string, unknown>
 const PREFIX = 'passitai:browse:'
 const memory = new Map<string, BrowseState>()
-const ENTRY_TYPES = ['baseline', 'pastExam', 'mock', 'aiPractice']
 
 function text(value: unknown) {
   return typeof value === 'string' ? value : ''
@@ -39,7 +40,7 @@ export function parseHomeSelection(query: Query, fallback?: Partial<HomeSelectio
   const entry = text(query.entry ?? fallback?.entry)
   return {
     subjectCode: /^[\w-]{1,64}$/.test(subjectCode) ? subjectCode : '',
-    entry: ENTRY_TYPES.includes(entry) ? entry : 'baseline',
+    entry: domainValues.paperType.some((type) => type === entry) ? entry : 'specialTraining',
   }
 }
 

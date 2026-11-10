@@ -42,7 +42,7 @@ const context = {
   paperId: 'papone',
   source: 'practice',
   subjectId: 'subone',
-  paperType: 'pastExam',
+  paperType: 'pastExams',
 }
 const answer = {
   questionId: 'que_one',
@@ -92,6 +92,16 @@ beforeEach(() => {
 afterEach(() => {
   if (previousWindow === undefined) delete globalThis.window
   else globalThis.window = previousWindow
+})
+
+test('旧题集分类不恢复或转换，原始作答仍留在存储中', () => {
+  const record = createPracticeRecord(context, now)
+  for (const paperType of ['baseline', 'mock', 'pastExam']) {
+    const raw = JSON.stringify({ ...record, paperType })
+    storage.setItem(recordKey(), raw)
+    assert.equal(readPracticeRecord(context), null)
+    assert.equal(storage.getItem(recordKey()), raw)
+  }
 })
 
 test('当前版本完整保存答案、未确认输入、位置及提交快照，刷新后直接恢复', () => {

@@ -8,7 +8,7 @@ export const domainValues = {
   examStatus: ['open', 'closed'],
   recordStatus: ['notStarted', 'inProgress', 'completed'],
   questionType: ['single', 'multiple', 'judge', 'nounExplain', 'shortAnswer', 'essay'],
-  paperType: ['baseline', 'mock', 'pastExam', 'aiPractice'],
+  paperType: ['specialTraining', 'examSimulation', 'pastExams', 'aiPractice'],
   paperSourceType: ['system', 'ai'],
   paperAssessmentPreset: ['overall', 'highFrequency', 'errorProne'],
 } as const
@@ -23,6 +23,19 @@ export const questionTypeLabels = {
 } as const satisfies Record<(typeof domainValues.questionType)[number], string>
 
 export type DomainValue<K extends keyof typeof domainValues> = (typeof domainValues)[K][number]
+
+export const paperTypeLabels = {
+  specialTraining: 'Special training',
+  examSimulation: 'Exam simulation',
+  pastExams: 'Past exams',
+  aiPractice: 'AI practice',
+} as const satisfies Record<(typeof domainValues.paperType)[number], string>
+
+export const paperAssessmentPresetLabels = {
+  overall: 'Overall',
+  highFrequency: 'High frequency',
+  errorProne: 'Error prone',
+} as const satisfies Record<(typeof domainValues.paperAssessmentPreset)[number], string>
 
 export const provinceOptions = [
   { code: '110000', name: '北京市' },

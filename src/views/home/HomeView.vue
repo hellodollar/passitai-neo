@@ -99,7 +99,7 @@ const localEntries = computed(() =>
 
 function selectSubject(code: string) {
   activeSubjectCode.value = code
-  expandedEntryKey.value = 'baseline'
+  expandedEntryKey.value = 'specialTraining'
   syncSelectionQuery()
 }
 
@@ -112,7 +112,7 @@ function selectEntry(key: string) {
 function syncSelectionQuery() {
   if (route.name !== 'home') return
   const subjectCode = activeSubject.value?.code ?? ''
-  const entry = expandedEntryKey.value || 'baseline'
+  const entry = expandedEntryKey.value || 'specialTraining'
   if (route.query.subjectCode !== (subjectCode || undefined) || route.query.entry !== entry) {
     void router.replace({ query: { ...route.query, subjectCode: subjectCode || undefined, entry } })
   }
@@ -167,7 +167,7 @@ function startEntryPaper(child: PracticeEntryChild) {
     query: {
       ...route.query,
       subjectCode: activeSubject.value?.code || undefined,
-      entry: expandedEntryKey.value || 'baseline',
+      entry: expandedEntryKey.value || 'specialTraining',
     },
   }).fullPath
   router.push({
@@ -259,7 +259,7 @@ watch([activeSubjectCode, expandedEntryKey, subjectOrder, hiddenSubjectCodes], (
   if (route.name !== 'home') return
   writeBrowseState(auth.session?.user.id ?? '', 'home', {
     subjectCode: activeSubject.value?.code ?? '',
-    entry: expandedEntryKey.value || 'baseline',
+    entry: expandedEntryKey.value || 'specialTraining',
     subjectOrder: subjectOrder.value,
     hiddenSubjectCodes: [...hiddenSubjectCodes.value],
   })

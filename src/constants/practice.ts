@@ -9,9 +9,9 @@ export const RESULT_STATUS_LABELS: Record<PracticeResultQuestionStatus, string> 
 }
 
 export const PRACTICE_CATEGORY_LABELS: Record<DomainValue<'paperType'>, string> = {
-  baseline: '专项训练',
-  pastExam: '历年真题',
-  mock: '考前模拟',
+  specialTraining: '专项训练',
+  pastExams: '历年真题',
+  examSimulation: '考前模拟',
   aiPractice: 'AI练习',
 }
 

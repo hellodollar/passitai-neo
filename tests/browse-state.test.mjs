@@ -58,14 +58,14 @@ test('首页保留科目、练习类别、管理顺序和位置，单字段更�
   global.window = { sessionStorage: storage() }
   writeBrowseState('home', 'home', {
     subjectCode: '15044',
-    entry: 'pastExam',
+    entry: 'pastExams',
     scrollTop: 630,
     subjectOrder: ['15044', '15043'],
     hiddenSubjectCodes: ['15043'],
   })
-  writeBrowseState('home', 'home', { entry: 'mock' })
+  writeBrowseState('home', 'home', { entry: 'examSimulation' })
   const state = readBrowseState('home', 'home')
-  assert.deepEqual(parseHomeSelection({}, state), { subjectCode: '15044', entry: 'mock' })
+  assert.deepEqual(parseHomeSelection({}, state), { subjectCode: '15044', entry: 'examSimulation' })
   assert.deepEqual(parseHomeSelection({ subjectCode: '15043', entry: 'aiPractice' }, state), {
     subjectCode: '15043',
     entry: 'aiPractice',
@@ -73,10 +73,10 @@ test('首页保留科目、练习类别、管理顺序和位置，单字段更�
   assert.equal(state.scrollTop, 630)
   assert.deepEqual(state.subjectOrder, ['15044', '15043'])
   assert.deepEqual(state.hiddenSubjectCodes, ['15043'])
-  assert.equal(parseHomeSelection({ entry: 'ai' }).entry, 'baseline')
+  assert.equal(parseHomeSelection({ entry: 'ai' }).entry, 'specialTraining')
   assert.deepEqual(parseHomeSelection({ subjectCode: '../bad', entry: ['aiPractice'] }), {
     subjectCode: '',
-    entry: 'baseline',
+    entry: 'specialTraining',
   })
 })
 
@@ -89,7 +89,7 @@ test('刷新可读取 sessionStorage，损坏状态和存储失败不阻断页�
   store.setItem('passitai:browse:broken:home', '{broken')
   global.window = { sessionStorage: store }
   assert.equal(readBrowseState('refresh', 'favorites').scrollTop, 420)
-  assert.equal(readBrowseState('broken', 'home').entry, 'baseline')
+  assert.equal(readBrowseState('broken', 'home').entry, 'specialTraining')
   global.window = {
     sessionStorage: {
       getItem: () => {

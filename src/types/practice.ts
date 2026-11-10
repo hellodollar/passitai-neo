@@ -57,7 +57,7 @@ export type PracticeEntryChild = {
   name: string
   questionCount: number
   answeredCount: number
-  /** baseline 子项的考查类型（overall / highFrequency / errorProne），其余入口不返回 */
+  /** specialTraining 子项的考查类型（overall / highFrequency / errorProne），其余入口不返回 */
   assessmentType?: string
 }
 

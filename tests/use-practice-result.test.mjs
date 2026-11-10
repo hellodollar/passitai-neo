@@ -37,7 +37,7 @@ const paper = (id) => ({
     id,
     name: '隔离测试题集',
     subjectId: 'subfixture',
-    type: 'baseline',
+    type: 'specialTraining',
     assessmentType: 'overall',
     questionCount: 1,
     sections: [

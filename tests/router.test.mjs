@@ -135,7 +135,7 @@ test('旧 URL 与不完整地址直接进入未找到页，没有兼容重定向
 test('登录回跳保留真实业务页面的参数、筛选和 hash', () => {
   for (const path of [
     '/',
-    '/?subjectCode=15044&entry=pastExam#subjects',
+    '/?subjectCode=15044&entry=pastExams#subjects',
     '/me',
     '/favorites?groupBy=paper&sort=count&order=desc#list',
     '/mistakes/practice/subject/subone?returnTo=%2Fmistakes',
@@ -168,7 +168,7 @@ test('登录回跳拒绝外链、非法值、访客页与未匹配地址', () =>
 test('练习返回保留入口条件，集合练习只能返回对应来源', () => {
   const favorite = '/favorites?groupBy=paper&sort=count&order=desc#list'
   const mistake = '/mistakes?groupBy=subject&sort=recent&order=asc'
-  const home = '/?subjectCode=15044&entry=pastExam'
+  const home = '/?subjectCode=15044&entry=pastExams'
   assert.equal(resolvePracticeReturn({ returnTo: favorite }, 'favorites'), favorite)
   assert.equal(resolvePracticeReturn({ returnTo: mistake }, 'mistakes'), mistake)
   for (const target of [home, favorite, mistake]) {

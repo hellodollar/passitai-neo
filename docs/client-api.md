@@ -278,13 +278,13 @@ interface PracticeSettings {
 
 ### 练习入口
 
-`subjectId` 必填，`provinceCode` 可选且必须为统一省份字典中的省级代码；提供时仅返回该省份题集，省略时保持跨省查询，不隐式读取或修改刷题计划。固定返回 `baseline`（专项训练）、`pastExam`（历年真题）、`mock`（考前模拟）、
+`subjectId` 必填，`provinceCode` 可选且必须为统一省份字典中的省级代码；提供时仅返回该省份题集，省略时保持跨省查询，不隐式读取或修改刷题计划。固定返回 `specialTraining`（专项训练）、`pastExams`（历年真题）、`examSimulation`（考前模拟）、
 `aiPractice`（AI练习）四个入口；`type` 与题集 `type` 使用同一组取值。
 
-入口只按业务类型分组，与题集来源和归属独立；AI 生成的专项训练、模拟卷仍分别进入 `baseline`、`mock`。
+入口只按业务类型分组，与题集来源和归属独立；AI 生成的专项训练、模拟卷仍分别进入 `specialTraining`、`examSimulation`。
 `aiPractice` 的分类及读取已支持，用户信息收集和主动生成接口尚未接入。旧入口值 `ai` 不再使用。
 
-`pastExam`、`mock`、`aiPractice` 的 `children` 分别来自该科目下同类型、启用且未删除的题集，按题集
+`pastExams`、`examSimulation`、`aiPractice` 的 `children` 分别来自该科目下同类型、启用且未删除的题集，按题集
 内容期次（contentPeriod）倒序、同期按 ID 倒序排列——真题的期次取来源年月，自建/AI 题集取
 业务创建时刻，因此最近内容的题集排在最前。每个入口只包含平台题集
 或当前用户自己的题集。每个子项返回 `{ paperId, name, questionCount, answeredCount }`，其中
@@ -294,22 +294,27 @@ interface PracticeSettings {
 `src/constants/practice.ts` 的 `PracticeEntryPresets`（当前 `answeredCount` 依次为 0、75、12、0，
 尚非真实进度）。没有匹配题集时 `children` 为 `[]`、`questionCount` 为 `0`。
 
-`baseline`（专项训练）的 `children` 来自该科目 `type=baseline` 的题集。按以下
-`assessmentType` 顺序排列，同一类型内按题集创建时间倒序；每份题集对应一个子项，`name`
-取题集存储的名称（如 `考点通练`、`高频考点`、`易错强化`），`paperId` 指向该题集，
+`specialTraining`（专项训练）的 `children` 来自该科目 `type=specialTraining` 的题集。按以下
+`assessmentType` 顺序排列，同一类型内按内容期次、ID 倒序；每份题集对应一个子项。
+`overall` 子项的 `name` 固定为产品名称 `考点通练`，其他子项保留题集存储名称；`paperId` 指向该题集，
 `questionCount` 只统计该题集。父项题数为全部子项之和：
 
 `overall` → `highFrequency` → `errorProne`。该顺序由 `PaperAssessmentPreset` 定义；
-`assessmentType` 只用于排序和客户端图标，不覆盖题集名称。其他自定义考查类型也是合法的子项，
-排在上述预设类型之后，统一按题集内容期次（contentPeriod）倒序、ID 倒序排列，不会被丢弃。
+`assessmentType` 同时用于排序、图标和综合训练的产品名称映射。当前入口仅展示这三种预设，
+其他自定义考查类型可保存，但不在入口中展示。
 
-baseline 子项额外返回 `assessmentType: string`（预设值或自定义值），供客户端做差异化展示；
-该科目缺少某 `assessmentType` 的 baseline 题集时跳过对应类型。四类入口的作答进度尚未接入练习记录。
+综合训练当前每省、每科目只提供一份启用题集作为 `考点通练` 的数据，多份时的默认选择或聚合
+尚未实现。此接口保留真实 `paperId`，不按相同展示名去重、合并或自动选择最近一份。
+业务表与 Dash 继续使用真实名称，如 `中国近现代史纲要综合考点训练`。
+
+specialTraining 子项额外返回 `assessmentType: string`（预设值或自定义值），供客户端做差异化展示；
+该科目缺少某 `assessmentType` 的 specialTraining 题集时跳过对应类型。四类入口的作答进度尚未接入练习记录。
 
 ### 题集详情与最近练习记录
 
 `paperId` 为路径参数。只能读取启用且未删除的平台题集或当前用户自己的题集。返回结构：
-`paper.name` 与入口子项的 `name` 同源，直接展示题集名称，不拼接科目名。
+`paper.name` 与入口子项使用同一展示规则：`specialTraining + overall` 固定为 `考点通练`，
+其他题集保留存储名称，不额外拼接科目名。该展示转换不修改业务原名或练习记录中的真实标题快照。
 
 ```ts
 type QuestionType = 'single' | 'multiple' | 'judge' | 'nounExplain' | 'shortAnswer' | 'essay'
@@ -320,7 +325,7 @@ interface PracticePaperDetail {
     name: string
     subjectId: string
     provinceCode: string // 题集所属省级地区代码
-    type: 'baseline' | 'pastExam' | 'mock' | 'aiPractice'
+    type: 'specialTraining' | 'pastExams' | 'examSimulation' | 'aiPractice'
     assessmentType: string
     questionCount: number
     sections: PracticePaperSection[]
@@ -462,6 +467,10 @@ interface PracticeSubmission {
 { items: Array<{ paperId: string; paperName: string; subjectId: string; subjectName: string; questionCount: number; lastCollectedAt: string }>, totalQuestionCount: number }
 ```
 
+按题集分组的 `paperName` 和题集练习的 `paper.name` 与普通练习一致：
+`specialTraining + overall` 显示 `考点通练`，其他题集显示存储名称；按科目仍使用科目名。
+名称变化不改变收录上下文、题目 ID 或实际 paperId，也不合并名称相同的分组。
+
 练习接口 `subjectId` 与 `paperId` 二选一：按科目取该科目全部收藏题；按题集只取收录记录的
 `paperId` 与目标题集一致、且仍在该题集 sections 内的收藏题，不混入其他题集收录的共享题目。
 按题型重新分组、按收藏时间倒序。返回与
@@ -476,7 +485,7 @@ interface PracticeSubmission {
 {
   paper: {
     id?: string // 仅按题集返回真实 paperId；按科目不返回此字段
-    name: string // 按科目=科目名；按题集=题集名
+    name: string // 按科目=科目名；按题集=客户端展示名（综合专项训练为考点通练）
     subjectId: string
     questionCount: number
     sections: Array<{

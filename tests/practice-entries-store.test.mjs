@@ -7,7 +7,7 @@ import { loadSource } from './helpers/load-source.mjs'
 
 const { usePracticeEntriesStore } = await loadSource('stores/practice-entries.ts')
 const originalFetch = globalThis.fetch
-const entries = [{ type: 'baseline', name: '专项训练', children: [] }]
+const entries = [{ type: 'specialTraining', name: '专项训练', children: [] }]
 const envelope = (value) =>
   new Response(JSON.stringify({ ok: true, data: value }), {
     headers: { 'content-type': 'application/json' },

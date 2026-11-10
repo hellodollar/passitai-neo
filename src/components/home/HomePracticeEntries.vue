@@ -10,7 +10,7 @@ import {
 import { computed } from 'vue'
 
 import AiPracticePanel from '@/components/home/AiPracticePanel.vue'
-import { BASELINE_CHILD_ICONS } from '@/constants/practice-icons'
+import { SPECIAL_TRAINING_CHILD_ICONS } from '@/constants/practice-icons'
 import type { PracticeEntry, PracticeEntryChild } from '@/types'
 
 const props = defineProps<{
@@ -28,9 +28,9 @@ const emit = defineEmits<{
 type EntryTone = 'primary' | 'secondary' | 'accent' | 'ai'
 
 const entryStyles: Record<PracticeEntry['type'], { tone: EntryTone; icon: typeof ListChecks }> = {
-  baseline: { tone: 'primary', icon: ListChecks },
-  pastExam: { tone: 'secondary', icon: BookOpenCheck },
-  mock: { tone: 'accent', icon: ClipboardCheck },
+  specialTraining: { tone: 'primary', icon: ListChecks },
+  pastExams: { tone: 'secondary', icon: BookOpenCheck },
+  examSimulation: { tone: 'accent', icon: ClipboardCheck },
   aiPractice: { tone: 'ai', icon: Sparkles },
 }
 
@@ -81,9 +81,10 @@ const activeEntryChildren = computed(() => {
   return (entry.children ?? []).map((child) => ({
     ...child,
     icon:
-      entry.type === 'baseline'
-        ? ((child.assessmentType ? BASELINE_CHILD_ICONS[child.assessmentType] : undefined) ??
-          Target)
+      entry.type === 'specialTraining'
+        ? ((child.assessmentType
+            ? SPECIAL_TRAINING_CHILD_ICONS[child.assessmentType]
+            : undefined) ?? Target)
         : entry.icon,
     iconClass: tone.icon,
     progressClass: tone.progress,
