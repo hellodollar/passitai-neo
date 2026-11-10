@@ -48,7 +48,7 @@ const history = computed<AiTrainingHistoryItem[]>(() => [
     <div class="rounded-2xl border border-base-200 bg-base-100 p-4">
       <div class="flex items-center gap-2">
         <span
-          class="flex size-[30px] shrink-0 items-center justify-center rounded-full bg-ai/10 text-ai"
+          class="flex size-7.5 shrink-0 items-center justify-center rounded-full bg-ai/10 text-ai"
         >
           <Sparkles :size="16" />
         </span>
