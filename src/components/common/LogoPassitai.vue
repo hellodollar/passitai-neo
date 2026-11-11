@@ -2,7 +2,7 @@
 /**
  * 品牌字标(图形 + passit AI):内联 SVG 组件而非 <img>,
  * 文字部分用 currentColor 跟随主题 base-content,深浅模式均可读;
- * 图形底色与 AI 字样的品牌色保持固定。
+ * 图形底色保持品牌靛蓝,AI 字样为靛蓝→紫罗兰渐变(与官网 PassIt AI 字标一致)。
  */
 </script>
 
@@ -34,7 +34,7 @@
       />
       <path
         d="M203.645 45H196.844L205.678 18.8182H214.102L222.936 45H216.135L209.986 25.4148H209.781L203.645 45ZM202.737 34.696H216.953V39.5028H202.737V34.696ZM232.083 18.8182V45H225.755V18.8182H232.083Z"
-        fill="#0F766E"
+        fill="url(#passitai-logo-ai)"
       />
     </g>
     <defs>
@@ -44,6 +44,10 @@
       <clipPath id="clip1_30_56">
         <rect width="155" height="44" fill="white" transform="translate(80 10)" />
       </clipPath>
+      <linearGradient id="passitai-logo-ai" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stop-color="#6366F1" />
+        <stop offset="1" stop-color="#A855F7" />
+      </linearGradient>
     </defs>
   </svg>
 </template>
