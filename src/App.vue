@@ -1,11 +1,30 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 import BottomTabBar from '@/components/BottomTabBar.vue'
 import AppToast from '@/components/common/AppToast.vue'
+import { useAuthStore } from '@/stores/auth'
+import { useNotificationsStore } from '@/stores/notifications'
 
 const route = useRoute()
+const auth = useAuthStore()
+const notifications = useNotificationsStore()
+watch(
+  () => auth.session?.token,
+  () => {
+    if (auth.isAuthenticated) notifications.start()
+    else notifications.reset()
+  },
+  { immediate: true },
+)
+watch(
+  () => route.fullPath,
+  () => {
+    if (auth.isAuthenticated) void notifications.refresh()
+  },
+)
+onBeforeUnmount(notifications.stop)
 const showShell = computed(
   () => route.name && !['login', 'register', 'not-found'].includes(String(route.name)),
 )

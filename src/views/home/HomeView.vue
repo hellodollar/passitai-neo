@@ -8,14 +8,15 @@ import LogoPassitai from '@/components/common/LogoPassitai.vue'
 import PageContainer from '@/components/common/PageContainer.vue'
 import PagePlaceholder from '@/components/common/PagePlaceholder.vue'
 import HomePlanCard from '@/components/home/HomePlanCard.vue'
-import NotificationStrip from '@/components/home/NotificationStrip.vue'
 import HomePracticeEntries from '@/components/home/HomePracticeEntries.vue'
+import NotificationStrip from '@/components/home/NotificationStrip.vue'
 import SubjectManagerPopup from '@/components/home/SubjectManagerPopup.vue'
 import PracticePlanPopup from '@/components/practice/PracticePlanPopup.vue'
 import PracticeSettingsPopup from '@/components/practice/PracticeSettingsPopup.vue'
 import { useBrowseScroll } from '@/composables/useBrowseScroll'
 import { useLocalPracticeRecords } from '@/composables/useLocalPracticeRecords'
 import { useAuthStore } from '@/stores/auth'
+import { useNotificationsStore } from '@/stores/notifications'
 import { usePracticeEntriesStore } from '@/stores/practice-entries'
 import { usePracticePlanStore } from '@/stores/practice-plan'
 import type { PracticeEntry, PracticeEntryChild, PracticePlan } from '@/types'
@@ -24,6 +25,7 @@ import { applyLocalPracticeProgress } from '@/utils/practice/progress'
 
 const router = useRouter()
 const route = useRoute()
+const notifications = useNotificationsStore()
 const auth = useAuthStore()
 const browseScroll = useBrowseScroll(
   () => auth.session?.user.id ?? '',
@@ -319,25 +321,26 @@ watch(
   <PageContainer>
     <section class="flex w-full min-w-0 max-w-full flex-col gap-4 overflow-x-hidden">
       <h1 class="sr-only">练习首页</h1>
-      <header class="flex h-9 shrink-0 items-center">
+      <header class="relative z-10 flex h-9 shrink-0 items-center">
         <LogoPassitai role="img" aria-label="Passitai" class="h-8 w-auto text-base-content" />
         <button
           class="relative ml-auto flex size-9 items-center justify-center rounded-full border border-base-200 bg-base-100 text-base-content transition-colors active:bg-base-200/60"
           type="button"
-          aria-label="消息中心,3 条未读"
+          :aria-label="
+            notifications.unreadCount ? `消息中心，${notifications.unreadCount} 条未读` : '消息中心'
+          "
           @click="router.push({ name: 'notifications' })"
         >
           <Bell :size="18" />
-          <!-- 占位未读数:接口落地后由未读数 composable 提供 -->
           <span
+            v-if="notifications.unreadCount > 0"
             class="absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-full border-2 border-base-100 bg-error px-1 text-[10px] font-semibold text-error-content"
-            >3</span
+            >{{ notifications.unreadCount > 99 ? '99+' : notifications.unreadCount }}</span
           >
         </button>
       </header>
 
-      <!-- 通知公告条:静态占位,无未读时由数据驱动隐藏 -->
-      <NotificationStrip />
+      <NotificationStrip class="relative z-10" />
 
       <PagePlaceholder v-if="planLoading" role="status" aria-live="polite">
         <span class="loading loading-spinner loading-md text-primary"></span>

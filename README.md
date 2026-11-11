@@ -29,7 +29,7 @@ pnpm dev
 
 前端使用 Vue Router history 模式。Wrangler 将 `dist` 作为 Worker 静态资源上传，`single-page-application` 模式使 `/practice/:paperId/result/:submissionId` 等深层链接回退到 `index.html`。生产请求由浏览器直接发送到配置的 API 地址；后端需允许实际前端域名的跨域请求。
 
-Workers Builds 的构建命令为 `pnpm run build`，部署命令为 `npx wrangler deploy`。如使用 Wrangler 手动发布，执行 `pnpm deploy`。自定义域名需在 Worker 的 Domains & Routes 中绑定。
+Workers Builds 的构建命令为 `pnpm run build`，部署命令为 `npx wrangler deploy`。如使用 Wrangler 手动发布，执行 `pnpm run deploy`。自定义域名需在 Worker 的 Domains & Routes 中绑定。
 
 ## 检查
 

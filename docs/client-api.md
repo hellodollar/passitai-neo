@@ -14,7 +14,7 @@ Authorization: Bearer <app-token>
 - [通用约定](#1-通用约定)
 - [用户](#2-用户模块) · [刷题计划](#3-刷题计划模块) · [练习](#4-练习模块)
 - [收藏](#5-题目收藏模块) · [错题](#6-错题模块) · [字典选项](#7-字典选项模块)
-- [接口总表](#8-接口总表)
+- [站内通知](#8-站内通知) · [接口总表](#9-接口总表)
 
 ## 1. 通用约定
 
@@ -52,7 +52,7 @@ HTTP 2xx、`ok: true` 表示成功；HTTP 4xx/5xx、`ok: false` 表示失败，�
 `ok === true`，鉴权、重试和错误分类依据 HTTP 状态；`message` 只用于展示，不用于程序分支。
 答错题、空列表等业务结果不等于请求失败，接口处理成功仍返回 `ok: true`。
 
-接口只划分为以下六个模块。本文未列出的其他 `/api` 客户端路径均不存在，不应调用。
+接口只划分为以下七个模块。本文未列出的其他 `/api` 客户端路径均不存在，不应调用。
 
 ## 2. 用户模块
 
@@ -151,7 +151,7 @@ interface AuthResult {
 保存计划后首页与“我的”读取同一份计划状态；设置保存后答题页与“我的”读取同一份设置状态。
 账号切换或退出清理缓存，迟到响应不能覆盖新会话。
 
-`/api/me`、`/api/user` 已移除（账户资料迁移到 `/api/profile`）。通知尚未开放，不持久化通知占位配置，
+`/api/me`、`/api/user` 已移除（账户资料迁移到 `/api/profile`）。通知设置尚未开放，不持久化通知偏好占位配置，
 `GET/PATCH /api/profile/settings/notifications` 返回404；页面只显示“暂未开放”。
 本地刷题记录由浏览器按用户隔离保存，管理入口明确标注“本地”，不删除服务端交卷报告。
 
@@ -546,7 +546,48 @@ interface OptionItem {
 majors 另支持 `educationLevel`（本科/专科）过滤；科目另支持 `majorId`，精确匹配 majorIds。
 客户端先选省份与学历，再加载该省该层次的专业及科目。换省或换学历清空原专业和科目选择。
 
-## 8. 接口总表
+## 8. 站内通知
+
+仅 `app` scope 当前启用账号可访问；用户 ID 来自 JWT，不能在请求体中指定他人。
+
+| Method | Path | 说明 |
+| --- | --- | --- |
+| GET | `/api/notifications` | 个人收件箱 |
+| GET | `/api/notifications/summary` | 统一未读摘要 |
+| GET | `/api/notifications/:id` | 纯读取详情，不自动标记已读 |
+| PUT | `/api/notifications/:id/read` | 首次已读，body `{}`，重复保持原时间 |
+| PUT | `/api/notifications/read-all` | 全部已读，body `{}`，仅当前账号、请求开始前发布的消息 |
+
+列表严格接受 `page`、`limit`、`category?: learning|system`、`unread?: "true"|"false"`，
+默认 1/20，最多100；按 publishedAt、id 倒序分页，返回 `{items,total}`。
+
+```ts
+interface NotificationItem {
+  id: string // ntf + 12 位小写 hex
+  category: 'learning' | 'system'
+  title: string
+  publishedAt: string // ISO
+  readAt: string | null
+  linkPath: string | null // 仅 / 或 /practice/<paperId>，无外部链接
+  contentPreview: string // 前100个字符
+}
+// 详情为 NotificationItem 去掉 contentPreview，增加 content:string（纯文本）。
+interface NotificationSummary {
+  unreadCount: number
+  unreadByCategory: { learning: number; system: number }
+  latestUnread: Omit<NotificationItem, 'contentPreview'> | null
+}
+// 单条已读：{id,readAt:string}；全部已读：{read:true}。
+```
+
+仅展示已发布且本账号有收件记录的通知；未知、他人、草稿、撤下统一404。
+撤下同时从列表、详情和未读摘要消失。关联题集停用、删除或变为私有时 linkPath 为 null。
+正文是纯文本，不作为 HTML 渲染。广播以发布时的启用普通用户为准，新注册用户不补发历史广播。
+首页铃铛、通知条、“我的”和消息页共享摘要，已读成功后刷新；登录、前台恢复和页面切换时刷新，
+前台最多每60秒轮询，不承诺实时推送。账号切换清理缓存并隔离迟到响应。
+通知设置、自动提醒、Telegram 和邮件不在本次站内通知范围内。
+
+## 9. 接口总表
 
 ```text
 POST   /api/register
@@ -580,4 +621,10 @@ GET    /api/wrong-questions/practice
 
 GET    /api/options/majors
 GET    /api/options/subjects
+
+GET    /api/notifications
+GET    /api/notifications/summary
+GET    /api/notifications/:id
+PUT    /api/notifications/:id/read
+PUT    /api/notifications/read-all
 ```

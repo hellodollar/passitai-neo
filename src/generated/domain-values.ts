@@ -1,5 +1,7 @@
 // Generated from passitai-api/src/constants. Run pnpm sync in passitai-api.
 export const domainValues = {
+  notificationCategory: ['learning', 'system'],
+  notificationStatus: ['draft', 'published', 'withdrawn'],
   dataStatus: ['enabled', 'disabled'],
   sourceType: ['system', 'crawler', 'manual', 'import', 'ai'],
   userRole: ['admin', 'user'],

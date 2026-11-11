@@ -1,129 +1,148 @@
 <script setup lang="ts">
-import { ArrowLeft, BookOpenCheck, CalendarDays } from '@lucide/vue'
-import { computed } from 'vue'
+import { ArrowLeft, BookOpenCheck } from '@lucide/vue'
+import { onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import PageContainer from '@/components/common/PageContainer.vue'
+import { ApiError } from '@/api/http'
+import { fetchNotification } from '@/api/notifications'
+import { useAuthStore } from '@/stores/auth'
+import { useNotificationsStore } from '@/stores/notifications'
+import type { NotificationDetail } from '@/types/notification'
+import { notificationTime } from '@/utils/notifications'
+import { createSessionGuard } from '@/utils/session-guard'
 
-/**
- * 消息详情(静态还原):占位内容按 id 匹配,接口落地后由
- * GET /api/notifications/:id 提供(打开成功后调用 :id/read 标已读)。
- */
-const route = useRoute()
-const router = useRouter()
-
-interface NotificationDetail {
-  id: string
-  category: 'learning' | 'system'
-  categoryLabel: string
-  title: string
-  /** 首版正文为纯文本 + 换行 */
-  content: string
-  timeLabel: string
-  linkPath?: string
-  /** 站内入口按钮文案;有 linkPath 时必填 */
-  ctaLabel?: string
+const route = useRoute(),
+  router = useRouter(),
+  auth = useAuthStore(),
+  notifications = useNotificationsStore()
+const detail = ref<NotificationDetail | null>(null),
+  loading = ref(false),
+  error = ref(''),
+  readError = ref(''),
+  reading = ref(false)
+let version = 0,
+  disposed = false
+const guard = createSessionGuard()
+async function markRead() {
+  if (!detail.value || detail.value.readAt || reading.value) return
+  const id = detail.value.id,
+    current = version,
+    isCurrent = guard.captureWrite()
+  reading.value = true
+  readError.value = ''
+  try {
+    const result = await notifications.markRead(id)
+    if (!disposed && current === version && isCurrent() && detail.value?.id === id) {
+      detail.value.readAt = result.readAt
+    }
+  } catch (e) {
+    if (disposed || current !== version || !isCurrent()) return
+    if (e instanceof ApiError && e.status === 404) {
+      detail.value = null
+      error.value = '消息不存在或已撤下'
+      void notifications.refresh(true)
+    } else {
+      readError.value = '已读状态未保存，请重试'
+    }
+  } finally {
+    if (!disposed && current === version) reading.value = false
+  }
 }
-
-// —— 占位数据(接口就绪后删除) ——
-const details: NotificationDetail[] = [
-  {
-    id: 'ntf-exam-1109',
-    category: 'learning',
-    categoryLabel: '学习提醒',
-    title: '考试临近提醒:中国近现代史纲要还有 7 天开考',
-    content:
-      '你报考的广东省最近一场考试临近:\n\n中国近现代史纲要\n考试时间:2027-04-11(2027 年第 04 期)\n距离考试还有 7 天\n\n请合理安排复习时间,以官方发布的考试安排为准。',
-    timeLabel: '今天 09:00',
-    linkPath: '/',
-    ctaLabel: '查看刷题计划',
-  },
-  {
-    id: 'ntf-paper-update',
-    category: 'learning',
-    categoryLabel: '学习消息',
-    title: '题集更新:中国近现代史纲要',
-    content: '《中国近现代史纲要》新增 40 道真题,覆盖新文化运动相关考点,欢迎练习。',
-    timeLabel: '今天 10:20',
-    linkPath: '/',
-    ctaLabel: '去练习',
-  },
-  {
-    id: 'ntf-maintenance',
-    category: 'system',
-    categoryLabel: '系统公告',
-    title: '系统维护公告',
-    content: '11 月 12 日 02:00–03:00 进行短时维护,期间可能无法访问,请提前保存作答进度。',
-    timeLabel: '昨天 15:00',
-  },
-  {
-    id: 'ntf-daily-1105',
-    category: 'learning',
-    categoryLabel: '学习提醒',
-    title: '每日刷题提醒',
-    content: '今天也安排一点刷题时间吧,继续你的学习计划。',
-    timeLabel: '11月5日 20:00',
-  },
-]
-
-const detail = computed(() => details.find((item) => item.id === route.params.id) ?? details[0]!)
-
-function openLink() {
-  const path = detail.value.linkPath
-  if (path) void router.push(path)
+async function load() {
+  const current = ++version,
+    isCurrent = guard.captureRead()
+  detail.value = null
+  loading.value = true
+  error.value = ''
+  readError.value = ''
+  reading.value = false
+  try {
+    const next = await fetchNotification(String(route.params.id))
+    if (disposed || current !== version || !isCurrent()) return
+    detail.value = next
+    void markRead()
+  } catch (e) {
+    if (!disposed && current === version && isCurrent()) {
+      error.value = e instanceof Error ? e.message : '消息获取失败'
+      void notifications.refresh(true)
+    }
+  } finally {
+    if (!disposed && current === version) loading.value = false
+  }
 }
+watch(
+  [() => route.params.id, () => auth.session?.token],
+  () => {
+    guard.reset()
+    void load()
+  },
+  { immediate: true },
+)
+onBeforeUnmount(() => {
+  disposed = true
+  version++
+  guard.reset()
+})
 </script>
-
 <template>
-  <PageContainer>
-    <section class="flex w-full min-w-0 flex-col">
-      <header class="grid h-11 shrink-0 grid-cols-[40px_minmax(0,1fr)_40px] items-center">
+  <section class="flex min-h-dvh w-full min-w-0 flex-col">
+    <header
+      class="fixed left-1/2 top-0 z-40 w-full max-w-[32rem] -translate-x-1/2 border-b border-base-200/80 bg-base-100/95 pt-[env(safe-area-inset-top)] backdrop-blur-xl"
+    >
+      <div class="grid h-14 grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-2 px-3">
         <button
           class="flex size-10 items-center justify-center rounded-full text-base-content transition active:bg-base-200"
           type="button"
           aria-label="返回"
           @click="router.back()"
         >
-          <ArrowLeft :size="20" />
+          <ArrowLeft :size="21" />
         </button>
-        <h1 class="truncate text-center text-[15px] font-semibold">消息详情</h1>
+        <h1 class="truncate text-center text-[15px] font-semibold leading-tight">消息详情</h1>
         <span aria-hidden="true"></span>
-      </header>
-
-      <div class="mt-1 flex items-center gap-2">
-        <span
-          class="rounded-full px-2 py-0.5 text-[11px] font-semibold"
-          :class="
-            detail.category === 'learning'
-              ? 'bg-primary/10 text-primary'
-              : 'bg-secondary/10 text-secondary'
-          "
-        >
-          {{ detail.categoryLabel }}
-        </span>
-        <span class="text-xs text-base-content/45">{{ detail.timeLabel }}</span>
       </div>
-
-      <h2 class="mt-3 text-[17px] font-semibold leading-snug">{{ detail.title }}</h2>
-
-      <p class="mt-3 whitespace-pre-line text-sm leading-relaxed text-base-content/70">
-        {{ detail.content }}
-      </p>
-
-      <div
-        v-if="detail.linkPath"
-        class="mt-6 rounded-2xl border border-base-200 bg-base-100 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]"
-      >
+    </header>
+    <div
+      class="flex w-full min-w-0 flex-1 flex-col px-5 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-[calc(4.25rem+env(safe-area-inset-top))]"
+    >
+      <div class="flex flex-col items-center gap-3 py-16 text-center" v-if="loading">
+        <span class="loading loading-spinner loading-sm"></span>
+        <p role="status">正在获取消息…</p>
+      </div>
+      <div class="flex flex-col items-center gap-3 py-16 text-center" v-else-if="error">
+        <p role="alert">{{ error }}</p>
+        <button type="button" class="btn btn-ghost btn-sm" @click="load">重新获取</button>
+      </div>
+      <template v-else-if="detail">
+        <div class="mt-1 flex items-center gap-2">
+          <span
+            class="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary"
+            >{{ detail.category === 'learning' ? '学习消息' : '系统公告' }}</span
+          ><span class="text-xs text-base-content/45">{{
+            notificationTime(detail.publishedAt)
+          }}</span>
+        </div>
+        <h2 class="mt-3 break-words text-[17px] font-semibold leading-snug">{{ detail.title }}</h2>
+        <p
+          class="mt-3 whitespace-pre-wrap break-words text-sm leading-relaxed text-base-content/70"
+        >
+          {{ detail.content }}
+        </p>
+        <p v-if="readError" class="mt-3 text-xs text-error" role="alert">
+          {{ readError
+          }}<button class="ml-2 underline" :disabled="reading" type="button" @click="markRead">
+            重试
+          </button>
+        </p>
         <button
-          class="btn btn-primary h-11 min-h-11 w-full rounded-xl text-sm"
+          v-if="detail.linkPath"
+          class="btn btn-primary mt-6 h-11 min-h-11 w-full rounded-xl text-sm"
           type="button"
-          @click="openLink"
+          @click="router.push(detail.linkPath)"
         >
-          <CalendarDays v-if="detail.ctaLabel === '查看刷题计划'" :size="16" aria-hidden="true" />
-          <BookOpenCheck v-else :size="16" aria-hidden="true" />
-          {{ detail.ctaLabel }}
+          <BookOpenCheck :size="16" />{{ detail.linkPath === '/' ? '前往首页' : '查看题集' }}
         </button>
-      </div>
-    </section>
-  </PageContainer>
+      </template>
+    </div>
+  </section>
 </template>

@@ -2,12 +2,14 @@
 import { BookMarked, Home, UserRound, XCircle } from '@lucide/vue'
 import { RouterLink } from 'vue-router'
 
-const items: Array<{ label: string; to: string; icon: typeof Home; dot?: boolean }> = [
+import { useNotificationsStore } from '@/stores/notifications'
+
+const notifications = useNotificationsStore()
+const items: Array<{ label: string; to: string; icon: typeof Home }> = [
   { label: '首页', to: '/', icon: Home },
   { label: '收藏', to: '/favorites', icon: BookMarked },
   { label: '错题', to: '/mistakes', icon: XCircle },
-  // 占位:dot 由未读数驱动,接口落地后随未读数显示
-  { label: '我的', to: '/me', icon: UserRound, dot: true },
+  { label: '我的', to: '/me', icon: UserRound },
 ]
 </script>
 
@@ -37,7 +39,7 @@ const items: Array<{ label: string; to: string; icon: typeof Home; dot?: boolean
         >
           <component :is="item.icon" :size="21" :stroke-width="2.2" />
           <span
-            v-if="item.dot"
+            v-if="item.to === '/me' && notifications.unreadCount > 0"
             class="absolute right-2.5 top-0 size-2 rounded-full bg-error"
             aria-hidden="true"
           ></span>

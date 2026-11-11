@@ -24,9 +24,11 @@ import PracticePlanPopup from '@/components/practice/PracticePlanPopup.vue'
 import PracticeSettingsPopup from '@/components/practice/PracticeSettingsPopup.vue'
 import { useAppearance } from '@/composables/useAppearance'
 import { useAuthStore } from '@/stores/auth'
+import { useNotificationsStore } from '@/stores/notifications'
 import { usePracticePlanStore } from '@/stores/practice-plan'
 import { usePracticeSettingsStore } from '@/stores/practice-settings'
 
+const notifications = useNotificationsStore()
 const auth = useAuthStore()
 const practicePlanStore = usePracticePlanStore()
 const practiceSettingsStore = usePracticeSettingsStore()
@@ -68,11 +70,10 @@ const menuGroups = computed<{ title: string; items: MenuItem[] }[]>(() => [
     items: [
       {
         title: '消息中心',
-        subtitle: '考试提醒、刷题提醒、系统公告',
+        subtitle: '学习消息、系统公告',
         icon: Bell,
         action: 'messages' as const,
-        /** 占位未读数:接口落地后由未读数 composable 提供 */
-        badge: 3,
+        badge: notifications.unreadCount,
       },
     ],
   },
