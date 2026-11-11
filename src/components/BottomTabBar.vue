@@ -2,11 +2,12 @@
 import { BookMarked, Home, UserRound, XCircle } from '@lucide/vue'
 import { RouterLink } from 'vue-router'
 
-const items = [
+const items: Array<{ label: string; to: string; icon: typeof Home; dot?: boolean }> = [
   { label: '首页', to: '/', icon: Home },
   { label: '收藏', to: '/favorites', icon: BookMarked },
   { label: '错题', to: '/mistakes', icon: XCircle },
-  { label: '我的', to: '/me', icon: UserRound },
+  // 占位:dot 由未读数驱动,接口落地后随未读数显示
+  { label: '我的', to: '/me', icon: UserRound, dot: true },
 ]
 </script>
 
@@ -31,10 +32,15 @@ const items = [
         @click="navigate"
       >
         <span
-          class="flex h-7 min-w-12 items-center justify-center rounded-full"
+          class="relative flex h-7 min-w-12 items-center justify-center rounded-full"
           :class="isActive ? 'bg-primary/15 text-primary' : 'text-base-content'"
         >
           <component :is="item.icon" :size="21" :stroke-width="2.2" />
+          <span
+            v-if="item.dot"
+            class="absolute right-2.5 top-0 size-2 rounded-full bg-error"
+            aria-hidden="true"
+          ></span>
         </span>
         <span>{{ item.label }}</span>
       </a>

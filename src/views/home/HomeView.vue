@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { AlertCircle, ChevronRight, EyeOff, Target } from '@lucide/vue'
+import { AlertCircle, Bell, ChevronRight, EyeOff, Target } from '@lucide/vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -8,6 +8,7 @@ import LogoPassitai from '@/components/common/LogoPassitai.vue'
 import PageContainer from '@/components/common/PageContainer.vue'
 import PagePlaceholder from '@/components/common/PagePlaceholder.vue'
 import HomePlanCard from '@/components/home/HomePlanCard.vue'
+import NotificationStrip from '@/components/home/NotificationStrip.vue'
 import HomePracticeEntries from '@/components/home/HomePracticeEntries.vue'
 import SubjectManagerPopup from '@/components/home/SubjectManagerPopup.vue'
 import PracticePlanPopup from '@/components/practice/PracticePlanPopup.vue'
@@ -320,7 +321,23 @@ watch(
       <h1 class="sr-only">练习首页</h1>
       <header class="flex h-9 shrink-0 items-center">
         <LogoPassitai role="img" aria-label="Passitai" class="h-8 w-auto text-base-content" />
+        <button
+          class="relative ml-auto flex size-9 items-center justify-center rounded-full border border-base-200 bg-base-100 text-base-content transition-colors active:bg-base-200/60"
+          type="button"
+          aria-label="消息中心,3 条未读"
+          @click="router.push({ name: 'notifications' })"
+        >
+          <Bell :size="18" />
+          <!-- 占位未读数:接口落地后由未读数 composable 提供 -->
+          <span
+            class="absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-full border-2 border-base-100 bg-error px-1 text-[10px] font-semibold text-error-content"
+            >3</span
+          >
+        </button>
       </header>
+
+      <!-- 通知公告条:静态占位,无未读时由数据驱动隐藏 -->
+      <NotificationStrip />
 
       <PagePlaceholder v-if="planLoading" role="status" aria-live="polite">
         <span class="loading loading-spinner loading-md text-primary"></span>

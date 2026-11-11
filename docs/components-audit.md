@@ -73,7 +73,8 @@ src/components/
 - `HomePlanCard` 接收计划并自行计算省份、考试日期与倒计时展示，只发出打开计划、设置的意图；加载、错误和空计划仍由首页决定。
 - `HomePracticeEntries` 接收已合并本地进度的题集入口、当前选中入口、加载态与科目名，负责入口色彩图标和题集映射展示，不自行请求或读取路由；选择入口和开始题集通过事件交给首页。
 - `AiPracticePanel` 是 AI 练习入口的静态还原面板（推荐卡、自定义生成、历史列表），数据为组件内占位，AI 训练接口落地后由 store 提供同构数据并接通操作。
-- `NotificationsView`/`NotificationDetailView` 是消息中心静态还原(列表筛选分组、未读态、详情),数据为视图内占位,接口落地后按 notification-design.md 契约替换;入口与未读角标在「我的」页。
+- `NotificationsView`/`NotificationDetailView` 是消息中心静态还原(列表筛选分组、未读态、详情),数据为视图内占位,接口落地后按 notification-design.md 契约替换;入口共三处:首页铃铛(角标)、首页公告条(有未读才显示)、「我的 → 消息中心」(未读角标),均为静态占位。
+- `NotificationStrip` 是首页公告条:最新未读消息的单行摘要,点击进详情;占位数据组件内,无未读时由数据驱动隐藏。
 - `SubjectManagerPopup` 只展示科目和发出选择、显隐、移动事件；首页负责实际顺序、当前选择和浏览记忆。
 - `PracticeResultQuestionPopup` 使用一个题目对象的双向模型管理当前详情；关闭弹层即清空选择，不同时维护两份开合状态。报告页面不再内嵌详情展示。
 - `usePracticeResult` 管理报告请求、加载/错误状态、当前账号与目标的请求校验和卸载失效；不处理路由跳转或弹层。报告页面保留筛选与显示分组。
