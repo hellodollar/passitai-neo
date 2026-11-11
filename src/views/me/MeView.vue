@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { LucideIcon } from '@lucide/vue'
 import {
   Bell,
   ChevronRight,
@@ -37,17 +38,44 @@ const passwordDialogOpen = ref(false)
 const emailDialogOpen = ref(false)
 const planPopupOpen = ref(false)
 const practiceSettingsPopupOpen = ref(false)
-const notificationPopupOpen = ref(false)
 const cleanupPopupOpen = ref(false)
 const appearancePopupOpen = ref(false)
 
-type SettingsAction = 'account' | 'plan' | 'practice' | 'notification' | 'cleanup' | 'appearance'
+type MenuItem = {
+  title: string
+  icon: LucideIcon
+  action: SettingsAction
+  subtitle?: string
+  badge?: number
+}
+
+type SettingsAction =
+  | 'account'
+  | 'messages'
+  | 'plan'
+  | 'practice'
+  | 'notification'
+  | 'cleanup'
+  | 'appearance'
 const displayName = computed(() => {
   const name = auth.user?.email.split('@')[0]
   return name ? name.replace(/[._-]+/g, ' ') : 'PassIt AI'
 })
 const profileEmail = computed(() => auth.user?.email ?? '')
-const menuGroups = computed(() => [
+const menuGroups = computed<{ title: string; items: MenuItem[] }[]>(() => [
+  {
+    title: '消息',
+    items: [
+      {
+        title: '消息中心',
+        subtitle: '考试提醒、刷题提醒、系统公告',
+        icon: Bell,
+        action: 'messages' as const,
+        /** 占位未读数:接口落地后由未读数 composable 提供 */
+        badge: 3,
+      },
+    ],
+  },
   {
     title: '刷题',
     items: [
@@ -93,13 +121,14 @@ const menuGroups = computed(() => [
         icon: SunMoon,
         action: 'appearance' as const,
       },
-      { title: '通知', subtitle: '暂未开放', icon: Bell, action: 'notification' as const },
     ],
   },
 ])
 
 function openMenuItem(action: SettingsAction) {
-  if (action === 'cleanup') {
+  if (action === 'messages') {
+    void router.push({ name: 'notifications' })
+  } else if (action === 'cleanup') {
     cleanupPopupOpen.value = true
   } else if (action === 'account') {
     accountPopupOpen.value = true
@@ -111,8 +140,6 @@ function openMenuItem(action: SettingsAction) {
   } else if (action === 'practice') {
     if (practiceSettingsStore.error) void practiceSettingsStore.load()
     practiceSettingsPopupOpen.value = true
-  } else {
-    notificationPopupOpen.value = true
   }
 }
 
@@ -142,7 +169,6 @@ watch(
       emailDialogOpen.value = false
       planPopupOpen.value = false
       practiceSettingsPopupOpen.value = false
-      notificationPopupOpen.value = false
       cleanupPopupOpen.value = false
     }
     if (token) void Promise.allSettled([practicePlanStore.load(), practiceSettingsStore.load()])
@@ -190,13 +216,14 @@ watch(
               type="button"
               @click="openMenuItem(item.action)"
             >
-              <component
-                :is="item.icon"
-                :size="18"
-                stroke-width="1.8"
-                class="shrink-0 text-base-content/55"
-                aria-hidden="true"
-              />
+              <span class="relative shrink-0 text-base-content/55">
+                <component :is="item.icon" :size="18" stroke-width="1.8" aria-hidden="true" />
+                <span
+                  v-if="item.badge"
+                  class="absolute -right-2 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-error px-1 text-[10px] font-semibold text-error-content border-2 border-base-100"
+                  >{{ item.badge }}</span
+                >
+              </span>
               <span class="min-w-0 flex-1">
                 <span class="block truncate text-sm font-medium leading-5">{{ item.title }}</span>
                 <span
@@ -267,9 +294,6 @@ watch(
 
     <PracticePlanPopup v-model="planPopupOpen" />
     <PracticeSettingsPopup v-model="practiceSettingsPopupOpen" show-mistake-settings />
-    <BasePopup v-model="notificationPopupOpen" title="通知">
-      <p class="py-4 text-center text-sm text-base-content/60">通知功能暂未开放</p>
-    </BasePopup>
     <AppearancePopup v-model="appearancePopupOpen" />
     <DataCleanupPopup v-model="cleanupPopupOpen" />
   </section>

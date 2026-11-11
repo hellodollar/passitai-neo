@@ -8,7 +8,10 @@ export function createAppRouter(history: RouterHistory) {
   const router = createRouter({
     history,
     scrollBehavior(to, from, savedPosition) {
-      if (['home', 'favorites', 'mistakes'].includes(String(to.name)) || to.path === from.path) {
+      if (
+        ['home', 'favorites', 'mistakes', 'notifications'].includes(String(to.name)) ||
+        to.path === from.path
+      ) {
         return false
       }
       return savedPosition ?? { left: 0, top: 0 }
@@ -60,6 +63,17 @@ export function createAppRouter(history: RouterHistory) {
           groupBy: route.params.groupBy,
           groupId: route.params.groupId,
         }),
+      },
+      {
+        path: '/notifications',
+        name: 'notifications',
+        component: () => import('@/views/notifications/NotificationsView.vue'),
+      },
+      {
+        path: '/notifications/:id',
+        name: 'notification-detail',
+        component: () => import('@/views/notifications/NotificationDetailView.vue'),
+        props: true,
       },
       {
         path: '/me',
