@@ -35,7 +35,7 @@ const errors = reactive({
 function validateEmail() {
   const value = form.email.trim()
   if (!value) errors.email = '请输入邮箱'
-  else if (!EMAIL_PATTERN.test(value)) errors.email = '邮箱格式不正确，请检查后重试'
+  else if (!EMAIL_PATTERN.test(value)) errors.email = '邮箱格式不正确'
   else errors.email = ''
   return !errors.email
 }
@@ -100,7 +100,7 @@ async function submit() {
 
 <template>
   <AuthFrame title="创建账号">
-    <form class="grid gap-1" novalidate @submit.prevent="submit">
+    <form class="grid gap-0" novalidate @submit.prevent="submit">
       <FormField
         v-model="form.email"
         label="邮箱"
@@ -119,7 +119,7 @@ async function submit() {
         :error="errors.password"
         type="password"
         autocomplete="new-password"
-        placeholder="6-20 位，包含字母和数字"
+        placeholder="••••••••"
         @blur="validatePassword"
       />
 
@@ -130,22 +130,22 @@ async function submit() {
         :error="errors.confirmPassword"
         type="password"
         autocomplete="new-password"
-        placeholder="请再次输入密码"
+        placeholder="••••••••"
         @blur="validateConfirmPassword"
       />
 
       <FormField
         v-model="form.inviteCode"
-        label="邀请码（选填）"
+        label="邀请码"
         :icon="TicketPercent"
         :error="errors.inviteCode"
         autocomplete="off"
-        placeholder="6位字母和数字"
+        placeholder="选填"
         @blur="validateInviteCode"
       />
 
       <button
-        class="btn btn-primary h-12 w-full rounded-full text-sm font-semibold"
+        class="btn btn-primary mt-1 h-11 w-full rounded-full text-sm font-semibold"
         :disabled="auth.isLoading"
       >
         <span v-if="auth.isLoading" class="loading loading-spinner loading-sm"></span>
@@ -153,7 +153,7 @@ async function submit() {
       </button>
     </form>
 
-    <p class="mt-3 text-center text-sm text-base-content/60">
+    <p class="mt-4 text-center text-sm text-base-content/60">
       已经有账号？
       <RouterLink
         class="font-semibold text-primary hover:underline"
