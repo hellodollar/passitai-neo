@@ -5,16 +5,23 @@ import { useRoute } from 'vue-router'
 import BottomTabBar from '@/components/BottomTabBar.vue'
 import AppToast from '@/components/common/AppToast.vue'
 import { useAuthStore } from '@/stores/auth'
+import { useNotificationSettingsStore } from '@/stores/notification-settings'
 import { useNotificationsStore } from '@/stores/notifications'
 
 const route = useRoute()
 const auth = useAuthStore()
 const notifications = useNotificationsStore()
+const notificationSettings = useNotificationSettingsStore()
 watch(
   () => auth.session?.token,
   () => {
-    if (auth.isAuthenticated) notifications.start()
-    else notifications.reset()
+    if (auth.isAuthenticated) {
+      notifications.start()
+      void notificationSettings.load()
+    } else {
+      notifications.reset()
+      notificationSettings.reset()
+    }
   },
   { immediate: true },
 )

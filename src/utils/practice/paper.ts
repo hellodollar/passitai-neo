@@ -1,6 +1,7 @@
 import { questionTypeLabels } from '@/generated/domain-values'
 import type { PracticePaperItem, PracticePaperLite, QuestionListItem } from '@/types'
 
+import { shuffleWithSeed } from './order'
 import { toQuestionListItem } from './question'
 import { questionFingerprint } from './record'
 
@@ -36,4 +37,16 @@ export function preparePracticePaper(paper: PracticePaperLite) {
   }
 
   return { questions, groups, fingerprints, itemsById }
+}
+
+/** 只调整组内展示顺序，分组起始索引、题目内容、指纹和题目 ID 保持对应。 */
+export function orderPracticePaper(
+  prepared: ReturnType<typeof preparePracticePaper>,
+  seed: string,
+) {
+  const groups = prepared.groups.map((group) => ({
+    ...group,
+    questions: shuffleWithSeed(group.questions, `${seed}|${group.key}`),
+  }))
+  return { ...prepared, groups, questions: groups.flatMap((group) => group.questions) }
 }

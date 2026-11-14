@@ -127,6 +127,7 @@ export type SubmitPracticePaperBody = {
 }
 
 export type PracticeSettings = {
+  shuffleQuestions: boolean
   autoNext: boolean
   recordWrongQuestions: boolean
   autoSubmitAfterCompletion: boolean

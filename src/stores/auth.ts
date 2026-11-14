@@ -9,6 +9,7 @@ import {
   changePassword as changePasswordApi,
 } from '@/api/profile'
 import { AUTH_INVALIDATED_EVENT, STORAGE_KEYS } from '@/constants/app'
+import { useNotificationSettingsStore } from '@/stores/notification-settings'
 import { useNotificationsStore } from '@/stores/notifications'
 import { usePracticeEntriesStore } from '@/stores/practice-entries'
 import { usePracticePlanStore } from '@/stores/practice-plan'
@@ -44,6 +45,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   function resetCaches() {
     useNotificationsStore().reset()
+    useNotificationSettingsStore().reset()
     usePracticeSettingsStore().reset()
     usePracticePlanStore().reset()
     usePracticeEntriesStore().reset()

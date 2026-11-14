@@ -8,6 +8,7 @@ import { loadSource } from './helpers/load-source.mjs'
 const { usePracticeSettingsStore } = await loadSource('stores/practice-settings.ts')
 
 const SETTINGS = {
+  shuffleQuestions: false,
   autoNext: false,
   recordWrongQuestions: true,
   autoSubmitAfterCompletion: false,
@@ -310,4 +311,16 @@ test('旧读取失败不能把新保存成功的设置标成加载失败', async
   assert.equal(store.settings.autoNext, true)
   assert.equal(store.error, null)
   assert.equal(store.isLoaded, true)
+})
+
+test('乱序出题保存后共享状态与重新读取保持一致', async () => {
+  handler = ({ body }) => envelope({ ...SETTINGS, ...body })
+  const store = practice()
+  await store.save({ shuffleQuestions: true })
+  assert.equal(store.settings.shuffleQuestions, true)
+  assert.deepEqual(requests[0].body, { shuffleQuestions: true })
+  store.reset()
+  handler = () => envelope({ ...SETTINGS, shuffleQuestions: true })
+  await store.load()
+  assert.equal(store.settings.shuffleQuestions, true)
 })

@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router'
 
 import { fetchNotifications } from '@/api/notifications'
 import { useAuthStore } from '@/stores/auth'
+import { useNotificationSettingsStore } from '@/stores/notification-settings'
 import { useNotificationsStore } from '@/stores/notifications'
 import type { NotificationItem } from '@/types/notification'
 import { notificationDayGroup, notificationTime } from '@/utils/notifications'
@@ -19,18 +20,9 @@ const items = ref<NotificationItem[]>([]),
   loading = ref(false),
   marking = ref(false),
   error = ref('')
-const category = ref<'all' | NotificationItem['category']>('all'),
-  unreadOnly = ref(false)
-const options = [
-  { value: 'all', label: '全部' },
-  { value: 'learning', label: '学习' },
-  { value: 'system', label: '系统' },
-] as const
-const counts = computed(() => ({
-  all: notifications.unreadCount,
-  learning: notifications.summary?.unreadByCategory.learning ?? 0,
-  system: notifications.summary?.unreadByCategory.system ?? 0,
-}))
+const unreadOnly = ref(false)
+const preferences = useNotificationSettingsStore()
+void preferences.load()
 const groups = computed(() =>
   ['今天', '昨天', '更早']
     .map((label) => ({
@@ -56,7 +48,6 @@ async function load(append = false) {
   try {
     const result = await fetchNotifications({
       page: targetPage,
-      category: category.value === 'all' ? undefined : category.value,
       unread: unreadOnly.value ? 'true' : undefined,
     })
     if (disposed || current !== version || !isCurrent()) return
@@ -90,7 +81,7 @@ async function markAll() {
   }
 }
 watch(
-  [category, unreadOnly, () => auth.session?.token],
+  [unreadOnly, () => auth.session?.token],
   () => {
     guard.reset()
     marking.value = false
@@ -110,9 +101,7 @@ onBeforeUnmount(() => {
     <header
       class="fixed left-1/2 top-0 z-40 w-full max-w-[32rem] -translate-x-1/2 border-b border-base-200/80 bg-base-100/95 pt-[env(safe-area-inset-top)] backdrop-blur-xl"
     >
-      <div
-        class="relative grid h-14 grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-2 px-3"
-      >
+      <div class="relative grid h-14 grid-cols-[5rem_minmax(0,1fr)_5rem] items-center gap-2 px-3">
         <button
           class="flex size-10 items-center justify-center rounded-full text-base-content transition active:bg-base-200"
           type="button"
@@ -124,7 +113,7 @@ onBeforeUnmount(() => {
         <h1 class="truncate text-center text-[15px] font-semibold leading-tight">消息中心</h1>
         <button
           v-if="notifications.unreadCount > 0"
-          class="flex items-center gap-1 whitespace-nowrap pr-1 text-xs text-primary disabled:opacity-50"
+          class="flex justify-self-end items-center gap-1 whitespace-nowrap pr-1 text-xs text-primary disabled:opacity-50"
           type="button"
           :disabled="marking"
           @click="markAll"
@@ -137,24 +126,6 @@ onBeforeUnmount(() => {
       class="flex w-full min-w-0 flex-1 flex-col px-4 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-[calc(4.5rem+env(safe-area-inset-top))]"
     >
       <div class="flex items-center gap-1.5 pb-2">
-        <button
-          v-for="option in options"
-          :key="option.value"
-          class="flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium"
-          :class="
-            category === option.value
-              ? 'bg-primary text-primary-content'
-              : 'bg-base-200/60 text-base-content/60'
-          "
-          type="button"
-          :aria-pressed="category === option.value"
-          @click="category = option.value"
-        >
-          {{ option.label
-          }}<span v-if="counts[option.value]" class="text-[10px] opacity-75 tabular-nums">{{
-            counts[option.value]
-          }}</span>
-        </button>
         <button
           class="ml-auto rounded-full border px-2.5 py-1 text-xs"
           :class="
@@ -222,9 +193,10 @@ onBeforeUnmount(() => {
               class="block truncate text-[13.5px]"
               :class="item.readAt ? 'font-medium text-base-content/75' : 'font-semibold'"
               >{{ item.title }}</span
-            ><span class="mt-0.5 line-clamp-2 block text-xs leading-snug text-base-content/65">{{
-              item.contentPreview
-            }}</span
+            ><span
+              v-if="preferences.settings?.contentPreview"
+              class="mt-0.5 line-clamp-2 block text-xs leading-snug text-base-content/65"
+              >{{ item.contentPreview }}</span
             ><span class="mt-1 block text-[11px] text-base-content/45">{{
               notificationTime(item.publishedAt)
             }}</span></span

@@ -69,6 +69,12 @@ watch(
           @update:model-value="saveSetting('autoNext', $event)"
         />
         <SettingsToggleItem
+          :model-value="settings.shuffleQuestions"
+          title="乱序出题"
+          description="下次进入练习时打乱题目顺序"
+          @update:model-value="saveSetting('shuffleQuestions', $event)"
+        />
+        <SettingsToggleItem
           :model-value="settings.autoSubmitAfterCompletion"
           title="自动交卷"
           description="答完全部题目后自动提交"

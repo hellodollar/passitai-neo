@@ -43,7 +43,11 @@ import type {
   QuestionListItem,
 } from '@/types'
 import { resolvePracticeReturn, returnToPracticeList } from '@/utils/browse/navigation'
-import { preparePracticePaper, type AnswerSheetGroup } from '@/utils/practice/paper'
+import {
+  preparePracticePaper,
+  orderPracticePaper,
+  type AnswerSheetGroup,
+} from '@/utils/practice/paper'
 import {
   getPreviewOptions,
   getQuestionOptions,
@@ -617,20 +621,21 @@ async function loadPaperData() {
     paperLoadState.value = 'missing'
     return
   }
-  void practiceSettingsStore.load()
-
   try {
-    const loaded =
+    const [loaded, settings] = await Promise.all([
       source === 'practice'
-        ? await fetchPracticePaper(paperIdParam).then((detail) => ({
+        ? fetchPracticePaper(paperIdParam).then((detail) => ({
             ...detail,
             paperType: detail.paper.type,
           }))
-        : await loadCollectionPaper()
+        : loadCollectionPaper(),
+      practiceSettingsStore.load(),
+    ])
     if (sequence !== loadSequence || sessionToken !== auth.session?.token) return
     const { paper } = loaded
     paperTitle.value = paper.name
-    const { questions, groups, fingerprints, itemsById } = preparePracticePaper(paper)
+    const prepared = preparePracticePaper(paper)
+    const { questions, groups, fingerprints, itemsById } = prepared
 
     currentQuestions.value = questions
     answerSheetGroups.value = groups
@@ -650,6 +655,21 @@ async function loadPaperData() {
     }
     const hasSavedRecord = loadSavedRecord(context, fingerprints)
     if (sequence !== loadSequence) return
+    if (settings?.shuffleQuestions && localRecord.value) {
+      const currentId = hasSavedRecord ? currentQuestions.value[currentIndex.value]?.id : undefined
+      const ordered = orderPracticePaper(
+        prepared,
+        `${userId}|${paperIdParam}|${localRecord.value.startedAt}`,
+      )
+      currentQuestions.value = ordered.questions
+      answerSheetGroups.value = ordered.groups
+      currentIndex.value = currentId
+        ? Math.max(
+            0,
+            ordered.questions.findIndex((question) => question.id === currentId),
+          )
+        : 0
+    }
 
     syncCurrentInput()
     paperLoadState.value = 'ready'

@@ -20,6 +20,7 @@ import AppearancePopup from '@/components/me/AppearancePopup.vue'
 import ChangeEmailDialog from '@/components/me/ChangeEmailDialog.vue'
 import ChangePasswordDialog from '@/components/me/ChangePasswordDialog.vue'
 import DataCleanupPopup from '@/components/me/DataCleanupPopup.vue'
+import NotificationSettingsPopup from '@/components/me/NotificationSettingsPopup.vue'
 import PracticePlanPopup from '@/components/practice/PracticePlanPopup.vue'
 import PracticeSettingsPopup from '@/components/practice/PracticeSettingsPopup.vue'
 import { useAppearance } from '@/composables/useAppearance'
@@ -40,6 +41,7 @@ const passwordDialogOpen = ref(false)
 const emailDialogOpen = ref(false)
 const planPopupOpen = ref(false)
 const practiceSettingsPopupOpen = ref(false)
+const notificationSettingsOpen = ref(false)
 const cleanupPopupOpen = ref(false)
 const appearancePopupOpen = ref(false)
 
@@ -92,6 +94,7 @@ const menuGroups = computed<{ title: string; items: MenuItem[] }[]>(() => [
               ? `${practicePlanStore.plan.majorName} · ${practicePlanStore.plan.subjects.length} 个科目`
               : '选择专业和刷题科目',
       },
+      { title: '通知', icon: Bell, action: 'notification' as const },
       {
         title: '刷题设置',
         icon: Settings2,
@@ -127,7 +130,9 @@ const menuGroups = computed<{ title: string; items: MenuItem[] }[]>(() => [
 ])
 
 function openMenuItem(action: SettingsAction) {
-  if (action === 'messages') {
+  if (action === 'notification') {
+    notificationSettingsOpen.value = true
+  } else if (action === 'messages') {
     void router.push({ name: 'notifications' })
   } else if (action === 'cleanup') {
     cleanupPopupOpen.value = true
@@ -171,6 +176,7 @@ watch(
       planPopupOpen.value = false
       practiceSettingsPopupOpen.value = false
       cleanupPopupOpen.value = false
+      notificationSettingsOpen.value = false
     }
     if (token) void Promise.allSettled([practicePlanStore.load(), practiceSettingsStore.load()])
   },
@@ -295,6 +301,7 @@ watch(
 
     <PracticePlanPopup v-model="planPopupOpen" />
     <PracticeSettingsPopup v-model="practiceSettingsPopupOpen" show-mistake-settings />
+    <NotificationSettingsPopup v-model="notificationSettingsOpen" />
     <AppearancePopup v-model="appearancePopupOpen" />
     <DataCleanupPopup v-model="cleanupPopupOpen" />
   </section>

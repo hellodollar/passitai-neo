@@ -151,7 +151,7 @@ interface AuthResult {
 保存计划后首页与“我的”读取同一份计划状态；设置保存后答题页与“我的”读取同一份设置状态。
 账号切换或退出清理缓存，迟到响应不能覆盖新会话。
 
-`/api/me`、`/api/user` 已移除（账户资料迁移到 `/api/profile`）。通知设置尚未开放，不持久化通知偏好占位配置，
+`/api/me`、`/api/user` 已移除（账户资料迁移到 `/api/profile`）。通知展示设置单独使用 `/api/notifications/settings`，
 `GET/PATCH /api/profile/settings/notifications` 返回404；页面只显示“暂未开放”。
 本地刷题记录由浏览器按用户隔离保存，管理入口明确标注“本地”，不删除服务端交卷报告。
 
@@ -262,6 +262,7 @@ API源为src/constants/province.ts，通过pnpm sync同步到Neo的src/generated
 
 ```ts
 interface PracticeSettings {
+  shuffleQuestions: boolean // 乱序出题，默认关闭
   autoNext: boolean
   recordWrongQuestions: boolean
   autoSubmitAfterCompletion: boolean
@@ -269,11 +270,12 @@ interface PracticeSettings {
 }
 ```
 
-`PATCH` 接受非空局部更新，只允许上述四个布尔字段；空对象、未知字段或非布尔值返回400。
+`PATCH` 接受非空局部更新，只允许上述五个布尔字段；空对象、未知字段或非布尔值返回400。
 配置存于 `users.preferences.practice`，以数据库原子合并保存，不覆盖并发修改的其他字段或刷题计划。
 未设置时返回 `autoNext: false`、`recordWrongQuestions: true`、
-`autoSubmitAfterCompletion: false`、`removeMistakeOnCorrect: false`；默认值以
+`autoSubmitAfterCompletion: false`、`removeMistakeOnCorrect: false`、`shuffleQuestions: false`；默认值以
 `src/services/client/user-preferences.ts` 为准。
+乱序出题在下次进入练习时生效：保留原分组，在每组内打乱题目顺序，不打乱选项。存在本地作答记录时，客户端按记录的开始时间固定同一轮顺序，刷新或恢复时保持稳定；答案和进度仍按题目 ID 对应。API 返回题集保留原顺序，提交协议不变。
 未接入实际行为的循环练习、答后解析开关已移除；请求旧字段返回400。
 
 ### 练习入口
@@ -585,7 +587,7 @@ interface NotificationSummary {
 正文是纯文本，不作为 HTML 渲染。广播以发布时的启用普通用户为准，新注册用户不补发历史广播。
 首页铃铛、通知条、“我的”和消息页共享摘要，已读成功后刷新；登录、前台恢复和页面切换时刷新，
 前台最多每60秒轮询，不承诺实时推送。账号切换清理缓存并隔离迟到响应。
-通知设置、自动提醒、Telegram 和邮件不在本次站内通知范围内。
+通知展示设置见下文；自动提醒、Telegram 和邮件不属于站内通知。
 
 ## 9. 接口总表
 
@@ -628,3 +630,16 @@ GET    /api/notifications/:id
 PUT    /api/notifications/:id/read
 PUT    /api/notifications/read-all
 ```
+
+
+## 通知展示设置
+
+`GET /api/notifications/settings` 返回 `{ inAppBanner: boolean, contentPreview: boolean }`，默认均为 `true`。
+`PATCH /api/notifications/settings` 接受至少一个上述布尔字段；空对象、未知字段、非布尔值返回 400。
+开关以当前登录用户为范围，存于 `users.preferences.notifications`，原子局部合并，不覆盖并发更新的刷题设置或其他开关。
+`inAppBanner` 只控制 App 内的最新未读横幅；`contentPreview` 控制横幅标题预览及通知列表正文摘要，消息详情仍可主动查看。
+关闭开关不停止消息接收、不更改收件或已读事实，不关联系统推送、邮件和短信。
+客户端消息页不展示分类筛选，只保留「只看未读」，请求 `unread=true`；关闭时不传 unread。
+API 的 category 参数保留兼容现有调用，通知分类仍可由后台管理。
+账户安全继续使用 `PUT /api/profile/password` 和 `/api/profile/email`，请求严格拒绝未知字段。
+改密成功后旧会话失效，客户端清理会话并返回登录；改邮箱成功后使用响应邮箱同步本地会话。

@@ -34,7 +34,7 @@ export function fetchPracticeSubmission(paperId: string, submissionId: string) {
 
 /** 文档:GET /api/practice/settings */
 export function fetchPracticeSettings() {
-  return request<PracticeSettings>('/practice/settings')
+  return request<PracticeSettings>('/practice/settings', { timeout: 10_000, retry: 0 })
 }
 
 /** 文档:PATCH /api/practice/settings */
