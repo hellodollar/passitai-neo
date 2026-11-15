@@ -1,5 +1,7 @@
 @import 'tailwindcss';
 
+@custom-variant dark (&:where([data-theme='neo-dark'], [data-theme='neo-dark'] *));
+
 @theme {
   /* AI 入口语义色:显式注册为 Tailwind 主题色。
      自定义名不在 daisyUI 内置色表内,新版 daisyUI 不会为其生成 bg-ai/text-ai/ring-ai,

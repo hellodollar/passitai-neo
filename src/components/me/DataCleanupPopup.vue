@@ -63,12 +63,12 @@ watch(
 
 <template>
   <BasePopup v-model="model" title="数据清理">
-    <div class="pb-[env(safe-area-inset-bottom)]">
+    <div class="space-y-3 pb-[env(safe-area-inset-bottom)]">
       <section aria-label="作答记录">
-        <div class="flex items-center justify-between gap-3">
+        <div class="mb-1 flex items-center justify-between gap-3 px-3">
           <h4 class="text-xs font-medium text-base-content/55">作答记录</h4>
           <button
-            class="btn btn-ghost btn-sm"
+            class="h-8 flex items-center rounded-md px-2 text-xs font-normal transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary disabled:opacity-35 text-base-content/60 active:bg-base-200/60"
             type="button"
             :disabled="records.length === 0"
             aria-label="清除全部作答记录"
@@ -77,15 +77,15 @@ watch(
             全部清除
           </button>
         </div>
-        <div class="divide-y divide-base-200">
+        <div class="rounded-lg bg-base-200/40">
           <div
             v-for="category in categories"
             :key="category.type"
-            class="flex min-h-12 items-center justify-between gap-3"
+            class="flex h-11 items-center justify-between gap-3 px-3"
           >
             <span class="text-sm">{{ category.label }}</span>
             <button
-              class="btn btn-ghost btn-sm"
+              class="h-11 flex items-center rounded-md px-2 text-xs font-normal transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary disabled:opacity-35 text-base-content/60 active:bg-base-300/40"
               type="button"
               :disabled="!category.hasRecords"
               :aria-label="`清除${category.label}作答记录`"
@@ -96,23 +96,26 @@ watch(
           </div>
         </div>
       </section>
-      <div class="mt-3 divide-y divide-base-200 border-t border-base-200 pt-3">
-        <div
-          v-for="collection in collections"
-          :key="collection.source"
-          class="flex min-h-12 items-center justify-between gap-3"
-        >
-          <span class="text-sm">{{ collection.label }}</span>
-          <button
-            class="btn btn-ghost btn-sm"
-            type="button"
-            :aria-label="`清空全部${collection.label}`"
-            @click="requestCollectionClear(collection.source)"
+      <section aria-label="收藏与错题">
+        <h4 class="mb-1 px-3 text-xs font-medium text-base-content/55">收藏与错题</h4>
+        <div class="rounded-lg bg-base-200/40">
+          <div
+            v-for="collection in collections"
+            :key="collection.source"
+            class="flex h-11 items-center justify-between gap-3 px-3"
           >
-            清空
-          </button>
+            <span class="text-sm">{{ collection.label }}</span>
+            <button
+              class="h-11 flex items-center rounded-md px-2 text-xs font-normal transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary disabled:opacity-35 text-error active:bg-error/5"
+              type="button"
+              :aria-label="`清空全部${collection.label}`"
+              @click="requestCollectionClear(collection.source)"
+            >
+              清空
+            </button>
+          </div>
         </div>
-      </div>
+      </section>
     </div>
   </BasePopup>
   <ClearPracticeRecordsDialog

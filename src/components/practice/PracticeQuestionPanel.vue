@@ -94,14 +94,14 @@ function optionClasses(optionValue: string) {
   }
 
   if (optionIsCorrect(optionValue)) {
-    return 'border-success bg-success/[0.06] text-base-content'
+    return 'border-emerald-600/25 bg-emerald-500/[0.06] text-base-content'
   }
 
   if (selected) {
-    return 'border-error bg-error/[0.06] text-base-content'
+    return 'border-red-600/25 bg-red-500/[0.06] text-base-content'
   }
 
-  return 'border-base-200 bg-base-100 text-base-content/55'
+  return 'border-transparent bg-base-200/30 text-base-content/65'
 }
 
 function optionMarkerClasses(optionValue: string) {
@@ -114,11 +114,13 @@ function optionMarkerClasses(optionValue: string) {
   }
 
   if (optionIsCorrect(optionValue)) {
-    return 'border-success bg-success/10 text-success'
+    return selected
+      ? 'border-emerald-600 bg-emerald-600 text-white'
+      : 'border-emerald-600/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
   }
 
   if (selected) {
-    return 'border-error bg-error/10 text-error'
+    return 'border-red-600 bg-red-600 text-white'
   }
 
   return 'border-base-300 bg-base-100 text-base-content/40'
@@ -209,14 +211,20 @@ function optionMarkerClasses(optionValue: string) {
         !canGrade
           ? 'border-base-200 bg-base-200/40'
           : answerCorrect
-            ? 'border-success/25 bg-success/[0.06]'
-            : 'border-error/25 bg-error/[0.06]'
+            ? 'border-transparent bg-emerald-500/[0.06]'
+            : 'border-transparent bg-red-500/[0.06]'
       "
       role="status"
     >
       <div
         class="flex items-center gap-1.5 text-sm font-semibold"
-        :class="!canGrade ? 'text-base-content/70' : answerCorrect ? 'text-success' : 'text-error'"
+        :class="
+          !canGrade
+            ? 'text-base-content/70'
+            : answerCorrect
+              ? 'text-emerald-700 dark:text-emerald-400'
+              : 'text-red-700 dark:text-red-400'
+        "
       >
         <ClipboardCheck v-if="!canGrade" :size="16" />
         <CheckCircle2 v-else-if="answerCorrect" :size="16" />
@@ -229,12 +237,7 @@ function optionMarkerClasses(optionValue: string) {
       >
         <div class="min-w-0">
           <dt class="inline text-base-content/65">我的答案</dt>
-          <dd
-            class="inline break-words font-semibold"
-            :class="
-              !canGrade ? 'text-base-content/80' : answerCorrect ? 'text-success' : 'text-error'
-            "
-          >
+          <dd class="inline break-words font-semibold text-base-content">
             {{ userAnswerText || '—' }}
           </dd>
         </div>
@@ -242,10 +245,7 @@ function optionMarkerClasses(optionValue: string) {
           <dt class="inline text-base-content/65">
             {{ isChoiceMode ? '正确答案' : '参考答案' }}
           </dt>
-          <dd
-            class="inline break-words font-semibold"
-            :class="isChoiceMode ? 'text-success' : 'text-base-content/80'"
-          >
+          <dd class="inline break-words font-semibold text-base-content">
             {{ correctAnswerText || '暂无' }}
           </dd>
         </div>

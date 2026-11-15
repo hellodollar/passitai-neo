@@ -26,8 +26,9 @@ const detailOpen = computed({
         <span
           class="rounded-full px-2 py-1 text-[11px] font-semibold"
           :class="{
-            'bg-success/10 text-success': selectedQuestion.status === 'correct',
-            'bg-error/10 text-error': selectedQuestion.status === 'wrong',
+            'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400':
+              selectedQuestion.status === 'correct',
+            'bg-red-500/10 text-red-700 dark:text-red-400': selectedQuestion.status === 'wrong',
             'bg-base-200 text-base-content/45': selectedQuestion.status === 'unanswered',
             'bg-secondary/10 text-secondary': selectedQuestion.status === 'pending',
           }"
@@ -45,14 +46,16 @@ const detailOpen = computed({
           <dt class="text-base-content/65">我的答案</dt>
           <dd
             class="min-w-0 whitespace-pre-wrap break-words"
-            :class="selectedQuestion.status === 'wrong' ? 'text-error' : ''"
+            :class="selectedQuestion.status === 'wrong' ? 'text-red-700 dark:text-red-400' : ''"
           >
             {{ selectedQuestion.userAnswer || '未作答' }}
           </dd>
         </div>
         <div class="grid grid-cols-[5rem_minmax(0,1fr)] gap-3 px-3 py-2.5 text-sm">
           <dt class="text-base-content/65">正确答案</dt>
-          <dd class="min-w-0 whitespace-pre-wrap break-words text-success">
+          <dd
+            class="min-w-0 whitespace-pre-wrap break-words text-emerald-700 dark:text-emerald-400"
+          >
             {{ selectedQuestion.correctAnswer || '待批阅' }}
           </dd>
         </div>

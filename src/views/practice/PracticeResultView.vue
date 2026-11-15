@@ -54,8 +54,8 @@ const elapsedText = computed(() => {
 
 function questionStatusClasses(status: PracticeResultQuestionStatus) {
   const map = {
-    correct: 'border-success bg-success text-success-content',
-    wrong: 'border-error bg-error text-error-content',
+    correct: 'border-transparent bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+    wrong: 'border-transparent bg-red-500/10 text-red-700 dark:text-red-400',
     unanswered: 'border-base-300 bg-base-100 text-base-content/65',
     pending: 'border-secondary/30 bg-secondary/10 text-secondary',
   }
@@ -134,13 +134,15 @@ watch(
             </div>
             <div class="px-2 py-3 text-center">
               <dt class="text-[11px] text-base-content/65">正确</dt>
-              <dd class="mt-1 text-base font-semibold text-success tabular-nums">
+              <dd
+                class="mt-1 text-base font-semibold tabular-nums text-emerald-700 dark:text-emerald-400"
+              >
                 {{ result.correctCount }}
               </dd>
             </div>
             <div class="px-2 py-3 text-center">
               <dt class="text-[11px] text-base-content/65">错误</dt>
-              <dd class="mt-1 text-base font-semibold text-error tabular-nums">
+              <dd class="mt-1 text-base font-semibold tabular-nums text-red-700 dark:text-red-400">
                 {{ result.wrongCount }}
               </dd>
             </div>
@@ -186,7 +188,9 @@ watch(
               <button
                 class="whitespace-nowrap rounded-md px-2.5 py-1.5 font-medium transition"
                 :class="
-                  resultFilter === 'review' ? 'bg-base-100 text-error' : 'text-base-content/65'
+                  resultFilter === 'review'
+                    ? 'bg-base-100 text-red-700 dark:text-red-400'
+                    : 'text-base-content/65'
                 "
                 type="button"
                 :aria-pressed="resultFilter === 'review'"
@@ -201,10 +205,10 @@ watch(
             class="flex flex-wrap gap-x-4 gap-y-1 border-y border-base-200 px-4 py-2 text-[11px]"
           >
             <span class="flex items-center gap-1.5 text-base-content/65">
-              <span class="size-2 rounded-full bg-success"></span>正确
+              <span class="size-2 rounded-full bg-emerald-600"></span>正确
             </span>
             <span class="flex items-center gap-1.5 text-base-content/65">
-              <span class="size-2 rounded-full bg-error"></span>错误
+              <span class="size-2 rounded-full bg-red-600"></span>错误
             </span>
             <span class="flex items-center gap-1.5 text-base-content/65">
               <span class="size-2 rounded-full border border-base-300 bg-base-100"></span>未答

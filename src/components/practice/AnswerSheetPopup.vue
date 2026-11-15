@@ -60,11 +60,11 @@ function questionResultClasses(question: QuestionListItem, current: boolean) {
       content = 'bg-secondary/10 text-secondary'
       border = 'border-secondary/30'
     } else if (isAnswerCorrect(record, question)) {
-      content = 'bg-success text-success-content font-semibold'
-      border = 'border-success'
+      content = 'bg-emerald-500/10 text-emerald-700 font-semibold dark:text-emerald-400'
+      border = 'border-transparent'
     } else {
-      content = 'bg-error text-error-content font-semibold'
-      border = 'border-error'
+      content = 'bg-red-500/10 text-red-700 font-semibold dark:text-red-400'
+      border = 'border-transparent'
     }
   }
   // 当前题直接替换圆圈自身边框，不在外侧再叠一圈。
@@ -99,11 +99,11 @@ async function scrollToCurrentQuestion() {
       >
         <div class="flex flex-1 flex-wrap items-center gap-x-3 gap-y-1">
           <span class="flex items-center gap-1">
-            <span class="size-1.5 rounded-full bg-success" aria-hidden="true"></span>
+            <span class="size-1.5 rounded-full bg-emerald-600" aria-hidden="true"></span>
             对 {{ correctCount }}
           </span>
           <span class="flex items-center gap-1">
-            <span class="size-1.5 rounded-full bg-error" aria-hidden="true"></span>
+            <span class="size-1.5 rounded-full bg-red-600" aria-hidden="true"></span>
             错 {{ wrongCount }}
           </span>
           <span v-if="ungradedCount" class="flex items-center gap-1">
