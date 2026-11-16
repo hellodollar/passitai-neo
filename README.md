@@ -29,7 +29,23 @@ pnpm dev
 
 前端使用 Vue Router history 模式。Wrangler 将 `dist` 作为 Worker 静态资源上传，`single-page-application` 模式使 `/practice/:paperId/result/:submissionId` 等深层链接回退到 `index.html`。生产请求由浏览器直接发送到配置的 API 地址；后端需允许实际前端域名的跨域请求。
 
-Workers Builds 的构建命令为 `pnpm run build`，部署命令为 `npx wrangler deploy`。如使用 Wrangler 手动发布，执行 `pnpm run deploy`。自定义域名需在 Worker 的 Domains & Routes 中绑定。
+Workers Builds 的构建命令为 `pnpm run build`，部署命令为 `npx wrangler deploy`（也可用 `pnpm run deploy`）。
+`deploy` 只发布 CF 构建阶段生成的 `dist`，避免部署阶段重复执行类型检查和打包。
+自定义域名需在 Worker 的 Domains & Routes 中绑定。
+
+### CF 线上构建加速
+
+- pnpm 保持 `12.16.1`，Wrangler 固定为锁文件中已有的 `4.156.0`，本次不升级工具或业务依赖。
+  CF 的 `npx wrangler deploy` 直接使用项目已安装的 Wrangler。
+- pnpm 12 的 `preferOffline`、`updateNotifier` 设置集中在 `pnpm-workspace.yaml`，
+  优先复用缓存、关闭更新提示；缓存缺少的依赖正常联网下载。
+  保留原有依赖构建白名单、版本约束和默认 store 路径。
+- 在 CF 的 Settings > Build 中保持构建缓存开启。首次成功构建填充缓存后，
+  后续构建对比依赖安装日志的 `reused` / `downloaded` 与安装、构建、部署三个阶段的耗时。
+- 类型检查、HTTPS API 构建变量检查和 SPA 深层路由继续生效。构建产物始终由 CF 在线生成，
+  部署阶段只上传同一次构建的产物；保留现有推送触发规则。
+
+提速结果以 CF 成功构建的历史日志对比为准，不使用开发机耗时推算。
 
 ## 检查
 

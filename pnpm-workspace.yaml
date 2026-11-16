@@ -4,3 +4,5 @@ allowBuilds:
 minimumReleaseAgeExclude:
   - '@lucide/vue@1.66.0'
   - eslint@10.14.0
+preferOffline: true
+updateNotifier: false

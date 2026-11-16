@@ -32,3 +32,6 @@ coverage
 
 # Vite
 *.timestamp-*-*.mjs
+
+# Wrangler local state
+.wrangler/
