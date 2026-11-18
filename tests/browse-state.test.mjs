@@ -54,22 +54,17 @@ test('收藏、错题分别记住分组和排序，URL 优先，非法参数不�
   })
 })
 
-test('首页保留科目、题集类型、页码、管理顺序和滚动位置', () => {
+test('首页保留科目、管理顺序和滚动位置，忽略旧题集筛选', () => {
   global.window = { sessionStorage: storage() }
   writeBrowseState('home', 'home', {
     subjectCode: 'GD-15044',
-    paperType: 'pointCoverage',
-    paperPage: 2,
     scrollTop: 630,
     subjectOrder: ['GD-15044', 'GD-15043'],
     hiddenSubjectCodes: ['GD-15043'],
   })
-  writeBrowseState('home', 'home', { paperType: 'highFrequency' })
   const state = readBrowseState('home', 'home')
   assert.deepEqual(parseHomeSelection({}, state), {
     subjectCode: 'GD-15044',
-    paperType: 'highFrequency',
-    paperPage: 2,
   })
   assert.deepEqual(
     parseHomeSelection(
@@ -78,8 +73,6 @@ test('首页保留科目、题集类型、页码、管理顺序和滚动位置',
     ),
     {
       subjectCode: 'GD-15043',
-      paperType: 'errorTarget',
-      paperPage: 3,
     },
   )
   assert.equal(state.scrollTop, 630)
@@ -89,8 +82,6 @@ test('首页保留科目、题集类型、页码、管理顺序和滚动位置',
     parseHomeSelection({ subjectCode: '../bad', paperType: ['aiPractice'], paperPage: -2 }),
     {
       subjectCode: '',
-      paperType: '',
-      paperPage: 1,
     },
   )
 })
@@ -104,7 +95,7 @@ test('刷新可读取 sessionStorage，损坏状态和存储失败不阻断页�
   store.setItem('passitai:browse:broken:home', '{broken')
   global.window = { sessionStorage: store }
   assert.equal(readBrowseState('refresh', 'favorites').scrollTop, 420)
-  assert.equal(readBrowseState('broken', 'home').paperType, '')
+  assert.equal(readBrowseState('broken', 'home').subjectCode, '')
   global.window = {
     sessionStorage: {
       getItem: () => {

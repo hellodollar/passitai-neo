@@ -7,7 +7,7 @@ import { loadSource } from './helpers/load-source.mjs'
 
 const { useAuthStore } = await loadSource('stores/auth.ts')
 const { usePracticeSettingsStore } = await loadSource('stores/practice-settings.ts')
-const { usePracticeScopeStore } = await loadSource('stores/practice-scope.ts')
+const { useExamPlanStore } = await loadSource('stores/exam-plan.ts')
 const { STORAGE_KEYS } = await loadSource('constants/app.ts')
 let pinia
 const previousFetch = globalThis.fetch
@@ -62,11 +62,11 @@ test('改密码后的本地清理不再调用已经失效的 Token 登出，并�
   }
   const auth = useAuthStore()
   const practice = usePracticeSettingsStore()
-  const scope = usePracticeScopeStore()
+  const scope = useExamPlanStore()
   practice.isLoaded = true
   practice.settings = { autoNext: true }
   scope.isLoaded = true
-  scope.scope = { majorName: '汉语言文学' }
+  scope.plan = { majorName: '汉语言文学' }
   assert.equal(auth.isAuthenticated, true)
   auth.clearSession()
   assert.equal(auth.isAuthenticated, false)
@@ -76,7 +76,7 @@ test('改密码后的本地清理不再调用已经失效的 Token 登出，并�
   assert.equal(practice.isLoaded, false)
   assert.equal(practice.settings, null)
   assert.equal(scope.isLoaded, false)
-  assert.equal(scope.scope, null)
+  assert.equal(scope.plan, null)
   auth.clearSession() // repeated cleanup remains harmless
 })
 

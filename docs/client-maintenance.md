@@ -1,78 +1,35 @@
-# 客户端维护约定
+# 客户端已确认约定
 
-这是独立开发的小项目。优先让代码容易找到、修改和验证，目录只按现有用途划分。
+仅记录本轮已确认、已调整的登录注册、考试计划、收藏与错题约定。已有且未改动的实现不补录；后续内容在明确要求记录后再追加。接口字段及请求格式以 [client-api.md](client-api.md) 为准。
 
-## 结构
+## 登录与注册
 
-- `src/App.vue`：统一宽度的页面外壳、唯一的主内容区域、底栏显示和全局提示；不向所有页面强加内边距。
-- `src/main.ts`：启动 Vue、Pinia 和路由。
-- `src/router/index.ts`：一份路由表，直接处理登录判断、会话失效和滚动。
-- `src/views/`：按现有业务分为 `home/`、`auth/`、`papers/`、`practice/`、`favorites/`、`mistakes/`、`me/`；未找到页直接放在此目录。
-- `src/components/`：基础组件放 `common/`，业务组件放 `collection/`、`home/`、`auth/`、`papers/`、`practice/`、`me/`；底栏为 `BottomTabBar.vue`。
-- `src/composables/`：响应式逻辑，例如切题、手势、收藏和错题同步。
-- 首页备考范围摘要与题集展示分别使用 `HomeScopeCard`、`HomePapers`；请求、URL 筛选与浏览记忆仍由 `HomeView` 组织。练习本地记录由 `usePracticeRecord` 管理答案、草稿、位置、恢复、防抖保存和生命周期；`PracticeView` 保留题目输入、请求、交卷及导航。`usePracticeResult` 负责报告请求与会话隔离，报告页面负责筛选和导航，题目详情使用 `PracticeResultQuestionPopup`。
-- `src/api/`、`src/stores/`：接口和共享状态。
-- `src/utils/`：按 `practice/`、`auth/`、`browse/` 分组；组内文件使用 `record.ts`、`session.ts` 等直接名称，通用的 `storage.ts` 和 `toast.ts` 保留在根目录。
-- `src/types/`、`src/constants/`、`src/assets/`：业务类型、手写常量和静态资源。
-- `src/generated/domain-values.ts`：由 API 项目同步生成的领域取值、题型文案和省份字典，不手动维护。
+- 页面分别为 `views/auth/LoginView.vue`、`views/auth/RegisterView.vue`，路由为 `/login`、`/register`。
+- 登录和注册互相切换时保留 `redirect`；成功后返回有效的站内目标，无有效目标时进入首页。回跳规则统一使用 `utils/browse/navigation.ts` 的 `resolveLoginRedirect`。
+- 受保护页面未登录时跳转登录并保留完整目标；会话失效先清理登录状态，再跳转登录。
+- 退出或切换账号时同步重置考试计划状态，旧账号的迟到响应不能写入新会话。
 
-组件使用 `PascalCase.vue`，组合式函数使用 `useXxx.ts`，普通模块使用 kebab-case。基础底部弹层用 `BasePopup`，居中确认或简短表单用 `BaseDialog`；业务组件按实际形态使用 `Popup` 或 `Dialog` 后缀。已有函数能表达清楚的功能直接使用函数；只有明确的重复或独立职责才提取组件和逻辑。
+## 考试计划选择
 
-代码统一使用 `pnpm format` 格式化，沿用两空格缩进、单引号和无分号；导入按来源自动排序，保留副作用导入顺序。单行守卫语句可以简写，多行判断与语句使用花括号，同一组条件分支保持一致，由 ESLint 检查。
+- 统一使用 `exam-plan` 命名，替代 `practice-scope`。
+- 接口、状态和类型分别位于 `api/exam-plan.ts`、`stores/exam-plan.ts`、`types/exam-plan.ts`；Store 为 `useExamPlanStore`，当前计划为 `plan`。
+- 组件集中在 `components/exam-plan/`：`ExamPlanPopup` 负责选择和保存，`ExamPlanCard` 展示计划摘要，`ExamPlanSubjectsPopup` 管理首页科目的选择、显隐和顺序。
+- 计划读取与保存使用 GET / PUT `/practice/exam-plan`，选择结果使用 `provinceCode`、`majorCode`、`subjectCodes`，科目使用带省份前缀的完整业务码。
+- 省份、学历变化后清空已选专业及科目，专业变化后重新选择科目；关闭弹层或切换账号后，旧选项请求失效。
+- 保存成功更新共享计划；保存失败保留草稿。首页科目显隐和顺序属于浏览状态，与服务端计划选择分开。
 
-JSONC 配置文件不使用尾随逗号，与 dash 的 `wrangler.jsonc` 风格一致，由 `.oxfmtrc.json` 单独设置，避免格式化时重新添加。`package.json` 保留手工字段顺序，不自动重排。
+## 收藏与错题
 
-## 页面呈现
+| 模块 | 列表路由     | 独立页面                            | 列表加载                                |
+| ---- | ------------ | ----------------------------------- | --------------------------------------- |
+| 收藏 | `/favorites` | `views/favorites/FavoritesView.vue` | `loadFavorites` → `fetchFavoriteGroups` |
+| 错题 | `/mistakes`  | `views/mistakes/MistakesView.vue`   | `loadMistakes` → `fetchMistakeGroups`   |
 
-首页、收藏和错题使用 `PageContainer` 统一横向留白、顶部安全区、占位定位和底栏预留。
-个人页、练习和报告按内容需要使用满幅布局，自己处理内容间距，不通过负外边距抵消 App 的样式。
-练习和报告共用 `PageHeader` 的标题、返回按钮和顶部安全区；页面负责返回行为。
-应用内页面不再嵌套 `main`。每页有一个一级标题，页面内区块使用二级或三级标题。
-
-输入优先使用 daisyUI 的 `input`、按钮使用 `btn`、进度使用 `progress`；布局使用 Tailwind。
-加载失败与空内容复用 `EmptyState`，失败使用 `error` 色调并提供就地重试；加载态给出状态名称。
-保留当前主题、品牌色和个人页的背景层次，不为外观统一改写业务流程。
-
-## 页面与路由
-
-| 页面           | 地址                                                                            | 文件                                          |
-| -------------- | ------------------------------------------------------------------------------- | --------------------------------------------- |
-| 首页           | `/`                                                                             | `home/HomeView.vue`                           |
-| 题集预览       | `/papers/:paperId`                                                              | `papers/PaperView.vue`                        |
-| 刷题           | `/practice/:paperId`                                                            | `practice/PracticeView.vue`                   |
-| 刷题结果       | `/practice/:paperId/result/:submissionId`                                       | `practice/PracticeResultView.vue`             |
-| 我的收藏       | `/favorites`                                                                    | `favorites/FavoritesView.vue`                 |
-| 我的错题       | `/mistakes`                                                                     | `mistakes/MistakesView.vue`                   |
-| 收藏、错题练习 | `/favorites/practice/:groupBy/:groupId`、`/mistakes/practice/:groupBy/:groupId` | `practice/PracticeView.vue`                   |
-| 我的           | `/me`                                                                           | `me/MeView.vue`                               |
-| 登录、注册     | `/login`、`/register`                                                           | `auth/LoginView.vue`、`auth/RegisterView.vue` |
-| 其他地址       | 未匹配地址                                                                      | `NotFoundView.vue`                            |
-
-静态链接直接写路径，带参数的跳转使用路由自身的 name；不再另设路由名常量或路径映射表。登录、注册和未找到页公开，其余页面需要登录。底栏只在首页、收藏、错题和我的显示，由 `App.vue` 直接判断，不使用自定义路由 meta 或多套布局。
-
-收藏和错题共用 `components/collection/CollectionListView.vue`，加载、筛选、分组排序和浏览记忆只实现一次；两个来源的文案、图标、接口与练习路由收敛在 `sourceConfig`，`favorites/FavoritesView.vue` 和 `mistakes/MistakesView.vue` 仅传入来源。排序菜单共用 `SortMenu`。集合列表与“我的 → 数据清理”共用 `ClearCollectionDialog` 完成清空确认、请求及会话隔离。
-
-`me/DataCleanupPopup.vue` 集中提供作答记录、收藏与错题的清理入口；本机作答按类别或全部清除，收藏与错题分别清空当前账号的对应数据，没有混合清空所有数据的按钮。主面板只保留分组与操作，清理范围和不可恢复说明放在确认框。
-
-修改密码和更换邮箱分别使用 `me/ChangePasswordDialog.vue`、`me/ChangeEmailDialog.vue`，作为居中表单对话框。账户面板关闭后再打开，提供取消与保存。密码修改成功后按现有规则重新登录；邮箱修改成功后更新用户快照并保持登录。
-
-集合练习的 `groupBy` 只接受 `subject` 或 `paper`；来源、分组和资源 ID 通过路由 props 传入。作答页不从 ID 前缀猜测来源，报告 ID 使用路径参数。旧地址和旧导出不提供兼容别名。
-
-## 保留的业务规则
-
-- 登录、注册互相切换时保留 `redirect`；成功后只回跳到真实站内业务页面。安全回跳和练习返回的共用函数在 `utils/browse/navigation.ts`。
-- 首页与集合列表的 URL 筛选优先于浏览记忆。记忆按账号和页面保存在 sessionStorage；列表加载完成后恢复滚动，不缓存整页或接口列表。
-- 练习通过 `returnTo` 返回首页或对应集合，保留筛选和位置。历史匹配时后退，否则替换当前地址。
-- 会话与用户快照由 auth Store 统一管理。登录、注册直接使用返回数据；启动恢复有效会话时查询一次用户，前台恢复、切页和跨标签同步不额外查询用户。
-- 页面请求按会话 Token 和加载顺序隔离。切换练习或账号时，旧答案、定时器、收藏 ID 和迟到响应不能进入新页面。
-- 切换交卷报告或账号时先清空原报告，关闭题目详情并重置筛选；离页后的旧报告响应不能更新页面。退出登录不再发起新的报告请求。
-- 接口函数处理协议，共享状态进 Store，弹窗和加载等临时状态留在组件。基础 UI 只通过 props、事件和插槽协作；业务弹窗可以直接调用对应 Store。每次失败只由一个位置提示。
-- API 契约以后端为准，见 [客户端 API](client-api.md)。前端错题模块为 `mistakes`，后端 `/mistakes`、`wrongQuestionId`、`recordWrongQuestions` 按实际协议使用；生成的领域取值不手改。
-- 本轮题库链路为备考范围 → 按科目代码分页浏览题集 → 预览分组和题目。预览只读取题目内容，后续表的作答、报告、收藏和错题流程留待对接。
-- 本地作答与服务端交卷报告独立；只读取当前 v3 记录，详见 [本地做题记录](practice-local-records.md)。本地清理不删除服务端报告、收藏或错题。
-
-## 检查
-
-改完运行 `pnpm run check`（类型检查、测试、lint 检查和格式检查），再用明确的 HTTPS `VITE_API_BASE_URL` 做生产构建。`pnpm run lint` 与 `pnpm run format --check` 只检查不修改；`pnpm run lint:fix` 和 `pnpm run format` 分别自动修复、写入格式。涉及导航时检查直开与刷新、登录回跳、浏览器后退、练习退出及报告返回；涉及状态时检查换账号、旧请求和本地作答恢复。
-
-目录/科目加载失败的提示方式，以及 API 404 是否显示“练习已失效”，仍按独立的产品改动处理。
+- 两个列表各自管理请求、筛选、排序、空态和浏览记忆，后续可以独立调整。移除 `LibraryView` 和通过 `module` 切换列表的结构。
+- 共享排序选项位于 `constants/collection.ts`；列表临时状态留在各自页面，不单独建立列表 Store。
+- 列表支持按科目或题集分组。分组、排序通过 URL 保留，浏览记忆按账号和列表区分；切换失败保留原列表及其已生效的筛选条件。
+- 收藏练习路由为 `/favorites/practice/:groupBy/:groupId`，错题练习为 `/mistakes/practice/:groupBy/:groupId`；`groupBy` 只接受 `subject`、`paper`。
+- 首页题集、收藏和错题点击后统一进入 `views/practice/PracticeView.vue`。入口可以独立，落地页只有一套，不另设 `PaperView` 预览页。
+- 来源、分组和资源 ID 由路由 props 明确传入，`api/practice-content.ts` 负责对应内容读取；不从 ID 前缀推断来源或分组。
+- 返回列表时保留分组、排序与滚动位置；切换账号或离页后，旧请求不能覆盖当前列表。
+- 收藏、错题接口仍按当前契约使用 `subjectId`，不将业务码直接代入数据 ID；接口约定与前端命名分别维护。

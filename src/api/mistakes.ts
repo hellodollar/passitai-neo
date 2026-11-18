@@ -2,15 +2,12 @@ import { request } from '@/api/http'
 import type {
   CollectionAggregate,
   CollectionContext,
-  CollectionGroupBy,
-  CollectionOrder,
+  CollectionQuery,
   CollectionPracticePaper,
 } from '@/types'
 
 /** 文档:GET /api/mistakes?groupBy=&order=，聚合查询错题 */
-export function fetchMistakeAggregate(
-  params: { groupBy?: CollectionGroupBy; sort?: 'count' | 'recent'; order?: CollectionOrder } = {},
-) {
+export function fetchMistakeGroups(params: CollectionQuery = {}) {
   return request<CollectionAggregate>('/mistakes', { query: params })
 }
 

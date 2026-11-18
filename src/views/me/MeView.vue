@@ -16,22 +16,22 @@ import { computed, nextTick, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import BasePopup from '@/components/common/BasePopup.vue'
+import ExamPlanPopup from '@/components/exam-plan/ExamPlanPopup.vue'
 import AppearancePopup from '@/components/me/AppearancePopup.vue'
 import ChangeEmailDialog from '@/components/me/ChangeEmailDialog.vue'
 import ChangePasswordDialog from '@/components/me/ChangePasswordDialog.vue'
 import DataCleanupPopup from '@/components/me/DataCleanupPopup.vue'
 import NotificationSettingsPopup from '@/components/me/NotificationSettingsPopup.vue'
-import PracticeScopePopup from '@/components/practice/PracticeScopePopup.vue'
 import PracticeSettingsPopup from '@/components/practice/PracticeSettingsPopup.vue'
 import { useAppearance } from '@/composables/useAppearance'
 import { useAuthStore } from '@/stores/auth'
+import { useExamPlanStore } from '@/stores/exam-plan'
 import { useNotificationsStore } from '@/stores/notifications'
-import { usePracticeScopeStore } from '@/stores/practice-scope'
 import { usePracticeSettingsStore } from '@/stores/practice-settings'
 
 const notifications = useNotificationsStore()
 const auth = useAuthStore()
-const practiceScopeStore = usePracticeScopeStore()
+const examPlanStore = useExamPlanStore()
 const practiceSettingsStore = usePracticeSettingsStore()
 const { appearanceLabel } = useAppearance()
 const router = useRouter()
@@ -39,7 +39,7 @@ const signingOut = ref(false)
 const accountPopupOpen = ref(false)
 const passwordDialogOpen = ref(false)
 const emailDialogOpen = ref(false)
-const scopePopupOpen = ref(false)
+const examPlanPopupOpen = ref(false)
 const practiceSettingsPopupOpen = ref(false)
 const notificationSettingsOpen = ref(false)
 const cleanupPopupOpen = ref(false)
@@ -83,15 +83,15 @@ const menuGroups = computed<{ title: string; items: MenuItem[] }[]>(() => [
     title: '刷题',
     items: [
       {
-        title: '备考范围',
+        title: '考试计划',
         icon: GraduationCap,
         action: 'scope' as const,
-        subtitle: practiceScopeStore.isLoading
+        subtitle: examPlanStore.isLoading
           ? '加载中…'
-          : practiceScopeStore.error
+          : examPlanStore.error
             ? '加载失败，点击重试'
-            : practiceScopeStore.scope
-              ? `${practiceScopeStore.scope.major.name} · ${practiceScopeStore.scope.subjects.length} 个科目`
+            : examPlanStore.plan
+              ? `${examPlanStore.plan.major.name} · ${examPlanStore.plan.subjects.length} 个科目`
               : '选择专业和刷题科目',
       },
       { title: '通知', icon: Bell, action: 'notification' as const },
@@ -141,8 +141,8 @@ function openMenuItem(action: SettingsAction) {
   } else if (action === 'appearance') {
     appearancePopupOpen.value = true
   } else if (action === 'scope') {
-    if (practiceScopeStore.error) void practiceScopeStore.load()
-    scopePopupOpen.value = true
+    if (examPlanStore.error) void examPlanStore.load()
+    examPlanPopupOpen.value = true
   } else if (action === 'practice') {
     if (practiceSettingsStore.error) void practiceSettingsStore.load()
     practiceSettingsPopupOpen.value = true
@@ -173,12 +173,12 @@ watch(
       accountPopupOpen.value = false
       passwordDialogOpen.value = false
       emailDialogOpen.value = false
-      scopePopupOpen.value = false
+      examPlanPopupOpen.value = false
       practiceSettingsPopupOpen.value = false
       cleanupPopupOpen.value = false
       notificationSettingsOpen.value = false
     }
-    if (token) void Promise.allSettled([practiceScopeStore.load(), practiceSettingsStore.load()])
+    if (token) void Promise.allSettled([examPlanStore.load(), practiceSettingsStore.load()])
   },
   { immediate: true },
 )
@@ -299,7 +299,7 @@ watch(
 
     <ChangeEmailDialog v-model="emailDialogOpen" />
 
-    <PracticeScopePopup v-model="scopePopupOpen" />
+    <ExamPlanPopup v-model="examPlanPopupOpen" />
     <PracticeSettingsPopup v-model="practiceSettingsPopupOpen" show-mistake-settings />
     <NotificationSettingsPopup v-model="notificationSettingsOpen" />
     <AppearancePopup v-model="appearancePopupOpen" />

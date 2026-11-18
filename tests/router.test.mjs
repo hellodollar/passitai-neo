@@ -16,6 +16,7 @@ const originalWindow = globalThis.window
 const originalDocument = globalThis.document
 let router
 let pinia
+let pageLoaders
 
 class MemoryStorage {
   items = new Map()
@@ -61,6 +62,9 @@ beforeEach(() => {
   pinia = createPinia()
   setActivePinia(pinia)
   router = createAppRouter(createMemoryHistory())
+  pageLoaders = Object.fromEntries(
+    router.getRoutes().map((record) => [record.name, String(record.components?.default)]),
+  )
   // 执行真实路由与守卫，Node 测试中省略页面模板加载。
   for (const record of router.getRoutes()) {
     if (record.components) record.components.default = {}
@@ -119,6 +123,7 @@ test('收藏和错题练习从路径得到来源和分组，不依赖 query 或 
 
 test('旧 URL 与不完整地址直接进入未找到页，没有兼容重定向', () => {
   for (const path of [
+    '/papers/papone',
     '/practice',
     '/practice/papers/papone',
     '/practice/papers/papone/result?submissionId=recone',
@@ -270,4 +275,11 @@ test('未找到页公开可访问，会话失效不强制将公开页送到登�
   window.dispatchEvent(new Event(AUTH_INVALIDATED_EVENT))
   assert.equal(useAuthStore().isAuthenticated, false)
   assert.equal(router.currentRoute.value.name, 'not-found')
+})
+
+test('三个入口共用作答页面，收藏与错题保留各自列表', () => {
+  assert.equal(pageLoaders.practice, pageLoaders['favorites-practice'])
+  assert.equal(pageLoaders.practice, pageLoaders['mistakes-practice'])
+  assert.match(pageLoaders.favorites, /favorites\/FavoritesView\.vue/)
+  assert.match(pageLoaders.mistakes, /mistakes\/MistakesView\.vue/)
 })

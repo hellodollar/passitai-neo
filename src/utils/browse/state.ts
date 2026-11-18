@@ -1,13 +1,10 @@
-import { catalogPaperTypes } from '@/generated/paper-catalog-values'
-import type { PaperType } from '@/types/paper'
-
 export type BrowsePage = 'home' | 'favorites' | 'mistakes'
 type CollectionFilters = {
   groupBy: 'subject' | 'paper'
   sort: 'count' | 'recent'
   order: 'asc' | 'desc'
 }
-type HomeSelection = { subjectCode: string; paperType: PaperType | ''; paperPage: number }
+type HomeSelection = { subjectCode: string }
 type BrowseState = CollectionFilters &
   HomeSelection & {
     scrollTop: number
@@ -38,14 +35,7 @@ export function parseCollectionFilters(
 
 export function parseHomeSelection(query: Query, fallback?: Partial<HomeSelection>): HomeSelection {
   const subjectCode = text(query.subjectCode ?? fallback?.subjectCode)
-  const type = query.paperType ?? fallback?.paperType
-  const rawPage = query.paperPage ?? fallback?.paperPage
-  const page = typeof rawPage === 'number' || typeof rawPage === 'string' ? Number(rawPage) : 1
-  return {
-    subjectCode: /^[A-Z]{2}-[0-9]{5,8}(?:-test)?$/.test(subjectCode) ? subjectCode : '',
-    paperType: catalogPaperTypes.find((value) => value === type) ?? '',
-    paperPage: Number.isSafeInteger(page) && page > 0 ? page : 1,
-  }
+  return { subjectCode: /^[A-Z]{2}-[0-9]{5,8}(?:-test)?$/.test(subjectCode) ? subjectCode : '' }
 }
 
 function normalizeState(value: unknown): BrowseState {

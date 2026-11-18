@@ -1,35 +1,35 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
+import { fetchExamPlan, updateExamPlan } from '@/api/exam-plan'
 import { SessionChangedError } from '@/api/http'
-import { fetchPracticeScope, updatePracticeScope } from '@/api/practice-scope'
-import type { PracticeScope, UpdatePracticeScopeBody } from '@/types'
+import type { ExamPlan, UpdateExamPlanBody } from '@/types'
 import { createSessionGuard } from '@/utils/session-guard'
 
-/** 备考范围：load 按需缓存，save 保存并更新共享状态，reset 清理当前会话。 */
-export const usePracticeScopeStore = defineStore('practice-scope', () => {
-  const scope = ref<PracticeScope | null>(null)
+/** 考试计划：load 按需缓存，save 保存并更新共享状态，reset 清理当前会话。 */
+export const useExamPlanStore = defineStore('exam-plan', () => {
+  const plan = ref<ExamPlan | null>(null)
   const isLoaded = ref(false)
   const isLoading = ref(false)
   const error = ref<string | null>(null)
   const guard = createSessionGuard()
-  let pending: { promise: Promise<PracticeScope | null> } | null = null
+  let pending: { promise: Promise<ExamPlan | null> } | null = null
 
-  function load(): Promise<PracticeScope | null> {
-    if (isLoaded.value) return Promise.resolve(scope.value)
+  function load(): Promise<ExamPlan | null> {
+    if (isLoaded.value) return Promise.resolve(plan.value)
     if (pending) return pending.promise
     const isCurrent = guard.captureRead()
     isLoading.value = true
     error.value = null
-    const promise = fetchPracticeScope()
+    const promise = fetchExamPlan()
       .then((next) => {
         if (!isCurrent()) return null
-        scope.value = next
+        plan.value = next
         isLoaded.value = true
         return next
       })
       .catch(() => {
-        if (isCurrent()) error.value = '备考范围加载失败'
+        if (isCurrent()) error.value = '考试计划加载失败'
         return null
       })
       .finally(() => {
@@ -40,34 +40,34 @@ export const usePracticeScopeStore = defineStore('practice-scope', () => {
     return promise
   }
 
-  function applyPracticeScope(next: PracticeScope) {
+  function applyExamPlan(next: ExamPlan) {
     guard.noteWrite()
     pending = null
-    scope.value = next
+    plan.value = next
     isLoaded.value = true
     isLoading.value = false
     error.value = null
   }
 
-  async function save(body: UpdatePracticeScopeBody) {
+  async function save(body: UpdateExamPlanBody) {
     const isCurrent = guard.captureWrite()
-    const next = await updatePracticeScope(body)
+    const next = await updateExamPlan(body)
     if (!isCurrent()) throw new SessionChangedError()
-    applyPracticeScope(next)
+    applyExamPlan(next)
     return next
   }
 
   function reset() {
     guard.reset()
     pending = null
-    scope.value = null
+    plan.value = null
     isLoaded.value = false
     isLoading.value = false
     error.value = null
   }
 
   return {
-    scope,
+    plan,
     isLoaded,
     isLoading,
     error,

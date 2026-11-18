@@ -2,6 +2,12 @@
 export type CollectionSource = 'favorites' | 'mistakes'
 export type CollectionGroupBy = 'subject' | 'paper'
 export type CollectionOrder = 'desc' | 'asc'
+export type CollectionSort = 'count' | 'recent'
+export type CollectionQuery = {
+  groupBy?: CollectionGroupBy
+  sort?: CollectionSort
+  order?: CollectionOrder
+}
 
 /** 收藏或记错请求携带题目、科目及发生题集。 */
 export type CollectionContext = {

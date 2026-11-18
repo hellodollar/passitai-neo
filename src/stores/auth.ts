@@ -9,10 +9,9 @@ import {
   changePassword as changePasswordApi,
 } from '@/api/users'
 import { AUTH_INVALIDATED_EVENT, STORAGE_KEYS } from '@/constants/app'
+import { useExamPlanStore } from '@/stores/exam-plan'
 import { useNotificationSettingsStore } from '@/stores/notification-settings'
 import { useNotificationsStore } from '@/stores/notifications'
-import { usePapersStore } from '@/stores/papers'
-import { usePracticeScopeStore } from '@/stores/practice-scope'
 import { usePracticeSettingsStore } from '@/stores/practice-settings'
 import type {
   AuthCredentials,
@@ -47,8 +46,7 @@ export const useAuthStore = defineStore('auth', () => {
     useNotificationsStore().reset()
     useNotificationSettingsStore().reset()
     usePracticeSettingsStore().reset()
-    usePracticeScopeStore().reset()
-    usePapersStore().reset()
+    useExamPlanStore().reset()
   }
 
   function clearExpiryTimer() {

@@ -7,7 +7,7 @@ import { loadSource } from './helpers/load-source.mjs'
 
 const { useAuthStore } = await loadSource('stores/auth.ts')
 const { usePracticeSettingsStore } = await loadSource('stores/practice-settings.ts')
-const { usePracticeScopeStore } = await loadSource('stores/practice-scope.ts')
+const { useExamPlanStore } = await loadSource('stores/exam-plan.ts')
 const { STORAGE_KEYS, AUTH_INVALIDATED_EVENT } = await loadSource('constants/app.ts')
 const originalFetch = globalThis.fetch
 const originalWindow = globalThis.window
@@ -154,13 +154,13 @@ test('跨标签换账号直接同步新会话并清缓存，退出只广播一�
   auth.initialize()
   await flush()
   usePracticeSettingsStore().isLoaded = true
-  usePracticeScopeStore().isLoaded = true
+  useExamPlanStore().isLoaded = true
   persist(sessionFor('b'))
   storageChanged()
   await flush()
   assert.equal(auth.user.id, 'b')
   assert.equal(usePracticeSettingsStore().isLoaded, false)
-  assert.equal(usePracticeScopeStore().isLoaded, false)
+  assert.equal(useExamPlanStore().isLoaded, false)
   assert.equal(calls.length, 1)
   assert.equal(auth.session.token, 'fixture-b')
   let invalidated = 0

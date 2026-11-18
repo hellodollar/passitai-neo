@@ -2,16 +2,13 @@ import { request } from '@/api/http'
 import type {
   CollectionAggregate,
   CollectionContext,
-  CollectionGroupBy,
-  CollectionOrder,
+  CollectionQuery,
   CollectionPracticePaper,
   FavoriteMutationResult,
 } from '@/types'
 
 /** 文档:GET /api/favorites?groupBy=&order=，聚合查询收藏 */
-export function fetchFavoriteAggregate(
-  params: { groupBy?: CollectionGroupBy; sort?: 'count' | 'recent'; order?: CollectionOrder } = {},
-) {
+export function fetchFavoriteGroups(params: CollectionQuery = {}) {
   return request<CollectionAggregate>('/favorites', { query: params })
 }
 

@@ -11,13 +11,13 @@ import {
   type ProvinceCode,
 } from '@/generated/domain-values'
 import { useAuthStore } from '@/stores/auth'
-import { usePracticeScopeStore } from '@/stores/practice-scope'
+import { useExamPlanStore } from '@/stores/exam-plan'
 import type { OptionItem } from '@/types'
 import { showSuccessToast } from '@/utils/toast'
 
 const model = defineModel<boolean>({ default: false })
 const auth = useAuthStore()
-const practiceScopeStore = usePracticeScopeStore()
+const examPlanStore = useExamPlanStore()
 const majorOptions = ref<OptionItem[]>([])
 const subjectOptions = ref<OptionItem[]>([])
 const draftProvinceCode = ref<ProvinceCode | ''>('')
@@ -31,7 +31,7 @@ const majorOptionsError = ref(false)
 const subjectOptionsError = ref(false)
 const saving = ref(false)
 /** 专业选项缓存键:省份+学历任一变化都重新拉取 */
-let loadedMajorScope = ''
+let loadedMajorOptionsKey = ''
 let majorSequence = 0
 let loadSequence = 0
 let subjectSequence = 0
@@ -63,28 +63,28 @@ const canSave = computed(
     !majorOptionsLoading.value &&
     !majorOptionsError.value &&
     !subjectOptionsError.value &&
-    !practiceScopeStore.error,
+    !examPlanStore.error,
 )
 
 async function loadMajorOptions(sequence: number, token: string | undefined) {
   const version = ++majorSequence
   const provinceCode = draftProvinceCode.value
   const educationLevel = draftEducationLevel.value
-  const scope = `${provinceCode}|${educationLevel}`
+  const optionsKey = `${provinceCode}|${educationLevel}`
   majorOptionsError.value = false
   if (!provinceCode) {
     majorOptions.value = []
-    loadedMajorScope = ''
+    loadedMajorOptionsKey = ''
     majorOptionsLoading.value = false
     return
   }
-  if (loadedMajorScope === scope) {
+  if (loadedMajorOptionsKey === optionsKey) {
     majorOptionsLoading.value = false
     return
   }
   majorOptionsLoading.value = true
   majorOptions.value = []
-  loadedMajorScope = ''
+  loadedMajorOptionsKey = ''
   try {
     const options = await fetchMajorOptions({ provinceCode, educationLevel })
     if (
@@ -96,7 +96,7 @@ async function loadMajorOptions(sequence: number, token: string | undefined) {
       return
     }
     majorOptions.value = options
-    loadedMajorScope = scope
+    loadedMajorOptionsKey = optionsKey
   } catch {
     if (
       sequence === loadSequence &&
@@ -156,18 +156,18 @@ async function loadDraft() {
   draftSubjectCodes.value = new Set()
   subjectOptions.value = []
   try {
-    await practiceScopeStore.load()
-    if (!isCurrent() || practiceScopeStore.error || majorOptionsError.value) return
-    const scope = practiceScopeStore.scope
-    draftProvinceCode.value = scope?.provinceCode ?? ''
-    draftEducationLevel.value = scope?.major.educationLevel ?? '本科'
+    await examPlanStore.load()
+    if (!isCurrent() || examPlanStore.error || majorOptionsError.value) return
+    const plan = examPlanStore.plan
+    draftProvinceCode.value = plan?.provinceCode ?? ''
+    draftEducationLevel.value = plan?.major.educationLevel ?? '本科'
     await loadMajorOptions(sequence, token)
     if (!isCurrent() || majorOptionsError.value) return
     draftMajorCode.value =
-      scope && majorOptions.value.some((option) => option.code === scope.majorCode)
-        ? scope.majorCode
+      plan && majorOptions.value.some((option) => option.code === plan.majorCode)
+        ? plan.majorCode
         : ''
-    draftSubjectCodes.value = new Set(scope?.subjectCodes ?? [])
+    draftSubjectCodes.value = new Set(plan?.subjectCodes ?? [])
     await loadSubjectOptions(draftMajorCode.value)
   } finally {
     if (isCurrent()) loading.value = false
@@ -180,7 +180,7 @@ async function selectProvince(code: string) {
   draftMajorCode.value = ''
   draftSubjectCodes.value = new Set()
   majorOptions.value = []
-  loadedMajorScope = ''
+  loadedMajorOptionsKey = ''
   majorOptionsError.value = false
   await Promise.all([loadSubjectOptions(''), loadMajorOptions(loadSequence, auth.session?.token)])
 }
@@ -192,7 +192,7 @@ async function selectEducationLevel(level: DomainValue<'educationLevel'>) {
   draftMajorCode.value = ''
   draftSubjectCodes.value = new Set()
   majorOptions.value = []
-  loadedMajorScope = ''
+  loadedMajorOptionsKey = ''
   majorOptionsError.value = false
   await Promise.all([loadSubjectOptions(''), loadMajorOptions(loadSequence, auth.session?.token)])
 }
@@ -211,7 +211,7 @@ function toggleSubject(code: string) {
   draftSubjectCodes.value = selected
 }
 
-async function saveScope() {
+async function saveExamPlan() {
   if (!canSave.value || !draftProvinceCode.value) return
   const sequence = ++saveSequence
   const opening = loadSequence
@@ -223,13 +223,13 @@ async function saveScope() {
     model.value
   saving.value = true
   try {
-    await practiceScopeStore.save({
+    await examPlanStore.save({
       provinceCode: draftProvinceCode.value,
       majorCode: draftMajorCode.value,
       subjectCodes: [...draftSubjectCodes.value],
     })
     if (!isCurrent()) return
-    showSuccessToast('备考范围已更新')
+    showSuccessToast('考试计划已更新')
     model.value = false
   } catch {
     // 请求层提示失败，保留草稿以便重试。
@@ -262,7 +262,7 @@ watch(
   () => {
     model.value = false
     invalidateRequests()
-    loadedMajorScope = ''
+    loadedMajorOptionsKey = ''
     majorOptions.value = []
     subjectOptions.value = []
     draftProvinceCode.value = ''
@@ -277,17 +277,17 @@ onBeforeUnmount(invalidateRequests)
 <template>
   <BasePopup
     v-model="model"
-    title="备考范围"
+    title="考试计划"
     compact-footer
     :close-on-backdrop="!saving"
     :close-on-escape="!saving"
   >
     <div>
       <div
-        v-if="practiceScopeStore.error || majorOptionsError"
+        v-if="examPlanStore.error || majorOptionsError"
         class="mb-4 text-center text-sm text-error"
       >
-        <p>{{ majorOptionsError ? '专业加载失败' : '备考范围加载失败' }}</p>
+        <p>{{ majorOptionsError ? '专业加载失败' : '考试计划加载失败' }}</p>
         <button type="button" class="btn btn-ghost btn-sm mt-1" @click="loadDraft">重试</button>
       </div>
       <fieldset :disabled="loading || saving">
@@ -405,7 +405,7 @@ onBeforeUnmount(invalidateRequests)
         class="btn btn-primary h-8 min-h-8 rounded-lg px-4 text-sm"
         type="button"
         :disabled="!canSave"
-        @click="saveScope"
+        @click="saveExamPlan"
       >
         <span v-if="saving" class="loading loading-spinner loading-xs"></span>
         {{ saving ? '保存中' : '保存' }}

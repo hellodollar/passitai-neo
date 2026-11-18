@@ -2,7 +2,7 @@
 
 本契约以 API 路由、schema 和服务实现为准。唯一源为 `passitai-api/docs/client-api.md`，
 `passitai-neo/docs/client-api.md` 是逐字节镜像，不单独编辑；源文件更新后在 API 执行 `pnpm sync`。
-Neo 已接入下列账户、备考范围和题库读取接口，题集预览按服务端分组和题序展示。单独同步 Neo 题集类型和布局可运行
+Neo 已接入下列账户、考试计划和题库读取接口，题集预览按服务端分组和题序展示。单独同步 Neo 题集类型和布局可运行
 `node scripts/sync-domain-values.mjs --neo-catalog`。基础路径为 `/api`，仅接受客户端登录签发的
 `app` scope JWT。除注册、登录外，所有接口都需要：
 
@@ -10,7 +10,7 @@ Neo 已接入下列账户、备考范围和题库读取接口，题集预览按�
 Authorization: Bearer <app-token>
 ```
 
-本轮重写范围为 `0001–0008`：用户、全国专业、省份科目、科目考期、题集和题目读取。
+当前题库重写范围为 `0001–0009`，覆盖用户、全国专业、省份科目、科目考期、题集、题目和练习模板。
 科目规约和科目画像目前仅完成 ORM 映射，未开放内容管理接口。练习包、交卷、练习记录、收藏、错题、通知等后续表未在本轮重写；下文保留的这些模块说明仅供后续重构核对，不能作为新版联调验收依据。
 机器人和生成相关代码完全不在本轮范围内。
 
@@ -19,7 +19,7 @@ Authorization: Bearer <app-token>
 ## 导航
 
 - [通用约定](#1-通用约定)
-- [用户](#2-用户模块) · [备考范围](#3-用户备考范围与题库读取) · [练习](#4-练习模块)
+- [用户](#2-用户模块) · [题库](#3-题库读取) · [练习](#4-练习模块)
 - [收藏](#5-题目收藏模块) · [错题](#6-错题模块) · [字典选项](#7-字典选项模块)
 - [站内通知](#8-站内通知) · [接口总表](#9-接口总表)
 
@@ -152,10 +152,10 @@ interface AuthResult {
 
 ### 用户基础信息与“我的”页
 
-`GET /api/users/me` 只返回 `AuthResult['user']`，不返回密码哈希、会话版本、备考范围或偏好。
+`GET /api/users/me` 只返回 `AuthResult['user']`，不返回密码哈希、会话版本、考试计划或偏好。
 账户信息由当前会话统一维护；“我的”页不再复制账户和设置的聚合快照。
-备考范围与刷题设置分别按需读取，共享各自的状态与缓存；两者可并行加载、独立失败与重试。
-保存计划后首页与“我的”读取同一份计划状态；设置保存后答题页与“我的”读取同一份设置状态。
+考试计划与刷题设置分别按需读取，共享各自的状态与缓存；两者可并行加载、独立失败与重试。
+保存考试计划后首页与“我的”读取同一份计划状态；设置保存后答题页与“我的”读取同一份设置状态。
 账号切换或退出清理缓存，迟到响应不能覆盖新会话。
 
 `/api/me`、`/api/user` 已移除（账户资料迁移到 `/api/users/me`）。通知展示设置单独使用 `/api/notifications/settings`，
@@ -184,27 +184,7 @@ interface ChangeEmailBody {
   原邮箱、密码或会话版本在更新期间变化，或账号被删除时返回 `HTTP 409`，不覆盖并发改动。
   更换邮箱本身不延长有效期、不撤销已有会话；客户端同步更新当前会话的用户邮箱。
 
-## 3. 用户备考范围与题库读取
-
-### 用户备考范围
-
-- `GET /api/users/me/practice-scope`：读取范围，未设置或任一选中关联失效时返回 `data: null`。
-- `PUT /api/users/me/practice-scope`：整体替换当前范围，请求体如下；未知字段返回 400。
-
-```json
-{
-  "provinceCode": "440000",
-  "majorCode": "120206",
-  "subjectCodes": ["GD-15043"]
-}
-```
-
-只保存以上三个字段到 `users.practiceScope`。`majorCode` 必填；`subjectCodes` 必填、最多 100 项，按首次出现顺序去重，允许空数组。
-专业必须启用、开考且未删除；科目必须同省、启用、开考且在 `majorCodes` 中关联所选专业，否则 400 且不写入。
-不接受旧 `majorId / subjectIds / educationLevel` 字段；学历由专业读取。
-返回 `{ provinceCode, majorCode, subjectCodes, major, subjects, nextExam }`，专业与科目字段见下表。
-所选科目均附 `nextExam: { subjectCode, period, examDate } | null`；范围级 `nextExam` 取最近一场。
-考期从 `subject_exams_schedules` 按科目及省份读取，以北京时间的今天为下限；同日按期次、科目代码稳定排序，不随范围落库。
+## 3. 题库读取
 
 ### 专业
 
@@ -235,15 +215,13 @@ interface ChangeEmailBody {
 
 | Method | Path | 说明 |
 | --- | --- | --- |
-| GET | `/api/papers?subjectCode=GD-15043` | 分页获取某科目题集 |
 | GET | `/api/papers/:id` | 获取题集和按分组排序的题目 |
 
-列表 `subjectCode` 必填，另支持 `page / limit / keyword / type / paperLayout`。
 只返回启用且未删除的题集，以及启用、开考、同省且未删除的所属科目。
 归属只能为平台（`ownerId=NULL`）或当前用户；其他用户资源视为不存在。
 
-题集列表字段：`id / subjectCode / provinceCode / name / type / paperLayout / contentPeriod / sourceType / questionCount`。
-按 `contentPeriod DESC, id DESC` 排序。`type` 必填，值为 `pointCoverage / highFrequency / errorTarget / realSource`，其中 `realSource` 表示真题。
+题集详情基础字段：`id / subjectCode / provinceCode / name / type / paperLayout / contentPeriod / sourceType / questionCount`。
+`type` 必填，值为 `pointCoverage / highFrequency / errorTarget / realSource`，其中 `realSource` 表示真题。
 `paperLayout` 为 `custom / exam`，与题集来源 `system / ai` 分开。
 
 详情附 `sections: [{ name, questionType?, perScore?, questionIds, items }]`。
@@ -251,25 +229,52 @@ interface ChangeEmailBody {
 不返回正确答案、解析、来源原文、指纹或其他用户资料。题目必须同科目、归属兼容、启用且未删除。
 存在缺题、重复题、无效分组或题型冲突时返回 409，不静默丢题。空题集不能作为启用题集读取。
 
-Neo 首页按完整科目代码查询题集，支持题集类型筛选和分页。读取题集后进入题集预览；交卷、成绩、最近练习、收藏状态和 AI 调用等待后续用户业务表对接。
-旧 `/api/users/me/practice-plan`、`/api/practice/plan`、`GET /api/practice/papers/:paperId` 和 `/api/profile` 已移除，不提供别名。
+Neo 首页按科目加载练习模板，从模板的 `list` 获取可打开的题集。收藏和错题使用各自的列表与练习接口。已知题集 ID 可用于读取单份题集详情；`GET /api/papers` 和旧的 `/api/practice/entries` 已移除。
+旧 `/api/users/me/practice-scope`、`/api/users/me/practice-plan`、`/api/practice/plan`、`/api/practice/scope`、`GET /api/practice/papers/:paperId` 和 `/api/profile` 已移除，不提供别名。
 
 ## 4. 练习模块
 
-本节除上述新版题集读取之外，均为后续表相关的旧协议记录，尚未针对新版表重构，不作为本轮可用接口。
+考试计划、练习模板和刷题设置已可用。交卷记录等待后续表对接。
 
 - `paper`：固定的试卷资源。
 - `record`：用户的一次练习记录。
-- `entries`：按科目获取的练习入口和可刷试卷列表。
 
 | Method  | Path                                                          | 说明                           | 状态     |
 | ------- | ------------------------------------------------------------- | ------------------------------ | -------- |
+| `GET`   | `/api/practice/exam-plan`                                     | 获取当前考试计划               | 可用     |
+| `PUT`   | `/api/practice/exam-plan`                                     | 整体替换考试计划               | 可用     |
+| `GET`   | `/api/practice/templates?subjectCode=`                       | 获取指定科目的练习模板         | 可用     |
 | `GET`   | `/api/practice/settings`                                      | 获取用户刷题设置               | 可用     |
 | `PATCH` | `/api/practice/settings`                                      | 修改用户刷题设置               | 可用     |
-| `GET`   | `/api/practice/entries?subjectId=&provinceCode=`                           | 旧练习入口                     | 待重构   |
 | `GET`   | `/api/papers/:id` | 新版题集和题目，见第3节 | 本轮已实现 |
 | `POST`  | `/api/practice/papers/:paperId/submissions`                   | 交卷并创建练习记录             | 待重构   |
 | `GET`   | `/api/practice/papers/:paperId/submissions/:submissionId`    | 获取本次交卷记录               | 待重构   |
+
+### 考试计划
+
+`GET` 在未设置考试计划或所选专业、科目不可用时返回 `data: null`。`PUT` 整体替换当前考试计划，未知字段返回 400。
+
+```json
+{
+  "provinceCode": "440000",
+  "majorCode": "120206",
+  "subjectCodes": ["GD-15043"]
+}
+```
+
+只保存以上三个字段到 `users.examPlan`。`majorCode` 必填；`subjectCodes` 必填、最多 100 项，按首次出现顺序去重，允许空数组。
+专业必须启用、开考且未删除；科目必须同省、启用、开考且在 `majorCodes` 中关联所选专业，否则 400 且不写入。
+不接受旧 `majorId / subjectIds / educationLevel` 字段；学历由专业读取。
+返回 `{ provinceCode, majorCode, subjectCodes, major, subjects, nextExam }`，专业与科目字段见第 3 节。
+所选科目均附 `nextExam: { subjectCode, period, examDate } | null`；计划级 `nextExam` 取最近一场。
+考期从 `subject_exams_schedules` 按科目及省份读取，以北京时间的今天为下限；同日按期次、科目代码稳定排序，不随计划落库。
+
+### 练习模板
+
+`GET /api/practice/templates?subjectCode=GD-13811` 返回指定科目的启用模板，按 `sort` 升序、同序按 `id` 排列。
+科目必须启用、开考且未删除，无可用模板返回 `[]`。每条模板返回 `id`、`name`、`type`、`list`。
+`type` 取 `baseline`（专项训练）、`mockExams`（考前模拟）、`pastExams`（历年真题）或 `aiEnhance`（千人千练）。
+`list` 是模板下的题集列表，当前固定为 `[]`。Neo 在所选科目下展示模板，题集入口来自各模板的 `list`。
 
 ### 刷题设置
 
@@ -284,50 +289,12 @@ interface PracticeSettings {
 ```
 
 `PATCH` 接受非空局部更新，只允许上述五个布尔字段；空对象、未知字段或非布尔值返回400。
-配置存于 `users.preferences.practice`，以数据库原子合并保存，不覆盖并发修改的其他字段或备考范围。
+配置存于 `users.preferences.practice`，以数据库原子合并保存，不覆盖并发修改的其他字段或考试计划。
 未设置时返回 `autoNext: false`、`recordWrongQuestions: true`、
 `autoSubmitAfterCompletion: false`、`removeMistakeOnCorrect: false`、`shuffleQuestions: false`；默认值以
 `src/services/client/user-preference.ts` 为准。
 乱序出题在下次进入练习时生效：保留原分组，在每组内打乱题目顺序，不打乱选项。存在本地作答记录时，客户端按记录的开始时间固定同一轮顺序，刷新或恢复时保持稳定；答案和进度仍按题目 ID 对应。API 返回题集保留原顺序，提交协议不变。
 未接入实际行为的循环练习、答后解析开关已移除；请求旧字段返回400。
-
-### 练习入口
-
-`subjectId` 必填，`provinceCode` 可选且必须为统一省份字典中的省级代码；提供时仅返回该省份题集，省略时保持跨省查询，不隐式读取或修改备考范围。固定返回 `specialTraining`（专项训练）、`pastExams`（历年真题）、`examSimulation`（考前模拟）、
-`aiPractice`（AI练习）四个入口；`type` 与题集 `type` 使用同一组取值。
-
-入口只按业务类型分组，与题集来源和归属独立；AI 生成的专项训练、模拟卷仍分别进入 `specialTraining`、`examSimulation`。
-`aiPractice` 的分类及读取已支持，用户信息收集和主动生成接口尚未接入。旧入口值 `ai` 不再使用。
-
-`pastExams`、`examSimulation`、`aiPractice` 的 `children` 分别来自该科目下同类型、启用且未删除的题集，按题集
-内容期次（contentPeriod）倒序、同期按 ID 倒序排列——真题的期次取来源年月，自建/AI 题集取
-业务创建时刻，因此最近内容的题集排在最前。每个入口只包含平台题集
-或当前用户自己的题集。每个子项返回 `{ paperId, name, questionCount, answeredCount }`，其中
-`name` 直接取题集存储的名称（如 `2024年10月真题`），不拼接科目名称；
-`questionCount` 为题集 `sections` 内全部题目数之和，`answeredCount` 暂为 `0`；父项的
-`questionCount` 为全部子项之和。父项 `name`、`description` 和 `answeredCount` 来自
-`src/constants/practice.ts` 的 `PracticeEntryPresets`（当前 `answeredCount` 依次为 0、75、12、0，
-尚非真实进度）。没有匹配题集时 `children` 为 `[]`、`questionCount` 为 `0`。
-
-`specialTraining`（专项训练）的 `children` 来自该科目 `type=specialTraining` 的题集。按以下
-`assessmentType` 顺序排列，同一类型内按内容期次、ID 倒序；每份题集对应一个子项。
-`overall` 子项的 `name` 固定为产品名称 `考点通练`，其他子项保留题集存储名称；`paperId` 指向该题集，
-`questionCount` 只统计该题集。父项题数为全部子项之和：
-
-`overall` → `highFrequency` → `errorProne`。该顺序由 `PaperAssessmentPreset` 定义；
-`assessmentType` 同时用于排序、图标和综合训练的产品名称映射。当前入口仅展示这三种预设，
-其他自定义考查类型可保存，但不在入口中展示。
-
-综合训练当前每省、每科目只提供一份启用题集作为 `考点通练` 的数据，多份时的默认选择或聚合
-尚未实现。此接口保留真实 `paperId`，不按相同展示名去重、合并或自动选择最近一份。
-业务表与 Dash 继续使用真实名称，如 `中国近现代史纲要综合考点训练`。
-
-specialTraining 子项额外返回 `assessmentType: string`（预设值或自定义值），供客户端做差异化展示；
-该科目缺少某 `assessmentType` 的 specialTraining 题集时跳过对应类型。四类入口的作答进度尚未接入练习记录。
-
-### 旧题集读取已移除
-
-新版题集读取见上文 `/api/papers/:id`。最近练习记录属于后续表，尚未重构。
 
 ### 交卷与结果
 
@@ -367,7 +334,7 @@ interface PracticeSubmission {
 
 ## 5. 题目收藏模块
 
-本节为后续表旧协议，尚未重构。
+收藏使用 `user_favorites`，按 `subjectCode` 关联科目。客户端提交和接收的科目标识为 `subjectId`，由服务端与科目代码对应。
 
 | Method   | Path                                               | 说明                                       | 状态 |
 | -------- | -------------------------------------------------- | ------------------------------------------ | ---- |
@@ -378,7 +345,7 @@ interface PracticeSubmission {
 | `DELETE` | `/api/favorites/all`                               | 清空当前用户全部收藏                       | 可用 |
 | `GET`    | `/api/favorites/practice?subjectId=` / `?paperId=` | 收藏练习数据（与练习题集 paper 同构）      | 可用 |
 
-收藏/取消使用训练页三元组请求体（`subjectId` 服务端校验一致后固化）：
+收藏和取消使用训练页的三元组请求体：
 
 ```json
 { "questionId": "qstxxx", "subjectId": "subxxx", "paperId": "papxxx" }
@@ -414,14 +381,13 @@ interface PracticeSubmission {
 ```
 
 按题集分组的 `paperName` 和题集练习的 `paper.name` 与普通练习一致：
-`specialTraining + overall` 显示 `考点通练`，其他题集显示存储名称；按科目仍使用科目名。
+`pointCoverage` 显示 `考点通练`，其他题集显示存储名称；按科目使用科目名。
 名称变化不改变收录上下文、题目 ID 或实际 paperId，也不合并名称相同的分组。
 
 练习接口 `subjectId` 与 `paperId` 二选一：按科目取该科目全部收藏题；按题集只取收录记录的
 `paperId` 与目标题集一致、且仍在该题集 sections 内的收藏题，不混入其他题集收录的共享题目。
 按题型重新分组、按收藏时间倒序。返回与
-`GET /api/practice/papers/:paperId` 的 `paper` 同构（无 `type`/`assessmentType`/
-`latestRecord`/`favoriteQuestionIds`）。收藏训练为纯刷题：**不提供交卷**，不产生任何
+下方 `paper` 结构。收藏训练为纯刷题：**不提供交卷**，不产生任何
 服务端记录。分组默认名称使用统一题型文案（如 `single`→`单选题`、`multiple`→`多选题`）；
 按科目聚合不返回顶层 `paper.id`；按题集返回真实题集 ID，不再返回 `fav:` 虚拟 ID。
 每道题的 `paperId` 保留原收录题集上下文，不因按科目进入而丢失。取消后重新收藏仍提交该题的三元组。
@@ -450,7 +416,7 @@ interface PracticeSubmission {
 
 ## 6. 错题模块
 
-本节已统一路由、文件与函数命名为 `mistakes`。旧路由已移除；ORM、科目关联与聚合业务仍待后续表重构，本次命名调整不代表新版错题功能已通过验收。
+错题使用 `user_mistakes`，与收藏一样按 `subjectCode` 关联科目。
 
 客户端错题资源使用 `/api/mistakes`，路由文件使用复数 `mistakes.ts`，服务和校验文件使用单数 `mistake.ts`；ORM 文件使用 `user-mistakes.ts`，对应目标表 `user_mistakes`，不再使用 `/api/user-mistakes`、`/api/wrong-questions` 或 `/wrong`。与收藏完全同构，仅添加语义
 为"发生了错误"，使用 `POST`：
@@ -531,17 +497,16 @@ GET    /api/users/me
 PUT    /api/users/me/password
 PUT    /api/users/me/email
 
-GET    /api/users/me/practice-scope
-PUT    /api/users/me/practice-scope
+GET    /api/practice/exam-plan
+PUT    /api/practice/exam-plan
+GET    /api/practice/templates?subjectCode=
 
 GET    /api/practice/settings
 PATCH  /api/practice/settings
-GET    /api/practice/entries
 GET    /api/majors
 GET    /api/majors/:code
 GET    /api/subjects
 GET    /api/subjects/:code
-GET    /api/papers
 GET    /api/papers/:id
 
 GET    /api/favorites

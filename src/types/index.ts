@@ -17,6 +17,8 @@ export type {
   CollectionContext,
   CollectionGroupBy,
   CollectionOrder,
+  CollectionSort,
+  CollectionQuery,
   FavoriteMutationResult,
 } from './collection'
 export type { OptionItem } from './catalog'
@@ -35,10 +37,7 @@ export type {
   PracticeSource,
   PracticeSubmission,
   PracticeSubmissionResult,
-  PracticeScope,
-  PracticeScopeSubject,
   SubmitPracticePaperBody,
-  UpdatePracticeScopeBody,
 } from './practice'
 export type {
   PracticeAnswerRecord,
@@ -52,3 +51,4 @@ export type {
   PracticeRecordProgress,
   PracticeRecordSource,
 } from './practice-record'
+export type { ExamPlan, ExamPlanSubject, ScheduledExam, UpdateExamPlanBody } from './exam-plan'

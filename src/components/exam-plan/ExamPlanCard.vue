@@ -4,22 +4,22 @@ import { differenceInCalendarDays, format, parseISO } from 'date-fns'
 import { computed } from 'vue'
 
 import { provinceOptions } from '@/generated/domain-values'
-import type { PracticeScope } from '@/types'
+import type { ExamPlan } from '@/types'
 
 const props = defineProps<{
-  scope: PracticeScope
+  plan: ExamPlan
 }>()
 
 const emit = defineEmits<{
-  'edit-scope': []
+  'edit-exam-plan': []
   'edit-settings': []
 }>()
 
 const provinceName = computed(
-  () => provinceOptions.find((province) => province.code === props.scope.provinceCode)?.name ?? '',
+  () => provinceOptions.find((province) => province.code === props.plan.provinceCode)?.name ?? '',
 )
 const nextExamDate = computed(() => {
-  const dateValue = props.scope.nextExam?.examDate
+  const dateValue = props.plan.nextExam?.examDate
   if (!dateValue) return null
   const parsedDate = parseISO(dateValue)
   return Number.isNaN(parsedDate.getTime()) ? null : parsedDate
@@ -40,18 +40,18 @@ const nextExamDateText = computed(() =>
       <div class="flex min-w-0 items-start justify-between gap-3">
         <div class="min-w-0">
           <div class="flex min-w-0 items-center gap-2">
-            <h2 class="truncate text-lg font-semibold">{{ scope.major.name }}</h2>
+            <h2 class="truncate text-lg font-semibold">{{ plan.major.name }}</h2>
             <span
-              v-if="scope.major.educationLevel"
+              v-if="plan.major.educationLevel"
               class="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary"
             >
-              {{ scope.major.educationLevel }}
+              {{ plan.major.educationLevel }}
             </span>
           </div>
-          <p v-if="provinceName || scope.majorCode" class="mt-1.5 text-xs text-base-content/65">
+          <p v-if="provinceName || plan.majorCode" class="mt-1.5 text-xs text-base-content/65">
             <template v-if="provinceName">{{ provinceName }}</template>
-            <template v-if="provinceName && scope.majorCode"> · </template>
-            <template v-if="scope.majorCode">专业代码 {{ scope.majorCode }}</template>
+            <template v-if="provinceName && plan.majorCode"> · </template>
+            <template v-if="plan.majorCode">专业代码 {{ plan.majorCode }}</template>
           </p>
         </div>
         <span
@@ -91,11 +91,11 @@ const nextExamDateText = computed(() =>
       <button
         class="flex h-10 items-center justify-center gap-1.5 text-xs font-medium text-base-content/60 transition active:bg-base-200/50"
         type="button"
-        aria-label="备考范围"
-        @click="emit('edit-scope')"
+        aria-label="考试计划"
+        @click="emit('edit-exam-plan')"
       >
         <ClipboardList :size="15" />
-        备考范围
+        考试计划
       </button>
       <button
         class="flex h-10 items-center justify-center gap-1.5 text-xs font-medium text-base-content/60 transition active:bg-base-200/50"

@@ -1,46 +1,7 @@
-import type { DomainValue, ProvinceCode } from '@/generated/domain-values'
+import type { DomainValue } from '@/generated/domain-values'
 
 import type { CollectionSource } from './collection'
 import type { QuestionContent, QuestionType } from './question'
-
-// ---- Practice scope ----
-
-export type PracticeScopeExam = {
-  subjectCode: string
-  period: string
-  examDate: string
-}
-
-export type PracticeScopeSubject = {
-  id: string
-  code: string
-  originCode: string
-  name: string
-  provinceCode: ProvinceCode
-  credit: number
-  examType: DomainValue<'examType'>
-  nextExam: PracticeScopeExam | null
-}
-
-export type PracticeScope = {
-  provinceCode: ProvinceCode
-  majorCode: string
-  subjectCodes: string[]
-  major: {
-    id: string
-    code: string
-    name: string
-    educationLevel: DomainValue<'educationLevel'>
-    requiredCredits: number
-  }
-  subjects: PracticeScopeSubject[]
-  nextExam: PracticeScopeExam | null
-}
-
-export type UpdatePracticeScopeBody = Pick<
-  PracticeScope,
-  'provinceCode' | 'majorCode' | 'subjectCodes'
->
 
 // ---- Practice ----
 

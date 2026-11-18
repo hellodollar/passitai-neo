@@ -10,14 +10,9 @@ import {
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import {
-  addFavorite,
-  fetchFavoritePractice,
-  removeFavorite,
-  removeFavoriteByRecord,
-} from '@/api/favorites'
-import { fetchMistakePractice } from '@/api/mistakes'
-import { fetchPracticePaper, fetchPracticeSubmission, submitPracticePaper } from '@/api/practice'
+import { addFavorite, removeFavorite, removeFavoriteByRecord } from '@/api/favorites'
+import { fetchPracticeSubmission, submitPracticePaper } from '@/api/practice'
+import { fetchPracticeContent, type PracticeTarget } from '@/api/practice-content'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
 import AnswerSheetPopup from '@/components/practice/AnswerSheetPopup.vue'
@@ -87,6 +82,7 @@ const answerSheetOpen = ref(false)
 const submitConfirmOpen = ref(false)
 const clearRecordConfirmOpen = ref(false)
 const submitting = ref(false)
+const canSubmit = ref(false)
 const submitError = ref('')
 const paperTitle = ref('')
 
@@ -438,7 +434,7 @@ async function submitCurrentAnswer() {
 
 /** 答完最后一题时按设置自动交卷;仅真实题集,收藏/错题纯刷题无交卷概念。 */
 async function maybeAutoSubmitOnComplete(sequence: number) {
-  if (collectionMode.value || submitting.value || submitConfirmOpen.value) return
+  if (!canSubmit.value || submitting.value || submitConfirmOpen.value) return
   const settings = await practiceSettingsStore.load()
   if (
     !settings?.autoSubmitAfterCompletion ||
@@ -452,13 +448,14 @@ async function maybeAutoSubmitOnComplete(sequence: number) {
 }
 
 function requestSubmitPaper() {
+  if (!canSubmit.value) return
   clearAutoAdvance()
   submitError.value = ''
   submitConfirmOpen.value = true
 }
 
 async function confirmSubmitPaper() {
-  if (submitting.value) return
+  if (!canSubmit.value || submitting.value) return
 
   const paperIdParam = practiceId.value
   saveRecordNow()
@@ -527,6 +524,7 @@ function isCurrentSubmissionContext(sequence: number, record: PracticeRecord) {
     sequence === loadSequence &&
     recordReady.value &&
     practiceId.value === record.paperId &&
+    canSubmit.value &&
     !collectionMode.value &&
     isPracticeRecordCurrent(record) &&
     auth.session?.user.id === record.userId &&
@@ -538,7 +536,7 @@ function isCurrentSubmissionContext(sequence: number, record: PracticeRecord) {
 
 /** 超时请求可能已成功：后台核对元信息，不打断本地恢复、不自动跳报告。 */
 async function reconcilePendingSubmission(sequence: number, record: PracticeRecord) {
-  if (record.source !== 'practice' || !record.pendingSubmission) return
+  if (!canSubmit.value || record.source !== 'practice' || !record.pendingSubmission) return
   let submission: PracticeSubmission
   try {
     submission = await fetchPracticeSubmission(
@@ -581,17 +579,6 @@ function handlePaperStateAction() {
   exitPractice()
 }
 
-/** 集合练习直接按明确的分组资源请求，不从 ID 前缀推断分组。 */
-async function loadCollectionPaper() {
-  const params =
-    props.groupBy === 'paper' ? { paperId: props.groupId } : { subjectId: props.groupId }
-  const { paper } =
-    props.source === 'mistakes'
-      ? await fetchMistakePractice(params)
-      : await fetchFavoritePractice(params)
-  return { paper, paperType: null, favoriteQuestionIds: [] as string[] }
-}
-
 async function loadPaperData() {
   clearAutoAdvance()
   answerSheetOpen.value = false
@@ -600,6 +587,7 @@ async function loadPaperData() {
   resetRecordState()
   const sequence = ++loadSequence
   submitting.value = false
+  canSubmit.value = false
   submitConfirmOpen.value = false
   submitError.value = ''
   paperLoadState.value = 'loading'
@@ -622,17 +610,17 @@ async function loadPaperData() {
     return
   }
   try {
-    const [loaded, settings] = await Promise.all([
+    const target: PracticeTarget =
       source === 'practice'
-        ? fetchPracticePaper(paperIdParam).then((detail) => ({
-            ...detail,
-            paperType: detail.paper.type,
-          }))
-        : loadCollectionPaper(),
+        ? { source, paperId: paperIdParam }
+        : { source, groupBy: props.groupBy!, groupId: props.groupId! }
+    const [loaded, settings] = await Promise.all([
+      fetchPracticeContent(target),
       practiceSettingsStore.load(),
     ])
     if (sequence !== loadSequence || sessionToken !== auth.session?.token) return
     const { paper } = loaded
+    canSubmit.value = loaded.canSubmit
     paperTitle.value = paper.name
     const prepared = preparePracticePaper(paper)
     const { questions, groups, fingerprints, itemsById } = prepared
@@ -651,7 +639,7 @@ async function loadPaperData() {
       paperId: paperIdParam,
       source,
       subjectId: paper.subjectId,
-      paperType: loaded.paperType,
+      paperType: null,
     }
     const hasSavedRecord = loadSavedRecord(context, fingerprints)
     if (sequence !== loadSequence) return
@@ -679,7 +667,7 @@ async function loadPaperData() {
       if (localRecord.value) void reconcilePendingSubmission(sequence, localRecord.value)
     }
   } catch {
-    if (sequence !== loadSequence) return
+    if (sequence !== loadSequence || sessionToken !== auth.session?.token) return
     currentQuestions.value = []
     answerSheetGroups.value = []
     paperLoadState.value = 'error'
@@ -901,7 +889,7 @@ watch(answerSheetOpen, (open) => {
       :answered-count="answeredCount"
       :correct-count="correctCount"
       :wrong-count="wrongCount"
-      :show-submit="!collectionMode"
+      :show-submit="canSubmit"
       :show-clear="canClearRecord"
       :clear-disabled="!hasLocalRecordProgress || submitting"
       @select="goToQuestion"

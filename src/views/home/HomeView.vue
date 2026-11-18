@@ -1,26 +1,24 @@
 <script setup lang="ts">
 import { AlertCircle, Bell, ChevronRight, EyeOff, Target } from '@lucide/vue'
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import { PAPER_PAGE_SIZE } from '@/api/papers'
 import EmptyState from '@/components/common/EmptyState.vue'
 import LogoPassitai from '@/components/common/LogoPassitai.vue'
 import PageContainer from '@/components/common/PageContainer.vue'
 import PagePlaceholder from '@/components/common/PagePlaceholder.vue'
-import HomePapers from '@/components/home/HomePapers.vue'
-import HomeScopeCard from '@/components/home/HomeScopeCard.vue'
+import ExamPlanCard from '@/components/exam-plan/ExamPlanCard.vue'
+import ExamPlanPopup from '@/components/exam-plan/ExamPlanPopup.vue'
+import ExamPlanSubjectsPopup from '@/components/exam-plan/ExamPlanSubjectsPopup.vue'
+import HomePracticeTemplates from '@/components/home/HomePracticeTemplates.vue'
 import NotificationStrip from '@/components/home/NotificationStrip.vue'
-import SubjectManagerPopup from '@/components/home/SubjectManagerPopup.vue'
-import PracticeScopePopup from '@/components/practice/PracticeScopePopup.vue'
 import PracticeSettingsPopup from '@/components/practice/PracticeSettingsPopup.vue'
 import { useBrowseScroll } from '@/composables/useBrowseScroll'
 import { useAuthStore } from '@/stores/auth'
+import { useExamPlanStore } from '@/stores/exam-plan'
 import { useNotificationsStore } from '@/stores/notifications'
-import { usePapersStore } from '@/stores/papers'
-import { usePracticeScopeStore } from '@/stores/practice-scope'
-import type { PracticeScope } from '@/types'
-import type { Paper, PaperType } from '@/types/paper'
+import type { ExamPlan } from '@/types'
+import type { Paper } from '@/types/paper'
 import { parseHomeSelection, readBrowseState, writeBrowseState } from '@/utils/browse/state'
 
 const router = useRouter()
@@ -36,25 +34,17 @@ const initialSelection = parseHomeSelection(route.query, initialBrowse)
 
 const settingsPopupOpen = ref(false)
 const subjectManagerOpen = ref(false)
-const scopePopupOpen = ref(false)
-// 备考范围从共享状态读取，首次加载时显示占位。
-const practiceScopeStore = usePracticeScopeStore()
-const papersStore = usePapersStore()
-const scope = computed<PracticeScope | null>(() => practiceScopeStore.scope)
-const scopeLoading = computed(
-  () => !practiceScopeStore.isLoaded && (practiceScopeStore.isLoading || !practiceScopeStore.error),
+const examPlanPopupOpen = ref(false)
+// 考试计划从共享状态读取，首次加载时显示占位。
+const examPlanStore = useExamPlanStore()
+const examPlan = computed<ExamPlan | null>(() => examPlanStore.plan)
+const examPlanLoading = computed(
+  () => !examPlanStore.isLoaded && (examPlanStore.isLoading || !examPlanStore.error),
 )
 
 const subjectOrder = ref<string[]>(initialBrowse.subjectOrder)
 const hiddenSubjectCodes = ref<Set<string>>(new Set(initialBrowse.hiddenSubjectCodes))
 const activeSubjectCode = ref(initialSelection.subjectCode)
-const paperType = ref(initialSelection.paperType)
-const paperPage = ref(initialSelection.paperPage)
-const papers = ref<Paper[]>([])
-const papersLoading = ref(false)
-const papersError = ref('')
-const totalPapers = ref(0)
-const totalPages = computed(() => Math.max(1, Math.ceil(totalPapers.value / PAPER_PAGE_SIZE)))
 
 // 科目 chips 单行横滑，右侧渐隐提示是否还有未滑出的科目
 const chipsRow = ref<HTMLElement | null>(null)
@@ -69,11 +59,11 @@ function updateChipsScrollHint() {
   chipsCanScrollRight.value = el.scrollLeft + el.clientWidth < el.scrollWidth - 1
 }
 
-const scopeSubjects = computed(() => scope.value?.subjects ?? [])
+const examPlanSubjects = computed(() => examPlan.value?.subjects ?? [])
 
 const orderedSubjects = computed(() => {
   const orderMap = new Map(subjectOrder.value.map((code, index) => [code, index]))
-  return [...scopeSubjects.value].sort((a, b) => {
+  return [...examPlanSubjects.value].sort((a, b) => {
     const aIndex = orderMap.get(a.code) ?? Number.MAX_SAFE_INTEGER
     const bIndex = orderMap.get(b.code) ?? Number.MAX_SAFE_INTEGER
     return aIndex - bIndex
@@ -92,26 +82,12 @@ const activeSubject = computed(
 
 function selectSubject(code: string) {
   activeSubjectCode.value = code
-  paperPage.value = 1
-  syncSelectionQuery()
-}
-
-function selectPaperType(type: PaperType | '') {
-  paperType.value = type
-  paperPage.value = 1
-  syncSelectionQuery()
-}
-
-function selectPaperPage(page: number) {
-  paperPage.value = page
   syncSelectionQuery()
 }
 
 function selectionQuery() {
   return {
     subjectCode: activeSubject.value?.code ?? '',
-    paperType: paperType.value,
-    paperPage: String(paperPage.value),
   }
 }
 
@@ -124,8 +100,8 @@ function syncSelectionQuery() {
 }
 
 function syncSubjectOrder() {
-  if (!scope.value) return
-  const codes = scopeSubjects.value.map((subject) => subject.code)
+  if (!examPlan.value) return
+  const codes = examPlanSubjects.value.map((subject) => subject.code)
   subjectOrder.value = [
     ...subjectOrder.value.filter((code) => codes.includes(code)),
     ...codes.filter((code) => !subjectOrder.value.includes(code)),
@@ -138,7 +114,6 @@ function syncSubjectOrder() {
   const visibleCodes = subjectOrder.value.filter((code) => !hiddenSubjectCodes.value.has(code))
   if (!activeSubjectCode.value || !visibleCodes.includes(activeSubjectCode.value)) {
     activeSubjectCode.value = visibleCodes[0] ?? ''
-    paperPage.value = 1
   }
 }
 
@@ -167,73 +142,20 @@ function toggleSubjectVisibility(code: string) {
 }
 
 function openPaper(paper: Paper) {
-  if (
-    !auth.isAuthenticated ||
-    papersLoading.value ||
-    paper.subjectCode !== activeSubject.value?.code
-  ) {
-    return
-  }
+  if (!auth.isAuthenticated || paper.subjectCode !== activeSubject.value?.code) return
   const returnTo = router.resolve({
     name: 'home',
     query: { ...route.query, ...selectionQuery() },
   }).fullPath
-  void router.push({ name: 'paper', params: { paperId: paper.id }, query: { returnTo } })
-}
-
-let paperLoadSequence = 0
-async function loadPapers() {
-  const sequence = ++paperLoadSequence
-  const token = auth.session?.token
-  const isCurrent = () => sequence === paperLoadSequence && token === auth.session?.token
-  const subjectCode = activeSubject.value?.code
-  const page = paperPage.value
-  papers.value = []
-  totalPapers.value = 0
-  papersError.value = ''
-  papersLoading.value = Boolean(token && subjectCode)
-  if (!token || !subjectCode) return
-  try {
-    const result = await papersStore.load(subjectCode, page, paperType.value || undefined)
-    if (!isCurrent() || !result) return
-    const lastPage = Math.max(1, Math.ceil(result.total / PAPER_PAGE_SIZE))
-    if (page > lastPage) {
-      selectPaperPage(lastPage)
-      return
-    }
-    papers.value = result.items
-    totalPapers.value = result.total
-  } catch (error) {
-    if (isCurrent()) papersError.value = error instanceof Error ? error.message : '题集加载失败'
-  } finally {
-    if (isCurrent()) {
-      papersLoading.value = false
-      await nextTick()
-      if (isCurrent()) {
-        const selected = chipsRow.value?.querySelector<HTMLElement>('[aria-pressed="true"]')
-        if (selected && chipsRow.value) {
-          chipsRow.value.scrollLeft = Math.max(
-            0,
-            selected.offsetLeft - chipsRow.value.offsetLeft - 16,
-          )
-        }
-        updateChipsScrollHint()
-        if (!papersError.value && page === paperPage.value) void browseScroll.restore()
-      }
-    }
-  }
+  void router.push({ name: 'practice', params: { paperId: paper.id }, query: { returnTo } })
 }
 
 onMounted(() => {
-  if (auth.isAuthenticated) void practiceScopeStore.load()
-})
-
-onBeforeUnmount(() => {
-  paperLoadSequence++
+  if (auth.isAuthenticated) void examPlanStore.load()
 })
 
 watch(
-  [() => route.query.subjectCode, () => route.query.paperType, () => route.query.paperPage],
+  () => route.query.subjectCode,
   () => {
     if (route.name !== 'home') return
     const selection = parseHomeSelection(
@@ -241,18 +163,14 @@ watch(
       readBrowseState(auth.session?.user.id ?? '', 'home'),
     )
     activeSubjectCode.value = selection.subjectCode
-    paperType.value = selection.paperType
-    paperPage.value = selection.paperPage
     syncSubjectOrder()
   },
 )
 
-watch([activeSubjectCode, paperType, paperPage, subjectOrder, hiddenSubjectCodes], () => {
+watch([activeSubjectCode, subjectOrder, hiddenSubjectCodes], () => {
   if (route.name !== 'home') return
   writeBrowseState(auth.session?.user.id ?? '', 'home', {
     subjectCode: activeSubject.value?.code ?? '',
-    paperType: paperType.value,
-    paperPage: paperPage.value,
     subjectOrder: subjectOrder.value,
     hiddenSubjectCodes: [...hiddenSubjectCodes.value],
   })
@@ -262,28 +180,21 @@ watch(
   () => auth.session?.token,
   () => {
     const userId = auth.session?.user.id
-    paperLoadSequence++
     const state = readBrowseState(userId ?? '', 'home')
     const selection = parseHomeSelection({}, state)
     browseScroll.reset()
-    papers.value = []
-    papersLoading.value = false
-    papersError.value = ''
-    totalPapers.value = 0
     settingsPopupOpen.value = false
     subjectManagerOpen.value = false
-    scopePopupOpen.value = false
+    examPlanPopupOpen.value = false
     subjectOrder.value = state.subjectOrder
     hiddenSubjectCodes.value = new Set(state.hiddenSubjectCodes)
     activeSubjectCode.value = selection.subjectCode
-    paperType.value = selection.paperType
-    paperPage.value = selection.paperPage
-    if (userId && auth.isAuthenticated) void practiceScopeStore.load()
+    if (userId && auth.isAuthenticated) void examPlanStore.load()
   },
 )
 
 watch(
-  () => scopeSubjects.value.map((subject) => subject.code).join('|'),
+  () => examPlanSubjects.value.map((subject) => subject.code).join('|'),
   () => {
     syncSubjectOrder()
   },
@@ -291,18 +202,16 @@ watch(
 )
 
 watch(
-  () => visibleSubjects.value.map((subject) => subject.code).join('|'),
+  [
+    () => visibleSubjects.value.map((subject) => subject.code).join('|'),
+    () => activeSubject.value?.code,
+  ],
   async () => {
     await nextTick()
+    const row = chipsRow.value
+    const selected = row?.querySelector<HTMLElement>('[aria-pressed="true"]')
+    if (row && selected) row.scrollLeft = Math.max(0, selected.offsetLeft - row.offsetLeft - 16)
     updateChipsScrollHint()
-  },
-  { immediate: true },
-)
-
-watch(
-  [() => auth.session?.token, () => activeSubject.value?.code, paperType, paperPage],
-  () => {
-    void loadPapers()
   },
   { immediate: true },
 )
@@ -333,44 +242,44 @@ watch(
 
       <NotificationStrip class="relative z-10" />
 
-      <PagePlaceholder v-if="scopeLoading" role="status" aria-live="polite">
+      <PagePlaceholder v-if="examPlanLoading" role="status" aria-live="polite">
         <span class="loading loading-spinner loading-md text-primary"></span>
-        <p class="text-sm font-medium text-base-content/65">正在获取备考范围…</p>
+        <p class="text-sm font-medium text-base-content/65">正在获取考试计划…</p>
       </PagePlaceholder>
 
-      <PagePlaceholder v-else-if="practiceScopeStore.error">
+      <PagePlaceholder v-else-if="examPlanStore.error">
         <EmptyState
           :icon="AlertCircle"
           tone="error"
-          :title="practiceScopeStore.error"
-          description="请重试加载备考范围。"
+          :title="examPlanStore.error"
+          description="请重试加载考试计划。"
           action-label="重试"
-          @action="practiceScopeStore.load()"
+          @action="examPlanStore.load()"
         />
       </PagePlaceholder>
 
-      <PagePlaceholder v-else-if="!scope">
+      <PagePlaceholder v-else-if="!examPlan">
         <EmptyState
           :icon="Target"
-          title="暂无备考范围"
+          title="暂无考试计划"
           description="先选择报考专业与刷题科目。"
-          action-label="设置备考范围"
-          @action="scopePopupOpen = true"
+          action-label="设置考试计划"
+          @action="examPlanPopupOpen = true"
         />
       </PagePlaceholder>
 
       <template v-else>
-        <HomeScopeCard
-          v-if="scope"
-          :scope="scope"
-          @edit-scope="scopePopupOpen = true"
+        <ExamPlanCard
+          v-if="examPlan"
+          :plan="examPlan"
+          @edit-exam-plan="examPlanPopupOpen = true"
           @edit-settings="settingsPopupOpen = true"
         />
 
         <div class="flex items-end justify-between gap-3 px-0.5">
           <div class="flex items-baseline gap-2">
             <h2 class="text-[17px] font-semibold leading-tight">刷题科目</h2>
-            <span class="text-xs text-base-content/65">{{ scopeSubjects.length }}个</span>
+            <span class="text-xs text-base-content/65">{{ examPlanSubjects.length }}个</span>
           </div>
           <button
             class="flex shrink-0 items-center gap-0.5 text-sm font-medium text-primary transition-opacity active:opacity-70"
@@ -415,12 +324,12 @@ watch(
           </div>
 
           <EmptyState
-            v-if="!scopeSubjects.length"
+            v-if="!examPlanSubjects.length"
             :icon="Target"
             title="还没有选择科目"
             action-label="选择科目"
             embedded
-            @action="scopePopupOpen = true"
+            @action="examPlanPopupOpen = true"
           />
 
           <div v-else-if="!activeSubject">
@@ -434,23 +343,16 @@ watch(
             />
           </div>
 
-          <HomePapers
+          <HomePracticeTemplates
             v-else
-            :papers="papers"
-            :type="paperType"
-            :page="paperPage"
-            :total-pages="totalPages"
-            :loading="papersLoading"
-            :error="papersError"
-            @select-type="selectPaperType"
-            @select-page="selectPaperPage"
+            :subject-code="activeSubject.code"
             @open-paper="openPaper"
-            @retry="loadPapers"
+            @loaded="browseScroll.restore()"
           />
         </section>
       </template>
 
-      <SubjectManagerPopup
+      <ExamPlanSubjectsPopup
         v-model="subjectManagerOpen"
         :subjects="orderedSubjects"
         :active-subject-code="activeSubject?.code"
@@ -462,7 +364,7 @@ watch(
 
       <PracticeSettingsPopup v-model="settingsPopupOpen" />
 
-      <PracticeScopePopup v-model="scopePopupOpen" />
+      <ExamPlanPopup v-model="examPlanPopupOpen" />
     </section>
   </PageContainer>
 </template>
