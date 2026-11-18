@@ -713,7 +713,7 @@ watch(answerSheetOpen, (open) => {
 
     <section
       v-if="paperLoadState === 'loading'"
-      class="flex flex-1 items-center justify-center px-6 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-[calc(5rem+env(safe-area-inset-top))]"
+      class="flex flex-1 items-center justify-center px-6 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-[calc(4.5rem+env(safe-area-inset-top))]"
     >
       <div class="text-center" role="status" aria-live="polite">
         <span class="loading loading-spinner loading-md text-primary"></span>
@@ -724,7 +724,7 @@ watch(answerSheetOpen, (open) => {
     <!-- 题目舞台:上一题/当前题/下一题三栏,横滑跟手,相邻题随拖拽露出 -->
     <article
       v-else-if="currentQuestion"
-      class="flex min-w-0 flex-1 flex-col pb-[calc(5rem+env(safe-area-inset-bottom))] pt-[calc(3.85rem+env(safe-area-inset-top))]"
+      class="flex min-w-0 flex-1 flex-col pb-[calc(5rem+env(safe-area-inset-bottom))] pt-[calc(3.35rem+env(safe-area-inset-top))]"
     >
       <div
         ref="questionStage"
@@ -786,7 +786,7 @@ watch(answerSheetOpen, (open) => {
     <!-- 空态/失效/失败占位:与加载态、题目舞台互斥,v-else-if 链不可被其他节点打断 -->
     <section
       v-else-if="paperLoadState !== 'ready'"
-      class="flex flex-1 items-center justify-center px-7 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-[calc(5rem+env(safe-area-inset-top))]"
+      class="flex flex-1 items-center justify-center px-7 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-[calc(4.5rem+env(safe-area-inset-top))]"
     >
       <div class="w-full max-w-sm text-center">
         <span

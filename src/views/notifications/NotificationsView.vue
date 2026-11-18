@@ -115,7 +115,7 @@ onBeforeUnmount(() => {
       <template #right>
         <button
           v-if="notifications.unreadCount > 0"
-          class="flex items-center gap-1 whitespace-nowrap pr-1 text-xs text-primary disabled:opacity-50"
+          class="flex min-h-11 items-center gap-1 whitespace-nowrap px-1 text-xs text-primary disabled:opacity-50"
           type="button"
           :disabled="marking"
           @click="markAll"
@@ -125,7 +125,7 @@ onBeforeUnmount(() => {
       </template>
     </PageHeader>
     <div
-      class="flex w-full min-w-0 flex-1 flex-col px-4 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-[calc(4.5rem+env(safe-area-inset-top))]"
+      class="flex w-full min-w-0 flex-1 flex-col px-4 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-[calc(3.75rem+env(safe-area-inset-top))]"
     >
       <div class="flex items-center gap-1.5 pb-2">
         <button

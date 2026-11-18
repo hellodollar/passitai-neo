@@ -80,7 +80,7 @@ watch(
   <section class="min-h-dvh bg-base-200/35 pb-[calc(2rem+env(safe-area-inset-bottom))]">
     <PageHeader title="练习报告" back-label="返回练习" @back="returnToPractice" />
 
-    <div class="px-5 pt-[calc(4.5rem+env(safe-area-inset-top))]">
+    <div class="px-5 pt-[calc(4rem+env(safe-area-inset-top))]">
       <div
         v-if="loading"
         class="flex min-h-[70dvh] items-center justify-center"

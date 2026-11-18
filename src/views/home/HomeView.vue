@@ -220,10 +220,10 @@ watch(
   <PageContainer>
     <section class="flex w-full min-w-0 max-w-full flex-col gap-4 overflow-x-hidden">
       <h1 class="sr-only">练习首页</h1>
-      <header class="relative z-10 flex h-9 shrink-0 items-center">
+      <header class="relative z-10 flex min-h-10 shrink-0 items-center">
         <LogoPassitai role="img" aria-label="Passitai" class="h-8 w-auto text-base-content" />
         <button
-          class="relative ml-auto flex size-9 items-center justify-center rounded-full border border-base-200 bg-base-100 text-base-content transition-colors active:bg-base-200/60"
+          class="relative ml-auto flex size-10 items-center justify-center rounded-full border border-base-200 bg-base-100 text-base-content transition-colors active:bg-base-200/60"
           type="button"
           :aria-label="
             notifications.unreadCount ? `消息中心，${notifications.unreadCount} 条未读` : '消息中心'

@@ -217,7 +217,7 @@ watch(
 <template>
   <PageContainer>
     <section class="flex flex-col" :aria-busy="loading">
-      <header class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+      <header class="grid min-h-10 grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
         <h1 class="min-w-0 text-lg font-semibold leading-tight">{{ pageConfig.label }}</h1>
       </header>
 

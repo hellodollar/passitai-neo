@@ -99,7 +99,7 @@ onBeforeUnmount(() => {
   <section class="flex min-h-dvh w-full min-w-0 flex-col">
     <PageHeader title="消息详情" back-label="返回" @back="goBack" />
     <div
-      class="flex w-full min-w-0 flex-1 flex-col px-5 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-[calc(4.25rem+env(safe-area-inset-top))]"
+      class="flex w-full min-w-0 flex-1 flex-col px-5 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-[calc(3.75rem+env(safe-area-inset-top))]"
     >
       <div v-if="loading" class="flex flex-col items-center gap-3 py-16 text-center">
         <span class="loading loading-spinner loading-sm"></span>
