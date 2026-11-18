@@ -18,7 +18,6 @@ const { isPracticeRecordCurrent, subscribePracticeRecordChanges } = await loadSo
 const { preparePracticeSubmission, settlePracticeSubmission } = await loadSource(
   'utils/practice/submission.ts',
 )
-const { applyLocalPracticeProgress } = await loadSource('utils/practice/progress.ts')
 
 class MemoryStorage {
   items = new Map()
@@ -63,15 +62,6 @@ const makeRecord = (ctx = context) =>
     pendingSubmissionId: '',
     submissionAnswers: { que_one: 'A' },
   })
-const entries = [
-  {
-    type: 'pastExams',
-    name: '历年真题',
-    answeredCount: 999,
-    questionCount: 8,
-    children: [{ paperId: 'papone', name: '测试', answeredCount: 999, questionCount: 8 }],
-  },
-]
 const previousWindow = globalThis.window
 const previousDocument = globalThis.document
 let storage
@@ -85,59 +75,6 @@ afterEach(() => {
   else globalThis.window = previousWindow
   if (previousDocument === undefined) delete globalThis.document
   else globalThis.document = previousDocument
-})
-
-test('首页进度只取本地已确认答案；没有记录为 0，接口进度不参与且不修改目录', () => {
-  const record = makeRecord()
-  const mapped = applyLocalPracticeProgress(entries, [record], context.userId, context.subjectId)
-  assert.equal(mapped[0].children[0].answeredCount, 1)
-  assert.equal(mapped[0].answeredCount, 1)
-  assert.equal(entries[0].children[0].answeredCount, 999)
-  assert.equal(
-    applyLocalPracticeProgress(entries, [], context.userId, context.subjectId)[0].answeredCount,
-    0,
-  )
-  for (const mismatch of [
-    { ...record, userId: 'usrother' },
-    { ...record, subjectId: 'subother' },
-    { ...record, source: 'favorites' },
-    { ...record, paperType: 'examSimulation' },
-  ]) {
-    assert.equal(
-      applyLocalPracticeProgress(entries, [mismatch], context.userId, context.subjectId)[0]
-        .answeredCount,
-      0,
-    )
-  }
-})
-
-test('本地进度按题集累加且不超过题目总数，未确认输入不计数', () => {
-  const record = makeRecord()
-  record.answers.que_empty = { ...answer, questionId: 'que_empty', text: '', values: [] }
-  const second = {
-    ...makeRecord({ ...context, paperId: 'paptwo' }),
-    answers: { que_a: answer, que_b: answer },
-  }
-  const directory = [
-    {
-      ...entries[0],
-      children: [
-        ...entries[0].children,
-        { paperId: 'paptwo', name: '第二集', questionCount: 1, answeredCount: 0 },
-      ],
-    },
-  ]
-  const mapped = applyLocalPracticeProgress(
-    directory,
-    [record, second],
-    context.userId,
-    context.subjectId,
-  )
-  assert.equal(mapped[0].answeredCount, 2)
-  assert.deepEqual(
-    mapped[0].children.map((child) => child.answeredCount),
-    [1, 1],
-  )
 })
 
 test('单题集清除答案、输入、位置及提交状态，不删除另一个来源或账号记录', () => {

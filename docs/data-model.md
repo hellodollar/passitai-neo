@@ -72,7 +72,7 @@
 
 `ownerId = null` 表示平台资源，有用户 ID 表示用户资源；可见性、同科目关系及答案下发由服务端决定。数据库有答案，不等于普通题集读取接口下发答案。
 
-枚举以 API 常量及生成文件为准；Neo `src/generated/domain-values.ts`、`src/generated/paper-catalog-values.ts` 不手改。前者仍含旧练习分类，不能直接把其中 `paperType` 用作新版 `papers.type`。
+模板类型由 API 常量生成至 `src/generated/practice-template-values.ts`，供业务判断。Neo 用模板名称展示。枚举以 API 常量及生成文件为准；Neo `src/generated/domain-values.ts`、`src/generated/paper-catalog-values.ts` 不手改。前者仍含旧练习分类，不能直接把其中 `paperType` 用作新版 `papers.type`。
 
 ## 收藏、错题、作答与评估
 

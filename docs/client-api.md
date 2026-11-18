@@ -273,7 +273,8 @@ Neo 首页按科目加载练习模板，从模板的 `list` 获取可打开的�
 
 `GET /api/practice/templates?subjectCode=GD-13811` 返回指定科目的启用模板，按 `sort` 升序、同序按 `id` 排列。
 科目必须启用、开考且未删除，无可用模板返回 `[]`。每条模板返回 `id`、`name`、`type`、`list`。
-`type` 取 `baseline`（专项训练）、`mockExams`（考前模拟）、`pastExams`（历年真题）或 `aiEnhance`（千人千练）。
+`type` 取 `baseline`、`mockExams`、`pastExams` 或 `aiEnhance`，供业务判断。Neo 使用 `name` 展示模板名称。
+模板下的题集沿用题集自身的分类。
 `list` 是模板下的题集列表，当前固定为 `[]`。Neo 在所选科目下展示模板，题集入口来自各模板的 `list`。
 
 ### 刷题设置

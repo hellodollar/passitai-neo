@@ -25,8 +25,6 @@ export type { OptionItem } from './catalog'
 export type { QuestionContent, QuestionListItem, QuestionType } from './question'
 export type {
   CollectionPracticePaper,
-  PracticeEntry,
-  PracticeEntryChild,
   PracticePaperDetail,
   PracticePaperItem,
   PracticePaperLite,

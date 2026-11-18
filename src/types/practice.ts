@@ -25,24 +25,6 @@ export type PracticePaperLite = {
   }>
 }
 
-export type PracticeEntryChild = {
-  paperId: string
-  name: string
-  questionCount: number
-  answeredCount: number
-  /** specialTraining 子项的考查类型（overall / highFrequency / errorProne），其余入口不返回 */
-  assessmentType?: string
-}
-
-export type PracticeEntry = {
-  type: DomainValue<'paperType'>
-  name: string
-  description: string
-  questionCount: number
-  answeredCount: number
-  children?: PracticeEntryChild[]
-}
-
 export type PracticePaperItem = QuestionContent & {
   /** 收藏记录 ID，与错题记录 ID 分开；未收藏时为 null。 */
   favId?: string | null
