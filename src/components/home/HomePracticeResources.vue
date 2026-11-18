@@ -38,15 +38,14 @@ watch(
 </script>
 
 <template>
-  <section class="border-t border-base-200 px-4 py-3" aria-label="练习模板">
-    <h2 class="text-sm font-semibold">练习模板</h2>
-    <p v-if="loading" role="status" class="mt-2 text-sm text-base-content/65">正在加载练习模板…</p>
-    <div v-else-if="error" role="alert" class="mt-2 flex items-center gap-2">
-      <p class="text-sm text-error">练习模板加载失败</p>
+  <section class="border-t border-base-200 px-4 py-3" aria-label="练习题集">
+    <p v-if="loading" role="status" class="text-sm text-base-content/65">正在加载…</p>
+    <div v-else-if="error" role="alert" class="flex items-center gap-2">
+      <p class="text-sm text-error">加载失败</p>
       <button class="btn btn-ghost btn-xs" type="button" @click="retry++">重试</button>
     </div>
-    <p v-else-if="!templates.length" class="mt-2 text-sm text-base-content/65">暂无练习模板</p>
-    <ul v-else class="mt-2 divide-y divide-base-200">
+    <p v-else-if="!templates.length" class="text-sm text-base-content/65">暂无练习内容</p>
+    <ul v-else class="divide-y divide-base-200">
       <li v-for="template in templates" :key="template.id" class="py-2">
         <div class="flex items-center justify-between gap-3">
           <h3 class="break-words text-sm font-medium">{{ template.name }}</h3>
