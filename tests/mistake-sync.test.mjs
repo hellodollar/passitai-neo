@@ -48,7 +48,6 @@ class MemoryStorage {
 
 const previousFetch = globalThis.fetch
 let requests
-let resolveSettings
 let resolveMistake
 
 function envelope(data, { status = 200 } = {}) {
@@ -60,25 +59,11 @@ function envelope(data, { status = 200 } = {}) {
 }
 
 /** 通过真实 API 模块与统一 HTTP 客户端发出请求，仅在 fetch 边界记录并应答。 */
-function installFetch({
-  settings = DEFAULT_SETTINGS,
-  mistakeStatus = 200,
-  deferSettings = false,
-  deferMistake = false,
-} = {}) {
+function installFetch({ mistakeStatus = 200, deferMistake = false } = {}) {
   requests = []
-  resolveSettings = null
   resolveMistake = null
   globalThis.fetch = async (url, options = {}) => {
     const href = String(url)
-    if (href.endsWith('/practice/settings')) {
-      if (deferSettings) {
-        return new Promise((resolve) => {
-          resolveSettings = () => resolve(envelope(settings))
-        })
-      }
-      return envelope(settings)
-    }
     const method = (options.method ?? 'GET').toUpperCase()
     requests.push({ method, href, body: options.body ? JSON.parse(options.body) : undefined })
     if (deferMistake) {
@@ -115,14 +100,16 @@ function answer(questionId, values, text = '') {
 
 function setup({
   session = SESSION,
+  settings = DEFAULT_SETTINGS,
   context = () => ({ questionId: 'qstone', subjectId: 'subone', paperId: 'papone' }),
   scopeKey = () => 'practice:papone',
   ...fetchOptions
 } = {}) {
-  installFetch(fetchOptions)
+  installFetch({ settings, ...fetchOptions })
   const auth = useAuthStore()
   if (session) auth.session = session
   const settingsStore = usePracticeSettingsStore()
+  if (session?.user?.id) settingsStore.save(settings, session.user.id)
   const sync = useMistakeSync({ context, scopeKey })
   return { auth, settingsStore, sync }
 }
@@ -187,18 +174,6 @@ test('非选择题与缺少上下文的题目不触发同步', async () => {
   assert.equal(requests.length, 0)
 })
 
-test('等待设置期间账号切换后不再同步', async () => {
-  const { auth, sync } = setup({ deferSettings: true })
-  const pending = sync.syncOnAnswered(question(), answer('qstone', ['B']))
-  await Promise.resolve()
-  await Promise.resolve()
-  assert.ok(resolveSettings, '设置请求应已发出')
-  auth.session = { ...SESSION, user: { ...SESSION.user, id: 'usrtwo' } }
-  resolveSettings()
-  await pending
-  assert.equal(requests.length, 0)
-})
-
 test('上下文按题隔离，各自携带真实题集与科目', async () => {
   const contexts = {
     qsta: { questionId: 'qsta', subjectId: 'suba', paperId: 'papa' },
@@ -226,57 +201,13 @@ test('同步失败只提示一次，后续不再重复打扰', async () => {
   assert.match(toasts[0].message, /错题记录失败/)
 })
 
-test('等待设置期间切换题集，不把上一题集答案提交到新上下文', async () => {
-  let scope = 'practice:papa'
-  let context = { questionId: 'qstone', subjectId: 'suba', paperId: 'papa' }
-  const { sync } = setup({
-    deferSettings: true,
-    scopeKey: () => scope,
-    context: () => context,
-  })
-  const pending = sync.syncOnAnswered(question(), answer('qstone', ['B']))
-  await new Promise(setImmediate)
-  assert.ok(resolveSettings, '设置请求应已发出')
-  scope = 'practice:papb'
-  context = { questionId: 'qstone', subjectId: 'subb', paperId: 'papb' }
-  resolveSettings()
-  await pending
-  assert.deepEqual(requests, [])
-
-  await sync.syncOnAnswered(question(), answer('qstone', ['B']))
-  assert.deepEqual(
-    requests.map((request) => request.body),
-    [context],
-  )
-})
-
-test('等待设置期间收藏切换错题练习，旧答案不再收录或移除', async () => {
-  let scope = 'favorites:subject:subone'
-  const { sync } = setup({
-    deferSettings: true,
-    settings: { ...DEFAULT_SETTINGS, removeMistakeOnCorrect: true },
-    scopeKey: () => scope,
-  })
-  const wrong = sync.syncOnAnswered(question(), answer('qstone', ['B']))
-  const correct = sync.syncOnAnswered(question(), answer('qstone', ['A']))
-  await new Promise(setImmediate)
-  assert.ok(resolveSettings, '设置请求应已发出')
-  scope = 'mistakes:subject:subone'
-  resolveSettings()
-  await Promise.all([wrong, correct])
-  assert.deepEqual(requests, [])
-  assert.deepEqual(useToasts().value, [])
-})
-
 test('旧练习请求迟到失败不提示，新练习失败仍能提示一次', async () => {
   let scope = 'practice:papa'
-  const { sync, settingsStore } = setup({
+  const { sync } = setup({
     deferMistake: true,
     mistakeStatus: 500,
     scopeKey: () => scope,
   })
-  settingsStore.settings = DEFAULT_SETTINGS
-  settingsStore.isLoaded = true
   const previous = sync.syncOnAnswered(question(), answer('qstone', ['B']))
   await new Promise(setImmediate)
   assert.ok(resolveMistake, '错题请求应已发出')
@@ -294,9 +225,7 @@ test('旧练习请求迟到失败不提示，新练习失败仍能提示一次',
 })
 
 test('同账号重新登录后，旧会话失败不在新会话显示提示', async () => {
-  const { auth, sync, settingsStore } = setup({ deferMistake: true, mistakeStatus: 500 })
-  settingsStore.settings = DEFAULT_SETTINGS
-  settingsStore.isLoaded = true
+  const { auth, sync } = setup({ deferMistake: true, mistakeStatus: 500 })
   const pending = sync.syncOnAnswered(question(), answer('qstone', ['B']))
   await new Promise(setImmediate)
   assert.ok(resolveMistake, '错题请求应已发出')

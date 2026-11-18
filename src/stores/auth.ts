@@ -45,7 +45,7 @@ export const useAuthStore = defineStore('auth', () => {
   function resetCaches() {
     useNotificationsStore().reset()
     useNotificationSettingsStore().reset()
-    usePracticeSettingsStore().reset()
+    usePracticeSettingsStore().reset(session.value?.user?.id ?? '')
     useExamPlanStore().reset()
   }
 

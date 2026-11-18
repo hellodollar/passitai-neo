@@ -100,13 +100,7 @@ const menuGroups = computed<{ title: string; items: MenuItem[] }[]>(() => [
         title: '刷题设置',
         icon: Settings2,
         action: 'practice' as const,
-        subtitle: practiceSettingsStore.isLoading
-          ? '加载中…'
-          : practiceSettingsStore.error
-            ? '加载失败，点击重试'
-            : practiceSettingsStore.settings
-              ? `自动下一题 ${practiceSettingsStore.settings.autoNext ? '开' : '关'} · 自动交卷 ${practiceSettingsStore.settings.autoSubmitAfterCompletion ? '开' : '关'}`
-              : '答题方式与错题设置',
+        subtitle: `自动下一题 ${practiceSettingsStore.settings.autoNext ? '开' : '关'} · 自动交卷 ${practiceSettingsStore.settings.autoSubmitAfterCompletion ? '开' : '关'}`,
       },
       {
         title: '数据清理',
@@ -145,7 +139,6 @@ function openMenuItem(action: SettingsAction) {
     if (examPlanStore.error) void examPlanStore.load()
     examPlanPopupOpen.value = true
   } else if (action === 'practice') {
-    if (practiceSettingsStore.error) void practiceSettingsStore.load()
     practiceSettingsPopupOpen.value = true
   }
 }
@@ -179,7 +172,10 @@ watch(
       cleanupPopupOpen.value = false
       notificationSettingsOpen.value = false
     }
-    if (token) void Promise.allSettled([examPlanStore.load(), practiceSettingsStore.load()])
+    if (token) {
+      practiceSettingsStore.load(auth.session?.user.id ?? '')
+      void examPlanStore.load()
+    }
   },
   { immediate: true },
 )

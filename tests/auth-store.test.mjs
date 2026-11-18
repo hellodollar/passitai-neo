@@ -7,7 +7,9 @@ import { loadSource } from './helpers/load-source.mjs'
 
 const { useAuthStore } = await loadSource('stores/auth.ts')
 const { useNotificationSettingsStore } = await loadSource('stores/notification-settings.ts')
-const { usePracticeSettingsStore } = await loadSource('stores/practice-settings.ts')
+const { practiceSettingsStorageKey, usePracticeSettingsStore } = await loadSource(
+  'stores/practice-settings.ts',
+)
 const { useExamPlanStore } = await loadSource('stores/exam-plan.ts')
 const { STORAGE_KEYS } = await loadSource('constants/app.ts')
 let pinia
@@ -67,8 +69,7 @@ test('改密码后的本地清理不再调用已经失效的 Token 登出，并�
   const scope = useExamPlanStore()
   notificationSettings.isLoaded = true
   notificationSettings.settings = { inAppBanner: true, contentPreview: true }
-  practice.isLoaded = true
-  practice.settings = { autoNext: true }
+  practice.save({ autoNext: true }, session.user.id)
   scope.isLoaded = true
   scope.plan = { majorName: '汉语言文学' }
   assert.equal(auth.isAuthenticated, true)
@@ -79,8 +80,8 @@ test('改密码后的本地清理不再调用已经失效的 Token 登出，并�
   assert.equal(window.localStorage.getItem(STORAGE_KEYS.authSession), null)
   assert.equal(notificationSettings.isLoaded, false)
   assert.equal(notificationSettings.settings, null)
-  assert.equal(practice.isLoaded, false)
-  assert.equal(practice.settings, null)
+  assert.equal(practice.settings.autoNext, false)
+  assert.ok(window.localStorage.getItem(practiceSettingsStorageKey(session.user.id)))
   assert.equal(scope.isLoaded, false)
   assert.equal(scope.plan, null)
   auth.clearSession() // repeated cleanup remains harmless

@@ -57,6 +57,8 @@ Vue Router 使用 `createWebHistory(import.meta.env.BASE_URL)`，CF 为深链提
 | 状态     | 载体与键                                                                                | 隔离及失效                                                    |
 | -------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
 | 会话     | localStorage：`passitai:auth-session`                                                   | 当前 origin 一份会话，同源标签页同步账号变化                  |
+| 外观偏好 | localStorage：`passitai:appearance`                                                     | 设备全局，支持 `system / light / dark`，登出不清理            |
+| 刷题设置 | localStorage：`passitai:practice-settings:<userId>`                                     | 按账号隔离，纯本地持久化，登出不清理，重新登录同账号直接恢复  |
 | 浏览记忆 | sessionStorage：`passitai:browse:<userId>:<page>`，另有内存兜底                         | 按账号与 `home/favorites/mistakes` 隔离，不保存接口列表和答案 |
 | 本地作答 | localStorage：`passitai:practice-record:v3:<userId>:<source>:<paperId>`，ID 经 URL 编码 | 按账号、来源和资源隔离；指纹与清理代际控制恢复/回写           |
 | 考试计划 | 当前会话 Store + 服务端计划                                                             | 读取缓存、保存更新、换账号 reset，不另写持久化副本            |

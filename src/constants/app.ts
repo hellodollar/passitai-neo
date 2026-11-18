@@ -7,4 +7,5 @@ export const STORAGE_KEYS = {
   appearance: 'passitai:appearance',
   authSession: 'passitai:auth-session',
   browsePrefix: 'passitai:browse:',
+  practiceSettingsPrefix: 'passitai:practice-settings:',
 } as const

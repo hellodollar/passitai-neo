@@ -153,13 +153,13 @@ test('跨标签换账号直接同步新会话并清缓存，退出只广播一�
   const auth = useAuthStore()
   auth.initialize()
   await flush()
-  usePracticeSettingsStore().isLoaded = true
+  usePracticeSettingsStore().save({ autoNext: true }, 'a')
   useExamPlanStore().isLoaded = true
   persist(sessionFor('b'))
   storageChanged()
   await flush()
   assert.equal(auth.user.id, 'b')
-  assert.equal(usePracticeSettingsStore().isLoaded, false)
+  assert.equal(usePracticeSettingsStore().settings.autoNext, false)
   assert.equal(useExamPlanStore().isLoaded, false)
   assert.equal(calls.length, 1)
   assert.equal(auth.session.token, 'fixture-b')

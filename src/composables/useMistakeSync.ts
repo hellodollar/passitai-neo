@@ -34,19 +34,17 @@ export function useMistakeSync(options: {
     const token = auth.session?.token
     const context = options.context(question.id)
     if (!userId || !context) return
-    // 题目上下文与练习代际在等待设置前固定，避免同组件切换后提交到新题集。
     const answerContext = { ...context }
     const scope = options.scopeKey()
     const isCurrent = () =>
       options.scopeKey() === scope &&
       auth.session?.user.id === userId &&
       auth.session?.token === token
-    const settings = await practiceSettingsStore.load()
-    if (!isCurrent()) return
+    const settings = practiceSettingsStore.load(userId)
 
     if (correct) {
       // 答对自动移除错题（幂等，无记录时静默）
-      if (!settings?.removeMistakeOnCorrect) return
+      if (!settings.removeMistakeOnCorrect) return
       try {
         await removeMistakeByContext(answerContext)
       } catch {
@@ -55,10 +53,6 @@ export function useMistakeSync(options: {
       return
     }
 
-    if (!settings) {
-      showErrorOnce('刷题设置加载失败，错题未保存。', scope)
-      return
-    }
     if (!settings.recordWrongQuestions) return
 
     try {

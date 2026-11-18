@@ -416,28 +416,26 @@ async function submitCurrentAnswer() {
   void syncOnAnswered(question, record)
   void maybeAutoSubmitOnComplete(sequence)
 
-  // 仅「答对 + 开启自动切题」时前进；设置请求期间若用户已手动切题，不再跳过新题。
-  if (isChoiceQuestionType(question.questionType) && isAnswerCorrect(record, question)) {
-    const settings = await practiceSettingsStore.load()
-    if (
-      settings?.autoNext &&
-      sequence === loadSequence &&
-      currentIndex.value === answeredIndex &&
-      !answerSheetOpen.value &&
-      !settingsPopupOpen.value &&
-      !submitConfirmOpen.value
-    ) {
-      scheduleAutoAdvance()
-    }
+  // 仅「答对 + 开启自动切题」时前进
+  if (
+    isChoiceQuestionType(question.questionType) &&
+    isAnswerCorrect(record, question) &&
+    practiceSettingsStore.settings.autoNext &&
+    sequence === loadSequence &&
+    currentIndex.value === answeredIndex &&
+    !answerSheetOpen.value &&
+    !settingsPopupOpen.value &&
+    !submitConfirmOpen.value
+  ) {
+    scheduleAutoAdvance()
   }
 }
 
 /** 答完最后一题时按设置自动交卷;仅真实题集,收藏/错题纯刷题无交卷概念。 */
 async function maybeAutoSubmitOnComplete(sequence: number) {
   if (!canSubmit.value || submitting.value || submitConfirmOpen.value) return
-  const settings = await practiceSettingsStore.load()
   if (
-    !settings?.autoSubmitAfterCompletion ||
+    !practiceSettingsStore.settings.autoSubmitAfterCompletion ||
     sequence !== loadSequence ||
     currentQuestions.value.length === 0 ||
     answeredCount.value !== currentQuestions.value.length
@@ -614,10 +612,8 @@ async function loadPaperData() {
       source === 'practice'
         ? { source, paperId: paperIdParam }
         : { source, groupBy: props.groupBy!, groupId: props.groupId! }
-    const [loaded, settings] = await Promise.all([
-      fetchPracticeContent(target),
-      practiceSettingsStore.load(),
-    ])
+    const settings = practiceSettingsStore.load(userId)
+    const loaded = await fetchPracticeContent(target)
     if (sequence !== loadSequence || sessionToken !== auth.session?.token) return
     const { paper } = loaded
     canSubmit.value = loaded.canSubmit

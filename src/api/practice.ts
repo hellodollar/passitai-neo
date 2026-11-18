@@ -1,10 +1,5 @@
 import { request } from '@/api/http'
-import type {
-  PracticePaperDetail,
-  PracticeSettings,
-  PracticeSubmission,
-  SubmitPracticePaperBody,
-} from '@/types'
+import type { PracticePaperDetail, PracticeSubmission, SubmitPracticePaperBody } from '@/types'
 
 /** 文档:GET /api/practice/papers/:paperId */
 export function fetchPracticePaper(paperId: string) {
@@ -22,18 +17,4 @@ export function submitPracticePaper(paperId: string, payload: SubmitPracticePape
 /** 文档:GET /api/practice/papers/:paperId/submissions/:submissionId */
 export function fetchPracticeSubmission(paperId: string, submissionId: string) {
   return request<PracticeSubmission>(`/practice/papers/${paperId}/submissions/${submissionId}`)
-}
-
-/** 文档:GET /api/practice/settings */
-export function fetchPracticeSettings() {
-  return request<PracticeSettings>('/practice/settings', { timeout: 10_000, retry: 0 })
-}
-
-/** 文档:PATCH /api/practice/settings */
-export function updatePracticeSettings(payload: Partial<PracticeSettings>) {
-  return request<PracticeSettings>('/practice/settings', {
-    method: 'PATCH',
-    body: payload,
-    notify: true,
-  })
 }

@@ -52,18 +52,26 @@ function applyTheme() {
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', THEME_COLOR[theme])
 }
 
-/** main.ts 启动时调用:读取偏好、应用主题并监听系统深浅变化(幂等) */
+/** main.ts 启动时调用:读取偏好、应用主题并监听系统深浅与跨标签变化(幂等) */
 export function initializeAppearance() {
   if (initialized) return
   initialized = true
   preference.value = readStoredPreference()
-  if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
-    const query = window.matchMedia('(prefers-color-scheme: dark)')
-    systemDark.value = query.matches
-    // 偏好为跟随系统时由解析逻辑自动响应,监听常挂即可
-    query.addEventListener?.('change', (event) => {
-      systemDark.value = event.matches
-      if (preference.value === 'system') applyTheme()
+  if (typeof window !== 'undefined') {
+    if (typeof window.matchMedia === 'function') {
+      const query = window.matchMedia('(prefers-color-scheme: dark)')
+      systemDark.value = query.matches
+      // 偏好为跟随系统时由解析逻辑自动响应,监听常挂即可
+      query.addEventListener?.('change', (event) => {
+        systemDark.value = event.matches
+        if (preference.value === 'system') applyTheme()
+      })
+    }
+    window.addEventListener?.('storage', (event: StorageEvent) => {
+      if (event.key === null || event.key === STORAGE_KEYS.appearance) {
+        preference.value = readStoredPreference()
+        applyTheme()
+      }
     })
   }
   applyTheme()
