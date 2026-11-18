@@ -2,6 +2,8 @@
 
 Vue 3 + Vite 客户端，可部署到不同域名的 Cloudflare Workers。
 
+开发与编码代理约束见 [AGENTS.md](AGENTS.md)，按当前 Vue 3 H5 工程执行。
+
 ## 本地开发
 
 ```sh
@@ -11,7 +13,7 @@ pnpm dev
 ```
 
 开发地址为 `http://localhost:5180`。浏览器请求 `/api/*`，Vite 将其代理到 `VITE_API_PROXY_TARGET`，默认 `http://127.0.0.1:8787`。
-客户端不内置种子数据或本地 mock；开发时需要启动后端并准备其本地数据库。数据与代码的归属见 [客户端维护约定](docs/client-maintenance.md)。
+客户端不内置种子数据或本地 mock；开发时需要启动后端并准备其本地数据库。实体关系与数据约束见 [数据模型](docs/data-model.md)。
 
 ## Cloudflare Workers
 
@@ -25,7 +27,7 @@ pnpm dev
 
 无需提交 `.env.production`。在每个 Worker 的 **Settings > Build > Build variables and secrets** 中设置 `VITE_API_BASE_URL` 为该部署使用的完整 HTTPS API 地址，然后重新构建。截图中的 **Settings > Variables and Secrets** 是运行时变量，纯静态 Worker 不支持，但构建变量可以使用。Vite 会把此值编入静态资源；同一份代码部署到其他域名时，在对应构建中设置其 API 地址即可。生产构建如果缺少此变量或填成 `/api` 等相对路径，会直接失败，不会再静默请求前端域名。`VITE_API_PROXY_TARGET` 只用于本地开发。
 
-首页为 `/`，收藏为 `/favorites`，错题为 `/mistakes`，我的为 `/me`，练习为 `/practice/:paperId`。完整路由及命名规范见 [客户端维护约定](docs/client-maintenance.md)。
+首页为 `/`，收藏为 `/favorites`，错题为 `/mistakes`，我的为 `/me`，练习为 `/practice/:paperId`。已确认的路由、页面职责和状态约定见 [H5 前端契约](docs/frontend-contract.md)。
 
 前端使用 Vue Router history 模式。Wrangler 将 `dist` 作为 Worker 静态资源上传，`single-page-application` 模式使 `/practice/:paperId/result/:submissionId` 等深层链接回退到 `index.html`。生产请求由浏览器直接发送到配置的 API 地址；后端需允许实际前端域名的跨域请求。
 
@@ -49,7 +51,7 @@ Workers Builds 的构建命令为 `pnpm run build`，部署命令为 `npx wrangl
 
 ## 检查
 
-页面结构与组件职责见 [客户端维护约定](docs/client-maintenance.md) 和 [页面与组件复审](docs/frontend-review.md)。
+接口契约见 [client-api.md](docs/client-api.md)，构建发布见 [H5 构建与维护](docs/client-maintenance.md)，实体关系见 [数据模型](docs/data-model.md)，页面与状态见 [H5 前端契约](docs/frontend-contract.md)。
 
 提交前运行统一检查：
 
