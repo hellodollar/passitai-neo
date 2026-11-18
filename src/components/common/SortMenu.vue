@@ -92,7 +92,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', handleOutsideC
   >
     <button
       ref="buttonRef"
-      class="flex h-10 items-center gap-1 rounded-lg pl-2 text-[13px] text-base-content/65 transition-colors hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary aria-disabled:cursor-wait"
+      class="flex h-9 items-center gap-1.5 rounded-xl bg-base-200/85 px-2.5 text-xs font-medium text-base-content/75 transition-colors hover:bg-base-200 active:bg-base-300/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary aria-disabled:cursor-wait dark:bg-base-200/70"
       type="button"
       :aria-disabled="loading"
       :aria-label="`排序方式：${selectedLabel}`"
@@ -108,14 +108,14 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', handleOutsideC
         class="loading loading-spinner size-[14px] text-primary"
         aria-hidden="true"
       ></span>
-      <ArrowDownUp v-else :size="14" />
+      <ArrowDownUp v-else :size="14" class="text-base-content/55" />
       {{ selectedLabel }}
     </button>
     <div
       v-if="open"
       :id="menuId"
       ref="optionsRef"
-      class="absolute right-0 top-full z-20 mt-1 min-w-36 rounded-xl border border-base-300 bg-base-100 p-1"
+      class="absolute right-0 top-full z-20 mt-1.5 min-w-36 rounded-2xl bg-base-100 p-1.5 shadow-sm shadow-black/5 ring-1 ring-base-content/8"
       role="menu"
       aria-label="排序方式"
       @keydown="handleKeydown"
@@ -123,8 +123,12 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', handleOutsideC
       <button
         v-for="(option, index) in options"
         :key="option.value"
-        class="flex min-h-11 w-full items-center justify-between gap-4 rounded-lg px-3 text-left text-sm hover:bg-base-200/70 focus-visible:bg-primary/5 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary"
-        :class="modelValue === option.value ? 'font-medium text-primary' : 'text-base-content/75'"
+        class="flex min-h-11 w-full items-center justify-between gap-4 rounded-xl px-3 text-left text-sm transition-colors hover:bg-base-200/70 focus-visible:bg-primary/8 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary"
+        :class="
+          modelValue === option.value
+            ? 'bg-primary/[0.08] font-medium text-primary'
+            : 'text-base-content/75'
+        "
         type="button"
         role="menuitemradio"
         :tabindex="focusedIndex === index ? 0 : -1"

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { LucideIcon } from '@lucide/vue'
 import {
   Bell,
   BellRing,
@@ -11,12 +10,12 @@ import {
   Mail,
   Settings2,
   SunMoon,
-  UserRound,
 } from '@lucide/vue'
 import { computed, nextTick, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import BasePopup from '@/components/common/BasePopup.vue'
+import PageContainer from '@/components/common/PageContainer.vue'
 import ExamPlanPopup from '@/components/exam-plan/ExamPlanPopup.vue'
 import AppearancePopup from '@/components/me/AppearancePopup.vue'
 import ChangeEmailDialog from '@/components/me/ChangeEmailDialog.vue'
@@ -25,15 +24,19 @@ import DataCleanupPopup from '@/components/me/DataCleanupPopup.vue'
 import NotificationSettingsPopup from '@/components/me/NotificationSettingsPopup.vue'
 import PracticeSettingsPopup from '@/components/practice/PracticeSettingsPopup.vue'
 import { useAppearance } from '@/composables/useAppearance'
+import { useLocalPracticeRecords } from '@/composables/useLocalPracticeRecords'
 import { useAuthStore } from '@/stores/auth'
 import { useExamPlanStore } from '@/stores/exam-plan'
+import { useNotificationSettingsStore } from '@/stores/notification-settings'
 import { useNotificationsStore } from '@/stores/notifications'
 import { usePracticeSettingsStore } from '@/stores/practice-settings'
 
 const notifications = useNotificationsStore()
+const notificationSettingsStore = useNotificationSettingsStore()
 const auth = useAuthStore()
 const examPlanStore = useExamPlanStore()
 const practiceSettingsStore = usePracticeSettingsStore()
+const { records: localPracticeRecords } = useLocalPracticeRecords()
 const { appearanceLabel } = useAppearance()
 const router = useRouter()
 const signingOut = ref(false)
@@ -46,93 +49,75 @@ const notificationSettingsOpen = ref(false)
 const cleanupPopupOpen = ref(false)
 const appearancePopupOpen = ref(false)
 
-type MenuItem = {
-  title: string
-  icon: LucideIcon
-  action: SettingsAction
-  subtitle?: string
-  badge?: number
-}
+type RowAction = 'scope' | 'practice' | 'notification' | 'appearance' | 'cleanup'
 
-type SettingsAction =
-  | 'account'
-  | 'messages'
-  | 'scope'
-  | 'practice'
-  | 'notification'
-  | 'cleanup'
-  | 'appearance'
 const displayName = computed(() => {
   const name = auth.user?.email.split('@')[0]
   return name ? name.replace(/[._-]+/g, ' ') : 'PassIt AI'
 })
+const avatarLetter = computed(() => displayName.value.slice(0, 1).toUpperCase() || 'P')
 const profileEmail = computed(() => auth.user?.email ?? '')
-const menuGroups = computed<{ title: string; items: MenuItem[] }[]>(() => [
+
+const enabledPracticeCount = computed(
+  () => Object.values(practiceSettingsStore.settings).filter(Boolean).length,
+)
+
+const settingsRows = computed(() => [
   {
-    title: '消息',
-    items: [
-      {
-        title: '消息中心',
-        subtitle: '学习消息、系统公告',
-        icon: Bell,
-        action: 'messages' as const,
-        badge: notifications.unreadCount,
-      },
-    ],
+    action: 'scope' as RowAction,
+    title: '考试计划',
+    icon: GraduationCap,
+    iconClass: 'bg-secondary/12 text-secondary',
+    value: examPlanStore.isLoading
+      ? '加载中…'
+      : examPlanStore.error
+        ? '加载失败'
+        : examPlanStore.plan
+          ? `${examPlanStore.plan.major.name} · ${examPlanStore.plan.subjects.length}科`
+          : '未设置',
   },
   {
-    title: '刷题',
-    items: [
-      {
-        title: '考试计划',
-        icon: GraduationCap,
-        action: 'scope' as const,
-        subtitle: examPlanStore.isLoading
-          ? '加载中…'
-          : examPlanStore.error
-            ? '加载失败，点击重试'
-            : examPlanStore.plan
-              ? `${examPlanStore.plan.major.name} · ${examPlanStore.plan.subjects.length} 个科目`
-              : '选择专业和刷题科目',
-      },
-      { title: '通知', icon: BellRing, action: 'notification' as const },
-      {
-        title: '刷题设置',
-        icon: Settings2,
-        action: 'practice' as const,
-        subtitle: `自动下一题 ${practiceSettingsStore.settings.autoNext ? '开' : '关'} · 自动交卷 ${practiceSettingsStore.settings.autoSubmitAfterCompletion ? '开' : '关'}`,
-      },
-      {
-        title: '数据清理',
-        subtitle: '',
-        icon: Eraser,
-        action: 'cleanup' as const,
-      },
-    ],
+    action: 'practice' as RowAction,
+    title: '刷题设置',
+    icon: Settings2,
+    iconClass: 'bg-accent/12 text-accent',
+    value: `已开 ${enabledPracticeCount.value} 项`,
   },
   {
-    title: '账户与偏好',
-    items: [
-      { title: '账户与安全', subtitle: '密码与邮箱', icon: UserRound, action: 'account' as const },
-      {
-        title: '外观',
-        subtitle: appearanceLabel.value,
-        icon: SunMoon,
-        action: 'appearance' as const,
-      },
-    ],
+    action: 'notification' as RowAction,
+    title: '通知',
+    icon: BellRing,
+    iconClass: 'bg-info/12 text-info',
+    value: notificationSettingsStore.isLoading
+      ? '加载中'
+      : notificationSettingsStore.settings
+        ? notificationSettingsStore.settings.inAppBanner
+          ? '横幅已开启'
+          : '横幅已关闭'
+        : '',
+  },
+  {
+    action: 'appearance' as RowAction,
+    title: '外观',
+    icon: SunMoon,
+    iconClass: 'bg-base-content/[0.06] text-base-content/60',
+    value: appearanceLabel.value,
+  },
+  {
+    action: 'cleanup' as RowAction,
+    title: '数据清理',
+    icon: Eraser,
+    iconClass: 'bg-base-content/[0.06] text-base-content/60',
+    value:
+      localPracticeRecords.value.length > 0 ? `${localPracticeRecords.value.length} 份作答` : '',
   },
 ])
 
-function openMenuItem(action: SettingsAction) {
+function openRowAction(action: RowAction) {
   if (action === 'notification') {
     notificationSettingsOpen.value = true
-  } else if (action === 'messages') {
-    void router.push({ name: 'notifications' })
   } else if (action === 'cleanup') {
     cleanupPopupOpen.value = true
-  } else if (action === 'account') {
-    accountPopupOpen.value = true
   } else if (action === 'appearance') {
     appearancePopupOpen.value = true
   } else if (action === 'scope') {
@@ -171,6 +156,7 @@ watch(
       practiceSettingsPopupOpen.value = false
       cleanupPopupOpen.value = false
       notificationSettingsOpen.value = false
+      appearancePopupOpen.value = false
     }
     if (token) {
       practiceSettingsStore.load(auth.session?.user.id ?? '')
@@ -182,124 +168,150 @@ watch(
 </script>
 
 <template>
-  <section
-    class="relative flex min-h-dvh flex-col overflow-x-hidden bg-base-200/35 pb-[calc(6rem+env(safe-area-inset-bottom))]"
-  >
-    <div
-      class="pointer-events-none absolute inset-x-0 top-0 h-72 overflow-hidden bg-gradient-to-br from-primary/20 via-info/10 to-transparent [mask-image:linear-gradient(to_bottom,black_0%,black_62%,transparent_100%)]"
-      aria-hidden="true"
-    ></div>
+  <PageContainer>
+    <section class="flex flex-col gap-3.5 overflow-x-hidden">
+      <h1 class="sr-only">我的</h1>
 
-    <header class="relative shrink-0 px-5 pb-5 pt-10">
-      <section class="relative flex flex-col items-center px-4 text-center">
+      <button
+        class="flex w-full items-center gap-4 rounded-2xl bg-gradient-to-br from-primary/[0.12] via-primary/[0.06] to-primary/[0.02] px-4 py-4 text-left active:from-primary/[0.18] active:via-primary/[0.10] active:to-primary/[0.04]"
+        type="button"
+        @click="accountPopupOpen = true"
+      >
         <span
-          class="flex size-20 shrink-0 items-center justify-center rounded-full border-4 border-base-100 bg-primary/10 text-primary"
+          class="flex size-14 shrink-0 items-center justify-center rounded-full bg-base-100 text-lg font-bold text-primary"
           aria-hidden="true"
         >
-          <UserRound :size="34" stroke-width="1.8" />
+          {{ avatarLetter }}
         </span>
-        <h1 class="mt-3 max-w-full truncate text-[22px] font-semibold capitalize leading-tight">
-          {{ displayName }}
-        </h1>
-        <p class="mt-1.5 max-w-full truncate text-sm font-medium text-base-content/65">
-          {{ profileEmail }}
-        </p>
-      </section>
-    </header>
+        <span class="min-w-0 flex-1">
+          <span class="block truncate text-lg font-semibold capitalize leading-snug">
+            {{ displayName }}
+          </span>
+          <span class="mt-1 block truncate text-xs leading-snug text-base-content/55">
+            {{ profileEmail }}
+          </span>
+        </span>
+        <span class="shrink-0 text-xs text-primary/60">账户安全</span>
+        <ChevronRight :size="16" class="-ml-1.5 shrink-0 text-primary/45" aria-hidden="true" />
+      </button>
 
-    <div class="relative px-5">
-      <div class="space-y-3">
-        <section v-for="group in menuGroups" :key="group.title" :aria-label="group.title">
-          <div
-            class="divide-y divide-base-200 overflow-hidden rounded-2xl border border-base-200 bg-base-100"
+      <div class="overflow-hidden rounded-2xl bg-base-200/85 dark:bg-base-200/65">
+        <button
+          class="flex min-h-12 w-full min-w-0 items-center gap-3 px-4 py-3 text-left transition-colors active:bg-base-300/60 dark:active:bg-base-300/40"
+          type="button"
+          @click="router.push({ name: 'notifications' })"
+        >
+          <span
+            class="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"
+            aria-hidden="true"
           >
-            <button
-              v-for="item in group.items"
-              :key="item.title"
-              class="flex min-h-13 w-full min-w-0 items-center gap-3 px-3 py-2 text-left transition-colors active:bg-base-200/60"
-              type="button"
-              @click="openMenuItem(item.action)"
+            <Bell :size="15" stroke-width="2" />
+          </span>
+          <span class="shrink-0 text-sm font-medium leading-snug text-base-content">消息中心</span>
+          <span class="flex min-w-0 flex-1 items-center justify-end gap-1.5 pl-2">
+            <span
+              v-if="notifications.unreadCount > 0"
+              class="flex h-5 min-w-5 items-center justify-center rounded-full bg-error px-1.5 text-[11px] font-semibold tabular-nums text-error-content"
             >
-              <span class="relative shrink-0 text-base-content/55">
-                <component :is="item.icon" :size="18" stroke-width="1.8" aria-hidden="true" />
-                <span
-                  v-if="item.badge"
-                  class="absolute -right-2 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-error px-1 text-[10px] font-semibold text-error-content border-2 border-base-100"
-                  >{{ item.badge }}</span
-                >
-              </span>
-              <span class="min-w-0 flex-1">
-                <span class="block truncate text-sm font-medium leading-5">{{ item.title }}</span>
-                <span
-                  v-if="item.subtitle"
-                  class="block truncate text-xs leading-4 text-base-content/50"
-                  >{{ item.subtitle }}</span
-                >
-              </span>
-              <ChevronRight :size="15" class="shrink-0 text-base-content/30" aria-hidden="true" />
-            </button>
-          </div>
-        </section>
+              {{ notifications.unreadCount > 99 ? '99+' : notifications.unreadCount }}
+            </span>
+            <span v-else class="truncate text-xs text-base-content/45">暂无未读</span>
+            <ChevronRight :size="15" class="shrink-0 text-base-content/30" aria-hidden="true" />
+          </span>
+        </button>
+
+        <button
+          v-for="row in settingsRows"
+          :key="row.action"
+          class="relative flex min-h-12 w-full min-w-0 items-center gap-3 px-4 py-3 text-left transition-colors active:bg-base-300/60 dark:active:bg-base-300/40"
+          type="button"
+          @click="openRowAction(row.action)"
+        >
+          <span
+            aria-hidden="true"
+            class="pointer-events-none absolute left-14 right-0 top-0 h-px bg-base-content/[0.05]"
+          ></span>
+          <span
+            class="flex size-7 shrink-0 items-center justify-center rounded-lg"
+            :class="row.iconClass"
+            aria-hidden="true"
+          >
+            <component :is="row.icon" :size="15" stroke-width="2" />
+          </span>
+          <span class="shrink-0 text-sm font-medium leading-snug text-base-content">
+            {{ row.title }}
+          </span>
+          <span class="flex min-w-0 flex-1 items-center justify-end gap-1.5 pl-2">
+            <span v-if="row.value" class="truncate text-xs text-base-content/45">
+              {{ row.value }}
+            </span>
+            <ChevronRight :size="15" class="shrink-0 text-base-content/30" aria-hidden="true" />
+          </span>
+        </button>
       </div>
 
       <button
-        class="mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-base-200 bg-base-100 text-sm font-medium text-base-content/65 transition-colors active:bg-base-200/60 disabled:opacity-50"
+        class="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-error/[0.07] text-sm font-semibold text-error transition-colors active:bg-error/[0.14] disabled:opacity-50 dark:bg-error/[0.12] dark:active:bg-error/[0.2]"
         type="button"
         :disabled="signingOut"
         @click="logout"
       >
         <span v-if="signingOut" class="loading loading-spinner loading-xs"></span>
-        <LogOut v-else :size="16" aria-hidden="true" />
+        <LogOut v-else :size="15" aria-hidden="true" />
         退出登录
       </button>
-    </div>
 
-    <BasePopup v-model="accountPopupOpen" title="账户">
-      <div class="grid gap-2">
-        <button
-          class="grid w-full grid-cols-[2.5rem_minmax(0,1fr)_1.125rem] items-center gap-2 rounded-2xl bg-base-200/70 p-3 text-left transition-colors active:bg-base-300/70"
-          type="button"
-          @click="openAccountAction('password')"
-        >
-          <span class="flex size-10 items-center justify-center text-base-content/55">
-            <KeyRound :size="20" />
-          </span>
-          <span class="min-w-0">
-            <span class="block text-sm font-medium">修改密码</span>
-            <span class="mt-0.5 block truncate text-xs text-base-content/65"
-              >定期更新密码更安全</span
+      <BasePopup v-model="accountPopupOpen" title="账户安全">
+        <div class="grid gap-2">
+          <button
+            class="grid w-full grid-cols-[2.25rem_minmax(0,1fr)_1.125rem] items-center gap-2.5 rounded-2xl bg-base-200/70 p-3 text-left transition-colors active:bg-base-300/70"
+            type="button"
+            @click="openAccountAction('password')"
+          >
+            <span
+              class="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary"
             >
-          </span>
-          <ChevronRight :size="16" class="justify-self-end text-base-content/30" />
-        </button>
+              <KeyRound :size="16" />
+            </span>
+            <span class="min-w-0">
+              <span class="block text-sm font-medium">修改密码</span>
+              <span class="mt-0.5 block truncate text-xs text-base-content/60"
+                >定期更新密码更安全</span
+              >
+            </span>
+            <ChevronRight :size="15" class="justify-self-end text-base-content/30" />
+          </button>
 
-        <button
-          class="grid w-full grid-cols-[2.5rem_minmax(0,1fr)_1.125rem] items-center gap-2 rounded-2xl bg-base-200/70 p-3 text-left transition-colors active:bg-base-300/70"
-          type="button"
-          @click="openAccountAction('email')"
-        >
-          <span class="flex size-10 items-center justify-center text-base-content/55">
-            <Mail :size="20" />
-          </span>
-          <span class="min-w-0">
-            <span class="block text-sm font-medium">更换邮箱</span>
-            <span class="mt-0.5 block truncate text-xs text-base-content/65">{{
-              profileEmail
-            }}</span>
-          </span>
-          <ChevronRight :size="16" class="justify-self-end text-base-content/30" />
-        </button>
-      </div>
-    </BasePopup>
+          <button
+            class="grid w-full grid-cols-[2.25rem_minmax(0,1fr)_1.125rem] items-center gap-2.5 rounded-2xl bg-base-200/70 p-3 text-left transition-colors active:bg-base-300/70"
+            type="button"
+            @click="openAccountAction('email')"
+          >
+            <span
+              class="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary"
+            >
+              <Mail :size="16" />
+            </span>
+            <span class="min-w-0">
+              <span class="block text-sm font-medium">更换邮箱</span>
+              <span class="mt-0.5 block truncate text-xs text-base-content/60">{{
+                profileEmail
+              }}</span>
+            </span>
+            <ChevronRight :size="15" class="justify-self-end text-base-content/30" />
+          </button>
+        </div>
+      </BasePopup>
 
-    <ChangePasswordDialog v-model="passwordDialogOpen" />
+      <ChangePasswordDialog v-model="passwordDialogOpen" />
 
-    <ChangeEmailDialog v-model="emailDialogOpen" />
+      <ChangeEmailDialog v-model="emailDialogOpen" />
 
-    <ExamPlanPopup v-model="examPlanPopupOpen" />
-    <PracticeSettingsPopup v-model="practiceSettingsPopupOpen" show-mistake-settings />
-    <NotificationSettingsPopup v-model="notificationSettingsOpen" />
-    <AppearancePopup v-model="appearancePopupOpen" />
-    <DataCleanupPopup v-model="cleanupPopupOpen" />
-  </section>
+      <ExamPlanPopup v-model="examPlanPopupOpen" />
+      <PracticeSettingsPopup v-model="practiceSettingsPopupOpen" show-mistake-settings />
+      <NotificationSettingsPopup v-model="notificationSettingsOpen" />
+      <AppearancePopup v-model="appearancePopupOpen" />
+      <DataCleanupPopup v-model="cleanupPopupOpen" />
+    </section>
+  </PageContainer>
 </template>

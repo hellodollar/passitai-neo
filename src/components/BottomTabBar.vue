@@ -25,22 +25,22 @@ const items: Array<{ label: string; to: string; icon: typeof Home }> = [
       <a
         :href="href"
         :aria-current="isActive ? 'page' : undefined"
-        class="flex h-14 flex-col items-center justify-center gap-0.5 rounded-2xl text-[11px]"
+        class="flex h-12 flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] transition-colors"
         :class="
           isActive
-            ? 'font-semibold text-base-content'
-            : 'text-base-content/65 hover:bg-base-200/80 hover:text-base-content'
+            ? 'font-semibold text-primary'
+            : 'text-base-content/60 active:bg-base-200/80 hover:text-base-content'
         "
         @click="navigate"
       >
         <span
-          class="relative flex h-7 min-w-12 items-center justify-center rounded-full"
-          :class="isActive ? 'bg-primary/15 text-primary' : 'text-base-content'"
+          class="relative flex h-6.5 min-w-11 items-center justify-center rounded-full transition-colors"
+          :class="isActive ? 'bg-primary/12 text-primary' : 'text-base-content/75'"
         >
-          <component :is="item.icon" :size="21" :stroke-width="2.2" />
+          <component :is="item.icon" :size="19" :stroke-width="isActive ? 2.2 : 1.9" />
           <span
             v-if="item.to === '/me' && notifications.unreadCount > 0"
-            class="absolute right-2.5 top-0 size-2 rounded-full bg-error"
+            class="absolute right-2 top-0.5 size-2 rounded-full bg-error"
             aria-hidden="true"
           ></span>
         </span>

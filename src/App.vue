@@ -50,7 +50,7 @@ const showTabs = computed(() =>
       </main>
       <BottomTabBar
         v-if="showTabs"
-        class="fixed bottom-0 left-1/2 z-30 w-full max-w-[32rem] -translate-x-1/2 border-t border-base-200 bg-base-100/95 px-3 pb-[calc(0.45rem+env(safe-area-inset-bottom))] pt-1.5 backdrop-blur"
+        class="fixed bottom-0 left-1/2 z-30 w-full max-w-[32rem] -translate-x-1/2 bg-base-100/92 px-2.5 pb-[calc(0.35rem+env(safe-area-inset-bottom))] pt-1 ring-1 ring-base-content/6 backdrop-blur-xl"
       />
     </div>
   </div>

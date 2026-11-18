@@ -91,7 +91,6 @@ const flush = async () => {
 }
 const result = (name) => ({
   items: [{ subjectId: name, subjectName: name, questionCount: 2, lastCollectedAt: '2026-11-18' }],
-  totalQuestionCount: 2,
 })
 
 beforeEach(() => {

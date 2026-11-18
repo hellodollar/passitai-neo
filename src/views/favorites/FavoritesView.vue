@@ -41,7 +41,6 @@ const browseScroll = useBrowseScroll(
 let loadedToken: string | undefined
 
 const items = ref<CollectionAggregateItem[]>([])
-const totalQuestionCount = ref(0)
 const loading = ref(true)
 const loaded = ref(false)
 const loadError = ref(false)
@@ -67,7 +66,6 @@ async function loadFavorites() {
   loadError.value = false
   if (!userId || !auth.isAuthenticated) {
     items.value = []
-    totalQuestionCount.value = 0
     loading.value = false
     loaded.value = false
     return
@@ -81,7 +79,6 @@ async function loadFavorites() {
     })
     if (!isCurrent()) return
     items.value = result.items
-    totalQuestionCount.value = result.totalQuestionCount
     displayedGroupMode.value = requestedGroup
     displayedSortField.value = requestedField
     displayedSortOrder.value = requestedOrder
@@ -198,7 +195,6 @@ watch(
     if (token !== loadedToken) {
       loaded.value = false
       items.value = []
-      totalQuestionCount.value = 0
       browseScroll.reset()
       displayedGroupMode.value = filters.groupBy
       displayedSortField.value = filters.sort
@@ -217,17 +213,15 @@ watch(
 <template>
   <PageContainer>
     <section class="flex flex-col" :aria-busy="loading">
-      <header class="grid min-h-10 grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
-        <h1 class="min-w-0 text-lg font-semibold leading-tight">{{ pageConfig.label }}</h1>
-      </header>
+      <h1 class="sr-only">{{ pageConfig.label }}</h1>
 
       <!-- 分组切换 + 排序 -->
       <div
-        v-if="loaded && totalQuestionCount > 0"
-        class="mt-1 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1"
+        v-if="loaded && items.length > 0"
+        class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1"
       >
         <div
-          class="inline-flex justify-self-start rounded-full bg-base-200/70 p-0.5"
+          class="inline-flex justify-self-start rounded-xl bg-base-200/85 p-1 dark:bg-base-200/70"
           role="group"
           aria-label="分组方式"
         >
@@ -237,11 +231,11 @@ watch(
               { value: 'paper', label: '按题集' },
             ]"
             :key="mode.value"
-            class="flex h-8 items-center rounded-full px-3 text-[13px] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary aria-disabled:opacity-60"
+            class="flex h-7 items-center rounded-lg px-3 text-xs transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary aria-disabled:opacity-60"
             :class="
               groupMode === mode.value
-                ? 'bg-base-100 text-primary'
-                : 'text-base-content/65 hover:text-base-content'
+                ? 'bg-base-100 font-semibold text-primary'
+                : 'font-medium text-base-content/65 hover:text-base-content'
             "
             type="button"
             :aria-disabled="loading"
@@ -288,46 +282,57 @@ watch(
         />
       </PagePlaceholder>
 
-      <div v-else class="mt-2 grid content-start gap-2">
+      <div v-else class="mt-2 overflow-hidden rounded-2xl bg-base-200/85 dark:bg-base-200/65">
         <div
           v-if="loadError"
-          class="flex flex-wrap items-center justify-between gap-2 text-xs text-base-content/65"
+          class="m-2 mb-0 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-error/10 px-3 py-2 text-xs text-error"
           role="status"
         >
           <span>更新失败，已保留原列表。</span>
-          <button class="min-h-11 px-2 text-primary" type="button" @click="loadFavorites">
+          <button
+            class="min-h-7 rounded-lg bg-base-100 px-2.5 font-medium text-error"
+            type="button"
+            @click="loadFavorites"
+          >
             重试
           </button>
         </div>
         <button
-          v-for="item in items"
+          v-for="(item, index) in items"
           :key="displayedGroupMode === 'paper' ? item.paperId : item.subjectId"
-          class="flex w-full min-w-0 items-center gap-2.5 rounded-xl border border-base-200 bg-base-100 px-3 py-3 text-left transition-colors hover:border-base-300 active:bg-base-200/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          class="relative flex w-full min-w-0 items-center gap-3 px-4 py-3 text-left transition-colors active:bg-base-300/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary dark:active:bg-base-300/40"
           type="button"
           :aria-label="`${displayedGroupMode === 'paper' ? item.paperName : item.subjectName}，${item.questionCount}题，开始练习`"
           @click="openPractice(item)"
         >
           <span
-            class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"
+            v-if="index > 0 || loadError"
+            aria-hidden="true"
+            class="pointer-events-none absolute left-16 right-0 top-0 h-px bg-base-content/[0.05]"
+          ></span>
+          <span
+            class="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"
           >
-            <component :is="displayedGroupMode === 'paper' ? FileText : BookOpen" :size="18" />
+            <component :is="displayedGroupMode === 'paper' ? FileText : BookOpen" :size="17" />
           </span>
 
           <span class="min-w-0 flex-1">
-            <span class="line-clamp-2 break-words text-[15px] font-semibold leading-snug">
+            <span class="block truncate text-sm font-semibold leading-snug">
               {{ displayedGroupMode === 'paper' ? item.paperName : item.subjectName }}
             </span>
-            <span class="mt-1 block truncate text-xs leading-snug text-base-content/65">
+            <span class="mt-0.5 block truncate text-xs leading-snug text-base-content/55">
               <template v-if="displayedGroupMode === 'paper'">{{ item.subjectName }} · </template>
               {{ formatCollectedTimeText(item.lastCollectedAt) || '已收录' }}
             </span>
           </span>
 
-          <span class="shrink-0 text-sm font-medium tabular-nums text-base-content/65">
+          <span
+            class="shrink-0 rounded-md bg-primary/[0.08] px-2 py-0.5 text-xs font-semibold tabular-nums text-primary"
+          >
             {{ item.questionCount }} 题
           </span>
 
-          <ChevronRight :size="18" class="shrink-0 text-base-content/35" />
+          <ChevronRight :size="15" class="shrink-0 text-base-content/35" />
         </button>
       </div>
     </section>

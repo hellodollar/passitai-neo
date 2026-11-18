@@ -38,13 +38,10 @@ const toneClasses = computed(() => {
 
 <template>
   <section
-    class="w-full min-w-full rounded-2xl px-5 text-center"
-    :class="embedded ? 'py-8' : 'border border-dashed border-base-300 bg-base-100 py-10'"
+    class="w-full min-w-full rounded-2xl px-4 text-center"
+    :class="embedded ? 'py-7' : 'bg-base-200/80 py-9 dark:bg-base-200/60'"
   >
-    <span
-      class="mx-auto flex size-12 items-center justify-center rounded-full"
-      :class="toneClasses"
-    >
+    <span class="mx-auto flex size-12 items-center justify-center rounded-2xl" :class="toneClasses">
       <component :is="icon" :size="24" />
     </span>
     <h2 class="mt-4 text-base font-semibold leading-tight">{{ title }}</h2>
@@ -56,7 +53,7 @@ const toneClasses = computed(() => {
     </p>
     <button
       v-if="actionLabel"
-      class="btn btn-primary btn-sm mt-5 rounded-full px-5"
+      class="btn btn-primary btn-sm mt-5 rounded-xl px-5"
       type="button"
       @click="emit('action')"
     >

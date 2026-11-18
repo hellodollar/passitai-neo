@@ -1,8 +1,8 @@
 <template>
   <div
-    class="px-5 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-[calc(1.25rem+env(safe-area-inset-top))]"
+    class="px-4 pb-[calc(5.25rem+env(safe-area-inset-bottom))] pt-[calc(0.875rem+env(safe-area-inset-top))]"
   >
-    <div class="relative min-h-[calc(100dvh-8rem)] min-w-0">
+    <div class="relative min-h-[calc(100dvh-7rem)] min-w-0">
       <slot />
     </div>
   </div>

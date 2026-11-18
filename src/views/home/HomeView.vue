@@ -218,22 +218,22 @@ watch(
 
 <template>
   <PageContainer>
-    <section class="flex w-full min-w-0 max-w-full flex-col gap-4 overflow-x-hidden">
+    <section class="flex w-full min-w-0 max-w-full flex-col gap-3 overflow-x-hidden">
       <h1 class="sr-only">练习首页</h1>
-      <header class="relative z-10 flex min-h-10 shrink-0 items-center">
-        <LogoPassitai role="img" aria-label="Passitai" class="h-8 w-auto text-base-content" />
+      <header class="relative z-10 flex min-h-9 shrink-0 items-center">
+        <LogoPassitai role="img" aria-label="Passitai" class="h-7 w-auto text-base-content" />
         <button
-          class="relative ml-auto flex size-10 items-center justify-center rounded-full border border-base-200 bg-base-100 text-base-content transition-colors active:bg-base-200/60"
+          class="relative ml-auto flex size-9 items-center justify-center rounded-xl bg-base-200/85 text-base-content transition-colors active:bg-base-300/70 dark:bg-base-200/70"
           type="button"
           :aria-label="
             notifications.unreadCount ? `消息中心，${notifications.unreadCount} 条未读` : '消息中心'
           "
           @click="router.push({ name: 'notifications' })"
         >
-          <Bell :size="18" />
+          <Bell :size="17" />
           <span
             v-if="notifications.unreadCount > 0"
-            class="absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-full border-2 border-base-100 bg-error px-1 text-[10px] font-semibold text-error-content"
+            class="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full border-2 border-base-100 bg-error px-1 text-[10px] font-semibold text-error-content"
             >{{ notifications.unreadCount > 99 ? '99+' : notifications.unreadCount }}</span
           >
         </button>
@@ -275,37 +275,41 @@ watch(
           @edit-settings="settingsPopupOpen = true"
         />
 
-        <div class="flex items-end justify-between gap-3 px-0.5">
-          <div class="flex items-baseline gap-2">
-            <h2 class="text-[17px] font-semibold leading-tight">刷题科目</h2>
-            <span class="text-xs text-base-content/65">{{ examPlanSubjects.length }}个</span>
+        <div class="flex items-center justify-between gap-3 px-0.5">
+          <div class="flex items-center gap-1.5">
+            <h2 class="text-base font-bold leading-tight">刷题科目</h2>
+            <span
+              class="rounded-md bg-base-200/90 px-1.5 py-0.5 text-xs font-semibold tabular-nums text-base-content/65 dark:bg-base-200/70"
+            >
+              {{ examPlanSubjects.length }} 个
+            </span>
           </div>
           <button
-            class="flex shrink-0 items-center gap-0.5 text-sm font-medium text-primary transition-opacity active:opacity-70"
+            class="flex shrink-0 items-center gap-0.5 rounded-lg bg-primary/[0.09] px-2.5 py-1 text-xs font-semibold text-primary transition-colors active:bg-primary/[0.15]"
             type="button"
             aria-label="科目管理"
             @click="subjectManagerOpen = true"
           >
             管理
-            <ChevronRight :size="15" class="-mr-0.5 mt-px" />
+            <ChevronRight :size="14" class="-mr-0.5" />
           </button>
         </div>
 
-        <section class="overflow-hidden rounded-2xl border border-base-200 bg-base-100">
-          <div v-if="visibleSubjects.length > 0" class="relative">
+        <section class="overflow-hidden rounded-2xl bg-base-200/85 p-2.5 dark:bg-base-200/65">
+          <div v-if="visibleSubjects.length > 0" class="relative mb-2">
             <div
               ref="chipsRow"
-              class="no-scrollbar flex gap-2 overflow-x-auto px-4 py-3"
+              class="no-scrollbar flex gap-1.5 overflow-x-auto px-0.5 py-0.5"
               @scroll.passive="updateChipsScrollHint"
             >
               <button
                 v-for="subject in visibleSubjects"
                 :key="subject.code"
-                class="max-w-[9.5rem] shrink-0 truncate rounded-full px-3.5 py-1.5 text-[13px] font-medium transition-colors"
+                class="max-w-[9.5rem] shrink-0 truncate rounded-full px-3 py-1.5 text-xs font-semibold transition-colors"
                 :class="
                   activeSubject?.code === subject.code
                     ? 'bg-primary text-primary-content'
-                    : 'bg-base-200/60 text-base-content/60 active:bg-base-200'
+                    : 'bg-base-100 text-base-content/70 active:bg-base-100/80'
                 "
                 type="button"
                 :aria-pressed="activeSubject?.code === subject.code"
@@ -317,21 +321,22 @@ watch(
             <!-- 右侧渐隐提示还有更多科目可横滑 -->
             <span
               v-if="chipsCanScrollRight"
-              class="pointer-events-none absolute inset-y-2 right-0 w-9 rounded-r-2xl bg-gradient-to-l from-base-100 via-base-100/85 to-transparent"
+              class="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-base-200 via-base-200/80 to-transparent"
               aria-hidden="true"
             ></span>
           </div>
 
-          <EmptyState
-            v-if="!examPlanSubjects.length"
-            :icon="GraduationCap"
-            title="还没有选择科目"
-            action-label="选择科目"
-            embedded
-            @action="examPlanPopupOpen = true"
-          />
+          <div v-if="!examPlanSubjects.length" class="overflow-hidden rounded-xl bg-base-100">
+            <EmptyState
+              :icon="GraduationCap"
+              title="还没有选择科目"
+              action-label="选择科目"
+              embedded
+              @action="examPlanPopupOpen = true"
+            />
+          </div>
 
-          <div v-else-if="!activeSubject">
+          <div v-else-if="!activeSubject" class="overflow-hidden rounded-xl bg-base-100">
             <EmptyState
               :icon="EyeOff"
               title="所有科目已隐藏"
