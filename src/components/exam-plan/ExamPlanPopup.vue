@@ -12,14 +12,14 @@ import {
 } from '@/generated/domain-values'
 import { useAuthStore } from '@/stores/auth'
 import { useExamPlanStore } from '@/stores/exam-plan'
-import type { OptionItem } from '@/types'
+import type { OptionItem, SubjectOptionItem } from '@/types'
 import { showSuccessToast } from '@/utils/toast'
 
 const model = defineModel<boolean>({ default: false })
 const auth = useAuthStore()
 const examPlanStore = useExamPlanStore()
 const majorOptions = ref<OptionItem[]>([])
-const subjectOptions = ref<OptionItem[]>([])
+const subjectOptions = ref<SubjectOptionItem[]>([])
 const draftProvinceCode = ref<ProvinceCode | ''>('')
 const draftEducationLevel = ref<DomainValue<'educationLevel'>>('本科')
 const draftMajorCode = ref('')
@@ -112,6 +112,10 @@ async function loadMajorOptions(sequence: number, token: string | undefined) {
   }
 }
 
+function isWrittenSubject(subject: Pick<SubjectOptionItem, 'examType'>) {
+  return subject.examType === 'written'
+}
+
 async function loadSubjectOptions(majorCode: string) {
   // 清空选择也必须使上一专业的请求失效。
   const sequence = ++subjectSequence
@@ -128,7 +132,10 @@ async function loadSubjectOptions(majorCode: string) {
     if (!isCurrent()) return
     const byCode = new Map(options.map((option) => [option.code, option]))
     draftSubjectCodes.value = new Set(
-      [...draftSubjectCodes.value].filter((code) => byCode.has(code)),
+      [...draftSubjectCodes.value].filter((code) => {
+        const option = byCode.get(code)
+        return Boolean(option && isWrittenSubject(option))
+      }),
     )
     subjectOptions.value = [
       ...[...draftSubjectCodes.value].map((code) => byCode.get(code)!),
@@ -204,10 +211,11 @@ async function selectMajor(majorCode: string) {
   await loadSubjectOptions(draftMajorCode.value)
 }
 
-function toggleSubject(code: string) {
+function toggleSubject(subject: SubjectOptionItem) {
+  if (!isWrittenSubject(subject)) return
   const selected = new Set(draftSubjectCodes.value)
-  if (selected.has(code)) selected.delete(code)
-  else selected.add(code)
+  if (selected.has(subject.code)) selected.delete(subject.code)
+  else selected.add(subject.code)
   draftSubjectCodes.value = selected
 }
 
@@ -221,12 +229,15 @@ async function saveExamPlan() {
     opening === loadSequence &&
     token === auth.session?.token &&
     model.value
+  const writtenCodes = new Set(
+    subjectOptions.value.filter(isWrittenSubject).map((subject) => subject.code),
+  )
   saving.value = true
   try {
     await examPlanStore.save({
       provinceCode: draftProvinceCode.value,
       majorCode: draftMajorCode.value,
-      subjectCodes: [...draftSubjectCodes.value],
+      subjectCodes: [...draftSubjectCodes.value].filter((code) => writtenCodes.has(code)),
     })
     if (!isCurrent()) return
     showSuccessToast('考试计划已更新')
@@ -370,16 +381,36 @@ onBeforeUnmount(invalidateRequests)
               <label
                 v-for="subject in subjectOptions"
                 :key="subject.code"
-                class="flex min-h-11 cursor-pointer items-center gap-2.5 px-3 py-2.5 transition-colors active:bg-base-200"
+                class="flex min-h-11 items-center gap-2.5 px-3 py-2.5 transition-colors"
+                :class="
+                  isWrittenSubject(subject)
+                    ? 'cursor-pointer active:bg-base-200'
+                    : 'cursor-not-allowed bg-base-200/35 text-base-content/45'
+                "
+                :aria-disabled="!isWrittenSubject(subject)"
               >
                 <input
                   type="checkbox"
                   class="checkbox checkbox-xs checkbox-primary"
-                  :checked="draftSubjectCodes.has(subject.code)"
-                  @change="toggleSubject(subject.code)"
+                  :checked="isWrittenSubject(subject) && draftSubjectCodes.has(subject.code)"
+                  :disabled="!isWrittenSubject(subject)"
+                  @change="toggleSubject(subject)"
                 />
-                <span class="flex-1 text-sm">{{ subject.name }}</span>
-                <span class="text-xs text-base-content/65">{{ subject.code }}</span>
+                <span class="min-w-0 flex-1 break-words text-sm">{{ subject.name }}</span>
+                <span
+                  v-if="!isWrittenSubject(subject)"
+                  class="shrink-0 rounded-full bg-base-200 px-2 py-0.5 text-[11px] font-medium text-base-content/55"
+                >
+                  非笔试
+                </span>
+                <span
+                  class="shrink-0 text-xs"
+                  :class="
+                    isWrittenSubject(subject) ? 'text-base-content/65' : 'text-base-content/40'
+                  "
+                >
+                  {{ subject.code }}
+                </span>
               </label>
             </div>
             <div

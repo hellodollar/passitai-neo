@@ -37,7 +37,7 @@ Vue Router 使用 `createWebHistory(import.meta.env.BASE_URL)`，CF 为深链提
 
 - `useExamPlanStore.plan` 保存计划；`load()` 复用已加载结果及进行中的请求，失败可重试；`save()` 成功更新共享状态；`reset()` 清理会话并使旧请求失效。
 - `components/exam-plan/ExamPlanPopup.vue` 管理选择和草稿，`ExamPlanCard.vue` 展示摘要，`ExamPlanSubjectsPopup.vue` 发出科目选择、显隐及移动事件，首页管理浏览状态。
-- 计划使用 `provinceCode`、`majorCode`、`subjectCodes`。省份或学历变化清空专业及科目，专业变化重新选择科目；保存失败保留草稿。弹层关闭或换账号后，旧选项与保存响应不能更新当前界面。
+- 计划使用 `provinceCode`、`majorCode`、`subjectCodes`。省份或学历变化清空专业及科目，专业变化重新选择科目；仅 `examType === 'written'` 的笔试科目可勾选，非笔试科目在列表中禁用展示；保存失败保留草稿。弹层关闭或换账号后，旧选项与保存响应不能更新当前界面。
 - 科目显隐和顺序属于首页浏览记忆，不冒充服务端计划。科目业务码使用完整大写省份前缀。
 - `useAuthStore` 管理登录身份，退出或换账号重置考试计划及相关会话 Store。收藏、错题列表不另建 Store，临时状态留在各自页面。
 

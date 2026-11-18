@@ -21,7 +21,7 @@ export type {
   CollectionQuery,
   FavoriteMutationResult,
 } from './collection'
-export type { OptionItem } from './catalog'
+export type { OptionItem, SubjectOptionItem } from './catalog'
 export type { QuestionContent, QuestionListItem, QuestionType } from './question'
 export type {
   CollectionPracticePaper,

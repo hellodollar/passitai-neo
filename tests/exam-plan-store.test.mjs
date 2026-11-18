@@ -1,10 +1,15 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { afterEach, beforeEach, test } from 'node:test'
 
 import { createPinia, setActivePinia } from 'pinia'
+import ts from 'typescript'
+import * as vue from 'vue'
+import { compileScript, parse } from 'vue/compiler-sfc'
 
 import { loadSource } from './helpers/load-source.mjs'
 
+const { domainValues, openedProvinceOptions } = await loadSource('generated/domain-values.ts')
 const { useExamPlanStore } = await loadSource('stores/exam-plan.ts')
 
 const previousFetch = globalThis.fetch
@@ -137,4 +142,93 @@ test('save 只提交报考省份、专业代码和所选科目代码', async () 
     subjectCodes: ['GD-15043'],
   })
   assert.equal(store.plan.provinceCode, '110000')
+})
+
+test('ExamPlanPopup 展示非笔试科目但禁用选择，仅允许勾选并保存 written 科目', async () => {
+  const { descriptor } = parse(
+    readFileSync(new URL('../src/components/exam-plan/ExamPlanPopup.vue', import.meta.url), 'utf8'),
+  )
+  const script = compileScript(descriptor, { id: 'exam-plan-popup-test' })
+  const { outputText } = ts.transpileModule(script.content, {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+  })
+  let savedPayloads = []
+  const dependencies = {
+    vue,
+    '@/api/options': {
+      fetchMajorOptions: async () => [{ id: 'maj-1', code: '120206', name: '人力资源管理' }],
+      fetchSubjectOptions: async () => [
+        { id: 'sub-1', code: 'GD-15043', name: '中国近现代史纲要', examType: 'written' },
+        {
+          id: 'sub-2',
+          code: 'GD-00052',
+          name: '管理系统中计算机应用（实践）',
+          examType: 'practical',
+        },
+      ],
+    },
+    '@/components/common/BasePopup.vue': {},
+    '@/components/common/OptionSheet.vue': {},
+    '@/generated/domain-values': { domainValues, openedProvinceOptions },
+    '@/stores/auth': {
+      useAuthStore: () => ({ session: { token: 'token-1', user: { id: 'user-1' } } }),
+    },
+    '@/stores/exam-plan': {
+      useExamPlanStore: () => ({
+        error: null,
+        plan: {
+          ...examPlanFixture,
+          subjectCodes: ['GD-15043', 'GD-00052'],
+        },
+        load: async () => examPlanFixture,
+        save: async (payload) => {
+          savedPayloads.push(payload)
+          return examPlanFixture
+        },
+      }),
+    },
+    '@/utils/toast': { showSuccessToast() {} },
+  }
+  const module = { exports: {} }
+  new Function('require', 'module', 'exports', outputText)(
+    (name) => {
+      assert.ok(name in dependencies, `Unexpected dependency ${name}`)
+      return dependencies[name]
+    },
+    module,
+    module.exports,
+  )
+  const renderer = vue.createRenderer({
+    createComment: () => ({}),
+    insert: (node, parent) => (node.parent = parent),
+    remove() {},
+    parentNode: (node) => node.parent,
+    nextSibling: () => null,
+  })
+  const app = renderer.createApp(
+    { ...module.exports.default, render: () => null },
+    { modelValue: true },
+  )
+  app.mount({})
+  await new Promise((resolve) => setImmediate(resolve))
+  await vue.nextTick()
+
+  const state = app._instance.setupState
+  assert.equal(state.subjectOptions.length, 2)
+  assert.equal(state.isWrittenSubject(state.subjectOptions[0]), true)
+  assert.equal(state.isWrittenSubject(state.subjectOptions[1]), false)
+  assert.deepEqual([...state.draftSubjectCodes], ['GD-15043'])
+
+  state.toggleSubject(state.subjectOptions[1])
+  assert.deepEqual([...state.draftSubjectCodes], ['GD-15043'])
+
+  await state.saveExamPlan()
+  assert.deepEqual(savedPayloads, [
+    {
+      provinceCode: '440000',
+      majorCode: '120206',
+      subjectCodes: ['GD-15043'],
+    },
+  ])
+  app.unmount()
 })
