@@ -54,30 +54,45 @@ test('收藏、错题分别记住分组和排序，URL 优先，非法参数不�
   })
 })
 
-test('首页保留科目、练习类别、管理顺序和位置，单字段更新不会覆盖其他状态', () => {
+test('首页保留科目、题集类型、页码、管理顺序和滚动位置', () => {
   global.window = { sessionStorage: storage() }
   writeBrowseState('home', 'home', {
-    subjectCode: '15044',
-    entry: 'pastExams',
+    subjectCode: 'GD-15044',
+    paperType: 'pointCoverage',
+    paperPage: 2,
     scrollTop: 630,
-    subjectOrder: ['15044', '15043'],
-    hiddenSubjectCodes: ['15043'],
+    subjectOrder: ['GD-15044', 'GD-15043'],
+    hiddenSubjectCodes: ['GD-15043'],
   })
-  writeBrowseState('home', 'home', { entry: 'examSimulation' })
+  writeBrowseState('home', 'home', { paperType: 'highFrequency' })
   const state = readBrowseState('home', 'home')
-  assert.deepEqual(parseHomeSelection({}, state), { subjectCode: '15044', entry: 'examSimulation' })
-  assert.deepEqual(parseHomeSelection({ subjectCode: '15043', entry: 'aiPractice' }, state), {
-    subjectCode: '15043',
-    entry: 'aiPractice',
+  assert.deepEqual(parseHomeSelection({}, state), {
+    subjectCode: 'GD-15044',
+    paperType: 'highFrequency',
+    paperPage: 2,
   })
+  assert.deepEqual(
+    parseHomeSelection(
+      { subjectCode: 'GD-15043', paperType: 'errorTarget', paperPage: '3' },
+      state,
+    ),
+    {
+      subjectCode: 'GD-15043',
+      paperType: 'errorTarget',
+      paperPage: 3,
+    },
+  )
   assert.equal(state.scrollTop, 630)
-  assert.deepEqual(state.subjectOrder, ['15044', '15043'])
-  assert.deepEqual(state.hiddenSubjectCodes, ['15043'])
-  assert.equal(parseHomeSelection({ entry: 'ai' }).entry, 'specialTraining')
-  assert.deepEqual(parseHomeSelection({ subjectCode: '../bad', entry: ['aiPractice'] }), {
-    subjectCode: '',
-    entry: 'specialTraining',
-  })
+  assert.deepEqual(state.subjectOrder, ['GD-15044', 'GD-15043'])
+  assert.deepEqual(state.hiddenSubjectCodes, ['GD-15043'])
+  assert.deepEqual(
+    parseHomeSelection({ subjectCode: '../bad', paperType: ['aiPractice'], paperPage: -2 }),
+    {
+      subjectCode: '',
+      paperType: '',
+      paperPage: 1,
+    },
+  )
 })
 
 test('刷新可读取 sessionStorage，损坏状态和存储失败不阻断页面', () => {
@@ -89,7 +104,7 @@ test('刷新可读取 sessionStorage，损坏状态和存储失败不阻断页�
   store.setItem('passitai:browse:broken:home', '{broken')
   global.window = { sessionStorage: store }
   assert.equal(readBrowseState('refresh', 'favorites').scrollTop, 420)
-  assert.equal(readBrowseState('broken', 'home').entry, 'specialTraining')
+  assert.equal(readBrowseState('broken', 'home').paperType, '')
   global.window = {
     sessionStorage: {
       getItem: () => {

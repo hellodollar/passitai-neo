@@ -3,25 +3,25 @@ import { AlertCircle, Bell, ChevronRight, EyeOff, Target } from '@lucide/vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import { PAPER_PAGE_SIZE } from '@/api/papers'
 import EmptyState from '@/components/common/EmptyState.vue'
 import LogoPassitai from '@/components/common/LogoPassitai.vue'
 import PageContainer from '@/components/common/PageContainer.vue'
 import PagePlaceholder from '@/components/common/PagePlaceholder.vue'
-import HomePlanCard from '@/components/home/HomePlanCard.vue'
-import HomePracticeEntries from '@/components/home/HomePracticeEntries.vue'
+import HomePapers from '@/components/home/HomePapers.vue'
+import HomeScopeCard from '@/components/home/HomeScopeCard.vue'
 import NotificationStrip from '@/components/home/NotificationStrip.vue'
 import SubjectManagerPopup from '@/components/home/SubjectManagerPopup.vue'
-import PracticePlanPopup from '@/components/practice/PracticePlanPopup.vue'
+import PracticeScopePopup from '@/components/practice/PracticeScopePopup.vue'
 import PracticeSettingsPopup from '@/components/practice/PracticeSettingsPopup.vue'
 import { useBrowseScroll } from '@/composables/useBrowseScroll'
-import { useLocalPracticeRecords } from '@/composables/useLocalPracticeRecords'
 import { useAuthStore } from '@/stores/auth'
 import { useNotificationsStore } from '@/stores/notifications'
-import { usePracticeEntriesStore } from '@/stores/practice-entries'
-import { usePracticePlanStore } from '@/stores/practice-plan'
-import type { PracticeEntry, PracticeEntryChild, PracticePlan } from '@/types'
+import { usePapersStore } from '@/stores/papers'
+import { usePracticeScopeStore } from '@/stores/practice-scope'
+import type { PracticeScope } from '@/types'
+import type { Paper, PaperType } from '@/types/paper'
 import { parseHomeSelection, readBrowseState, writeBrowseState } from '@/utils/browse/state'
-import { applyLocalPracticeProgress } from '@/utils/practice/progress'
 
 const router = useRouter()
 const route = useRoute()
@@ -33,27 +33,28 @@ const browseScroll = useBrowseScroll(
 )
 const initialBrowse = readBrowseState(auth.session?.user.id ?? '', 'home')
 const initialSelection = parseHomeSelection(route.query, initialBrowse)
-const { records } = useLocalPracticeRecords()
-const activeSubjectId = ref('')
 
 const settingsPopupOpen = ref(false)
 const subjectManagerOpen = ref(false)
-const planPopupOpen = ref(false)
-// 计划与题集目录来自 plan store:有缓存时挂载即渲染,仅在首次加载(未成功也未失败)时显示整页加载态
-const practicePlanStore = usePracticePlanStore()
-const practiceEntriesStore = usePracticeEntriesStore()
-const plan = computed<PracticePlan | null>(() => practicePlanStore.plan)
-const planLoading = computed(
-  () => !practicePlanStore.isLoaded && (practicePlanStore.isLoading || !practicePlanStore.error),
+const scopePopupOpen = ref(false)
+// 备考范围从共享状态读取，首次加载时显示占位。
+const practiceScopeStore = usePracticeScopeStore()
+const papersStore = usePapersStore()
+const scope = computed<PracticeScope | null>(() => practiceScopeStore.scope)
+const scopeLoading = computed(
+  () => !practiceScopeStore.isLoaded && (practiceScopeStore.isLoading || !practiceScopeStore.error),
 )
 
 const subjectOrder = ref<string[]>(initialBrowse.subjectOrder)
 const hiddenSubjectCodes = ref<Set<string>>(new Set(initialBrowse.hiddenSubjectCodes))
 const activeSubjectCode = ref(initialSelection.subjectCode)
-const expandedEntryKey = ref(initialSelection.entry)
-
-const entries = ref<PracticeEntry[]>([])
-const entriesLoading = ref(false)
+const paperType = ref(initialSelection.paperType)
+const paperPage = ref(initialSelection.paperPage)
+const papers = ref<Paper[]>([])
+const papersLoading = ref(false)
+const papersError = ref('')
+const totalPapers = ref(0)
+const totalPages = computed(() => Math.max(1, Math.ceil(totalPapers.value / PAPER_PAGE_SIZE)))
 
 // 科目 chips 单行横滑，右侧渐隐提示是否还有未滑出的科目
 const chipsRow = ref<HTMLElement | null>(null)
@@ -68,13 +69,11 @@ function updateChipsScrollHint() {
   chipsCanScrollRight.value = el.scrollLeft + el.clientWidth < el.scrollWidth - 1
 }
 
-const planSubjects = computed(() => plan.value?.subjects ?? [])
-
-const hasPracticePlan = computed(() => planSubjects.value.length > 0)
+const scopeSubjects = computed(() => scope.value?.subjects ?? [])
 
 const orderedSubjects = computed(() => {
   const orderMap = new Map(subjectOrder.value.map((code, index) => [code, index]))
-  return [...planSubjects.value].sort((a, b) => {
+  return [...scopeSubjects.value].sort((a, b) => {
     const aIndex = orderMap.get(a.code) ?? Number.MAX_SAFE_INTEGER
     const bIndex = orderMap.get(b.code) ?? Number.MAX_SAFE_INTEGER
     return aIndex - bIndex
@@ -91,39 +90,42 @@ const activeSubject = computed(
     visibleSubjects.value[0],
 )
 
-const localEntries = computed(() =>
-  applyLocalPracticeProgress(
-    entries.value,
-    records.value,
-    auth.session?.user.id ?? '',
-    activeSubjectId.value,
-  ),
-)
-
 function selectSubject(code: string) {
   activeSubjectCode.value = code
-  expandedEntryKey.value = 'specialTraining'
+  paperPage.value = 1
   syncSelectionQuery()
 }
 
-function selectEntry(key: string) {
-  expandedEntryKey.value = key
+function selectPaperType(type: PaperType | '') {
+  paperType.value = type
+  paperPage.value = 1
   syncSelectionQuery()
 }
 
-/** URL 只由用户操作更新;数据加载链路不回写,避免 query ↔ 状态互相触发的同步回路。 */
+function selectPaperPage(page: number) {
+  paperPage.value = page
+  syncSelectionQuery()
+}
+
+function selectionQuery() {
+  return {
+    subjectCode: activeSubject.value?.code ?? '',
+    paperType: paperType.value,
+    paperPage: String(paperPage.value),
+  }
+}
+
 function syncSelectionQuery() {
   if (route.name !== 'home') return
-  const subjectCode = activeSubject.value?.code ?? ''
-  const entry = expandedEntryKey.value || 'specialTraining'
-  if (route.query.subjectCode !== (subjectCode || undefined) || route.query.entry !== entry) {
-    void router.replace({ query: { ...route.query, subjectCode: subjectCode || undefined, entry } })
+  const query = selectionQuery()
+  if (Object.entries(query).some(([key, value]) => route.query[key] !== value)) {
+    void router.replace({ query: { ...route.query, ...query } })
   }
 }
 
 function syncSubjectOrder() {
-  if (!plan.value) return
-  const codes = planSubjects.value.map((subject) => subject.code)
+  if (!scope.value) return
+  const codes = scopeSubjects.value.map((subject) => subject.code)
   subjectOrder.value = [
     ...subjectOrder.value.filter((code) => codes.includes(code)),
     ...codes.filter((code) => !subjectOrder.value.includes(code)),
@@ -136,6 +138,7 @@ function syncSubjectOrder() {
   const visibleCodes = subjectOrder.value.filter((code) => !hiddenSubjectCodes.value.has(code))
   if (!activeSubjectCode.value || !visibleCodes.includes(activeSubjectCode.value)) {
     activeSubjectCode.value = visibleCodes[0] ?? ''
+    paperPage.value = 1
   }
 }
 
@@ -163,62 +166,48 @@ function toggleSubjectVisibility(code: string) {
   syncSelectionQuery()
 }
 
-function startEntryPaper(child: PracticeEntryChild) {
-  if (!auth.isAuthenticated || !child.paperId || entriesLoading.value) return
-  const returnTo = router.resolve({
-    path: route.path,
-    query: {
-      ...route.query,
-      subjectCode: activeSubject.value?.code || undefined,
-      entry: expandedEntryKey.value || 'specialTraining',
-    },
-  }).fullPath
-  router.push({
-    name: 'practice',
-    params: { paperId: child.paperId },
-    query: { subjectName: activeSubject.value?.name ?? '', returnTo },
-  })
-}
-
-// 计划直接携带科目 ID，题集目录按科目缓存。
-let entryLoadSequence = 0
-
-async function loadEntries() {
-  const sequence = ++entryLoadSequence
-  const userId = auth.session?.user.id
-  const token = auth.session?.token
-  const isCurrent = () =>
-    sequence === entryLoadSequence && token === auth.session?.token && auth.isAuthenticated
-  const subject = activeSubject.value
-  if (!userId || !auth.isAuthenticated || !subject) {
-    entries.value = []
-    activeSubjectId.value = ''
-    entriesLoading.value = false
-    if (auth.isAuthenticated && practicePlanStore.isLoaded && !planLoading.value) {
-      void browseScroll.restore()
-    }
+function openPaper(paper: Paper) {
+  if (
+    !auth.isAuthenticated ||
+    papersLoading.value ||
+    paper.subjectCode !== activeSubject.value?.code
+  ) {
     return
   }
-  // 切换科目时保留上一科目的内容与进度,仅在尚无内容时显示占位加载
-  entriesLoading.value = true
+  const returnTo = router.resolve({
+    name: 'home',
+    query: { ...route.query, ...selectionQuery() },
+  }).fullPath
+  void router.push({ name: 'paper', params: { paperId: paper.id }, query: { returnTo } })
+}
+
+let paperLoadSequence = 0
+async function loadPapers() {
+  const sequence = ++paperLoadSequence
+  const token = auth.session?.token
+  const isCurrent = () => sequence === paperLoadSequence && token === auth.session?.token
+  const subjectCode = activeSubject.value?.code
+  const page = paperPage.value
+  papers.value = []
+  totalPapers.value = 0
+  papersError.value = ''
+  papersLoading.value = Boolean(token && subjectCode)
+  if (!token || !subjectCode) return
   try {
-    const subjectId = subject.id
-    const loadedEntries = await practiceEntriesStore.load(subjectId, plan.value?.provinceCode)
-    if (!isCurrent()) return
-    activeSubjectId.value = subjectId
-    entries.value = loadedEntries ?? []
-    const entryMatched = (loadedEntries ?? []).some(
-      (entry) => entry.type === expandedEntryKey.value,
-    )
-    if (entries.value.length > 0 && !entryMatched) {
-      expandedEntryKey.value = entries.value[0]?.type ?? ''
+    const result = await papersStore.load(subjectCode, page, paperType.value || undefined)
+    if (!isCurrent() || !result) return
+    const lastPage = Math.max(1, Math.ceil(result.total / PAPER_PAGE_SIZE))
+    if (page > lastPage) {
+      selectPaperPage(lastPage)
+      return
     }
-  } catch {
-    if (!isCurrent()) return
-    entries.value = []
+    papers.value = result.items
+    totalPapers.value = result.total
+  } catch (error) {
+    if (isCurrent()) papersError.value = error instanceof Error ? error.message : '题集加载失败'
   } finally {
     if (isCurrent()) {
-      entriesLoading.value = false
+      papersLoading.value = false
       await nextTick()
       if (isCurrent()) {
         const selected = chipsRow.value?.querySelector<HTMLElement>('[aria-pressed="true"]')
@@ -229,40 +218,41 @@ async function loadEntries() {
           )
         }
         updateChipsScrollHint()
-        void browseScroll.restore()
+        if (!papersError.value && page === paperPage.value) void browseScroll.restore()
       }
     }
   }
 }
 
 onMounted(() => {
-  if (auth.isAuthenticated) void practicePlanStore.load()
+  if (auth.isAuthenticated) void practiceScopeStore.load()
 })
 
 onBeforeUnmount(() => {
-  entryLoadSequence++
+  paperLoadSequence++
 })
 
-watch([() => route.query.subjectCode, () => route.query.entry], () => {
-  const selection = parseHomeSelection(
-    route.query,
-    readBrowseState(auth.session?.user.id ?? '', 'home'),
-  )
-  if (selection.subjectCode !== activeSubjectCode.value) {
+watch(
+  [() => route.query.subjectCode, () => route.query.paperType, () => route.query.paperPage],
+  () => {
+    if (route.name !== 'home') return
+    const selection = parseHomeSelection(
+      route.query,
+      readBrowseState(auth.session?.user.id ?? '', 'home'),
+    )
     activeSubjectCode.value = selection.subjectCode
-  }
-  if (selection.entry !== expandedEntryKey.value) {
-    expandedEntryKey.value = selection.entry
-  }
-  syncSubjectOrder()
-})
+    paperType.value = selection.paperType
+    paperPage.value = selection.paperPage
+    syncSubjectOrder()
+  },
+)
 
-// 选中态与科目管理变化只写入本地记忆(按账号),URL 不在此回写。
-watch([activeSubjectCode, expandedEntryKey, subjectOrder, hiddenSubjectCodes], () => {
+watch([activeSubjectCode, paperType, paperPage, subjectOrder, hiddenSubjectCodes], () => {
   if (route.name !== 'home') return
   writeBrowseState(auth.session?.user.id ?? '', 'home', {
     subjectCode: activeSubject.value?.code ?? '',
-    entry: expandedEntryKey.value || 'specialTraining',
+    paperType: paperType.value,
+    paperPage: paperPage.value,
     subjectOrder: subjectOrder.value,
     hiddenSubjectCodes: [...hiddenSubjectCodes.value],
   })
@@ -272,27 +262,28 @@ watch(
   () => auth.session?.token,
   () => {
     const userId = auth.session?.user.id
-    entryLoadSequence++
+    paperLoadSequence++
     const state = readBrowseState(userId ?? '', 'home')
     const selection = parseHomeSelection({}, state)
     browseScroll.reset()
-    // 每次会话变化都重载计划；浏览记忆仍按账号隔离。
-    entries.value = []
-    entriesLoading.value = false
-    activeSubjectId.value = ''
+    papers.value = []
+    papersLoading.value = false
+    papersError.value = ''
+    totalPapers.value = 0
     settingsPopupOpen.value = false
     subjectManagerOpen.value = false
-    planPopupOpen.value = false
+    scopePopupOpen.value = false
     subjectOrder.value = state.subjectOrder
     hiddenSubjectCodes.value = new Set(state.hiddenSubjectCodes)
     activeSubjectCode.value = selection.subjectCode
-    expandedEntryKey.value = selection.entry
-    if (userId && auth.isAuthenticated) void practicePlanStore.load()
+    paperType.value = selection.paperType
+    paperPage.value = selection.paperPage
+    if (userId && auth.isAuthenticated) void practiceScopeStore.load()
   },
 )
 
 watch(
-  () => planSubjects.value.map((subject) => subject.code).join('|'),
+  () => scopeSubjects.value.map((subject) => subject.code).join('|'),
   () => {
     syncSubjectOrder()
   },
@@ -309,9 +300,9 @@ watch(
 )
 
 watch(
-  () => [plan.value?.provinceCode, plan.value?.majorId, activeSubject.value?.id ?? ''],
+  [() => auth.session?.token, () => activeSubject.value?.code, paperType, paperPage],
   () => {
-    void loadEntries()
+    void loadPapers()
   },
   { immediate: true },
 )
@@ -342,44 +333,44 @@ watch(
 
       <NotificationStrip class="relative z-10" />
 
-      <PagePlaceholder v-if="planLoading" role="status" aria-live="polite">
+      <PagePlaceholder v-if="scopeLoading" role="status" aria-live="polite">
         <span class="loading loading-spinner loading-md text-primary"></span>
-        <p class="text-sm font-medium text-base-content/65">正在获取练习计划…</p>
+        <p class="text-sm font-medium text-base-content/65">正在获取备考范围…</p>
       </PagePlaceholder>
 
-      <PagePlaceholder v-else-if="practicePlanStore.error">
+      <PagePlaceholder v-else-if="practiceScopeStore.error">
         <EmptyState
           :icon="AlertCircle"
           tone="error"
-          :title="practicePlanStore.error"
-          description="请重试加载刷题计划。"
+          :title="practiceScopeStore.error"
+          description="请重试加载备考范围。"
           action-label="重试"
-          @action="practicePlanStore.load()"
+          @action="practiceScopeStore.load()"
         />
       </PagePlaceholder>
 
-      <PagePlaceholder v-else-if="!hasPracticePlan">
+      <PagePlaceholder v-else-if="!scope">
         <EmptyState
           :icon="Target"
-          title="暂无练习计划"
+          title="暂无备考范围"
           description="先选择报考专业与刷题科目。"
-          action-label="设置计划"
-          @action="planPopupOpen = true"
+          action-label="设置备考范围"
+          @action="scopePopupOpen = true"
         />
       </PagePlaceholder>
 
       <template v-else>
-        <HomePlanCard
-          v-if="plan"
-          :plan="plan"
-          @edit-plan="planPopupOpen = true"
+        <HomeScopeCard
+          v-if="scope"
+          :scope="scope"
+          @edit-scope="scopePopupOpen = true"
           @edit-settings="settingsPopupOpen = true"
         />
 
         <div class="flex items-end justify-between gap-3 px-0.5">
           <div class="flex items-baseline gap-2">
             <h2 class="text-[17px] font-semibold leading-tight">刷题科目</h2>
-            <span class="text-xs text-base-content/65">{{ planSubjects.length }}个</span>
+            <span class="text-xs text-base-content/65">{{ scopeSubjects.length }}个</span>
           </div>
           <button
             class="flex shrink-0 items-center gap-0.5 text-sm font-medium text-primary transition-opacity active:opacity-70"
@@ -423,7 +414,16 @@ watch(
             ></span>
           </div>
 
-          <div v-if="!activeSubject">
+          <EmptyState
+            v-if="!scopeSubjects.length"
+            :icon="Target"
+            title="还没有选择科目"
+            action-label="选择科目"
+            embedded
+            @action="scopePopupOpen = true"
+          />
+
+          <div v-else-if="!activeSubject">
             <EmptyState
               :icon="EyeOff"
               title="所有科目已隐藏"
@@ -434,14 +434,18 @@ watch(
             />
           </div>
 
-          <HomePracticeEntries
+          <HomePapers
             v-else
-            :entries="localEntries"
-            :selected-entry="expandedEntryKey"
-            :loading="entriesLoading"
-            :subject-name="activeSubject.name"
-            @select-entry="selectEntry"
-            @start-paper="startEntryPaper"
+            :papers="papers"
+            :type="paperType"
+            :page="paperPage"
+            :total-pages="totalPages"
+            :loading="papersLoading"
+            :error="papersError"
+            @select-type="selectPaperType"
+            @select-page="selectPaperPage"
+            @open-paper="openPaper"
+            @retry="loadPapers"
           />
         </section>
       </template>
@@ -458,7 +462,7 @@ watch(
 
       <PracticeSettingsPopup v-model="settingsPopupOpen" />
 
-      <PracticePlanPopup v-model="planPopupOpen" />
+      <PracticeScopePopup v-model="scopePopupOpen" />
     </section>
   </PageContainer>
 </template>

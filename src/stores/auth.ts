@@ -4,15 +4,15 @@ import { computed, onScopeDispose, ref } from 'vue'
 import { login as loginApi, logout as logoutApi, register as registerApi } from '@/api/auth'
 import { SessionChangedError } from '@/api/http'
 import {
-  fetchProfile,
+  fetchCurrentUser,
   changeEmail as changeEmailApi,
   changePassword as changePasswordApi,
-} from '@/api/profile'
+} from '@/api/users'
 import { AUTH_INVALIDATED_EVENT, STORAGE_KEYS } from '@/constants/app'
 import { useNotificationSettingsStore } from '@/stores/notification-settings'
 import { useNotificationsStore } from '@/stores/notifications'
-import { usePracticeEntriesStore } from '@/stores/practice-entries'
-import { usePracticePlanStore } from '@/stores/practice-plan'
+import { usePapersStore } from '@/stores/papers'
+import { usePracticeScopeStore } from '@/stores/practice-scope'
 import { usePracticeSettingsStore } from '@/stores/practice-settings'
 import type {
   AuthCredentials,
@@ -47,8 +47,8 @@ export const useAuthStore = defineStore('auth', () => {
     useNotificationsStore().reset()
     useNotificationSettingsStore().reset()
     usePracticeSettingsStore().reset()
-    usePracticePlanStore().reset()
-    usePracticeEntriesStore().reset()
+    usePracticeScopeStore().reset()
+    usePapersStore().reset()
   }
 
   function clearExpiryTimer() {
@@ -188,7 +188,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
     const requestGeneration = generation
     const requestUserRevision = userRevision
-    const promise = fetchProfile()
+    const promise = fetchCurrentUser()
       .then((nextUser) => {
         if (
           generation !== requestGeneration ||
@@ -233,7 +233,7 @@ export const useAuthStore = defineStore('auth', () => {
     return initialization
   }
 
-  /** 更换邮箱只提交一次；成功后直接更新当前用户，不再额外读取 /user。 */
+  /** 更换邮箱只提交一次；成功后直接更新当前用户，不再额外读取账户资料。 */
   async function changeEmail(body: EmailChangeBody): Promise<void> {
     const token = session.value?.token
     const requestGeneration = generation

@@ -1,32 +1,33 @@
 <script setup lang="ts">
 import { ClipboardList, GraduationCap, Settings2 } from '@lucide/vue'
-import { differenceInCalendarDays, format } from 'date-fns'
+import { differenceInCalendarDays, format, parseISO } from 'date-fns'
 import { computed } from 'vue'
 
 import { provinceOptions } from '@/generated/domain-values'
-import type { PracticePlan } from '@/types'
+import type { PracticeScope } from '@/types'
 
 const props = defineProps<{
-  plan: PracticePlan
+  scope: PracticeScope
 }>()
 
 const emit = defineEmits<{
-  'edit-plan': []
+  'edit-scope': []
   'edit-settings': []
 }>()
 
-const planProvinceName = computed(
-  () => provinceOptions.find((province) => province.code === props.plan.provinceCode)?.name ?? '',
+const provinceName = computed(
+  () => provinceOptions.find((province) => province.code === props.scope.provinceCode)?.name ?? '',
 )
 const nextExamDate = computed(() => {
-  const dateValue = props.plan.nextExamDate
+  const dateValue = props.scope.nextExam?.examDate
   if (!dateValue) return null
-  const parsedDate = new Date(dateValue)
+  const parsedDate = parseISO(dateValue)
   return Number.isNaN(parsedDate.getTime()) ? null : parsedDate
 })
 const daysUntilExam = computed(() => {
   if (!nextExamDate.value) return null
-  return Math.max(0, differenceInCalendarDays(nextExamDate.value, new Date()))
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Shanghai' }).format(new Date())
+  return Math.max(0, differenceInCalendarDays(nextExamDate.value, parseISO(today)))
 })
 const nextExamDateText = computed(() =>
   nextExamDate.value ? format(nextExamDate.value, 'yyyy年M月d日') : '',
@@ -39,18 +40,18 @@ const nextExamDateText = computed(() =>
       <div class="flex min-w-0 items-start justify-between gap-3">
         <div class="min-w-0">
           <div class="flex min-w-0 items-center gap-2">
-            <h2 class="truncate text-lg font-semibold">{{ plan.majorName }}</h2>
+            <h2 class="truncate text-lg font-semibold">{{ scope.major.name }}</h2>
             <span
-              v-if="plan.educationLevel"
+              v-if="scope.major.educationLevel"
               class="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary"
             >
-              {{ plan.educationLevel }}
+              {{ scope.major.educationLevel }}
             </span>
           </div>
-          <p v-if="planProvinceName || plan.majorCode" class="mt-1.5 text-xs text-base-content/65">
-            <template v-if="planProvinceName">{{ planProvinceName }}</template>
-            <template v-if="planProvinceName && plan.majorCode"> · </template>
-            <template v-if="plan.majorCode">专业代码 {{ plan.majorCode }}</template>
+          <p v-if="provinceName || scope.majorCode" class="mt-1.5 text-xs text-base-content/65">
+            <template v-if="provinceName">{{ provinceName }}</template>
+            <template v-if="provinceName && scope.majorCode"> · </template>
+            <template v-if="scope.majorCode">专业代码 {{ scope.majorCode }}</template>
           </p>
         </div>
         <span
@@ -90,11 +91,11 @@ const nextExamDateText = computed(() =>
       <button
         class="flex h-10 items-center justify-center gap-1.5 text-xs font-medium text-base-content/60 transition active:bg-base-200/50"
         type="button"
-        aria-label="刷题计划"
-        @click="emit('edit-plan')"
+        aria-label="备考范围"
+        @click="emit('edit-scope')"
       >
         <ClipboardList :size="15" />
-        刷题计划
+        备考范围
       </button>
       <button
         class="flex h-10 items-center justify-center gap-1.5 text-xs font-medium text-base-content/60 transition active:bg-base-200/50"

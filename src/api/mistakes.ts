@@ -7,35 +7,35 @@ import type {
   CollectionPracticePaper,
 } from '@/types'
 
-/** 文档:GET /api/wrong-questions?groupBy=&order=，聚合查询错题 */
+/** 文档:GET /api/mistakes?groupBy=&order=，聚合查询错题 */
 export function fetchMistakeAggregate(
   params: { groupBy?: CollectionGroupBy; sort?: 'count' | 'recent'; order?: CollectionOrder } = {},
 ) {
-  return request<CollectionAggregate>('/wrong-questions', { query: params })
+  return request<CollectionAggregate>('/mistakes', { query: params })
 }
 
-/** 文档:POST /api/wrong-questions，body 三元组，幂等 */
+/** 文档:POST /api/mistakes，body 三元组，幂等 */
 export function addMistake(payload: CollectionContext) {
-  return request<null>('/wrong-questions', {
+  return request<null>('/mistakes', {
     method: 'POST',
     body: payload,
   })
 }
 
-/** 文档:DELETE /api/wrong-questions，body 三元组，答对自动移除错题（幂等） */
+/** 文档:DELETE /api/mistakes，body 三元组，答对自动移除错题（幂等） */
 export function removeMistakeByContext(payload: CollectionContext) {
-  return request<null>('/wrong-questions', {
+  return request<null>('/mistakes', {
     method: 'DELETE',
     body: payload,
   })
 }
 
-/** 文档:DELETE /api/wrong-questions/all，清空错题 */
+/** 文档:DELETE /api/mistakes/all，清空错题 */
 export function clearMistakes() {
-  return request<null>('/wrong-questions/all', { method: 'DELETE' })
+  return request<null>('/mistakes/all', { method: 'DELETE' })
 }
 
-/** 文档:GET /api/wrong-questions/practice?subjectId= 或 ?paperId= */
+/** 文档:GET /api/mistakes/practice?subjectId= 或 ?paperId= */
 export function fetchMistakePractice(params: { subjectId?: string; paperId?: string }) {
-  return request<CollectionPracticePaper>('/wrong-questions/practice', { query: params })
+  return request<CollectionPracticePaper>('/mistakes/practice', { query: params })
 }

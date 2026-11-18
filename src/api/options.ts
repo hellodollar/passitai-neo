@@ -1,23 +1,27 @@
 import { request } from '@/api/http'
-import type { DomainValue } from '@/generated/domain-values'
+import type { DomainValue, ProvinceCode } from '@/generated/domain-values'
 import type { OptionItem } from '@/types'
+import type { PaginationResult } from '@/types/api'
 
-/** 文档:GET /api/options/majors（支持按省份与学历层次过滤） */
-export function fetchMajorOptions(
-  query: {
-    code?: string
-    provinceCode?: string
-    educationLevel?: DomainValue<'educationLevel'>
-  } = {},
-) {
-  return request<OptionItem[]>('/options/majors', {
-    query,
-  })
+async function loadOptions(path: '/majors' | '/subjects', query: Record<string, string>) {
+  const limit = 100
+  const items: OptionItem[] = []
+  for (let page = 1; ; page++) {
+    const result = await request<PaginationResult<OptionItem>>(path, {
+      query: { ...query, page, limit },
+    })
+    items.push(...result.items)
+    if (page * limit >= result.total || result.items.length < limit) return items
+  }
 }
 
-/** 文档:GET /api/options/subjects?majorId= */
-export function fetchSubjectOptions(majorId: string, provinceCode?: string) {
-  return request<OptionItem[]>('/options/subjects', {
-    query: { majorId, provinceCode },
-  })
+export function fetchMajorOptions(query: {
+  provinceCode: ProvinceCode
+  educationLevel: DomainValue<'educationLevel'>
+}) {
+  return loadOptions('/majors', query)
+}
+
+export function fetchSubjectOptions(majorCode: string, provinceCode: ProvinceCode) {
+  return loadOptions('/subjects', { majorCode, provinceCode })
 }

@@ -35,10 +35,10 @@ export type {
   PracticeSource,
   PracticeSubmission,
   PracticeSubmissionResult,
-  PracticePlan,
-  PracticePlanSubject,
+  PracticeScope,
+  PracticeScopeSubject,
   SubmitPracticePaperBody,
-  UpdatePracticePlanBody,
+  UpdatePracticeScopeBody,
 } from './practice'
 export type {
   PracticeAnswerRecord,

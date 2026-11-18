@@ -156,7 +156,7 @@ test('答错按题目上下文收录错题', async () => {
   assert.deepEqual(requests, [
     {
       method: 'POST',
-      href: '/api/wrong-questions',
+      href: '/api/mistakes',
       body: { questionId: 'qstone', subjectId: 'subone', paperId: 'papone' },
     },
   ])
@@ -168,7 +168,7 @@ test('答对开启自动移除时按上下文移除错题', async () => {
   assert.deepEqual(requests, [
     {
       method: 'DELETE',
-      href: '/api/wrong-questions',
+      href: '/api/mistakes',
       body: { questionId: 'qstone', subjectId: 'subone', paperId: 'papone' },
     },
   ])

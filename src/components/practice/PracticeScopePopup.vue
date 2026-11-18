@@ -5,24 +5,25 @@ import { fetchMajorOptions, fetchSubjectOptions } from '@/api/options'
 import BasePopup from '@/components/common/BasePopup.vue'
 import OptionSheet from '@/components/common/OptionSheet.vue'
 import {
+  domainValues,
   openedProvinceOptions,
   type DomainValue,
   type ProvinceCode,
 } from '@/generated/domain-values'
 import { useAuthStore } from '@/stores/auth'
-import { usePracticePlanStore } from '@/stores/practice-plan'
+import { usePracticeScopeStore } from '@/stores/practice-scope'
 import type { OptionItem } from '@/types'
 import { showSuccessToast } from '@/utils/toast'
 
 const model = defineModel<boolean>({ default: false })
 const auth = useAuthStore()
-const practicePlanStore = usePracticePlanStore()
+const practiceScopeStore = usePracticeScopeStore()
 const majorOptions = ref<OptionItem[]>([])
 const subjectOptions = ref<OptionItem[]>([])
 const draftProvinceCode = ref<ProvinceCode | ''>('')
 const draftEducationLevel = ref<DomainValue<'educationLevel'>>('本科')
-const draftMajorId = ref('')
-const draftSubjectIds = ref(new Set<string>())
+const draftMajorCode = ref('')
+const draftSubjectCodes = ref(new Set<string>())
 const loading = ref(false)
 const subjectOptionsLoading = ref(false)
 const majorOptionsLoading = ref(false)
@@ -43,23 +44,26 @@ const PROVINCE_FIELD_OPTIONS = openedProvinceOptions.map((province) => ({
 }))
 
 /** 学历层次固定两档,与 api 的 educationLevel 枚举一致 */
-const EDUCATION_LEVELS: readonly DomainValue<'educationLevel'>[] = ['本科', '专科']
+const EDUCATION_LEVELS = domainValues.educationLevel
 
 const majorFieldOptions = computed(() =>
-  majorOptions.value.map((major) => ({ value: major.id, label: major.name })),
+  majorOptions.value.map((major) => ({
+    value: major.code,
+    label: `${major.name} · ${major.code}`,
+  })),
 )
 
 const canSave = computed(
   () =>
     Boolean(draftProvinceCode.value) &&
-    Boolean(draftMajorId.value) &&
+    Boolean(draftMajorCode.value) &&
     !loading.value &&
     !saving.value &&
     !subjectOptionsLoading.value &&
     !majorOptionsLoading.value &&
     !majorOptionsError.value &&
     !subjectOptionsError.value &&
-    !practicePlanStore.error,
+    !practiceScopeStore.error,
 )
 
 async function loadMajorOptions(sequence: number, token: string | undefined) {
@@ -108,25 +112,27 @@ async function loadMajorOptions(sequence: number, token: string | undefined) {
   }
 }
 
-async function loadSubjectOptions(majorId: string) {
+async function loadSubjectOptions(majorCode: string) {
   // 清空选择也必须使上一专业的请求失效。
   const sequence = ++subjectSequence
   const token = auth.session?.token
+  const provinceCode = draftProvinceCode.value
   const isCurrent = () =>
     sequence === subjectSequence && token === auth.session?.token && model.value
   subjectOptions.value = []
   subjectOptionsError.value = false
-  subjectOptionsLoading.value = Boolean(majorId)
-  if (!majorId) return
+  subjectOptionsLoading.value = Boolean(majorCode && provinceCode)
+  if (!majorCode || !provinceCode) return
   try {
-    const options = await fetchSubjectOptions(majorId, draftProvinceCode.value || undefined)
+    const options = await fetchSubjectOptions(majorCode, provinceCode)
     if (!isCurrent()) return
-    draftSubjectIds.value = new Set(
-      options.filter((option) => draftSubjectIds.value.has(option.id)).map((option) => option.id),
+    const byCode = new Map(options.map((option) => [option.code, option]))
+    draftSubjectCodes.value = new Set(
+      [...draftSubjectCodes.value].filter((code) => byCode.has(code)),
     )
     subjectOptions.value = [
-      ...options.filter((option) => draftSubjectIds.value.has(option.id)),
-      ...options.filter((option) => !draftSubjectIds.value.has(option.id)),
+      ...[...draftSubjectCodes.value].map((code) => byCode.get(code)!),
+      ...options.filter((option) => !draftSubjectCodes.value.has(option.code)),
     ]
   } catch {
     if (isCurrent()) subjectOptionsError.value = true
@@ -146,22 +152,23 @@ async function loadDraft() {
   subjectOptionsLoading.value = false
   draftProvinceCode.value = ''
   draftEducationLevel.value = '本科'
-  draftMajorId.value = ''
-  draftSubjectIds.value = new Set()
+  draftMajorCode.value = ''
+  draftSubjectCodes.value = new Set()
   subjectOptions.value = []
   try {
-    await practicePlanStore.load()
-    if (!isCurrent() || practicePlanStore.error || majorOptionsError.value) return
-    const plan = practicePlanStore.plan
-    draftProvinceCode.value = plan?.provinceCode ?? ''
-    draftEducationLevel.value = plan?.educationLevel ?? '本科'
+    await practiceScopeStore.load()
+    if (!isCurrent() || practiceScopeStore.error || majorOptionsError.value) return
+    const scope = practiceScopeStore.scope
+    draftProvinceCode.value = scope?.provinceCode ?? ''
+    draftEducationLevel.value = scope?.major.educationLevel ?? '本科'
     await loadMajorOptions(sequence, token)
     if (!isCurrent() || majorOptionsError.value) return
-    draftMajorId.value = majorOptions.value.some((option) => option.id === plan?.majorId)
-      ? plan!.majorId
-      : ''
-    draftSubjectIds.value = new Set(plan?.subjects.map((subject) => subject.id) ?? [])
-    await loadSubjectOptions(draftMajorId.value)
+    draftMajorCode.value =
+      scope && majorOptions.value.some((option) => option.code === scope.majorCode)
+        ? scope.majorCode
+        : ''
+    draftSubjectCodes.value = new Set(scope?.subjectCodes ?? [])
+    await loadSubjectOptions(draftMajorCode.value)
   } finally {
     if (isCurrent()) loading.value = false
   }
@@ -170,8 +177,8 @@ async function loadDraft() {
 async function selectProvince(code: string) {
   if (loading.value || saving.value) return
   draftProvinceCode.value = (code || '') as ProvinceCode | ''
-  draftMajorId.value = ''
-  draftSubjectIds.value = new Set()
+  draftMajorCode.value = ''
+  draftSubjectCodes.value = new Set()
   majorOptions.value = []
   loadedMajorScope = ''
   majorOptionsError.value = false
@@ -182,29 +189,29 @@ async function selectProvince(code: string) {
 async function selectEducationLevel(level: DomainValue<'educationLevel'>) {
   if (loading.value || saving.value || draftEducationLevel.value === level) return
   draftEducationLevel.value = level
-  draftMajorId.value = ''
-  draftSubjectIds.value = new Set()
+  draftMajorCode.value = ''
+  draftSubjectCodes.value = new Set()
   majorOptions.value = []
   loadedMajorScope = ''
   majorOptionsError.value = false
   await Promise.all([loadSubjectOptions(''), loadMajorOptions(loadSequence, auth.session?.token)])
 }
 
-async function selectMajor(majorId: string) {
+async function selectMajor(majorCode: string) {
   if (loading.value || saving.value) return
-  draftMajorId.value = majorId
-  draftSubjectIds.value = new Set()
-  await loadSubjectOptions(draftMajorId.value)
+  draftMajorCode.value = majorCode
+  draftSubjectCodes.value = new Set()
+  await loadSubjectOptions(draftMajorCode.value)
 }
 
-function toggleSubject(id: string) {
-  const selected = new Set(draftSubjectIds.value)
-  if (selected.has(id)) selected.delete(id)
-  else selected.add(id)
-  draftSubjectIds.value = selected
+function toggleSubject(code: string) {
+  const selected = new Set(draftSubjectCodes.value)
+  if (selected.has(code)) selected.delete(code)
+  else selected.add(code)
+  draftSubjectCodes.value = selected
 }
 
-async function savePlan() {
+async function saveScope() {
   if (!canSave.value || !draftProvinceCode.value) return
   const sequence = ++saveSequence
   const opening = loadSequence
@@ -216,14 +223,13 @@ async function savePlan() {
     model.value
   saving.value = true
   try {
-    await practicePlanStore.save({
+    await practiceScopeStore.save({
       provinceCode: draftProvinceCode.value,
-      educationLevel: draftEducationLevel.value,
-      majorId: draftMajorId.value,
-      subjectIds: [...draftSubjectIds.value],
+      majorCode: draftMajorCode.value,
+      subjectCodes: [...draftSubjectCodes.value],
     })
     if (!isCurrent()) return
-    showSuccessToast('刷题计划已更新')
+    showSuccessToast('备考范围已更新')
     model.value = false
   } catch {
     // 请求层提示失败，保留草稿以便重试。
@@ -261,8 +267,8 @@ watch(
     subjectOptions.value = []
     draftProvinceCode.value = ''
     draftEducationLevel.value = '本科'
-    draftMajorId.value = ''
-    draftSubjectIds.value = new Set()
+    draftMajorCode.value = ''
+    draftSubjectCodes.value = new Set()
   },
 )
 onBeforeUnmount(invalidateRequests)
@@ -271,17 +277,17 @@ onBeforeUnmount(invalidateRequests)
 <template>
   <BasePopup
     v-model="model"
-    title="刷题计划"
+    title="备考范围"
     compact-footer
     :close-on-backdrop="!saving"
     :close-on-escape="!saving"
   >
     <div>
       <div
-        v-if="practicePlanStore.error || majorOptionsError"
+        v-if="practiceScopeStore.error || majorOptionsError"
         class="mb-4 text-center text-sm text-error"
       >
-        <p>{{ majorOptionsError ? '专业加载失败' : '刷题计划加载失败' }}</p>
+        <p>{{ majorOptionsError ? '专业加载失败' : '备考范围加载失败' }}</p>
         <button type="button" class="btn btn-ghost btn-sm mt-1" @click="loadDraft">重试</button>
       </div>
       <fieldset :disabled="loading || saving">
@@ -321,7 +327,7 @@ onBeforeUnmount(invalidateRequests)
         <section class="px-0.5 pt-3">
           <p class="text-sm font-medium">报考专业</p>
           <OptionSheet
-            v-model="draftMajorId"
+            v-model="draftMajorCode"
             class="mt-2"
             title="选择报考专业"
             :placeholder="
@@ -355,7 +361,7 @@ onBeforeUnmount(invalidateRequests)
               <button
                 type="button"
                 class="btn btn-ghost btn-sm mt-1"
-                @click="loadSubjectOptions(draftMajorId)"
+                @click="loadSubjectOptions(draftMajorCode)"
               >
                 重试
               </button>
@@ -363,14 +369,14 @@ onBeforeUnmount(invalidateRequests)
             <div v-else-if="subjectOptions.length" class="divide-y divide-base-200">
               <label
                 v-for="subject in subjectOptions"
-                :key="subject.id"
+                :key="subject.code"
                 class="flex min-h-11 cursor-pointer items-center gap-2.5 px-3 py-2.5 transition-colors active:bg-base-200"
               >
                 <input
                   type="checkbox"
                   class="checkbox checkbox-xs checkbox-primary"
-                  :checked="draftSubjectIds.has(subject.id)"
-                  @change="toggleSubject(subject.id)"
+                  :checked="draftSubjectCodes.has(subject.code)"
+                  @change="toggleSubject(subject.code)"
                 />
                 <span class="flex-1 text-sm">{{ subject.name }}</span>
                 <span class="text-xs text-base-content/65">{{ subject.code }}</span>
@@ -380,7 +386,7 @@ onBeforeUnmount(invalidateRequests)
               v-else
               class="flex min-h-36 items-center justify-center px-5 text-center text-sm text-base-content/65"
             >
-              {{ draftMajorId ? '该专业暂无科目' : '请先选择报考专业' }}
+              {{ draftMajorCode ? '该专业暂无科目' : '请先选择报考专业' }}
             </div>
           </div>
         </section>
@@ -399,7 +405,7 @@ onBeforeUnmount(invalidateRequests)
         class="btn btn-primary h-8 min-h-8 rounded-lg px-4 text-sm"
         type="button"
         :disabled="!canSave"
-        @click="savePlan"
+        @click="saveScope"
       >
         <span v-if="saving" class="loading loading-spinner loading-xs"></span>
         {{ saving ? '保存中' : '保存' }}

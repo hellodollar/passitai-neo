@@ -5,3 +5,8 @@ export type ApiEnvelope<T> = {
   message?: string // 成功可省略，失败必填
   data: T | null
 }
+
+export type PaginationResult<T> = {
+  items: T[]
+  total: number
+}

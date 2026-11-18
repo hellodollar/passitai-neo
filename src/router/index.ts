@@ -23,6 +23,12 @@ export function createAppRouter(history: RouterHistory) {
         component: () => import('@/views/home/HomeView.vue'),
       },
       {
+        path: '/papers/:paperId',
+        name: 'paper',
+        component: () => import('@/views/papers/PaperView.vue'),
+        props: true,
+      },
+      {
         path: '/practice/:paperId',
         name: 'practice',
         component: () => import('@/views/practice/PracticeView.vue'),

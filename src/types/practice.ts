@@ -3,32 +3,44 @@ import type { DomainValue, ProvinceCode } from '@/generated/domain-values'
 import type { CollectionSource } from './collection'
 import type { QuestionContent, QuestionType } from './question'
 
-// ---- Practice plan ----
+// ---- Practice scope ----
 
-export type PracticePlanSubject = {
+export type PracticeScopeExam = {
+  subjectCode: string
+  period: string
+  examDate: string
+}
+
+export type PracticeScopeSubject = {
   id: string
-  name: string
   code: string
+  originCode: string
+  name: string
+  provinceCode: ProvinceCode
+  credit: number
+  examType: DomainValue<'examType'>
+  nextExam: PracticeScopeExam | null
 }
 
-export type PracticePlan = {
-  /** 报考省份；决定题集与考期的省份上下文。 */
+export type PracticeScope = {
   provinceCode: ProvinceCode
-  majorId: string
-  majorName: string
   majorCode: string
-  educationLevel: DomainValue<'educationLevel'>
-  nextExamDate: string | null
-  subjects: PracticePlanSubject[]
+  subjectCodes: string[]
+  major: {
+    id: string
+    code: string
+    name: string
+    educationLevel: DomainValue<'educationLevel'>
+    requiredCredits: number
+  }
+  subjects: PracticeScopeSubject[]
+  nextExam: PracticeScopeExam | null
 }
 
-export type UpdatePracticePlanBody = {
-  provinceCode: ProvinceCode
-  /** 报考学历层次,默认本科;所选专业必须属于该层次 */
-  educationLevel?: DomainValue<'educationLevel'>
-  majorId: string
-  subjectIds?: string[]
-}
+export type UpdatePracticeScopeBody = Pick<
+  PracticeScope,
+  'provinceCode' | 'majorCode' | 'subjectCodes'
+>
 
 // ---- Practice ----
 

@@ -21,17 +21,17 @@ import ChangeEmailDialog from '@/components/me/ChangeEmailDialog.vue'
 import ChangePasswordDialog from '@/components/me/ChangePasswordDialog.vue'
 import DataCleanupPopup from '@/components/me/DataCleanupPopup.vue'
 import NotificationSettingsPopup from '@/components/me/NotificationSettingsPopup.vue'
-import PracticePlanPopup from '@/components/practice/PracticePlanPopup.vue'
+import PracticeScopePopup from '@/components/practice/PracticeScopePopup.vue'
 import PracticeSettingsPopup from '@/components/practice/PracticeSettingsPopup.vue'
 import { useAppearance } from '@/composables/useAppearance'
 import { useAuthStore } from '@/stores/auth'
 import { useNotificationsStore } from '@/stores/notifications'
-import { usePracticePlanStore } from '@/stores/practice-plan'
+import { usePracticeScopeStore } from '@/stores/practice-scope'
 import { usePracticeSettingsStore } from '@/stores/practice-settings'
 
 const notifications = useNotificationsStore()
 const auth = useAuthStore()
-const practicePlanStore = usePracticePlanStore()
+const practiceScopeStore = usePracticeScopeStore()
 const practiceSettingsStore = usePracticeSettingsStore()
 const { appearanceLabel } = useAppearance()
 const router = useRouter()
@@ -39,7 +39,7 @@ const signingOut = ref(false)
 const accountPopupOpen = ref(false)
 const passwordDialogOpen = ref(false)
 const emailDialogOpen = ref(false)
-const planPopupOpen = ref(false)
+const scopePopupOpen = ref(false)
 const practiceSettingsPopupOpen = ref(false)
 const notificationSettingsOpen = ref(false)
 const cleanupPopupOpen = ref(false)
@@ -56,7 +56,7 @@ type MenuItem = {
 type SettingsAction =
   | 'account'
   | 'messages'
-  | 'plan'
+  | 'scope'
   | 'practice'
   | 'notification'
   | 'cleanup'
@@ -83,15 +83,15 @@ const menuGroups = computed<{ title: string; items: MenuItem[] }[]>(() => [
     title: '刷题',
     items: [
       {
-        title: '刷题计划',
+        title: '备考范围',
         icon: GraduationCap,
-        action: 'plan' as const,
-        subtitle: practicePlanStore.isLoading
+        action: 'scope' as const,
+        subtitle: practiceScopeStore.isLoading
           ? '加载中…'
-          : practicePlanStore.error
+          : practiceScopeStore.error
             ? '加载失败，点击重试'
-            : practicePlanStore.plan
-              ? `${practicePlanStore.plan.majorName} · ${practicePlanStore.plan.subjects.length} 个科目`
+            : practiceScopeStore.scope
+              ? `${practiceScopeStore.scope.major.name} · ${practiceScopeStore.scope.subjects.length} 个科目`
               : '选择专业和刷题科目',
       },
       { title: '通知', icon: Bell, action: 'notification' as const },
@@ -140,9 +140,9 @@ function openMenuItem(action: SettingsAction) {
     accountPopupOpen.value = true
   } else if (action === 'appearance') {
     appearancePopupOpen.value = true
-  } else if (action === 'plan') {
-    if (practicePlanStore.error) void practicePlanStore.load()
-    planPopupOpen.value = true
+  } else if (action === 'scope') {
+    if (practiceScopeStore.error) void practiceScopeStore.load()
+    scopePopupOpen.value = true
   } else if (action === 'practice') {
     if (practiceSettingsStore.error) void practiceSettingsStore.load()
     practiceSettingsPopupOpen.value = true
@@ -173,12 +173,12 @@ watch(
       accountPopupOpen.value = false
       passwordDialogOpen.value = false
       emailDialogOpen.value = false
-      planPopupOpen.value = false
+      scopePopupOpen.value = false
       practiceSettingsPopupOpen.value = false
       cleanupPopupOpen.value = false
       notificationSettingsOpen.value = false
     }
-    if (token) void Promise.allSettled([practicePlanStore.load(), practiceSettingsStore.load()])
+    if (token) void Promise.allSettled([practiceScopeStore.load(), practiceSettingsStore.load()])
   },
   { immediate: true },
 )
@@ -299,7 +299,7 @@ watch(
 
     <ChangeEmailDialog v-model="emailDialogOpen" />
 
-    <PracticePlanPopup v-model="planPopupOpen" />
+    <PracticeScopePopup v-model="scopePopupOpen" />
     <PracticeSettingsPopup v-model="practiceSettingsPopupOpen" show-mistake-settings />
     <NotificationSettingsPopup v-model="notificationSettingsOpen" />
     <AppearancePopup v-model="appearancePopupOpen" />

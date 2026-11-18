@@ -141,7 +141,7 @@ afterEach(() => {
 
 for (const [source, path, label] of [
   ['favorites', '/favorites/all', '收藏'],
-  ['mistakes', '/wrong-questions/all', '错题'],
+  ['mistakes', '/mistakes/all', '错题'],
 ]) {
   test(`确认清空${label}只删除对应集合，成功后关闭并通知刷新`, async () => {
     const dialog = mount(source)
@@ -224,7 +224,7 @@ test('切换收藏与错题后旧响应不能关闭新确认框', async () => {
   assert.deepEqual(notices, [])
   handler = () => response()
   await dialog.state.confirmClear()
-  assert.equal(calls[1].url, '/api/wrong-questions/all')
+  assert.equal(calls[1].url, '/api/mistakes/all')
   assert.equal(dialog.cleared(), 1)
 })
 

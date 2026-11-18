@@ -7,7 +7,7 @@ import { loadSource } from './helpers/load-source.mjs'
 
 const { useAuthStore } = await loadSource('stores/auth.ts')
 const { usePracticeSettingsStore } = await loadSource('stores/practice-settings.ts')
-const { usePracticePlanStore } = await loadSource('stores/practice-plan.ts')
+const { usePracticeScopeStore } = await loadSource('stores/practice-scope.ts')
 const { STORAGE_KEYS, AUTH_INVALIDATED_EVENT } = await loadSource('constants/app.ts')
 const originalFetch = globalThis.fetch
 const originalWindow = globalThis.window
@@ -154,13 +154,13 @@ test('跨标签换账号直接同步新会话并清缓存，退出只广播一�
   auth.initialize()
   await flush()
   usePracticeSettingsStore().isLoaded = true
-  usePracticePlanStore().isLoaded = true
+  usePracticeScopeStore().isLoaded = true
   persist(sessionFor('b'))
   storageChanged()
   await flush()
   assert.equal(auth.user.id, 'b')
   assert.equal(usePracticeSettingsStore().isLoaded, false)
-  assert.equal(usePracticePlanStore().isLoaded, false)
+  assert.equal(usePracticeScopeStore().isLoaded, false)
   assert.equal(calls.length, 1)
   assert.equal(auth.session.token, 'fixture-b')
   let invalidated = 0
@@ -186,7 +186,7 @@ test('迟到的旧 refreshUser 不覆盖新登录用户，用户只有一个快�
   persist(sessionFor('a'))
   const old = defer()
   const newSession = sessionFor('b')
-  handler = (url) => (url.endsWith('/profile') ? old.promise : envelope(newSession))
+  handler = (url) => (url.endsWith('/users/me') ? old.promise : envelope(newSession))
   const auth = useAuthStore()
   const refreshUser = auth.refreshUser()
   await flush()
@@ -258,7 +258,7 @@ test('更换邮箱后迟到的 refreshUser 不能覆盖新的用户快照与持�
   persist(initial)
   const old = defer()
   handler = (url) =>
-    url.endsWith('/profile/email')
+    url.endsWith('/users/me/email')
       ? envelope({ userId: initial.user.id, email: 'updated@example.invalid' })
       : old.promise
   const auth = useAuthStore()

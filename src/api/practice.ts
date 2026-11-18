@@ -1,18 +1,10 @@
 import { request } from '@/api/http'
 import type {
   PracticePaperDetail,
-  PracticeEntry,
   PracticeSettings,
   PracticeSubmission,
   SubmitPracticePaperBody,
 } from '@/types'
-
-/** 文档:GET /api/practice/entries?subjectId=&provinceCode= */
-export function fetchPracticeEntries(subjectId: string, provinceCode?: string) {
-  return request<PracticeEntry[]>('/practice/entries', {
-    query: { subjectId, provinceCode },
-  })
-}
 
 /** 文档:GET /api/practice/papers/:paperId */
 export function fetchPracticePaper(paperId: string) {

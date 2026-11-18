@@ -7,10 +7,10 @@
 - `src/App.vue`：统一宽度的页面外壳、唯一的主内容区域、底栏显示和全局提示；不向所有页面强加内边距。
 - `src/main.ts`：启动 Vue、Pinia 和路由。
 - `src/router/index.ts`：一份路由表，直接处理登录判断、会话失效和滚动。
-- `src/views/`：按现有业务分为 `home/`、`auth/`、`practice/`、`favorites/`、`mistakes/`、`me/`；未找到页直接放在此目录。
-- `src/components/`：基础组件放 `common/`，业务组件放 `collection/`、`home/`、`auth/`、`practice/`、`me/`；底栏为 `BottomTabBar.vue`。
+- `src/views/`：按现有业务分为 `home/`、`auth/`、`papers/`、`practice/`、`favorites/`、`mistakes/`、`me/`；未找到页直接放在此目录。
+- `src/components/`：基础组件放 `common/`，业务组件放 `collection/`、`home/`、`auth/`、`papers/`、`practice/`、`me/`；底栏为 `BottomTabBar.vue`。
 - `src/composables/`：响应式逻辑，例如切题、手势、收藏和错题同步。
-- 首页计划摘要与题集展示分别使用 `HomePlanCard`、`HomePracticeEntries`；请求、URL 筛选与浏览记忆仍由 `HomeView` 组织。练习本地记录由 `usePracticeRecord` 管理答案、草稿、位置、恢复、防抖保存和生命周期；`PracticeView` 保留题目输入、请求、交卷及导航。`usePracticeResult` 负责报告请求与会话隔离，报告页面负责筛选和导航，题目详情使用 `PracticeResultQuestionPopup`。
+- 首页备考范围摘要与题集展示分别使用 `HomeScopeCard`、`HomePapers`；请求、URL 筛选与浏览记忆仍由 `HomeView` 组织。练习本地记录由 `usePracticeRecord` 管理答案、草稿、位置、恢复、防抖保存和生命周期；`PracticeView` 保留题目输入、请求、交卷及导航。`usePracticeResult` 负责报告请求与会话隔离，报告页面负责筛选和导航，题目详情使用 `PracticeResultQuestionPopup`。
 - `src/api/`、`src/stores/`：接口和共享状态。
 - `src/utils/`：按 `practice/`、`auth/`、`browse/` 分组；组内文件使用 `record.ts`、`session.ts` 等直接名称，通用的 `storage.ts` 和 `toast.ts` 保留在根目录。
 - `src/types/`、`src/constants/`、`src/assets/`：业务类型、手写常量和静态资源。
@@ -38,6 +38,7 @@ JSONC 配置文件不使用尾随逗号，与 dash 的 `wrangler.jsonc` 风格�
 | 页面           | 地址                                                                            | 文件                                          |
 | -------------- | ------------------------------------------------------------------------------- | --------------------------------------------- |
 | 首页           | `/`                                                                             | `home/HomeView.vue`                           |
+| 题集预览       | `/papers/:paperId`                                                              | `papers/PaperView.vue`                        |
 | 刷题           | `/practice/:paperId`                                                            | `practice/PracticeView.vue`                   |
 | 刷题结果       | `/practice/:paperId/result/:submissionId`                                       | `practice/PracticeResultView.vue`             |
 | 我的收藏       | `/favorites`                                                                    | `favorites/FavoritesView.vue`                 |
@@ -66,7 +67,8 @@ JSONC 配置文件不使用尾随逗号，与 dash 的 `wrangler.jsonc` 风格�
 - 页面请求按会话 Token 和加载顺序隔离。切换练习或账号时，旧答案、定时器、收藏 ID 和迟到响应不能进入新页面。
 - 切换交卷报告或账号时先清空原报告，关闭题目详情并重置筛选；离页后的旧报告响应不能更新页面。退出登录不再发起新的报告请求。
 - 接口函数处理协议，共享状态进 Store，弹窗和加载等临时状态留在组件。基础 UI 只通过 props、事件和插槽协作；业务弹窗可以直接调用对应 Store。每次失败只由一个位置提示。
-- API 契约以后端为准，见 [客户端 API](client-api.md)。前端错题模块为 `mistakes`，后端 `/wrong-questions`、`wrongQuestionId`、`recordWrongQuestions` 按实际协议使用；生成的领域取值不手改。
+- API 契约以后端为准，见 [客户端 API](client-api.md)。前端错题模块为 `mistakes`，后端 `/mistakes`、`wrongQuestionId`、`recordWrongQuestions` 按实际协议使用；生成的领域取值不手改。
+- 本轮题库链路为备考范围 → 按科目代码分页浏览题集 → 预览分组和题目。预览只读取题目内容，后续表的作答、报告、收藏和错题流程留待对接。
 - 本地作答与服务端交卷报告独立；只读取当前 v3 记录，详见 [本地做题记录](practice-local-records.md)。本地清理不删除服务端报告、收藏或错题。
 
 ## 检查

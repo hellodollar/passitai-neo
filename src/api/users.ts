@@ -7,12 +7,12 @@ import type {
   User,
 } from '@/types'
 
-export function fetchProfile() {
-  return request<User>('/profile', { retry: 0, timeout: 10_000 })
+export function fetchCurrentUser() {
+  return request<User>('/users/me', { retry: 0, timeout: 10_000 })
 }
 
 export function changePassword(payload: PasswordChangeBody) {
-  return request<PasswordChangeResult>('/profile/password', {
+  return request<PasswordChangeResult>('/users/me/password', {
     method: 'PUT',
     body: payload,
     notify: true,
@@ -20,7 +20,7 @@ export function changePassword(payload: PasswordChangeBody) {
 }
 
 export function changeEmail(payload: EmailChangeBody) {
-  return request<EmailChangeResult>('/profile/email', {
+  return request<EmailChangeResult>('/users/me/email', {
     method: 'PUT',
     body: payload,
     notify: true,

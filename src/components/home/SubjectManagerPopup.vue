@@ -3,11 +3,11 @@ import { ArrowDown, ArrowUp, Target } from '@lucide/vue'
 
 import BasePopup from '@/components/common/BasePopup.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
-import type { PracticePlanSubject } from '@/types/practice'
+import type { PracticeScopeSubject } from '@/types/practice'
 
 const model = defineModel<boolean>({ default: false })
 defineProps<{
-  subjects: PracticePlanSubject[]
+  subjects: PracticeScopeSubject[]
   activeSubjectCode?: string
   hiddenSubjectCodes: ReadonlySet<string>
 }>()
@@ -79,7 +79,7 @@ const emit = defineEmits<{
         v-if="subjects.length === 0"
         :icon="Target"
         title="暂无可管理科目"
-        description="暂无练习计划科目。"
+        description="暂无备考范围科目。"
         embedded
       />
     </div>

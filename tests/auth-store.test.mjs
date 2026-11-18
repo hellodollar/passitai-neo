@@ -7,7 +7,7 @@ import { loadSource } from './helpers/load-source.mjs'
 
 const { useAuthStore } = await loadSource('stores/auth.ts')
 const { usePracticeSettingsStore } = await loadSource('stores/practice-settings.ts')
-const { usePracticePlanStore } = await loadSource('stores/practice-plan.ts')
+const { usePracticeScopeStore } = await loadSource('stores/practice-scope.ts')
 const { STORAGE_KEYS } = await loadSource('constants/app.ts')
 let pinia
 const previousFetch = globalThis.fetch
@@ -62,11 +62,11 @@ test('改密码后的本地清理不再调用已经失效的 Token 登出，并�
   }
   const auth = useAuthStore()
   const practice = usePracticeSettingsStore()
-  const plan = usePracticePlanStore()
+  const scope = usePracticeScopeStore()
   practice.isLoaded = true
   practice.settings = { autoNext: true }
-  plan.isLoaded = true
-  plan.plan = { majorName: '汉语言文学' }
+  scope.isLoaded = true
+  scope.scope = { majorName: '汉语言文学' }
   assert.equal(auth.isAuthenticated, true)
   auth.clearSession()
   assert.equal(auth.isAuthenticated, false)
@@ -75,8 +75,8 @@ test('改密码后的本地清理不再调用已经失效的 Token 登出，并�
   assert.equal(window.localStorage.getItem(STORAGE_KEYS.authSession), null)
   assert.equal(practice.isLoaded, false)
   assert.equal(practice.settings, null)
-  assert.equal(plan.isLoaded, false)
-  assert.equal(plan.plan, null)
+  assert.equal(scope.isLoaded, false)
+  assert.equal(scope.scope, null)
   auth.clearSession() // repeated cleanup remains harmless
 })
 
@@ -117,7 +117,7 @@ test('修改邮箱由账户 Store 更新唯一用户快照，不追加 GET profi
   )
   assert.equal(requests.length, 1)
   assert.equal(requests[0].method, 'PUT')
-  assert.ok(requests[0].url.endsWith('/profile/email'))
+  assert.ok(requests[0].url.endsWith('/users/me/email'))
 })
 
 test('修改密码由账户 Store 清理会话，不再请求资料或登出', async () => {
@@ -134,5 +134,5 @@ test('修改密码由账户 Store 清理会话，不再请求资料或登出', a
   assert.equal(auth.session, null)
   assert.equal(requests.length, 1)
   assert.equal(requests[0].method, 'PUT')
-  assert.ok(requests[0].url.endsWith('/profile/password'))
+  assert.ok(requests[0].url.endsWith('/users/me/password'))
 })
