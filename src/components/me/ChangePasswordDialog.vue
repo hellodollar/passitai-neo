@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { KeyRound, Lock, ShieldCheck } from '@lucide/vue'
+import { KeyRound, LockKeyhole, ShieldCheck } from '@lucide/vue'
 import { reactive, ref, useId, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
@@ -121,7 +121,7 @@ async function submit() {
         <FormField
           v-model="form.currentPassword"
           label="当前密码"
-          :icon="Lock"
+          :icon="LockKeyhole"
           :error="errors.currentPassword"
           type="password"
           autocomplete="current-password"

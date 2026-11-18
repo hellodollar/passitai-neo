@@ -2,6 +2,7 @@
 import type { LucideIcon } from '@lucide/vue'
 import {
   Bell,
+  BellRing,
   ChevronRight,
   Eraser,
   GraduationCap,
@@ -94,7 +95,7 @@ const menuGroups = computed<{ title: string; items: MenuItem[] }[]>(() => [
               ? `${examPlanStore.plan.major.name} · ${examPlanStore.plan.subjects.length} 个科目`
               : '选择专业和刷题科目',
       },
-      { title: '通知', icon: Bell, action: 'notification' as const },
+      { title: '通知', icon: BellRing, action: 'notification' as const },
       {
         title: '刷题设置',
         icon: Settings2,

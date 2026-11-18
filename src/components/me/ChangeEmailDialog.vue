@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Mail, ShieldCheck } from '@lucide/vue'
+import { LockKeyhole, Mail } from '@lucide/vue'
 import { reactive, ref, useId, watch } from 'vue'
 
 import BaseDialog from '@/components/common/BaseDialog.vue'
@@ -111,7 +111,7 @@ async function submit() {
         <FormField
           v-model="form.password"
           label="当前密码"
-          :icon="ShieldCheck"
+          :icon="LockKeyhole"
           :error="errors.password"
           type="password"
           autocomplete="current-password"

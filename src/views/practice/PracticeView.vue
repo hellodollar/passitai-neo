@@ -5,7 +5,7 @@ import {
   ClipboardCheck,
   ClipboardList,
   Grid2X2,
-  Settings,
+  Settings2,
 } from '@lucide/vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -874,7 +874,7 @@ watch(answerSheetOpen, (open) => {
           aria-label="答题设置"
           @click="settingsPopupOpen = true"
         >
-          <Settings :size="19" />
+          <Settings2 :size="19" />
           <span>设置</span>
         </button>
       </div>

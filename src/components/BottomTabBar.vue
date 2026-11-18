@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { BookMarked, Home, UserRound, XCircle } from '@lucide/vue'
+import { BookMarked, BookX, Home, UserRound } from '@lucide/vue'
 import { RouterLink } from 'vue-router'
 
 import { useNotificationsStore } from '@/stores/notifications'
@@ -8,7 +8,7 @@ const notifications = useNotificationsStore()
 const items: Array<{ label: string; to: string; icon: typeof Home }> = [
   { label: '首页', to: '/', icon: Home },
   { label: '收藏', to: '/favorites', icon: BookMarked },
-  { label: '错题', to: '/mistakes', icon: XCircle },
+  { label: '错题', to: '/mistakes', icon: BookX },
   { label: '我的', to: '/me', icon: UserRound },
 ]
 </script>

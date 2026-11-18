@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ClipboardList, GraduationCap, Settings2 } from '@lucide/vue'
+import { GraduationCap, Settings2 } from '@lucide/vue'
 import { differenceInCalendarDays, format, parseISO } from 'date-fns'
 import { computed } from 'vue'
 
@@ -94,7 +94,7 @@ const nextExamDateText = computed(() =>
         aria-label="考试计划"
         @click="emit('edit-exam-plan')"
       >
-        <ClipboardList :size="15" />
+        <GraduationCap :size="15" />
         考试计划
       </button>
       <button

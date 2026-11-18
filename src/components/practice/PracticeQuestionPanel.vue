@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CheckCircle2, ClipboardCheck, XCircle } from '@lucide/vue'
+import { CircleCheck, CircleX, ClipboardCheck } from '@lucide/vue'
 import { computed } from 'vue'
 
 import { questionTypeLabels } from '@/generated/domain-values'
@@ -227,8 +227,8 @@ function optionMarkerClasses(optionValue: string) {
         "
       >
         <ClipboardCheck v-if="!canGrade" :size="16" />
-        <CheckCircle2 v-else-if="answerCorrect" :size="16" />
-        <XCircle v-else :size="16" />
+        <CircleCheck v-else-if="answerCorrect" :size="16" />
+        <CircleX v-else :size="16" />
         {{ !canGrade ? '已作答' : answerCorrect ? '回答正确' : '回答错误' }}
       </div>
       <dl

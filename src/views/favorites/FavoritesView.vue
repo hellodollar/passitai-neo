@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { AlertCircle, ChevronRight, FileStack, BookMarked } from '@lucide/vue'
+import { BookMarked, BookOpen, ChevronRight, CircleAlert, FileText } from '@lucide/vue'
 import { onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -269,7 +269,7 @@ watch(
 
       <PagePlaceholder v-else-if="loadError && items.length === 0">
         <EmptyState
-          :icon="AlertCircle"
+          :icon="CircleAlert"
           tone="error"
           title="加载失败"
           description="请检查网络后重试。"
@@ -310,7 +310,7 @@ watch(
           <span
             class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"
           >
-            <FileStack :size="18" />
+            <component :is="displayedGroupMode === 'paper' ? FileText : BookOpen" :size="18" />
           </span>
 
           <span class="min-w-0 flex-1">

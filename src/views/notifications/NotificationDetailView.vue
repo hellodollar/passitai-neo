@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { AlertCircle, BookOpenCheck } from '@lucide/vue'
+import { BookOpenCheck, CircleAlert } from '@lucide/vue'
 import { onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -107,7 +107,7 @@ onBeforeUnmount(() => {
       </div>
       <div v-else-if="error" class="py-10">
         <EmptyState
-          :icon="AlertCircle"
+          :icon="CircleAlert"
           tone="error"
           :title="error"
           action-label="重新获取"

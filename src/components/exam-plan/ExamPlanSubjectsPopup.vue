@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowDown, ArrowUp, Target } from '@lucide/vue'
+import { ArrowDown, ArrowUp, GraduationCap } from '@lucide/vue'
 
 import BasePopup from '@/components/common/BasePopup.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
@@ -77,7 +77,7 @@ const emit = defineEmits<{
 
       <EmptyState
         v-if="subjects.length === 0"
-        :icon="Target"
+        :icon="GraduationCap"
         title="暂无可管理科目"
         description="考试计划中暂无科目。"
         embedded

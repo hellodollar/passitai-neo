@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Lock, LockKeyhole, Mail, TicketPercent } from '@lucide/vue'
+import { LockKeyhole, Mail, ShieldCheck, TicketPercent } from '@lucide/vue'
 import { reactive, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
@@ -126,7 +126,7 @@ async function submit() {
       <FormField
         v-model="form.confirmPassword"
         label="确认密码"
-        :icon="Lock"
+        :icon="ShieldCheck"
         :error="errors.confirmPassword"
         type="password"
         autocomplete="new-password"

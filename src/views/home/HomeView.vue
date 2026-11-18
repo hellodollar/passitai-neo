@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { AlertCircle, Bell, ChevronRight, EyeOff, Target } from '@lucide/vue'
+import { Bell, ChevronRight, CircleAlert, EyeOff, GraduationCap } from '@lucide/vue'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -248,7 +248,7 @@ watch(
 
       <PagePlaceholder v-else-if="examPlanStore.error">
         <EmptyState
-          :icon="AlertCircle"
+          :icon="CircleAlert"
           tone="error"
           :title="examPlanStore.error"
           description="请重试加载考试计划。"
@@ -259,7 +259,7 @@ watch(
 
       <PagePlaceholder v-else-if="!examPlan">
         <EmptyState
-          :icon="Target"
+          :icon="GraduationCap"
           title="暂无考试计划"
           description="先选择报考专业与刷题科目。"
           action-label="设置考试计划"
@@ -324,7 +324,7 @@ watch(
 
           <EmptyState
             v-if="!examPlanSubjects.length"
-            :icon="Target"
+            :icon="GraduationCap"
             title="还没有选择科目"
             action-label="选择科目"
             embedded
