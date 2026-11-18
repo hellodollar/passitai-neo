@@ -243,7 +243,7 @@ interface ChangeEmailBody {
 归属只能为平台（`ownerId=NULL`）或当前用户；其他用户资源视为不存在。
 
 题集列表字段：`id / subjectCode / provinceCode / name / type / paperLayout / contentPeriod / sourceType / questionCount`。
-按 `contentPeriod DESC, id DESC` 排序。`type` 必填，值为 `pointCoverage / highFrequency / errorTarget`；
+按 `contentPeriod DESC, id DESC` 排序。`type` 必填，值为 `pointCoverage / highFrequency / errorTarget / realSource`，其中 `realSource` 表示真题。
 `paperLayout` 为 `custom / exam`，与题集来源 `system / ai` 分开。
 
 详情附 `sections: [{ name, questionType?, perScore?, questionIds, items }]`。
