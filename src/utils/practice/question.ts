@@ -1,6 +1,7 @@
 import type {
   PracticeAnswerRecord,
   PracticePaperItem,
+  QuestionContent,
   QuestionListItem,
   QuestionType,
 } from '@/types'
@@ -66,7 +67,7 @@ export function getPreviewOptions(
   return []
 }
 
-export function parseQuestionTitle(question: QuestionListItem | undefined) {
+export function parseQuestionTitle(question: QuestionContent | undefined) {
   const title = question?.title.trim() ?? ''
   if (!title) return { title: '', options: [] as NormalizedQuestionOption[] }
   const lines = title.split(/\r?\n/)
@@ -89,7 +90,7 @@ function normalizeOption(option: string, index: number): NormalizedQuestionOptio
   return text ? { label: fallbackLabel, text, value: fallbackLabel } : null
 }
 
-export function getQuestionOptions(question: QuestionListItem | undefined) {
+export function getQuestionOptions(question: QuestionContent | undefined) {
   if (!question) return []
   const letterOptions = [question.A, question.B, question.C, question.D, question.E, question.F]
     .map((option, index) => (option ? normalizeOption(option, index) : null))
@@ -109,7 +110,7 @@ function parseChoiceAnswerValues(value: string | string[]) {
   return tokens.length === 1 && /^[A-H]{2,8}$/.test(tokens[0]!) ? [...tokens[0]!] : tokens
 }
 
-export function getReferenceAnswer(question: QuestionListItem | undefined) {
+export function getReferenceAnswer(question: QuestionContent | undefined) {
   return question?.correctAnswer ?? ''
 }
 
@@ -118,12 +119,12 @@ export function isChoiceQuestionType(type: QuestionType | undefined): boolean {
   return type === 'single' || type === 'multiple' || type === 'judge'
 }
 
-export function getCorrectOptionValues(
-  question: QuestionListItem | undefined,
+function resolveOptionValues(
+  rawValues: string | string[],
+  question: QuestionContent,
   options = getQuestionOptions(question),
 ) {
-  if (!question) return []
-  const expectedValues = new Set(parseChoiceAnswerValues(getReferenceAnswer(question)))
+  const expectedValues = new Set(parseChoiceAnswerValues(rawValues))
   if (question.questionType === 'judge') {
     if (expectedValues.has('TRUE') || expectedValues.has('正确')) expectedValues.add('A')
     if (expectedValues.has('FALSE') || expectedValues.has('错误')) expectedValues.add('B')
@@ -138,13 +139,24 @@ export function getCorrectOptionValues(
     .map((option) => option.value)
 }
 
-export function isAnswerCorrect(record: PracticeAnswerRecord, question: QuestionListItem) {
+export function getCorrectOptionValues(
+  question: QuestionContent | undefined,
+  options = getQuestionOptions(question),
+) {
+  if (!question) return []
+  return resolveOptionValues(getReferenceAnswer(question), question, options)
+}
+
+export function isAnswerCorrect(record: PracticeAnswerRecord, question: QuestionContent) {
   const reference = getReferenceAnswer(question).trim()
   if (!reference) return false
   const isChoice = isChoiceQuestionType(question.questionType)
-  const expectedValues = isChoice ? getCorrectOptionValues(question) : [reference.toUpperCase()]
+  const options = isChoice ? getQuestionOptions(question) : []
+  const expectedValues = isChoice
+    ? getCorrectOptionValues(question, options)
+    : [reference.toUpperCase()]
   const actualValues = isChoice
-    ? parseChoiceAnswerValues(record.values)
+    ? resolveOptionValues(record.values.length > 0 ? record.values : record.text, question, options)
     : [record.text.trim().toUpperCase()]
   const expected = expectedValues
     .map((value) => value.toUpperCase())
@@ -154,5 +166,5 @@ export function isAnswerCorrect(record: PracticeAnswerRecord, question: Question
     .map((value) => value.toUpperCase())
     .sort()
     .join(',')
-  return actual === expected
+  return actual.length > 0 && actual === expected
 }

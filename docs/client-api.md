@@ -243,7 +243,7 @@ Neo 首页按科目加载练习模板，从模板的 `list` 获取可打开的�
 | ------- | ------------------------------------------------------------- | ------------------------------ | -------- |
 | `GET`   | `/api/practice/exam-plan`                                     | 获取当前考试计划               | 可用     |
 | `PUT`   | `/api/practice/exam-plan`                                     | 整体替换考试计划               | 可用     |
-| `GET`   | `/api/practice/templates?subjectCode=`                       | 获取指定科目的练习模板         | 可用     |
+| `GET`   | `/api/practice/resources?subjectCode=`                       | 获取指定科目的练习资源         | 可用     |
 | `GET`   | `/api/practice/settings`                                      | 获取用户刷题设置               | 可用     |
 | `PATCH` | `/api/practice/settings`                                      | 修改用户刷题设置               | 可用     |
 | `GET`   | `/api/papers/:id` | 新版题集和题目，见第3节 | 本轮已实现 |
@@ -269,13 +269,14 @@ Neo 首页按科目加载练习模板，从模板的 `list` 获取可打开的�
 所选科目均附 `nextExam: { subjectCode, period, examDate } | null`；计划级 `nextExam` 取最近一场。
 考期从 `subject_exams_schedules` 按科目及省份读取，以北京时间的今天为下限；同日按期次、科目代码稳定排序，不随计划落库。
 
-### 练习模板
+### 练习资源
 
-`GET /api/practice/templates?subjectCode=GD-13811` 返回指定科目的启用模板，按 `sort` 升序、同序按 `id` 排列。
+`GET /api/practice/resources?subjectCode=GD-13811-test` 返回指定科目的启用模板及其题集，按 `sort` 升序、同序按 `id` 排列。
 科目必须启用、开考且未删除，无可用模板返回 `[]`。每条模板返回 `id`、`name`、`type`、`list`。
 `type` 取 `baseline`、`mockExams`、`pastExams` 或 `aiEnhance`，供业务判断。Neo 使用 `name` 展示模板名称。
 模板下的题集沿用题集自身的分类。
-`list` 是模板下的题集列表，当前固定为 `[]`。Neo 在所选科目下展示模板，题集入口来自各模板的 `list`。
+`list` 按管理端配置顺序返回仍可用的同科目公开题集，使用题集详情的基础字段（含 `questionCount`）。未编排或无可用题集时为 `[]`。
+接口仅返回题集列表，不返回模板占比、题集占比或题目答案。旧 `/api/practice/templates` 已移除。
 
 ### 刷题设置
 
@@ -500,7 +501,7 @@ PUT    /api/users/me/email
 
 GET    /api/practice/exam-plan
 PUT    /api/practice/exam-plan
-GET    /api/practice/templates?subjectCode=
+GET    /api/practice/resources?subjectCode=
 
 GET    /api/practice/settings
 PATCH  /api/practice/settings

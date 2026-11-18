@@ -41,6 +41,23 @@
 - 模块别名使用 `@/`。注释解释约束、原因和边界，不复述代码；删除被改动逻辑的失效注释。
 - 格式由 oxfmt 负责：两空格、单引号、无分号、导入排序；JSONC 无尾逗号。只格式化本次涉及文件，不手工争论格式或修改生成文件。
 
+### `types`、`constants`、`utils`、`stores` 模块契约
+
+- **`src/types/`（单一模型与统一聚合导出）**：
+  - 统一使用 `export type` 声明业务类型，通过 `src/types/index.ts` 聚合导出；`src/types/` 外部统一从 `@/types` 导入，不混用 `@/types/<子模块>` 深层导入。
+  - 字段命名严格对齐 `client-api.md`（如 `favId`、`mistakeId`）；不为同一业务概念建立多套近似结构或无区分语义的同义别名（如 `type A = B`），也不拆出只有一两行的碎片类型文件。接口或页面移除后同步删除废弃类型。
+- **`src/constants/`（集中管理常量与存储/事件标识）**：
+  - 只存放跨模块复用的业务常量、存储键及前缀（`STORAGE_KEYS`）、自定义事件名；不在 `utils` 或组件中散落硬编码 `passitai:*` 键名，也不把纯常量文件放进 `src/utils/`。
+  - 后端枚举与展示映射优先使用 `src/generated/` 生成结果；手写常量在消费方移除后立即清理，不留零引用常量文件。
+- **`src/utils/`（纯函数与单一领域规则）**：
+  - 只放无组件生命周期依赖的纯函数；持有响应式状态（`ref` / `computed` / `watch`）的模块应归入 `src/composables/` 或 `src/stores/`。
+  - 同一业务规则（如题目选项解析与判分、时区日期格式化、带容错的 Storage 读写）在 `utils` 内只保留一套实现，禁止在不同工具文件中各写一套近似解析或归一化逻辑。
+  - 保持实现简洁直接，不为简单本地状态设计多层包装、冗余同步读回校验或脱离实际业务规模的复杂状态机。
+- **`src/stores/`（单一异步状态范式与统一会话重置）**：
+  - 只管理跨组件共享的会话或服务端状态；弹层开合、按钮 `saving`、局部输入草稿留在组件内。
+  - 远程状态/配置类 Store 统一使用 `createSessionGuard()`（或基于它的 `useRemoteSettings`）处理并发读取去重、写入作废在途读取及串行提交；异步状态命名统一为 `isLoaded`、`isLoading`、`error: Ref<string | null>` 及 `load()` / `save()` / `reset()`，不在不同 Store 中混用 `loading`、`error: ''`、自建 `epoch/readVersion` 等第二套范式。
+  - 会话切换与退出由 `useAuthStore` 单点调用各 Store 的 `reset()`，各业务 Store 内部不再重复 `watch` 会话 Token。
+
 ## Vue 3 与 TypeScript
 
 - 新组件使用 Composition API 和 `<script setup lang="ts">`，props、事件、双向模型有明确类型。使用现有 Vue 能力，不增加只转发 props/事件的包装组件。

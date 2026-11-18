@@ -5,6 +5,7 @@ import { computed } from 'vue'
 
 import { provinceOptions } from '@/generated/domain-values'
 import type { ExamPlan } from '@/types'
+import { formatShanghaiDate } from '@/utils/notifications'
 
 const props = defineProps<{
   plan: ExamPlan
@@ -26,8 +27,7 @@ const nextExamDate = computed(() => {
 })
 const daysUntilExam = computed(() => {
   if (!nextExamDate.value) return null
-  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Shanghai' }).format(new Date())
-  return Math.max(0, differenceInCalendarDays(nextExamDate.value, parseISO(today)))
+  return Math.max(0, differenceInCalendarDays(nextExamDate.value, parseISO(formatShanghaiDate())))
 })
 const nextExamDateText = computed(() =>
   nextExamDate.value ? format(nextExamDate.value, 'yyyy年M月d日') : '',

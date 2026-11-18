@@ -66,7 +66,7 @@
 | 题目 `type`        | `single`、`multiple`、`judge`、`nounExplain`、`shortAnswer`、`essay` |
 | 题目 `sourceType`  | `system`、`crawler`、`manual`、`import`、`ai`                        |
 
-模板 `config` 目前仅约束为 JSON 对象，完整编排结构待确认；Client 返回的 `list` 目前为 `[]`。不能假定模板已绑定题集，也不恢复旧 bundle 的权重、轮次或分档算法。
+模板 `config` 保存模板占比、题集及其占比。Client 从 `/api/practice/resources` 获取已配置且可用的题集 `list`，占比仅保存在管理端。
 
 题集用 `sections` 组织题目，不表示题目独占一个题集。题数等派生字段按服务端计算，不自行加成数据库列。题集真题类型、布局和题目 `isPastExam` 语义各自独立。
 

@@ -10,7 +10,7 @@ import PagePlaceholder from '@/components/common/PagePlaceholder.vue'
 import ExamPlanCard from '@/components/exam-plan/ExamPlanCard.vue'
 import ExamPlanPopup from '@/components/exam-plan/ExamPlanPopup.vue'
 import ExamPlanSubjectsPopup from '@/components/exam-plan/ExamPlanSubjectsPopup.vue'
-import HomePracticeTemplates from '@/components/home/HomePracticeTemplates.vue'
+import HomePracticeResources from '@/components/home/HomePracticeResources.vue'
 import NotificationStrip from '@/components/home/NotificationStrip.vue'
 import PracticeSettingsPopup from '@/components/practice/PracticeSettingsPopup.vue'
 import { useBrowseScroll } from '@/composables/useBrowseScroll'
@@ -342,7 +342,7 @@ watch(
             />
           </div>
 
-          <HomePracticeTemplates
+          <HomePracticeResources
             v-else
             :subject-code="activeSubject.code"
             @open-paper="openPaper"

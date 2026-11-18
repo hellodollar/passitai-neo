@@ -73,7 +73,7 @@ localStorage 同源共享；sessionStorage 不作为跨标签同步通道，不�
 
 - 首页、收藏、错题由 `useBrowseScroll` 在内容加载后等待 Vue 更新及下一帧再恢复 `window` 滚动位置。离页/`pagehide` 记录位置，未恢复的加载页不能覆盖原位置。
 - 其他路由按 Router 历史位置或回顶部，同路径 query 切换不强制置顶。
-- `HomePracticeTemplates` 在 watcher 清理时取消 `AbortController`，signal 传入请求；科目、账号变化及卸载取消旧请求。
+- `HomePracticeResources` 从 `/api/practice/resources` 读取已编排题集，在 watcher 清理时取消 `AbortController`，signal 传入请求；科目、账号变化及卸载取消旧请求。
 - 收藏/错题列表、考试计划弹层、作答加载使用序号、Token、开合或卸载状态检查，忽略迟到响应。不是所有请求均已物理取消，不能只依赖 abort 保证正确性。
 - 请求开始固定身份，旧请求成功、失败或 401 不能覆盖新账号。离页清理计时器与监听，主动取消不作为业务失败提示。
 

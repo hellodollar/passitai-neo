@@ -31,7 +31,7 @@ export type {
   NotificationSummary,
 } from './notification'
 export type { Paper, PaperDetail, PaperLayout, PaperQuestion, PaperType } from './paper'
-export type { PracticeTemplate } from './practice-template'
+export type { PracticeResource } from './practice-resource'
 export type { QuestionContent, QuestionListItem, QuestionType } from './question'
 export type {
   CollectionPracticePaper,

@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 
-import { fetchPracticeTemplates } from '@/api/practice-templates'
+import { fetchPracticeResources } from '@/api/practice-resources'
 import { useAuthStore } from '@/stores/auth'
-import type { Paper, PracticeTemplate } from '@/types'
+import type { Paper, PracticeResource } from '@/types'
 
 const props = defineProps<{ subjectCode: string }>()
 const emit = defineEmits<{ 'open-paper': [paper: Paper]; loaded: [] }>()
 const auth = useAuthStore()
-const templates = ref<PracticeTemplate[]>([])
+const templates = ref<PracticeResource[]>([])
 const loading = ref(false)
 const error = ref(false)
 const retry = ref(0)
@@ -23,7 +23,7 @@ watch(
     const controller = new AbortController()
     onCleanup(() => controller.abort())
     try {
-      const result = await fetchPracticeTemplates(code, controller.signal)
+      const result = await fetchPracticeResources(code, controller.signal)
       if (controller.signal.aborted) return
       templates.value = result
       emit('loaded')

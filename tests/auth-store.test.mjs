@@ -6,6 +6,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { loadSource } from './helpers/load-source.mjs'
 
 const { useAuthStore } = await loadSource('stores/auth.ts')
+const { useNotificationSettingsStore } = await loadSource('stores/notification-settings.ts')
 const { usePracticeSettingsStore } = await loadSource('stores/practice-settings.ts')
 const { useExamPlanStore } = await loadSource('stores/exam-plan.ts')
 const { STORAGE_KEYS } = await loadSource('constants/app.ts')
@@ -61,8 +62,11 @@ test('改密码后的本地清理不再调用已经失效的 Token 登出，并�
     throw new Error('Local session reset must not request logout')
   }
   const auth = useAuthStore()
+  const notificationSettings = useNotificationSettingsStore()
   const practice = usePracticeSettingsStore()
   const scope = useExamPlanStore()
+  notificationSettings.isLoaded = true
+  notificationSettings.settings = { inAppBanner: true, contentPreview: true }
   practice.isLoaded = true
   practice.settings = { autoNext: true }
   scope.isLoaded = true
@@ -73,6 +77,8 @@ test('改密码后的本地清理不再调用已经失效的 Token 登出，并�
   assert.equal(auth.session, null)
   assert.equal(auth.user, null)
   assert.equal(window.localStorage.getItem(STORAGE_KEYS.authSession), null)
+  assert.equal(notificationSettings.isLoaded, false)
+  assert.equal(notificationSettings.settings, null)
   assert.equal(practice.isLoaded, false)
   assert.equal(practice.settings, null)
   assert.equal(scope.isLoaded, false)

@@ -1,4 +1,4 @@
-const dateKey = (value: Date) =>
+export const formatShanghaiDate = (value = new Date()) =>
   new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Asia/Shanghai',
     year: 'numeric',
@@ -7,10 +7,10 @@ const dateKey = (value: Date) =>
   }).format(value)
 
 export function notificationDayGroup(value: string, now = new Date()): '今天' | '昨天' | '更早' {
-  const key = dateKey(new Date(value))
-  return key === dateKey(now)
+  const key = formatShanghaiDate(new Date(value))
+  return key === formatShanghaiDate(now)
     ? '今天'
-    : key === dateKey(new Date(now.getTime() - 86_400_000))
+    : key === formatShanghaiDate(new Date(now.getTime() - 86_400_000))
       ? '昨天'
       : '更早'
 }
