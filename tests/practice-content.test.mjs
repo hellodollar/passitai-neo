@@ -73,7 +73,7 @@ for (const source of ['favorites', 'mistakes']) {
                 correctAnswer: 'A',
                 explanation: '解析',
                 favId: 'fav-one',
-                wrongQuestionId: 'mistake-one',
+                mistakeId: 'mistake-one',
               },
             ],
           },

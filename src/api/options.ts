@@ -1,7 +1,6 @@
 import { request } from '@/api/http'
 import type { DomainValue, ProvinceCode } from '@/generated/domain-values'
-import type { OptionItem, SubjectOptionItem } from '@/types'
-import type { PaginationResult } from '@/types/api'
+import type { OptionItem, PaginationResult, SubjectOptionItem } from '@/types'
 
 async function loadOptions<T extends OptionItem>(
   path: '/majors' | '/subjects',

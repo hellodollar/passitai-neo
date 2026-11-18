@@ -29,7 +29,7 @@ export type PracticePaperItem = QuestionContent & {
   /** 收藏记录 ID，与错题记录 ID 分开；未收藏时为 null。 */
   favId?: string | null
   /** 错题记录 ID，只用于移除错题，不可用于取消收藏。 */
-  wrongQuestionId?: string | null
+  mistakeId?: string | null
   subjectId?: string | null
   paperId?: string | null
 }

@@ -1,4 +1,4 @@
-export type { ApiEnvelope } from './api'
+export type { ApiEnvelope, PaginationResult } from './api'
 export type {
   AuthCredentials,
   AuthSession,
@@ -22,6 +22,16 @@ export type {
   FavoriteMutationResult,
 } from './collection'
 export type { OptionItem, SubjectOptionItem } from './catalog'
+export type { ExamPlan, ExamPlanSubject, ScheduledExam, UpdateExamPlanBody } from './exam-plan'
+export type {
+  NotificationDetail,
+  NotificationItem,
+  NotificationList,
+  NotificationSettings,
+  NotificationSummary,
+} from './notification'
+export type { Paper, PaperDetail, PaperLayout, PaperQuestion, PaperType } from './paper'
+export type { PracticeTemplate } from './practice-template'
 export type { QuestionContent, QuestionListItem, QuestionType } from './question'
 export type {
   CollectionPracticePaper,
@@ -47,6 +57,4 @@ export type {
   PracticeRecordContext,
   PracticeRecordIdentity,
   PracticeRecordProgress,
-  PracticeRecordSource,
 } from './practice-record'
-export type { ExamPlan, ExamPlanSubject, ScheduledExam, UpdateExamPlanBody } from './exam-plan'

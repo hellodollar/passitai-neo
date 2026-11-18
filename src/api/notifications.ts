@@ -3,7 +3,7 @@ import type {
   NotificationItem,
   NotificationList,
   NotificationSummary,
-} from '@/types/notification'
+} from '@/types'
 
 import { request } from './http'
 

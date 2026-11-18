@@ -7,7 +7,7 @@ import { fetchNotifications } from '@/api/notifications'
 import { useAuthStore } from '@/stores/auth'
 import { useNotificationSettingsStore } from '@/stores/notification-settings'
 import { useNotificationsStore } from '@/stores/notifications'
-import type { NotificationItem } from '@/types/notification'
+import type { NotificationItem } from '@/types'
 import { notificationDayGroup, notificationTime } from '@/utils/notifications'
 import { createSessionGuard } from '@/utils/session-guard'
 

@@ -6,7 +6,7 @@ import {
   readAllNotifications,
   readNotification,
 } from '@/api/notifications'
-import type { NotificationSummary } from '@/types/notification'
+import type { NotificationSummary } from '@/types'
 import { currentSessionToken } from '@/utils/auth/session'
 import { createSessionGuard } from '@/utils/session-guard'
 

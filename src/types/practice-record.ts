@@ -3,13 +3,10 @@ import type { DomainValue } from '@/generated/domain-values'
 
 import type { PracticeSource, SubmitPracticePaperBody } from './practice'
 
-/** 本地作答来源 = 普通刷题 + 两类集合来源；集合来源复用领域层定义。 */
-export type PracticeRecordSource = PracticeSource
-
 export type PracticeRecordIdentity = {
   userId: string
   paperId: string
-  source: PracticeRecordSource
+  source: PracticeSource
 }
 
 export type PracticeRecordContext = PracticeRecordIdentity & {

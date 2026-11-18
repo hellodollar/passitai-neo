@@ -3,7 +3,7 @@ import { ArrowDown, ArrowUp, Target } from '@lucide/vue'
 
 import BasePopup from '@/components/common/BasePopup.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
-import type { ExamPlanSubject } from '@/types/exam-plan'
+import type { ExamPlanSubject } from '@/types'
 
 const model = defineModel<boolean>({ default: false })
 defineProps<{

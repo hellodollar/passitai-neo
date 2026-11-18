@@ -1,3 +1,5 @@
+import { STORAGE_KEYS } from '@/constants/app'
+
 export type BrowsePage = 'home' | 'favorites' | 'mistakes'
 type CollectionFilters = {
   groupBy: 'subject' | 'paper'
@@ -12,7 +14,7 @@ type BrowseState = CollectionFilters &
     hiddenSubjectCodes: string[]
   }
 type Query = Record<string, unknown>
-const PREFIX = 'passitai:browse:'
+const PREFIX = STORAGE_KEYS.browsePrefix
 const memory = new Map<string, BrowseState>()
 
 function text(value: unknown) {

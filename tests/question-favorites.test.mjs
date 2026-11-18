@@ -21,7 +21,7 @@ const question = {
   subjectId: 'subone',
   paperId: 'paporigin',
   favId: 'favold',
-  wrongQuestionId: 'wrqone',
+  mistakeId: 'wrqone',
 }
 
 function fixture({ collectionMode = true, items = [question], ids = [] } = {}) {

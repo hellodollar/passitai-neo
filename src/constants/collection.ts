@@ -1,4 +1,4 @@
-import type { CollectionOrder, CollectionSort } from '@/types/collection'
+import type { CollectionOrder, CollectionSort } from '@/types'
 
 export const COLLECTION_SORT_OPTIONS: Array<{
   value: string

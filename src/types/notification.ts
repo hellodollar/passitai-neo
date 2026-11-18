@@ -1,6 +1,6 @@
 import type { DomainValue } from '@/generated/domain-values'
 
-export interface NotificationItem {
+export type NotificationItem = {
   id: string
   category: DomainValue<'notificationCategory'>
   title: string
@@ -9,15 +9,23 @@ export interface NotificationItem {
   linkPath: string | null
   contentPreview: string
 }
-export interface NotificationDetail extends Omit<NotificationItem, 'contentPreview'> {
+
+export type NotificationDetail = Omit<NotificationItem, 'contentPreview'> & {
   content: string
 }
-export interface NotificationSummary {
+
+export type NotificationSummary = {
   unreadCount: number
   unreadByCategory: Record<NotificationItem['category'], number>
   latestUnread: Omit<NotificationItem, 'contentPreview'> | null
 }
-export interface NotificationList {
+
+export type NotificationList = {
   items: NotificationItem[]
   total: number
+}
+
+export type NotificationSettings = {
+  inAppBanner: boolean
+  contentPreview: boolean
 }

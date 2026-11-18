@@ -7,7 +7,7 @@ import { ApiError } from '@/api/http'
 import { fetchNotification } from '@/api/notifications'
 import { useAuthStore } from '@/stores/auth'
 import { useNotificationsStore } from '@/stores/notifications'
-import type { NotificationDetail } from '@/types/notification'
+import type { NotificationDetail } from '@/types'
 import { notificationTime } from '@/utils/notifications'
 import { createSessionGuard } from '@/utils/session-guard'
 

@@ -15,5 +15,5 @@ export const PRACTICE_CATEGORY_LABELS: Record<DomainValue<'paperType'>, string> 
   aiPractice: 'AI练习',
 }
 
-/** 本地做题记录存储结构版本；存储约定见 docs/practice-local-records.md。 */
+/** 本地做题记录存储结构版本；存储约定见 docs/frontend-contract.md。 */
 export const PRACTICE_RECORD_VERSION = 3

@@ -17,8 +17,7 @@ import { useBrowseScroll } from '@/composables/useBrowseScroll'
 import { useAuthStore } from '@/stores/auth'
 import { useExamPlanStore } from '@/stores/exam-plan'
 import { useNotificationsStore } from '@/stores/notifications'
-import type { ExamPlan } from '@/types'
-import type { Paper } from '@/types/paper'
+import type { ExamPlan, Paper } from '@/types'
 import { parseHomeSelection, readBrowseState, writeBrowseState } from '@/utils/browse/state'
 
 const router = useRouter()

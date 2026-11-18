@@ -3,8 +3,7 @@ import { ref, watch } from 'vue'
 
 import { fetchPracticeTemplates } from '@/api/practice-templates'
 import { useAuthStore } from '@/stores/auth'
-import type { Paper } from '@/types/paper'
-import type { PracticeTemplate } from '@/types/practice-template'
+import type { Paper, PracticeTemplate } from '@/types'
 
 const props = defineProps<{ subjectCode: string }>()
 const emit = defineEmits<{ 'open-paper': [paper: Paper]; loaded: [] }>()
