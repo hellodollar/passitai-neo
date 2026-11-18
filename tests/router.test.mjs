@@ -227,9 +227,12 @@ test('列表交给内容加载后恢复滚动，其他页面使用历史位置�
     assert.equal(scroll(router.resolve(path), from, null), false)
   }
   const practice = router.resolve('/practice/papone')
+  const notifications = router.resolve('/notifications')
   const saved = { left: 0, top: 320 }
   assert.deepEqual(scroll(practice, from, saved), saved)
   assert.deepEqual(scroll(practice, from, null), { left: 0, top: 0 })
+  assert.deepEqual(scroll(notifications, from, saved), saved)
+  assert.deepEqual(scroll(notifications, from, null), { left: 0, top: 0 })
   assert.equal(scroll(router.resolve('/practice/papone?returnTo=%2F'), practice, null), false)
 })
 

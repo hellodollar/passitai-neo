@@ -1,33 +1,41 @@
 <script setup lang="ts">
-import { ArrowLeft, BookOpenCheck } from '@lucide/vue'
+import { AlertCircle, BookOpenCheck } from '@lucide/vue'
 import { onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { ApiError } from '@/api/http'
 import { fetchNotification } from '@/api/notifications'
+import EmptyState from '@/components/common/EmptyState.vue'
+import PageHeader from '@/components/common/PageHeader.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useNotificationsStore } from '@/stores/notifications'
 import type { NotificationDetail } from '@/types'
+import { navigateBackOrReplace } from '@/utils/browse/navigation'
 import { notificationTime } from '@/utils/notifications'
 import { createSessionGuard } from '@/utils/session-guard'
 
-const route = useRoute(),
-  router = useRouter(),
-  auth = useAuthStore(),
-  notifications = useNotificationsStore()
-const detail = ref<NotificationDetail | null>(null),
-  loading = ref(false),
-  error = ref(''),
-  readError = ref(''),
-  reading = ref(false)
-let version = 0,
-  disposed = false
+const route = useRoute()
+const router = useRouter()
+const auth = useAuthStore()
+const notifications = useNotificationsStore()
+const detail = ref<NotificationDetail | null>(null)
+const loading = ref(false)
+const error = ref('')
+const readError = ref('')
+const reading = ref(false)
+let version = 0
+let disposed = false
 const guard = createSessionGuard()
+
+function goBack() {
+  navigateBackOrReplace(router, '/notifications', ['/notifications', '/', '/me'])
+}
+
 async function markRead() {
   if (!detail.value || detail.value.readAt || reading.value) return
-  const id = detail.value.id,
-    current = version,
-    isCurrent = guard.captureWrite()
+  const id = detail.value.id
+  const current = version
+  const isCurrent = guard.captureWrite()
   reading.value = true
   readError.value = ''
   try {
@@ -48,9 +56,10 @@ async function markRead() {
     if (!disposed && current === version) reading.value = false
   }
 }
+
 async function load() {
-  const current = ++version,
-    isCurrent = guard.captureRead()
+  const current = ++version
+  const isCurrent = guard.captureRead()
   detail.value = null
   loading.value = true
   error.value = ''
@@ -70,6 +79,7 @@ async function load() {
     if (!disposed && current === version) loading.value = false
   }
 }
+
 watch(
   [() => route.params.id, () => auth.session?.token],
   () => {
@@ -78,6 +88,7 @@ watch(
   },
   { immediate: true },
 )
+
 onBeforeUnmount(() => {
   disposed = true
   version++
@@ -86,32 +97,23 @@ onBeforeUnmount(() => {
 </script>
 <template>
   <section class="flex min-h-dvh w-full min-w-0 flex-col">
-    <header
-      class="fixed left-1/2 top-0 z-40 w-full max-w-[32rem] -translate-x-1/2 border-b border-base-200/80 bg-base-100/95 pt-[env(safe-area-inset-top)] backdrop-blur-xl"
-    >
-      <div class="grid h-14 grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-2 px-3">
-        <button
-          class="flex size-10 items-center justify-center rounded-full text-base-content transition active:bg-base-200"
-          type="button"
-          aria-label="返回"
-          @click="router.back()"
-        >
-          <ArrowLeft :size="21" />
-        </button>
-        <h1 class="truncate text-center text-[15px] font-semibold leading-tight">消息详情</h1>
-        <span aria-hidden="true"></span>
-      </div>
-    </header>
+    <PageHeader title="消息详情" back-label="返回" @back="goBack" />
     <div
       class="flex w-full min-w-0 flex-1 flex-col px-5 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-[calc(4.25rem+env(safe-area-inset-top))]"
     >
-      <div class="flex flex-col items-center gap-3 py-16 text-center" v-if="loading">
+      <div v-if="loading" class="flex flex-col items-center gap-3 py-16 text-center">
         <span class="loading loading-spinner loading-sm"></span>
         <p role="status">正在获取消息…</p>
       </div>
-      <div class="flex flex-col items-center gap-3 py-16 text-center" v-else-if="error">
-        <p role="alert">{{ error }}</p>
-        <button type="button" class="btn btn-ghost btn-sm" @click="load">重新获取</button>
+      <div v-else-if="error" class="py-10">
+        <EmptyState
+          :icon="AlertCircle"
+          tone="error"
+          :title="error"
+          action-label="重新获取"
+          embedded
+          @action="load"
+        />
       </div>
       <template v-else-if="detail">
         <div class="mt-1 flex items-center gap-2">

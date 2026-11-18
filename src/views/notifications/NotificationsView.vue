@@ -1,28 +1,32 @@
 <script setup lang="ts">
-import { ArrowLeft, Bell, CheckCheck, Megaphone } from '@lucide/vue'
+import { Bell, CheckCheck, Megaphone } from '@lucide/vue'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { fetchNotifications } from '@/api/notifications'
+import EmptyState from '@/components/common/EmptyState.vue'
+import PageHeader from '@/components/common/PageHeader.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useNotificationSettingsStore } from '@/stores/notification-settings'
 import { useNotificationsStore } from '@/stores/notifications'
 import type { NotificationItem } from '@/types'
+import { navigateBackOrReplace } from '@/utils/browse/navigation'
 import { notificationDayGroup, notificationTime } from '@/utils/notifications'
 import { createSessionGuard } from '@/utils/session-guard'
 
-const router = useRouter(),
-  auth = useAuthStore(),
-  notifications = useNotificationsStore()
-const items = ref<NotificationItem[]>([]),
-  total = ref(0),
-  page = ref(1),
-  loading = ref(false),
-  marking = ref(false),
-  error = ref('')
+const router = useRouter()
+const auth = useAuthStore()
+const notifications = useNotificationsStore()
+const items = ref<NotificationItem[]>([])
+const total = ref(0)
+const page = ref(1)
+const loading = ref(false)
+const marking = ref(false)
+const error = ref('')
 const unreadOnly = ref(false)
 const preferences = useNotificationSettingsStore()
 void preferences.load()
+
 const groups = computed(() =>
   ['今天', '昨天', '更早']
     .map((label) => ({
@@ -31,13 +35,19 @@ const groups = computed(() =>
     }))
     .filter((group) => group.items.length),
 )
+
 const guard = createSessionGuard()
-let version = 0,
-  disposed = false
+let version = 0
+let disposed = false
+
+function goBack() {
+  navigateBackOrReplace(router, '/', ['/', '/me'])
+}
+
 async function load(append = false) {
-  const current = ++version,
-    isCurrent = guard.captureRead(),
-    targetPage = append ? page.value + 1 : 1
+  const current = ++version
+  const isCurrent = guard.captureRead()
+  const targetPage = append ? page.value + 1 : 1
   loading.value = true
   error.value = ''
   if (!append) {
@@ -67,6 +77,7 @@ async function load(append = false) {
     if (!disposed && current === version) loading.value = false
   }
 }
+
 async function markAll() {
   if (marking.value) return
   const isCurrent = guard.captureWrite()
@@ -80,6 +91,7 @@ async function markAll() {
     if (!disposed && isCurrent()) marking.value = false
   }
 }
+
 watch(
   [unreadOnly, () => auth.session?.token],
   () => {
@@ -90,6 +102,7 @@ watch(
   },
   { immediate: true },
 )
+
 onBeforeUnmount(() => {
   disposed = true
   version++
@@ -98,30 +111,19 @@ onBeforeUnmount(() => {
 </script>
 <template>
   <section class="flex min-h-dvh w-full min-w-0 flex-col">
-    <header
-      class="fixed left-1/2 top-0 z-40 w-full max-w-[32rem] -translate-x-1/2 border-b border-base-200/80 bg-base-100/95 pt-[env(safe-area-inset-top)] backdrop-blur-xl"
-    >
-      <div class="relative grid h-14 grid-cols-[5rem_minmax(0,1fr)_5rem] items-center gap-2 px-3">
-        <button
-          class="flex size-10 items-center justify-center rounded-full text-base-content transition active:bg-base-200"
-          type="button"
-          aria-label="返回"
-          @click="router.back()"
-        >
-          <ArrowLeft :size="21" />
-        </button>
-        <h1 class="truncate text-center text-[15px] font-semibold leading-tight">消息中心</h1>
+    <PageHeader title="消息中心" back-label="返回" @back="goBack">
+      <template #right>
         <button
           v-if="notifications.unreadCount > 0"
-          class="flex justify-self-end items-center gap-1 whitespace-nowrap pr-1 text-xs text-primary disabled:opacity-50"
+          class="flex items-center gap-1 whitespace-nowrap pr-1 text-xs text-primary disabled:opacity-50"
           type="button"
           :disabled="marking"
           @click="markAll"
         >
           <CheckCheck :size="14" />全部已读
         </button>
-      </div>
-    </header>
+      </template>
+    </PageHeader>
     <div
       class="flex w-full min-w-0 flex-1 flex-col px-4 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-[calc(4.5rem+env(safe-area-inset-top))]"
     >
@@ -147,22 +149,19 @@ onBeforeUnmount(() => {
         </button>
       </div>
       <div
-        class="flex flex-col items-center gap-3 py-16 text-center"
         v-if="loading && !items.length"
+        class="flex flex-col items-center gap-3 py-16 text-center"
       >
         <span class="loading loading-spinner loading-sm"></span>
         <p role="status">正在获取消息…</p>
       </div>
-      <div
-        class="flex flex-col items-center gap-3 py-16 text-center"
+      <EmptyState
         v-else-if="!error && !items.length"
-      >
-        <Bell :size="24" class="text-primary" />
-        <h2 class="mt-3 text-[15px] font-semibold">
-          {{ unreadOnly ? '没有未读消息' : '暂无消息' }}
-        </h2>
-        <p class="mt-2 text-[13px] text-base-content/65">学习消息和系统公告会显示在这里</p>
-      </div>
+        :icon="Bell"
+        :title="unreadOnly ? '没有未读消息' : '暂无消息'"
+        description="学习消息和系统公告会显示在这里"
+        embedded
+      />
       <div v-for="group in groups" :key="group.label" class="mb-2">
         <p class="mb-1.5 mt-3 px-1 text-xs font-semibold text-base-content/45">{{ group.label }}</p>
         <button

@@ -9,7 +9,8 @@ import { compileScript, parse } from 'vue/compiler-sfc'
 import { loadSource } from './helpers/load-source.mjs'
 
 const { COLLECTION_SORT_OPTIONS } = await loadSource('constants/collection.ts')
-const { parseCollectionFilters } = await loadSource('utils/browse/state.ts')
+const { formatCollectedTimeText, parseCollectionFilters } =
+  await loadSource('utils/browse/state.ts')
 let auth, route, calls, requests, app, pushes
 const dependencies = {
   vue,
@@ -22,8 +23,6 @@ const dependencies = {
     }),
   },
   '@lucide/vue': {},
-  'date-fns': {},
-  'date-fns/locale': {},
   '@/api/favorites': { fetchFavoriteGroups: (query) => fetchGroups('favorites', query) },
   '@/api/mistakes': { fetchMistakeGroups: (query) => fetchGroups('mistakes', query) },
   '@/components/common/EmptyState.vue': {},
@@ -36,6 +35,7 @@ const dependencies = {
   '@/constants/collection': { COLLECTION_SORT_OPTIONS },
   '@/stores/auth': { useAuthStore: () => auth },
   '@/utils/browse/state': {
+    formatCollectedTimeText,
     parseCollectionFilters,
     readBrowseState: () => ({}),
     writeBrowseState() {},

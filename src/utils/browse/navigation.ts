@@ -60,3 +60,23 @@ export function returnToPracticeList(router: Router, target: string) {
   if (router.options.history.state.back === target) router.back()
   else void router.replace(target)
 }
+
+/** 二级页安全返回：上一页属于允许的站内路径时后退，直开或来自登录页时替换为兜底路由。 */
+export function navigateBackOrReplace(
+  router: Router,
+  fallback: string,
+  allowedPrefixes: readonly string[],
+) {
+  const back = router.options.history.state.back
+  const url = internalUrl(back)
+  if (
+    url &&
+    allowedPrefixes.some((prefix) =>
+      prefix === '/' ? url.pathname === '/' : url.pathname.startsWith(prefix),
+    )
+  ) {
+    router.back()
+  } else {
+    void router.replace(fallback)
+  }
+}

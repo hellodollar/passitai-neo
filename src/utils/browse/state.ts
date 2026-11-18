@@ -1,4 +1,15 @@
+import { formatDistanceToNow } from 'date-fns'
+import { zhCN } from 'date-fns/locale'
+
 import { STORAGE_KEYS } from '@/constants/app'
+
+/** 时间距离文案：如“3小时前收录”。 */
+export function formatCollectedTimeText(lastCollectedAt: string) {
+  const collectedAt = new Date(lastCollectedAt)
+  if (Number.isNaN(collectedAt.getTime())) return ''
+  const distance = formatDistanceToNow(collectedAt, { locale: zhCN })
+  return `${distance.replace(/^大约\s*/, '').replace(/\s+/g, '')}前收录`
+}
 
 export type BrowsePage = 'home' | 'favorites' | 'mistakes'
 type CollectionFilters = {

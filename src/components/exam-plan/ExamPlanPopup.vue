@@ -62,8 +62,7 @@ const canSave = computed(
     !subjectOptionsLoading.value &&
     !majorOptionsLoading.value &&
     !majorOptionsError.value &&
-    !subjectOptionsError.value &&
-    !examPlanStore.error,
+    !subjectOptionsError.value,
 )
 
 async function loadMajorOptions(sequence: number, token: string | undefined) {

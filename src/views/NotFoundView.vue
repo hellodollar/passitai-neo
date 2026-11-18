@@ -4,7 +4,7 @@ import { RouterLink } from 'vue-router'
 </script>
 
 <template>
-  <main class="flex min-h-screen items-center justify-center bg-base-200 px-4">
+  <main class="flex min-h-dvh items-center justify-center bg-base-200 px-4">
     <section class="w-full max-w-sm rounded-2xl border border-base-200 bg-base-100 p-6 text-center">
       <div class="flex flex-col items-center">
         <Compass :size="36" class="text-primary" />
