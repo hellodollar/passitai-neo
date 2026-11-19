@@ -282,10 +282,10 @@ watch(
         />
       </PagePlaceholder>
 
-      <div v-else class="mt-2 overflow-hidden rounded-2xl bg-base-200/85 dark:bg-base-200/65">
+      <div v-else class="mt-2 space-y-1.5 rounded-2xl bg-base-200/85 p-2.5 dark:bg-base-200/65">
         <div
           v-if="loadError"
-          class="m-2 mb-0 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-error/10 px-3 py-2 text-xs text-error"
+          class="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-error/10 px-3 py-2 text-xs text-error"
           role="status"
         >
           <span>更新失败，已保留原列表。</span>
@@ -298,18 +298,13 @@ watch(
           </button>
         </div>
         <button
-          v-for="(item, index) in items"
+          v-for="item in items"
           :key="displayedGroupMode === 'paper' ? item.paperId : item.subjectId"
-          class="relative flex w-full min-w-0 items-center gap-3 px-4 py-3 text-left transition-colors active:bg-base-300/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary dark:active:bg-base-300/40"
+          class="flex w-full min-w-0 items-center gap-2.5 rounded-xl bg-base-100 px-3 py-2.5 text-left transition-colors active:bg-base-100/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           type="button"
           :aria-label="`${displayedGroupMode === 'paper' ? item.paperName : item.subjectName}，${item.questionCount}题，开始练习`"
           @click="openPractice(item)"
         >
-          <span
-            v-if="index > 0 || loadError"
-            aria-hidden="true"
-            class="pointer-events-none absolute left-16 right-0 top-0 h-px bg-base-content/[0.05]"
-          ></span>
           <span
             class="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"
           >
