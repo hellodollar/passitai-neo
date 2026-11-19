@@ -101,9 +101,14 @@ onBeforeUnmount(() => {
     <div
       class="flex w-full min-w-0 flex-1 flex-col px-4 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-[calc(3.75rem+env(safe-area-inset-top))]"
     >
-      <div v-if="loading" class="flex flex-col items-center gap-3 py-16 text-center">
-        <span class="loading loading-spinner loading-md text-primary"></span>
-        <p role="status" class="text-sm font-medium text-base-content/70">正在加载…</p>
+      <div
+        v-if="loading"
+        class="flex flex-1 flex-col items-center justify-center gap-2.5 pb-[calc(3.5rem+env(safe-area-inset-bottom))] text-center"
+        role="status"
+        aria-live="polite"
+      >
+        <span class="loading loading-spinner loading-md text-primary" aria-hidden="true"></span>
+        <p class="text-xs font-medium text-base-content/55">正在加载…</p>
       </div>
       <div v-else-if="error" class="py-10">
         <EmptyState

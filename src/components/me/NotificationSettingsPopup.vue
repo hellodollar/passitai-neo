@@ -53,13 +53,15 @@ watch(model, (active) => {
         @update:model-value="save(row.key, $event)"
       />
     </div>
-    <p
+    <div
       v-else-if="preferences.isLoading"
       role="status"
-      class="py-6 text-center text-sm font-medium text-base-content/70"
+      aria-live="polite"
+      class="flex flex-col items-center justify-center gap-2 py-8 text-center"
     >
-      正在加载…
-    </p>
+      <span class="loading loading-spinner loading-sm text-primary" aria-hidden="true"></span>
+      <p class="text-xs font-medium text-base-content/55">正在加载…</p>
+    </div>
     <div
       v-if="preferences.error || saveError"
       role="alert"

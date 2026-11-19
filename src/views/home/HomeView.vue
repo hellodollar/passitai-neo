@@ -245,8 +245,8 @@ watch(
         <NotificationStrip class="relative z-10" />
 
         <PagePlaceholder v-if="examPlanLoading" role="status" aria-live="polite">
-          <span class="loading loading-spinner loading-md text-primary"></span>
-          <p class="text-sm font-medium text-base-content/70">正在加载…</p>
+          <span class="loading loading-spinner loading-md text-primary" aria-hidden="true"></span>
+          <p class="text-xs font-medium text-base-content/55">正在加载…</p>
         </PagePlaceholder>
 
         <PagePlaceholder v-else-if="examPlanStore.error">

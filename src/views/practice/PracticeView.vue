@@ -703,12 +703,12 @@ watch(answerSheetOpen, (open) => {
 
     <section
       v-if="paperLoadState === 'loading'"
-      class="flex flex-1 items-center justify-center px-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-[calc(3.125rem+env(safe-area-inset-top))]"
+      class="flex flex-1 flex-col items-center justify-center gap-2.5 px-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-[calc(3.125rem+env(safe-area-inset-top))] text-center"
+      role="status"
+      aria-live="polite"
     >
-      <div class="text-center" role="status" aria-live="polite">
-        <span class="loading loading-spinner loading-md text-primary"></span>
-        <p class="mt-3 text-sm font-medium text-base-content/70">正在加载…</p>
-      </div>
+      <span class="loading loading-spinner loading-md text-primary" aria-hidden="true"></span>
+      <p class="text-xs font-medium text-base-content/55">正在加载…</p>
     </section>
 
     <!-- 题目舞台:上一题/当前题/下一题三栏,横滑跟手,相邻题随拖拽露出 -->

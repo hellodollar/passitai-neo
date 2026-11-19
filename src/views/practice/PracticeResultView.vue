@@ -85,11 +85,12 @@ watch(
     <div class="px-4 pt-[calc(3.875rem+env(safe-area-inset-top))]">
       <div
         v-if="loading"
-        class="flex min-h-[70dvh] items-center justify-center"
+        class="flex min-h-[70dvh] flex-col items-center justify-center gap-2.5 text-center"
         role="status"
-        aria-label="正在加载练习报告"
+        aria-live="polite"
       >
-        <span class="loading loading-spinner loading-md text-primary"></span>
+        <span class="loading loading-spinner loading-md text-primary" aria-hidden="true"></span>
+        <p class="text-xs font-medium text-base-content/55">正在加载…</p>
       </div>
 
       <div v-else-if="loadError || !result" class="flex min-h-[70dvh] items-center justify-center">

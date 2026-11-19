@@ -7,7 +7,7 @@
 </script>
 
 <template>
-  <div class="absolute inset-0 flex flex-col items-center justify-center gap-3 text-center">
+  <div class="absolute inset-0 flex flex-col items-center justify-center gap-2.5 text-center">
     <slot></slot>
   </div>
 </template>

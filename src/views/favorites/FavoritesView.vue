@@ -257,9 +257,9 @@ watch(
 
         <p v-if="loading && items.length > 0" class="sr-only" role="status">正在加载列表</p>
 
-        <PagePlaceholder v-if="loading && items.length === 0" role="status">
-          <span class="loading loading-spinner loading-md text-primary"></span>
-          <p class="text-sm font-medium text-base-content/70">正在加载…</p>
+        <PagePlaceholder v-if="loading && items.length === 0" role="status" aria-live="polite">
+          <span class="loading loading-spinner loading-md text-primary" aria-hidden="true"></span>
+          <p class="text-xs font-medium text-base-content/55">正在加载…</p>
         </PagePlaceholder>
 
         <PagePlaceholder v-else-if="loadError && items.length === 0">

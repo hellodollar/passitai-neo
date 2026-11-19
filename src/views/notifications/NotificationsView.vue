@@ -159,10 +159,12 @@ onBeforeUnmount(() => {
       </div>
       <div
         v-if="loading && !items.length"
-        class="flex flex-col items-center gap-3 py-16 text-center"
+        class="flex flex-1 flex-col items-center justify-center gap-2.5 pb-[calc(3.5rem+env(safe-area-inset-bottom))] text-center"
+        role="status"
+        aria-live="polite"
       >
-        <span class="loading loading-spinner loading-md text-primary"></span>
-        <p role="status" class="text-sm font-medium text-base-content/70">正在加载…</p>
+        <span class="loading loading-spinner loading-md text-primary" aria-hidden="true"></span>
+        <p class="text-xs font-medium text-base-content/55">正在加载…</p>
       </div>
       <div v-else-if="!error && !items.length" class="rounded-2xl bg-base-100 dark:bg-base-200">
         <EmptyState
@@ -217,11 +219,12 @@ onBeforeUnmount(() => {
       </div>
       <button
         v-if="items.length && page * 20 < total"
-        class="mt-1 flex h-10 w-full items-center justify-center rounded-2xl bg-base-100 text-xs font-medium text-base-content/70 transition-colors active:bg-base-200/60 disabled:opacity-50 dark:bg-base-200 dark:active:bg-base-300/50"
+        class="mt-1 flex h-10 w-full items-center justify-center gap-1.5 rounded-2xl bg-base-100 text-xs font-medium text-base-content/70 transition-colors active:bg-base-200/60 disabled:opacity-50 dark:bg-base-200 dark:active:bg-base-300/50"
         type="button"
         :disabled="loading"
         @click="load(true)"
       >
+        <span v-if="loading" class="loading loading-spinner loading-xs" aria-hidden="true"></span>
         {{ loading ? '加载中…' : '加载更多' }}
       </button>
     </div>

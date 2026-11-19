@@ -369,11 +369,15 @@ onBeforeUnmount(invalidateRequests)
           >
             <div
               v-if="loading || subjectOptionsLoading"
-              class="flex min-h-36 items-center justify-center"
+              class="flex min-h-36 flex-col items-center justify-center gap-2 text-center"
               role="status"
-              aria-label="正在加载科目"
+              aria-live="polite"
             >
-              <span class="loading loading-spinner loading-sm text-primary"></span>
+              <span
+                class="loading loading-spinner loading-sm text-primary"
+                aria-hidden="true"
+              ></span>
+              <p class="text-xs font-medium text-base-content/55">正在加载…</p>
             </div>
             <div v-else-if="subjectOptionsError" class="px-5 py-8 text-center">
               <p class="text-xs text-error">科目加载失败</p>
