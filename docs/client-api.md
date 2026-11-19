@@ -478,15 +478,15 @@ interface PracticeSubmission {
 | GET | `/api/notifications/summary` | 统一未读摘要 |
 | GET | `/api/notifications/:id` | 纯读取详情，不自动标记已读 |
 | PUT | `/api/notifications/:id/read` | 首次已读，body `{}`，重复保持原时间 |
-| PUT | `/api/notifications/read-all` | 全部已读，body `{}`，仅当前账号、请求开始前发布的消息 |
+| PUT | `/api/notifications/read-all` | 将当前可见的消息标为已读，body `{}` |
 
-列表严格接受 `page`、`limit`、`category?: learning|system`、`unread?: "true"|"false"`，
-默认 1/20，最多100；按 publishedAt、id 倒序分页，返回 `{items,total}`。
+列表严格接受 `page`、`limit`、`unread?: "true"|"false"`，
+默认 1/20，最多100；按 publishedAt、id 倒序，返回 `{items,total}`。收件箱先取当前账号
+最近 7 天内已发布、未撤下的最新 10 条，再应用已读筛选和分页。未读数、最新未读及详情使用同一范围。
 
 ```ts
 interface NotificationItem {
   id: string // ntf + 12 位小写 hex
-  category: 'learning' | 'system'
   title: string
   publishedAt: string // ISO
   readAt: string | null
@@ -496,17 +496,19 @@ interface NotificationItem {
 // 详情为 NotificationItem 去掉 contentPreview，增加 content:string（纯文本）。
 interface NotificationSummary {
   unreadCount: number
-  unreadByCategory: { learning: number; system: number }
-  latestUnread: Omit<NotificationItem, 'contentPreview'> | null
+  latestUnread: { id: string; title: string; publishedAt: string } | null
 }
 // 单条已读：{id,readAt:string}；全部已读：{read:true}。
 ```
 
-仅展示已发布且本账号有收件记录的通知；未知、他人、草稿、撤下统一404。
-撤下同时从列表、详情和未读摘要消失。关联题集停用、删除或变为私有时 linkPath 为 null。
+从发布时间起满 7 天即过期，读过和未读的消息使用同一规则。过期、超出最近 10 条、
+未知、他人、草稿、撤下的详情和单条已读请求统一返回 404。
+过期由查询判断，保留通知和用户收件记录供后台核对。关联题集停用、删除或变为私有时 linkPath 为 null。
 正文是纯文本，不作为 HTML 渲染。广播以发布时的启用普通用户为准，新注册用户不补发历史广播。
-首页铃铛、通知条、“我的”和消息页共享摘要，已读成功后刷新；登录、前台恢复和页面切换时刷新，
-前台最多每60秒轮询，不承诺实时推送。账号切换清理缓存并隔离迟到响应。
+Neo 首页铃铛、通知条、“我的”和消息页共享摘要。摘要在登录、恢复可见或窗口焦点、
+进入消息中心时按需读取，自动检查间隔至少 5 分钟。单条或全部标记已读成功后立即刷新。
+Desktop 在横幅开启时于首次加载和恢复前台按同样的 5 分钟间隔检查。
+消息列表在进入收件箱、切换未读筛选、翻页或主动重试时读取。客户端使用事件触发，账号切换清理缓存并隔离迟到响应。
 通知展示设置见下文；自动提醒、Telegram 和邮件不属于站内通知。
 
 ## 9. 接口总表
@@ -563,7 +565,6 @@ PUT    /api/notifications/read-all
 开关以当前登录用户为范围，存于 `users.preferences.notifications`，原子局部合并，不覆盖并发更新的刷题设置或其他开关。
 `inAppBanner` 只控制 App 内的最新未读横幅；`contentPreview` 控制横幅标题预览及通知列表正文摘要，消息详情仍可主动查看。
 关闭开关不停止消息接收、不更改收件或已读事实，不关联系统推送、邮件和短信。
-客户端消息页不展示分类筛选，只保留「只看未读」，请求 `unread=true`；关闭时不传 unread。
-API 的 category 参数保留兼容现有调用，通知分类仍可由后台管理。
+客户端消息页的「只看未读」请求 `unread=true`；关闭时省略 `unread`。
 账户安全继续使用 `PUT /api/users/me/password` 和 `/api/users/me/email`，请求严格拒绝未知字段。
 改密成功后旧会话失效，客户端清理会话并返回登录；改邮箱成功后使用响应邮箱同步本地会话。

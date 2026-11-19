@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { Bell, CheckCheck, Megaphone } from '@lucide/vue'
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { Bell } from '@lucide/vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { fetchNotifications } from '@/api/notifications'
@@ -23,7 +23,6 @@ const page = ref(1)
 const loading = ref(false)
 const marking = ref(false)
 const error = ref('')
-const unreadOnly = ref(false)
 const preferences = useNotificationSettingsStore()
 void preferences.load()
 
@@ -56,10 +55,7 @@ async function load(append = false) {
     page.value = 1
   }
   try {
-    const result = await fetchNotifications({
-      page: targetPage,
-      unread: unreadOnly.value ? 'true' : undefined,
-    })
+    const result = await fetchNotifications({ page: targetPage })
     if (disposed || current !== version || !isCurrent()) return
     // 分页期间新发布的消息可能改变边界；同一条只展示一次。
     items.value = [
@@ -69,6 +65,7 @@ async function load(append = false) {
     ]
     total.value = result.total
     page.value = targetPage
+    void markAllRead()
   } catch (e) {
     if (!disposed && current === version && isCurrent()) {
       error.value = e instanceof Error ? e.message : '消息获取失败'
@@ -78,30 +75,36 @@ async function load(append = false) {
   }
 }
 
-async function markAll() {
-  if (marking.value) return
+/** 无详情页：进入列表即视为全部已读；失败时保留未读点，下次加载重试。 */
+async function markAllRead() {
+  if (marking.value || !items.value.some((item) => !item.readAt)) return
+  const current = version
   const isCurrent = guard.captureWrite()
   marking.value = true
   try {
     await notifications.markAllRead()
-    if (!disposed && isCurrent()) await load()
-  } catch (e) {
-    if (!disposed && isCurrent()) error.value = e instanceof Error ? e.message : '标记失败，请重试'
+    if (disposed || current !== version || !isCurrent()) return
+    items.value.forEach((item) => {
+      item.readAt = item.readAt ?? new Date().toISOString()
+    })
+  } catch {
+    // 已读状态未保存时未读点仍在；摘要由 store 在成功路径统一刷新。
   } finally {
-    if (!disposed && isCurrent()) marking.value = false
+    if (!disposed && current === version) marking.value = false
   }
 }
 
 watch(
-  [unreadOnly, () => auth.session?.token],
+  () => auth.session?.token,
   () => {
     guard.reset()
     marking.value = false
     void load()
-    void notifications.refresh(true)
   },
   { immediate: true },
 )
+
+onMounted(() => void notifications.refresh())
 
 onBeforeUnmount(() => {
   disposed = true
@@ -111,37 +114,10 @@ onBeforeUnmount(() => {
 </script>
 <template>
   <section class="flex min-h-dvh w-full min-w-0 flex-col bg-base-200/80 dark:bg-base-100">
-    <PageHeader title="消息中心" back-label="返回" @back="goBack">
-      <template #right>
-        <button
-          v-if="notifications.unreadCount > 0"
-          class="flex min-h-11 items-center gap-1 whitespace-nowrap px-1 text-xs font-medium text-primary disabled:opacity-50"
-          type="button"
-          :disabled="marking"
-          @click="markAll"
-        >
-          <CheckCheck :size="14" />全部已读
-        </button>
-      </template>
-    </PageHeader>
+    <PageHeader title="消息中心" back-label="返回" @back="goBack" />
     <div
       class="flex w-full min-w-0 flex-1 flex-col px-4 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-[calc(3.75rem+env(safe-area-inset-top))]"
     >
-      <div class="flex items-center gap-1.5 pb-2.5">
-        <button
-          class="ml-auto rounded-full px-3 py-1 text-xs transition-colors"
-          :class="
-            unreadOnly
-              ? 'bg-primary/12 font-semibold text-primary dark:bg-primary/18'
-              : 'bg-base-100 font-medium text-base-content/70 active:bg-base-200/60 dark:bg-base-200 dark:active:bg-base-300/50'
-          "
-          type="button"
-          :aria-pressed="unreadOnly"
-          @click="unreadOnly = !unreadOnly"
-        >
-          只看未读
-        </button>
-      </div>
       <div
         v-if="error"
         role="alert"
@@ -167,31 +143,19 @@ onBeforeUnmount(() => {
         <p class="text-xs font-medium text-base-content/55">正在加载…</p>
       </div>
       <div v-else-if="!error && !items.length" class="rounded-2xl bg-base-100 dark:bg-base-200">
-        <EmptyState
-          :icon="Bell"
-          :title="unreadOnly ? '没有未读消息' : '暂无消息'"
-          description="学习消息和系统公告会显示在这里"
-          embedded
-        />
+        <EmptyState :icon="Bell" title="暂无消息" embedded />
       </div>
       <div v-for="group in groups" :key="group.label" class="mb-3">
         <p class="mb-2 mt-1 px-0.5 text-xs font-medium text-base-content/55">{{ group.label }}</p>
         <div class="space-y-2">
-          <button
+          <div
             v-for="item in group.items"
             :key="item.id"
-            class="flex w-full min-w-0 items-start gap-3 rounded-2xl bg-base-100 px-3.5 py-3 text-left transition-colors active:bg-base-200/60 dark:bg-base-200 dark:active:bg-base-300/50"
-            type="button"
-            @click="router.push({ name: 'notification-detail', params: { id: item.id } })"
+            class="flex w-full min-w-0 items-start gap-3 rounded-2xl bg-base-100 px-3.5 py-3 dark:bg-base-200"
           >
             <span
-              class="relative flex size-9 shrink-0 items-center justify-center rounded-xl"
-              :class="
-                item.category === 'learning'
-                  ? 'bg-primary/10 text-primary'
-                  : 'bg-secondary/10 text-secondary'
-              "
-              ><component :is="item.category === 'learning' ? Bell : Megaphone" :size="16" /><span
+              class="relative flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"
+              ><Bell :size="16" aria-hidden="true" /><span
                 v-if="!item.readAt"
                 class="absolute -right-0.5 -top-0.5 size-2.5 rounded-full border-2 border-base-100 bg-error dark:border-base-200"
                 aria-label="未读"
@@ -214,7 +178,7 @@ onBeforeUnmount(() => {
                 notificationTime(item.publishedAt)
               }}</span></span
             >
-          </button>
+          </div>
         </div>
       </div>
       <button

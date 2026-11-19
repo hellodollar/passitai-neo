@@ -1,8 +1,5 @@
-import type { DomainValue } from '@/generated/domain-values'
-
 export type NotificationItem = {
   id: string
-  category: DomainValue<'notificationCategory'>
   title: string
   publishedAt: string
   readAt: string | null
@@ -10,14 +7,9 @@ export type NotificationItem = {
   contentPreview: string
 }
 
-export type NotificationDetail = Omit<NotificationItem, 'contentPreview'> & {
-  content: string
-}
-
 export type NotificationSummary = {
   unreadCount: number
-  unreadByCategory: Record<NotificationItem['category'], number>
-  latestUnread: Omit<NotificationItem, 'contentPreview'> | null
+  latestUnread: Pick<NotificationItem, 'id' | 'title' | 'publishedAt'> | null
 }
 
 export type NotificationList = {

@@ -17,7 +17,7 @@ const latest = computed(() => notifications.summary?.latestUnread)
     class="flex w-full items-center gap-3 rounded-2xl bg-base-100 px-3.5 py-2.5 text-left transition-colors active:bg-base-200/60 dark:bg-base-200 dark:active:bg-base-300/50"
     type="button"
     :aria-label="`新消息，${notifications.unreadCount} 条未读`"
-    @click="router.push({ name: 'notification-detail', params: { id: latest.id } })"
+    @click="router.push({ name: 'notifications' })"
   >
     <span
       class="relative flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"

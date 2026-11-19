@@ -22,15 +22,11 @@ const session = {
 }
 const summary = (count) => ({
   unreadCount: count,
-  unreadByCategory: { learning: count, system: 0 },
   latestUnread: count
     ? {
         id: 'ntf000000000001',
         title: '真实消息',
-        category: 'learning',
         publishedAt: '2026-11-01T00:00:00Z',
-        readAt: null,
-        linkPath: null,
       }
     : null,
 })
@@ -76,6 +72,42 @@ test('all entries share one summary and concurrent refreshes are deduplicated', 
   assert.equal(store.unreadCount, 3)
   await store.refresh()
   assert.equal(requests, 1)
+})
+
+test('foreground checks share a five-minute interval even when the last check failed', async (t) => {
+  const oldDocument = globalThis.document
+  const foreground = Object.assign(new EventTarget(), { visibilityState: 'visible' })
+  globalThis.document = foreground
+  let now = Date.now()
+  t.mock.method(Date, 'now', () => now)
+  let requests = 0
+  globalThis.fetch = async () => {
+    if (++requests === 1) throw new Error('offline')
+    return envelope(summary(1))
+  }
+  const store = useNotificationsStore()
+  try {
+    store.start()
+    await store.refresh()
+    assert.equal(requests, 1)
+    now += 60_000
+    window.dispatchEvent(new Event('focus'))
+    foreground.dispatchEvent(new Event('visibilitychange'))
+    assert.equal(requests, 1)
+    now += 240_000
+    foreground.visibilityState = 'hidden'
+    window.dispatchEvent(new Event('focus'))
+    assert.equal(requests, 1)
+    foreground.visibilityState = 'visible'
+    foreground.dispatchEvent(new Event('visibilitychange'))
+    window.dispatchEvent(new Event('focus'))
+    assert.equal(requests, 2)
+    await store.refresh()
+    assert.equal(store.unreadCount, 1)
+  } finally {
+    store.stop()
+    globalThis.document = oldDocument
+  }
 })
 
 test('account reset invalidates late responses and new account can refresh immediately', async () => {

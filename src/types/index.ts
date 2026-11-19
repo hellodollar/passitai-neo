@@ -24,7 +24,6 @@ export type {
 export type { OptionItem, SubjectOptionItem } from './catalog'
 export type { ExamPlan, ExamPlanSubject, ScheduledExam, UpdateExamPlanBody } from './exam-plan'
 export type {
-  NotificationDetail,
   NotificationItem,
   NotificationList,
   NotificationSettings,

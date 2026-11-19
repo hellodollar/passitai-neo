@@ -67,12 +67,6 @@ export function createAppRouter(history: RouterHistory) {
         component: () => import('@/views/notifications/NotificationsView.vue'),
       },
       {
-        path: '/notifications/:id',
-        name: 'notification-detail',
-        component: () => import('@/views/notifications/NotificationDetailView.vue'),
-        props: true,
-      },
-      {
         path: '/me',
         name: 'me',
         component: () => import('@/views/me/MeView.vue'),

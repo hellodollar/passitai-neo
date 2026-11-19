@@ -25,12 +25,6 @@ watch(
   },
   { immediate: true },
 )
-watch(
-  () => route.fullPath,
-  () => {
-    if (auth.isAuthenticated) void notifications.refresh()
-  },
-)
 onBeforeUnmount(notifications.stop)
 const showShell = computed(
   () => route.name && !['login', 'register', 'not-found'].includes(String(route.name)),
