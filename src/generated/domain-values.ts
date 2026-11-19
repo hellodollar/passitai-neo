@@ -10,7 +10,7 @@ export const domainValues = {
   examStatus: ['open', 'closed'],
   recordStatus: ['notStarted', 'inProgress', 'completed'],
   questionType: ['single', 'multiple', 'judge', 'nounExplain', 'shortAnswer', 'essay'],
-  paperType: ['specialTraining', 'examSimulation', 'pastExams', 'aiPractice'],
+  paperType: ['pointCoverage', 'highFrequency', 'errorTarget', 'realSource'],
   paperSourceType: ['system', 'ai'],
   paperAssessmentPreset: ['overall', 'highFrequency', 'errorProne'],
 } as const
@@ -27,10 +27,10 @@ export const questionTypeLabels = {
 export type DomainValue<K extends keyof typeof domainValues> = (typeof domainValues)[K][number]
 
 export const paperTypeLabels = {
-  specialTraining: 'Special training',
-  examSimulation: 'Exam simulation',
-  pastExams: 'Past exams',
-  aiPractice: 'AI practice',
+  pointCoverage: '考点覆盖',
+  highFrequency: '高频考点',
+  errorTarget: '易错题',
+  realSource: '真题',
 } as const satisfies Record<(typeof domainValues.paperType)[number], string>
 
 export const paperAssessmentPresetLabels = {
@@ -79,7 +79,11 @@ export const provinceOptions = [
 export type ProvinceCode = (typeof provinceOptions)[number]['code']
 
 export const openedProvinceOptions = [
+  { code: '110000', name: '北京市' },
+  { code: '310000', name: '上海市' },
   { code: '440000', name: '广东省' },
+  { code: '420000', name: '湖北省' },
+  { code: '330000', name: '浙江省' },
 ] as const
 
 export type OpenedProvinceCode = (typeof openedProvinceOptions)[number]['code']

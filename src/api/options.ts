@@ -2,28 +2,21 @@ import { request } from '@/api/http'
 import type { DomainValue, ProvinceCode } from '@/generated/domain-values'
 import type { OptionItem, PaginationResult, SubjectOptionItem } from '@/types'
 
-async function loadOptions<T extends OptionItem>(
-  path: '/majors' | '/subjects',
-  query: Record<string, string>,
-) {
-  const limit = 100
-  const items: T[] = []
-  for (let page = 1; ; page++) {
-    const result = await request<PaginationResult<T>>(path, {
-      query: { ...query, page, limit },
-    })
-    items.push(...result.items)
-    if (page * limit >= result.total || result.items.length < limit) return items
-  }
-}
-
 export function fetchMajorOptions(query: {
   provinceCode: ProvinceCode
   educationLevel: DomainValue<'educationLevel'>
 }) {
-  return loadOptions<OptionItem>('/majors', query)
+  return request<OptionItem[]>('/options/majors', { query: { ...query, limit: 100 } })
 }
 
-export function fetchSubjectOptions(majorCode: string, provinceCode: ProvinceCode) {
-  return loadOptions<SubjectOptionItem>('/subjects', { majorCode, provinceCode })
+export async function fetchSubjectOptions(majorCode: string, provinceCode: ProvinceCode) {
+  const limit = 100
+  const items: SubjectOptionItem[] = []
+  for (let page = 1; ; page++) {
+    const result = await request<PaginationResult<SubjectOptionItem>>('/subjects', {
+      query: { majorCode, provinceCode, page, limit },
+    })
+    items.push(...result.items)
+    if (page * limit >= result.total || result.items.length < limit) return items
+  }
 }

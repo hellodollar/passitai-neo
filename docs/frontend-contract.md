@@ -45,6 +45,8 @@ Vue Router 使用 `createWebHistory(import.meta.env.BASE_URL)`，CF 为深链提
 
 ## 考试计划与 Store
 
+报考省份用 API 生成的选项，专业从 `GET /api/options/majors` 按省份和学历读取。范围见 [Client API](client-api.md#当前报考范围)。
+
 统一使用 `exam-plan`，替代 `practice-scope`。接口、类型、Store 分别为 `api/exam-plan.ts`、`types/exam-plan.ts`、`stores/exam-plan.ts`。
 
 - `useExamPlanStore.plan` 保存计划；`load()` 复用已加载结果及进行中的请求，失败可重试；`save()` 成功更新共享状态；`reset()` 清理会话并使旧请求失效。

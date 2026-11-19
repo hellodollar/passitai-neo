@@ -255,6 +255,22 @@ Neo 首页按科目加载练习模板，从模板的 `list` 获取可打开的�
 
 `GET` 在未设置考试计划或所选专业、科目不可用时返回 `data: null`。`PUT` 整体替换当前考试计划，未知字段返回 400。
 
+#### 当前报考范围
+
+Neo 和 Desktop 的报考省份按此顺序展示：北京（`110000`）、上海（`310000`）、
+广东（`440000`）、湖北（`420000`）、浙江（`330000`）。
+
+| 学历 | 开通专业 |
+| --- | --- |
+| 本科 | 汉语言文学 `050101`、工商管理 `120201K`、行政管理 `120402`、会计学 `120203K`、人力资源管理 `120206`、学前教育 `040106`、法学 `030101K` |
+| 专科 | 工商企业管理 `530601`、行政管理 `590206`、人力资源管理 `590202`、市场营销 `530605`、计算机应用技术 `510201` |
+
+候选专业由 `GET /api/options/majors` 按省份和学历下发，要求该省至少有一门可用关联科目。
+某省暂无匹配题库数据时返回空列表。客户端省份选项由 API 常量生成。
+已有考试计划读取时按现有题库状态解析；新建或替换计划时校验当前开放范围。
+
+#### 保存
+
 ```json
 {
   "provinceCode": "440000",
@@ -264,7 +280,8 @@ Neo 首页按科目加载练习模板，从模板的 `list` 获取可打开的�
 ```
 
 只保存以上三个字段到 `users.examPlan`。`majorCode` 必填；`subjectCodes` 必填、最多 100 项，按首次出现顺序去重，允许空数组。
-专业必须启用、开考且未删除；科目必须同省、启用、开考且在 `majorCodes` 中关联所选专业，否则 400 且不写入。
+省份和专业必须在当前报考范围内，专业须启用、开考、未删除且在该省有可用科目。
+所选科目须同省、启用、开考且在 `majorCodes` 中关联所选专业。校验失败返回 400 且不写入。
 不接受旧 `majorId / subjectIds / educationLevel` 字段；学历由专业读取。
 返回 `{ provinceCode, majorCode, subjectCodes, major, subjects, nextExam }`，专业与科目字段见第 3 节。
 所选科目均附 `nextExam: { subjectCode, period, examDate } | null`；计划级 `nextExam` 取最近一场。
@@ -443,8 +460,10 @@ interface PracticeSubmission {
 
 ## 7. 字典选项模块
 
-- `GET /api/options/majors`：与 `/api/majors` 使用相同查询及可见性规则。
-- `GET /api/options/subjects`：与 `/api/subjects` 使用相同查询及可见性规则，省份必填。
+- `GET /api/options/majors`：考试计划的可选专业，`provinceCode` 必填，支持 `educationLevel`、
+  `page`、`limit`、`keyword`。返回当前开通且在该省有可用科目的专业，按 `code` 排序。
+- `GET /api/options/subjects`：`provinceCode` 必填，`majorCode` 选填。省份和已传的专业须在开通范围内，
+  其余查询及可见性规则同 `/api/subjects`。
 
 成功返回当前分页的 `{ id, code, name }[]`。需要完整分页信息时直接调用资源列表接口。
 不接受旧 `majorId / ids / subjectId` 关联参数。

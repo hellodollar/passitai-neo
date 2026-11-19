@@ -165,7 +165,8 @@ async function loadDraft() {
     await examPlanStore.load()
     if (!isCurrent() || examPlanStore.error || majorOptionsError.value) return
     const plan = examPlanStore.plan
-    draftProvinceCode.value = plan?.provinceCode ?? ''
+    draftProvinceCode.value =
+      openedProvinceOptions.find((province) => province.code === plan?.provinceCode)?.code ?? ''
     draftEducationLevel.value = plan?.major.educationLevel ?? '本科'
     await loadMajorOptions(sequence, token)
     if (!isCurrent() || majorOptionsError.value) return
