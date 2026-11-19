@@ -235,8 +235,8 @@ watch(
               class="flex h-7 items-center rounded-lg px-3 text-xs transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary aria-disabled:opacity-60"
               :class="
                 groupMode === mode.value
-                  ? 'bg-primary/[0.1] font-semibold text-primary dark:bg-primary/[0.2]'
-                  : 'font-medium text-base-content/60 hover:text-base-content'
+                  ? 'bg-primary/12 font-semibold text-primary dark:bg-primary/18'
+                  : 'font-medium text-base-content/70 hover:text-base-content'
               "
               type="button"
               :aria-disabled="loading"
@@ -259,7 +259,7 @@ watch(
 
         <PagePlaceholder v-if="loading && items.length === 0" role="status">
           <span class="loading loading-spinner loading-md text-primary"></span>
-          <p class="text-sm font-medium text-base-content/65">正在加载…</p>
+          <p class="text-sm font-medium text-base-content/70">正在加载…</p>
         </PagePlaceholder>
 
         <PagePlaceholder v-else-if="loadError && items.length === 0">
@@ -292,7 +292,7 @@ watch(
         <div v-else class="mt-3 space-y-2.5">
           <div
             v-if="loadError"
-            class="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-error/[0.08] px-3.5 py-2.5 text-xs text-error"
+            class="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-error/10 px-3.5 py-2.5 text-xs text-error"
             role="status"
           >
             <span>更新失败，已保留原列表。</span>
@@ -307,29 +307,29 @@ watch(
           <button
             v-for="item in items"
             :key="displayedGroupMode === 'paper' ? item.paperId : item.subjectId"
-            class="flex w-full min-w-0 items-center gap-3 rounded-2xl bg-base-100 px-3.5 py-3 text-left transition-colors active:bg-base-100/75 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary dark:bg-base-200 dark:active:bg-base-300/60"
+            class="flex w-full min-w-0 items-center gap-3 rounded-2xl bg-base-100 px-3.5 py-3 text-left transition-colors active:bg-base-200/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary dark:bg-base-200 dark:active:bg-base-300/50"
             type="button"
             :aria-label="`${displayedGroupMode === 'paper' ? item.paperName : item.subjectName}，${item.questionCount}题，开始练习`"
             @click="openPractice(item)"
           >
             <span
-              class="flex size-9.5 shrink-0 items-center justify-center rounded-xl bg-error/[0.09] text-error"
+              class="flex size-9 shrink-0 items-center justify-center rounded-xl bg-error/10 text-error"
             >
-              <component :is="displayedGroupMode === 'paper' ? FileText : BookOpen" :size="17" />
+              <component :is="displayedGroupMode === 'paper' ? FileText : BookOpen" :size="16" />
             </span>
 
             <span class="min-w-0 flex-1">
-              <span class="block truncate text-sm font-semibold leading-snug text-base-content">
+              <span class="block truncate text-sm font-medium leading-snug text-base-content">
                 {{ displayedGroupMode === 'paper' ? item.paperName : item.subjectName }}
               </span>
-              <span class="mt-0.5 block truncate text-xs leading-snug text-base-content/50">
+              <span class="mt-0.5 block truncate text-xs leading-snug text-base-content/55">
                 <template v-if="displayedGroupMode === 'paper'">{{ item.subjectName }} · </template>
                 {{ formatCollectedTimeText(item.lastCollectedAt) || '已收录' }}
               </span>
             </span>
 
             <span
-              class="shrink-0 rounded-lg bg-error/[0.08] px-2 py-0.5 text-xs font-semibold tabular-nums text-error"
+              class="shrink-0 rounded-lg bg-error/10 px-2 py-0.5 text-xs font-medium tabular-nums text-error"
             >
               {{ item.questionCount }} 题
             </span>

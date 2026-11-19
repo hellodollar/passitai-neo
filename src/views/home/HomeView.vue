@@ -224,7 +224,7 @@ watch(
         <header class="relative z-10 flex min-h-9 shrink-0 items-center">
           <LogoPassitai role="img" aria-label="Passitai" class="h-7 w-auto text-base-content" />
           <button
-            class="relative ml-auto flex size-9 items-center justify-center rounded-full bg-base-100 text-base-content transition-colors active:bg-base-200/70 dark:bg-base-200 dark:active:bg-base-300/60"
+            class="relative ml-auto flex size-9 items-center justify-center rounded-full bg-base-100 text-base-content transition-colors active:bg-base-200/60 dark:bg-base-200 dark:active:bg-base-300/50"
             type="button"
             :aria-label="
               notifications.unreadCount
@@ -233,10 +233,10 @@ watch(
             "
             @click="router.push({ name: 'notifications' })"
           >
-            <Bell :size="17" />
+            <Bell :size="18" />
             <span
               v-if="notifications.unreadCount > 0"
-              class="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full border-2 border-base-100 bg-error px-1 text-[10px] font-semibold text-error-content dark:border-base-200"
+              class="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full border-2 border-base-100 bg-error px-1 text-[11px] font-semibold leading-none tabular-nums text-error-content dark:border-base-200"
               >{{ notifications.unreadCount > 99 ? '99+' : notifications.unreadCount }}</span
             >
           </button>
@@ -246,7 +246,7 @@ watch(
 
         <PagePlaceholder v-if="examPlanLoading" role="status" aria-live="polite">
           <span class="loading loading-spinner loading-md text-primary"></span>
-          <p class="text-sm font-medium text-base-content/65">正在获取考试计划…</p>
+          <p class="text-sm font-medium text-base-content/70">正在获取考试计划…</p>
         </PagePlaceholder>
 
         <PagePlaceholder v-else-if="examPlanStore.error">
@@ -287,19 +287,19 @@ watch(
           <div class="space-y-2.5">
             <div class="flex items-center justify-between gap-3 px-0.5">
               <div class="flex items-baseline gap-1.5">
-                <h2 class="text-[15px] font-bold leading-tight tracking-tight">刷题科目</h2>
-                <span class="text-xs font-medium tabular-nums text-base-content/45">
+                <h2 class="text-[15px] font-semibold leading-tight tracking-tight">刷题科目</h2>
+                <span class="text-xs font-medium tabular-nums text-base-content/55">
                   {{ examPlanSubjects.length }} 科
                 </span>
               </div>
               <button
-                class="flex shrink-0 items-center gap-0.5 rounded-full bg-base-100 px-2.5 py-1 text-xs font-medium text-primary transition-colors active:bg-base-200/70 dark:bg-base-200 dark:active:bg-base-300/60"
+                class="flex shrink-0 items-center gap-0.5 rounded-full bg-base-100 px-2.5 py-1 text-xs font-medium text-primary transition-colors active:bg-base-200/60 dark:bg-base-200 dark:active:bg-base-300/50"
                 type="button"
                 aria-label="科目管理"
                 @click="subjectManagerOpen = true"
               >
                 管理
-                <ChevronRight :size="13" class="-mr-0.5" />
+                <ChevronRight :size="14" class="-mr-0.5" />
               </button>
             </div>
 
@@ -312,11 +312,11 @@ watch(
                 <button
                   v-for="subject in visibleSubjects"
                   :key="subject.code"
-                  class="max-w-[9.5rem] shrink-0 truncate rounded-full px-3.5 py-1.5 text-[13px] transition-colors"
+                  class="max-w-[9.5rem] shrink-0 truncate rounded-full px-3.5 py-1.5 text-xs transition-colors"
                   :class="
                     activeSubject?.code === subject.code
                       ? 'bg-primary font-semibold text-primary-content'
-                      : 'bg-base-100 font-medium text-base-content/70 active:bg-base-100/80 dark:bg-base-200'
+                      : 'bg-base-100 font-medium text-base-content/70 active:bg-base-200/60 dark:bg-base-200 dark:active:bg-base-300/50'
                   "
                   type="button"
                   :aria-pressed="activeSubject?.code === subject.code"

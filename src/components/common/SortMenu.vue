@@ -92,7 +92,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', handleOutsideC
   >
     <button
       ref="buttonRef"
-      class="flex h-9 items-center gap-1.5 rounded-xl bg-base-100 px-3 text-xs font-medium text-base-content/75 transition-colors active:bg-base-200/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary aria-disabled:cursor-wait dark:bg-base-200 dark:active:bg-base-300/60"
+      class="flex h-9 items-center gap-1.5 rounded-xl bg-base-100 px-3 text-xs font-medium text-base-content/70 transition-colors active:bg-base-200/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary aria-disabled:cursor-wait dark:bg-base-200 dark:active:bg-base-300/50"
       type="button"
       :aria-disabled="loading"
       :aria-label="`排序方式：${selectedLabel}`"
@@ -123,11 +123,11 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', handleOutsideC
       <button
         v-for="(option, index) in options"
         :key="option.value"
-        class="flex min-h-11 w-full items-center justify-between gap-4 rounded-xl px-3 text-left text-sm transition-colors hover:bg-base-200/70 focus-visible:bg-primary/8 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary"
+        class="flex min-h-11 w-full items-center justify-between gap-4 rounded-xl px-3 text-left text-sm transition-colors hover:bg-base-200/60 focus-visible:bg-primary/10 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary"
         :class="
           modelValue === option.value
-            ? 'bg-primary/[0.08] font-medium text-primary'
-            : 'text-base-content/75'
+            ? 'bg-primary/10 font-medium text-primary'
+            : 'text-base-content/70'
         "
         type="button"
         role="menuitemradio"

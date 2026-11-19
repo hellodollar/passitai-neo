@@ -39,19 +39,19 @@ const nextExamDateText = computed(() =>
     <div class="flex min-w-0 items-center justify-between gap-3">
       <div class="min-w-0 flex-1">
         <div class="flex min-w-0 items-center gap-2">
-          <h2 class="truncate text-[17px] font-bold leading-snug tracking-tight">
+          <h2 class="truncate text-base font-semibold leading-snug tracking-tight">
             {{ plan.major.name }}
           </h2>
           <span
             v-if="plan.major.educationLevel"
-            class="shrink-0 rounded-full bg-primary/[0.09] px-2 py-0.5 text-[11px] font-semibold text-primary"
+            class="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary"
           >
             {{ plan.major.educationLevel }}
           </span>
         </div>
         <p
           v-if="provinceName || plan.majorCode || nextExamDateText"
-          class="mt-1 truncate text-xs text-base-content/55"
+          class="mt-1 truncate text-xs leading-snug text-base-content/55"
         >
           <template v-if="provinceName">{{ provinceName }}</template>
           <template v-if="provinceName && plan.majorCode"> · </template>
@@ -63,10 +63,10 @@ const nextExamDateText = computed(() =>
 
       <div
         v-if="nextExamDate"
-        class="shrink-0 rounded-xl bg-primary/[0.07] px-3 py-1.5 text-right dark:bg-primary/[0.15]"
+        class="shrink-0 rounded-xl bg-primary/10 px-3 py-1.5 text-right dark:bg-primary/15"
       >
         <p
-          class="flex items-center justify-end gap-1 text-[10px] font-medium leading-none text-primary/75"
+          class="flex items-center justify-end gap-1 text-[11px] font-medium leading-none text-primary/75"
         >
           <span class="size-1.5 rounded-full bg-primary"></span>
           距离考试
@@ -75,20 +75,20 @@ const nextExamDateText = computed(() =>
           <strong class="text-xl font-bold leading-none tracking-tight text-primary tabular-nums">
             {{ daysUntilExam }}
           </strong>
-          <span class="ml-0.5 text-[11px] font-medium text-primary/70">天</span>
+          <span class="ml-0.5 text-[11px] font-medium text-primary/75">天</span>
         </p>
       </div>
       <span
         v-else
-        class="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/[0.08] text-primary"
+        class="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"
       >
-        <GraduationCap :size="19" />
+        <GraduationCap :size="18" />
       </span>
     </div>
 
     <div class="mt-3 grid grid-cols-2 gap-2">
       <button
-        class="flex h-9 items-center justify-center gap-1.5 rounded-xl bg-base-200/70 text-xs font-semibold text-base-content/80 transition-colors active:bg-base-200 dark:bg-base-300/45 dark:active:bg-base-300/75"
+        class="flex h-9 items-center justify-center gap-1.5 rounded-xl bg-base-200/65 text-xs font-medium text-base-content/70 transition-colors active:bg-base-200 dark:bg-base-300/45 dark:active:bg-base-300/70"
         type="button"
         aria-label="考试计划"
         @click="emit('edit-exam-plan')"
@@ -97,12 +97,12 @@ const nextExamDateText = computed(() =>
         考试计划
       </button>
       <button
-        class="flex h-9 items-center justify-center gap-1.5 rounded-xl bg-base-200/70 text-xs font-semibold text-base-content/80 transition-colors active:bg-base-200 dark:bg-base-300/45 dark:active:bg-base-300/75"
+        class="flex h-9 items-center justify-center gap-1.5 rounded-xl bg-base-200/65 text-xs font-medium text-base-content/70 transition-colors active:bg-base-200 dark:bg-base-300/45 dark:active:bg-base-300/70"
         type="button"
         aria-label="刷题设置"
         @click="emit('edit-settings')"
       >
-        <Settings2 :size="14" class="text-base-content/60" />
+        <Settings2 :size="14" class="text-base-content/55" />
         刷题设置
       </button>
     </div>

@@ -84,7 +84,7 @@ const settingsRows = computed<SettingsRow[]>(() => [
     action: 'messages',
     title: '消息中心',
     icon: Bell,
-    iconClass: 'bg-primary/[0.09] text-primary',
+    iconClass: 'bg-primary/10 text-primary',
     desc: '学习消息、系统公告',
     badge: true,
   },
@@ -92,21 +92,21 @@ const settingsRows = computed<SettingsRow[]>(() => [
     action: 'appearance',
     title: '外观',
     icon: SunMoon,
-    iconClass: 'bg-base-200/80 text-base-content/65 dark:bg-base-300/50',
+    iconClass: 'bg-base-200/75 text-base-content/65 dark:bg-base-300/50',
     desc: appearanceLabel.value,
   },
   {
     action: 'account',
     title: '账户与安全',
     icon: UserRound,
-    iconClass: 'bg-primary/[0.09] text-primary',
+    iconClass: 'bg-primary/10 text-primary',
     desc: '密码与邮箱',
   },
   {
     action: 'notification',
     title: '通知',
     icon: BellRing,
-    iconClass: 'bg-info/[0.12] text-info',
+    iconClass: 'bg-info/10 text-info',
     desc: notificationSettingsStore.isLoading
       ? '加载中'
       : notificationSettingsStore.settings
@@ -119,7 +119,7 @@ const settingsRows = computed<SettingsRow[]>(() => [
     action: 'scope',
     title: '考试计划',
     icon: GraduationCap,
-    iconClass: 'bg-secondary/[0.11] text-secondary',
+    iconClass: 'bg-secondary/10 text-secondary',
     desc: examPlanStore.isLoading
       ? '加载中…'
       : examPlanStore.error
@@ -132,14 +132,14 @@ const settingsRows = computed<SettingsRow[]>(() => [
     action: 'practice',
     title: '练习设置',
     icon: Settings2,
-    iconClass: 'bg-accent/[0.12] text-accent',
+    iconClass: 'bg-accent/10 text-accent',
     desc: `已开 ${enabledPracticeCount.value} 项`,
   },
   {
     action: 'cleanup',
     title: '数据管理',
     icon: Eraser,
-    iconClass: 'bg-base-200/80 text-base-content/65 dark:bg-base-300/50',
+    iconClass: 'bg-base-200/75 text-base-content/65 dark:bg-base-300/50',
     desc:
       localPracticeRecords.value.length > 0
         ? `${localPracticeRecords.value.length} 份本地作答`
@@ -219,14 +219,14 @@ watch(
             class="flex size-13 items-center justify-center rounded-full bg-primary text-primary-content"
             aria-hidden="true"
           >
-            <UserRound :size="23" stroke-width="1.8" />
+            <UserRound :size="24" />
           </span>
           <span
             class="mt-2.5 max-w-full truncate text-base font-semibold capitalize leading-snug tracking-tight text-base-content"
           >
             {{ displayName }}
           </span>
-          <span class="mt-0.5 max-w-full truncate text-xs leading-snug text-base-content/50">
+          <span class="mt-0.5 max-w-full truncate text-xs leading-snug text-base-content/55">
             {{ profileEmail }}
           </span>
         </div>
@@ -236,21 +236,21 @@ watch(
           <button
             v-for="(row, rowIndex) in settingsRows"
             :key="row.action"
-            class="relative flex w-full min-w-0 items-center gap-3 px-3.5 py-2.5 text-left transition-colors active:bg-base-200/60 dark:active:bg-base-300/40"
+            class="relative flex w-full min-w-0 items-center gap-3 px-3.5 py-2.5 text-left transition-colors active:bg-base-200/60 dark:active:bg-base-300/50"
             type="button"
             @click="openRowAction(row.action)"
           >
             <span
               v-if="rowIndex > 0"
               aria-hidden="true"
-              class="pointer-events-none absolute left-[3.625rem] right-3.5 top-0 h-px bg-base-content/[0.05] dark:bg-base-content/[0.07]"
+              class="pointer-events-none absolute left-[3.875rem] right-3.5 top-0 h-px bg-base-content/[0.06] dark:bg-base-content/[0.08]"
             ></span>
             <span
-              class="flex size-8.5 shrink-0 items-center justify-center rounded-xl"
+              class="flex size-9 shrink-0 items-center justify-center rounded-xl"
               :class="row.iconClass"
               aria-hidden="true"
             >
-              <component :is="row.icon" :size="16" stroke-width="1.9" />
+              <component :is="row.icon" :size="16" />
             </span>
             <span class="min-w-0 flex-1">
               <span class="block truncate text-sm font-medium leading-snug text-base-content">
@@ -258,7 +258,7 @@ watch(
               </span>
               <span
                 v-if="row.desc"
-                class="mt-0.5 block truncate text-xs leading-snug text-base-content/50"
+                class="mt-0.5 block truncate text-xs leading-snug text-base-content/55"
               >
                 {{ row.desc }}
               </span>
@@ -282,7 +282,7 @@ watch(
         </div>
 
         <button
-          class="flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl bg-base-100 text-sm font-medium text-error transition-colors active:bg-error/[0.08] disabled:opacity-50 dark:bg-base-200 dark:active:bg-error/[0.14]"
+          class="flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl bg-base-100 text-sm font-medium text-error transition-colors active:bg-error/10 disabled:opacity-50 dark:bg-base-200 dark:active:bg-error/15"
           type="button"
           :disabled="signingOut"
           @click="logout"
@@ -295,7 +295,7 @@ watch(
         <BasePopup v-model="accountPopupOpen" title="账户安全">
           <div class="grid gap-2">
             <button
-              class="grid w-full grid-cols-[2.25rem_minmax(0,1fr)_1.125rem] items-center gap-2.5 rounded-2xl bg-base-200/70 p-3 text-left transition-colors active:bg-base-300/70"
+              class="grid w-full grid-cols-[2.25rem_minmax(0,1fr)_1.125rem] items-center gap-2.5 rounded-2xl bg-base-200/65 p-3 text-left transition-colors active:bg-base-200 dark:bg-base-300/45 dark:active:bg-base-300/70"
               type="button"
               @click="openAccountAction('password')"
             >
@@ -305,8 +305,10 @@ watch(
                 <KeyRound :size="16" />
               </span>
               <span class="min-w-0">
-                <span class="block text-sm font-medium">修改密码</span>
-                <span class="mt-0.5 block truncate text-xs text-base-content/60"
+                <span class="block text-sm font-medium leading-snug text-base-content"
+                  >修改密码</span
+                >
+                <span class="mt-0.5 block truncate text-xs leading-snug text-base-content/55"
                   >定期更新密码更安全</span
                 >
               </span>
@@ -314,7 +316,7 @@ watch(
             </button>
 
             <button
-              class="grid w-full grid-cols-[2.25rem_minmax(0,1fr)_1.125rem] items-center gap-2.5 rounded-2xl bg-base-200/70 p-3 text-left transition-colors active:bg-base-300/70"
+              class="grid w-full grid-cols-[2.25rem_minmax(0,1fr)_1.125rem] items-center gap-2.5 rounded-2xl bg-base-200/65 p-3 text-left transition-colors active:bg-base-200 dark:bg-base-300/45 dark:active:bg-base-300/70"
               type="button"
               @click="openAccountAction('email')"
             >
@@ -324,8 +326,10 @@ watch(
                 <Mail :size="16" />
               </span>
               <span class="min-w-0">
-                <span class="block text-sm font-medium">更换邮箱</span>
-                <span class="mt-0.5 block truncate text-xs text-base-content/60">{{
+                <span class="block text-sm font-medium leading-snug text-base-content"
+                  >更换邮箱</span
+                >
+                <span class="mt-0.5 block truncate text-xs leading-snug text-base-content/55">{{
                   profileEmail
                 }}</span>
               </span>

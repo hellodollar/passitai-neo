@@ -14,25 +14,25 @@ const latest = computed(() => notifications.summary?.latestUnread)
 <template>
   <button
     v-if="preferences.settings?.inAppBanner && latest && notifications.unreadCount > 0"
-    class="flex w-full items-center gap-3 rounded-2xl bg-base-100 px-3.5 py-2.5 text-left transition-colors active:bg-base-100/80 dark:bg-base-200 dark:active:bg-base-300/60"
+    class="flex w-full items-center gap-3 rounded-2xl bg-base-100 px-3.5 py-2.5 text-left transition-colors active:bg-base-200/60 dark:bg-base-200 dark:active:bg-base-300/50"
     type="button"
     :aria-label="`新消息，${notifications.unreadCount} 条未读`"
     @click="router.push({ name: 'notification-detail', params: { id: latest.id } })"
   >
     <span
-      class="relative flex size-8.5 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"
+      class="relative flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"
       ><Bell :size="16" /><span
-        class="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full border-2 border-base-100 bg-error px-1 text-[10px] font-semibold text-error-content dark:border-base-200"
+        class="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full border-2 border-base-100 bg-error px-1 text-[11px] font-semibold leading-none tabular-nums text-error-content dark:border-base-200"
         >{{ notifications.unreadCount > 99 ? '99+' : notifications.unreadCount }}</span
       ></span
     >
     <span class="min-w-0 flex-1"
-      ><span class="block truncate text-[13px] font-semibold text-base-content">{{
+      ><span class="block truncate text-sm font-medium leading-snug text-base-content">{{
         preferences.settings?.contentPreview ? latest.title : '你有新消息'
       }}</span
-      ><span class="mt-0.5 block text-[11px] text-base-content/50">{{
+      ><span class="mt-0.5 block text-xs leading-snug text-base-content/55">{{
         notificationTime(latest.publishedAt)
       }}</span></span
-    ><ChevronRight :size="15" class="shrink-0 text-base-content/35" />
+    ><ChevronRight :size="15" class="shrink-0 text-base-content/30" />
   </button>
 </template>
