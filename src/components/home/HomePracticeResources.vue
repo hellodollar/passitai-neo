@@ -32,30 +32,29 @@ const templateStyleMap: Record<
   baseline: {
     icon: Target,
     tileClass: 'bg-primary/[0.09] text-primary',
-    activeTabClass: 'bg-primary/[0.09] text-primary ring-1 ring-primary/20',
-    activeIconClass:
-      'bg-base-100 text-primary shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:bg-base-200',
+    activeTabClass: 'bg-primary/[0.11] text-primary',
+    activeIconClass: 'bg-base-100 text-primary dark:bg-base-200',
     progressClass: 'bg-primary',
   },
   pastExams: {
     icon: History,
     tileClass: 'bg-info/[0.12] text-info',
-    activeTabClass: 'bg-info/[0.11] text-info ring-1 ring-info/25',
-    activeIconClass: 'bg-base-100 text-info shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:bg-base-200',
+    activeTabClass: 'bg-info/[0.13] text-info',
+    activeIconClass: 'bg-base-100 text-info dark:bg-base-200',
     progressClass: 'bg-info',
   },
   mockExams: {
     icon: Timer,
     tileClass: 'bg-accent/[0.12] text-accent',
-    activeTabClass: 'bg-accent/[0.11] text-accent ring-1 ring-accent/25',
-    activeIconClass: 'bg-base-100 text-accent shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:bg-base-200',
+    activeTabClass: 'bg-accent/[0.13] text-accent',
+    activeIconClass: 'bg-base-100 text-accent dark:bg-base-200',
     progressClass: 'bg-accent',
   },
   aiEnhance: {
     icon: Sparkles,
     tileClass: 'bg-ai/[0.1] text-ai',
-    activeTabClass: 'bg-ai/[0.09] text-ai ring-1 ring-ai/20',
-    activeIconClass: 'bg-base-100 text-ai shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:bg-base-200',
+    activeTabClass: 'bg-ai/[0.11] text-ai',
+    activeIconClass: 'bg-base-100 text-ai dark:bg-base-200',
     progressClass: 'bg-ai',
   },
 }
@@ -112,16 +111,13 @@ watch(
 </script>
 
 <template>
-  <section
-    aria-label="练习题集"
-    class="overflow-hidden rounded-[20px] bg-base-100 shadow-[0_1px_3px_rgba(15,23,42,0.03)] ring-1 ring-base-content/[0.04] dark:bg-base-200 dark:shadow-none dark:ring-white/[0.06]"
-  >
+  <section aria-label="练习题集" class="overflow-hidden rounded-2xl bg-base-100 dark:bg-base-200">
     <div v-if="loading" role="status" aria-label="正在加载…" class="p-3">
       <div class="grid grid-cols-4 gap-2">
         <div
           v-for="index in 4"
           :key="index"
-          class="flex h-[4.5rem] flex-col items-center justify-center gap-1.5 rounded-2xl bg-base-200/55 p-2 dark:bg-base-300/35"
+          class="flex h-[4.5rem] flex-col items-center justify-center gap-1.5 rounded-xl bg-base-200/55 p-2 dark:bg-base-300/35"
         >
           <span class="size-7 animate-pulse rounded-xl bg-base-200 dark:bg-base-300/70"></span>
           <span class="h-3 w-11 animate-pulse rounded bg-base-200 dark:bg-base-300/70"></span>
@@ -165,7 +161,7 @@ watch(
           <button
             v-for="template in templates"
             :key="template.id"
-            class="flex min-w-0 flex-col items-center rounded-2xl px-1.5 py-2.5 text-center transition-colors"
+            class="flex min-w-0 flex-col items-center rounded-xl px-1.5 py-2 text-center transition-colors"
             :class="
               activeTemplate?.id === template.id
                 ? templateStyleMap[template.type].activeTabClass
@@ -177,7 +173,7 @@ watch(
             @click="selectedType = template.type"
           >
             <span
-              class="flex size-7.5 items-center justify-center rounded-xl transition-colors"
+              class="flex size-7 items-center justify-center rounded-lg transition-colors"
               :class="
                 activeTemplate?.id === template.id
                   ? templateStyleMap[template.type].activeIconClass

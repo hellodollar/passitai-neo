@@ -14,7 +14,7 @@ const latest = computed(() => notifications.summary?.latestUnread)
 <template>
   <button
     v-if="preferences.settings?.inAppBanner && latest && notifications.unreadCount > 0"
-    class="flex w-full items-center gap-3 rounded-2xl bg-base-100 px-3.5 py-2.5 text-left shadow-[0_1px_2px_rgba(15,23,42,0.03)] ring-1 ring-primary/15 transition-colors active:bg-base-100/80 dark:bg-base-200 dark:shadow-none dark:ring-primary/25"
+    class="flex w-full items-center gap-3 rounded-2xl bg-base-100 px-3.5 py-2.5 text-left transition-colors active:bg-base-100/80 dark:bg-base-200 dark:active:bg-base-300/60"
     type="button"
     :aria-label="`新消息，${notifications.unreadCount} 条未读`"
     @click="router.push({ name: 'notification-detail', params: { id: latest.id } })"

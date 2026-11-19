@@ -206,45 +206,33 @@ watch(
 </script>
 
 <template>
-  <div class="relative min-h-dvh overflow-x-hidden bg-base-200/80 dark:bg-base-100">
-    <div
-      aria-hidden="true"
-      class="pointer-events-none absolute inset-x-0 top-0 h-44 bg-gradient-to-b from-primary/[0.06] via-primary/[0.02] to-transparent dark:from-primary/[0.12] dark:via-primary/[0.03]"
-    ></div>
-    <PageContainer class="relative">
+  <div class="min-h-dvh overflow-x-hidden bg-base-200/80 dark:bg-base-100">
+    <PageContainer>
       <section class="flex flex-col gap-3">
         <h1 class="sr-only">我的</h1>
 
         <!-- 头部资料 -->
         <div
-          class="relative flex flex-col items-center overflow-hidden rounded-[20px] bg-base-100 px-4 py-5 text-center shadow-[0_1px_3px_rgba(15,23,42,0.03)] ring-1 ring-base-content/[0.04] dark:bg-base-200 dark:shadow-none dark:ring-white/[0.06]"
+          class="flex flex-col items-center rounded-2xl bg-base-100 px-4 py-4.5 text-center dark:bg-base-200"
         >
           <span
-            aria-hidden="true"
-            class="pointer-events-none absolute -top-12 left-1/2 h-28 w-52 -translate-x-1/2 rounded-full bg-primary/[0.1] blur-2xl dark:bg-primary/[0.18]"
-          ></span>
-          <span
-            class="relative flex size-14 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/80 text-primary-content shadow-sm shadow-primary/20 ring-4 ring-primary/[0.08] dark:ring-base-100/25"
+            class="flex size-13 items-center justify-center rounded-full bg-primary text-primary-content"
             aria-hidden="true"
           >
-            <UserRound :size="24" stroke-width="1.8" />
+            <UserRound :size="23" stroke-width="1.8" />
           </span>
           <span
-            class="relative mt-2.5 max-w-full truncate text-base font-semibold capitalize leading-snug tracking-tight text-base-content"
+            class="mt-2.5 max-w-full truncate text-base font-semibold capitalize leading-snug tracking-tight text-base-content"
           >
             {{ displayName }}
           </span>
-          <span
-            class="relative mt-0.5 max-w-full truncate text-xs leading-snug text-base-content/50"
-          >
+          <span class="mt-0.5 max-w-full truncate text-xs leading-snug text-base-content/50">
             {{ profileEmail }}
           </span>
         </div>
 
         <!-- 设置列表：纯白一体化卡片，行相连，弱分隔线 -->
-        <div
-          class="overflow-hidden rounded-[20px] bg-base-100 py-1 shadow-[0_1px_3px_rgba(15,23,42,0.03)] ring-1 ring-base-content/[0.04] dark:bg-base-200 dark:shadow-none dark:ring-white/[0.06]"
-        >
+        <div class="overflow-hidden rounded-2xl bg-base-100 py-0.5 dark:bg-base-200">
           <button
             v-for="(row, rowIndex) in settingsRows"
             :key="row.action"
@@ -294,7 +282,7 @@ watch(
         </div>
 
         <button
-          class="flex min-h-11 w-full items-center justify-center gap-2 rounded-[20px] bg-base-100 text-sm font-medium text-error shadow-[0_1px_3px_rgba(15,23,42,0.03)] ring-1 ring-base-content/[0.04] transition-colors active:bg-error/[0.08] disabled:opacity-50 dark:bg-base-200 dark:shadow-none dark:ring-white/[0.06] dark:active:bg-error/[0.14]"
+          class="flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl bg-base-100 text-sm font-medium text-error transition-colors active:bg-error/[0.08] disabled:opacity-50 dark:bg-base-200 dark:active:bg-error/[0.14]"
           type="button"
           :disabled="signingOut"
           @click="logout"

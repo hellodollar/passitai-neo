@@ -217,18 +217,14 @@ watch(
 </script>
 
 <template>
-  <div class="relative min-h-dvh overflow-x-hidden bg-base-200/80 dark:bg-base-100">
-    <div
-      aria-hidden="true"
-      class="pointer-events-none absolute inset-x-0 top-0 h-44 bg-gradient-to-b from-primary/[0.06] via-primary/[0.02] to-transparent dark:from-primary/[0.12] dark:via-primary/[0.03]"
-    ></div>
-    <PageContainer class="relative">
+  <div class="min-h-dvh overflow-x-hidden bg-base-200/80 dark:bg-base-100">
+    <PageContainer>
       <section class="flex w-full min-w-0 max-w-full flex-col gap-3.5">
         <h1 class="sr-only">练习首页</h1>
         <header class="relative z-10 flex min-h-9 shrink-0 items-center">
           <LogoPassitai role="img" aria-label="Passitai" class="h-7 w-auto text-base-content" />
           <button
-            class="relative ml-auto flex size-9 items-center justify-center rounded-full bg-base-100 text-base-content shadow-[0_1px_2px_rgba(15,23,42,0.04)] ring-1 ring-base-content/[0.05] transition-colors active:bg-base-200/70 dark:bg-base-200 dark:shadow-none dark:ring-white/[0.08]"
+            class="relative ml-auto flex size-9 items-center justify-center rounded-full bg-base-100 text-base-content transition-colors active:bg-base-200/70 dark:bg-base-200 dark:active:bg-base-300/60"
             type="button"
             :aria-label="
               notifications.unreadCount
@@ -254,9 +250,7 @@ watch(
         </PagePlaceholder>
 
         <PagePlaceholder v-else-if="examPlanStore.error">
-          <div
-            class="w-full rounded-[20px] bg-base-100 shadow-[0_1px_3px_rgba(15,23,42,0.03)] ring-1 ring-base-content/[0.04] dark:bg-base-200 dark:shadow-none dark:ring-white/[0.06]"
-          >
+          <div class="w-full rounded-2xl bg-base-100 dark:bg-base-200">
             <EmptyState
               :icon="CircleAlert"
               tone="error"
@@ -270,9 +264,7 @@ watch(
         </PagePlaceholder>
 
         <PagePlaceholder v-else-if="!examPlan">
-          <div
-            class="w-full rounded-[20px] bg-base-100 shadow-[0_1px_3px_rgba(15,23,42,0.03)] ring-1 ring-base-content/[0.04] dark:bg-base-200 dark:shadow-none dark:ring-white/[0.06]"
-          >
+          <div class="w-full rounded-2xl bg-base-100 dark:bg-base-200">
             <EmptyState
               :icon="GraduationCap"
               title="暂无考试计划"
@@ -301,7 +293,7 @@ watch(
                 </span>
               </div>
               <button
-                class="flex shrink-0 items-center gap-0.5 rounded-full bg-base-100 px-2.5 py-1 text-xs font-medium text-primary shadow-[0_1px_2px_rgba(15,23,42,0.03)] ring-1 ring-base-content/[0.04] transition-colors active:bg-base-200/70 dark:bg-base-200 dark:shadow-none dark:ring-white/[0.06]"
+                class="flex shrink-0 items-center gap-0.5 rounded-full bg-base-100 px-2.5 py-1 text-xs font-medium text-primary transition-colors active:bg-base-200/70 dark:bg-base-200 dark:active:bg-base-300/60"
                 type="button"
                 aria-label="科目管理"
                 @click="subjectManagerOpen = true"
@@ -323,8 +315,8 @@ watch(
                   class="max-w-[9.5rem] shrink-0 truncate rounded-full px-3.5 py-1.5 text-[13px] transition-colors"
                   :class="
                     activeSubject?.code === subject.code
-                      ? 'bg-primary font-semibold text-primary-content shadow-xs shadow-primary/20'
-                      : 'bg-base-100 font-medium text-base-content/70 ring-1 ring-base-content/[0.04] active:bg-base-100/80 dark:bg-base-200 dark:ring-white/[0.06]'
+                      ? 'bg-primary font-semibold text-primary-content'
+                      : 'bg-base-100 font-medium text-base-content/70 active:bg-base-100/80 dark:bg-base-200'
                   "
                   type="button"
                   :aria-pressed="activeSubject?.code === subject.code"
@@ -343,7 +335,7 @@ watch(
 
             <div
               v-if="!examPlanSubjects.length"
-              class="overflow-hidden rounded-[20px] bg-base-100 shadow-[0_1px_3px_rgba(15,23,42,0.03)] ring-1 ring-base-content/[0.04] dark:bg-base-200 dark:shadow-none dark:ring-white/[0.06]"
+              class="overflow-hidden rounded-2xl bg-base-100 dark:bg-base-200"
             >
               <EmptyState
                 :icon="GraduationCap"
@@ -356,7 +348,7 @@ watch(
 
             <div
               v-else-if="!activeSubject"
-              class="overflow-hidden rounded-[20px] bg-base-100 shadow-[0_1px_3px_rgba(15,23,42,0.03)] ring-1 ring-base-content/[0.04] dark:bg-base-200 dark:shadow-none dark:ring-white/[0.06]"
+              class="overflow-hidden rounded-2xl bg-base-100 dark:bg-base-200"
             >
               <EmptyState
                 :icon="EyeOff"

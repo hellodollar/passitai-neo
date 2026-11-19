@@ -35,9 +35,7 @@ const nextExamDateText = computed(() =>
 </script>
 
 <template>
-  <section
-    class="rounded-[20px] bg-base-100 p-4 shadow-[0_1px_3px_rgba(15,23,42,0.03)] ring-1 ring-base-content/[0.04] dark:bg-base-200 dark:shadow-none dark:ring-white/[0.06]"
-  >
+  <section class="rounded-2xl bg-base-100 p-3.5 dark:bg-base-200">
     <div class="flex min-w-0 items-center justify-between gap-3">
       <div class="min-w-0 flex-1">
         <div class="flex min-w-0 items-center gap-2">
@@ -53,7 +51,7 @@ const nextExamDateText = computed(() =>
         </div>
         <p
           v-if="provinceName || plan.majorCode || nextExamDateText"
-          class="mt-1.5 truncate text-xs text-base-content/55"
+          class="mt-1 truncate text-xs text-base-content/55"
         >
           <template v-if="provinceName">{{ provinceName }}</template>
           <template v-if="provinceName && plan.majorCode"> · </template>
@@ -65,7 +63,7 @@ const nextExamDateText = computed(() =>
 
       <div
         v-if="nextExamDate"
-        class="shrink-0 rounded-2xl bg-primary/[0.07] px-3 py-2 text-right dark:bg-primary/[0.15]"
+        class="shrink-0 rounded-xl bg-primary/[0.07] px-3 py-1.5 text-right dark:bg-primary/[0.15]"
       >
         <p
           class="flex items-center justify-end gap-1 text-[10px] font-medium leading-none text-primary/75"
@@ -82,13 +80,13 @@ const nextExamDateText = computed(() =>
       </div>
       <span
         v-else
-        class="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-primary/[0.08] text-primary"
+        class="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/[0.08] text-primary"
       >
         <GraduationCap :size="19" />
       </span>
     </div>
 
-    <div class="mt-3.5 grid grid-cols-2 gap-2">
+    <div class="mt-3 grid grid-cols-2 gap-2">
       <button
         class="flex h-9 items-center justify-center gap-1.5 rounded-xl bg-base-200/70 text-xs font-semibold text-base-content/80 transition-colors active:bg-base-200 dark:bg-base-300/45 dark:active:bg-base-300/75"
         type="button"

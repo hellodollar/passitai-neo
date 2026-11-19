@@ -92,7 +92,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', handleOutsideC
   >
     <button
       ref="buttonRef"
-      class="flex h-9 items-center gap-1.5 rounded-xl bg-base-100 px-3 text-xs font-medium text-base-content/75 shadow-[0_1px_2px_rgba(15,23,42,0.03)] ring-1 ring-base-content/[0.04] transition-colors active:bg-base-200/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary aria-disabled:cursor-wait dark:bg-base-200 dark:shadow-none dark:ring-white/[0.06] dark:active:bg-base-300/60"
+      class="flex h-9 items-center gap-1.5 rounded-xl bg-base-100 px-3 text-xs font-medium text-base-content/75 transition-colors active:bg-base-200/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary aria-disabled:cursor-wait dark:bg-base-200 dark:active:bg-base-300/60"
       type="button"
       :aria-disabled="loading"
       :aria-label="`排序方式：${selectedLabel}`"

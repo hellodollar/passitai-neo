@@ -211,12 +211,8 @@ watch(
 </script>
 
 <template>
-  <div class="relative min-h-dvh overflow-x-hidden bg-base-200/80 dark:bg-base-100">
-    <div
-      aria-hidden="true"
-      class="pointer-events-none absolute inset-x-0 top-0 h-44 bg-gradient-to-b from-primary/[0.06] via-primary/[0.02] to-transparent dark:from-primary/[0.12] dark:via-primary/[0.03]"
-    ></div>
-    <PageContainer class="relative">
+  <div class="min-h-dvh overflow-x-hidden bg-base-200/80 dark:bg-base-100">
+    <PageContainer>
       <section class="flex flex-col" :aria-busy="loading">
         <h1 class="sr-only">{{ pageConfig.label }}</h1>
 
@@ -226,7 +222,7 @@ watch(
           class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1"
         >
           <div
-            class="inline-flex justify-self-start rounded-xl bg-base-100 p-1 shadow-[0_1px_2px_rgba(15,23,42,0.03)] ring-1 ring-base-content/[0.04] dark:bg-base-200 dark:shadow-none dark:ring-white/[0.06]"
+            class="inline-flex justify-self-start rounded-xl bg-base-100 p-1 dark:bg-base-200"
             role="group"
             aria-label="分组方式"
           >
@@ -267,9 +263,7 @@ watch(
         </PagePlaceholder>
 
         <PagePlaceholder v-else-if="loadError && items.length === 0">
-          <div
-            class="w-full rounded-[20px] bg-base-100 shadow-[0_1px_3px_rgba(15,23,42,0.03)] ring-1 ring-base-content/[0.04] dark:bg-base-200 dark:shadow-none dark:ring-white/[0.06]"
-          >
+          <div class="w-full rounded-2xl bg-base-100 dark:bg-base-200">
             <EmptyState
               :icon="CircleAlert"
               tone="error"
@@ -283,9 +277,7 @@ watch(
         </PagePlaceholder>
 
         <PagePlaceholder v-else-if="items.length === 0">
-          <div
-            class="w-full rounded-[20px] bg-base-100 shadow-[0_1px_3px_rgba(15,23,42,0.03)] ring-1 ring-base-content/[0.04] dark:bg-base-200 dark:shadow-none dark:ring-white/[0.06]"
-          >
+          <div class="w-full rounded-2xl bg-base-100 dark:bg-base-200">
             <EmptyState
               :icon="pageConfig.icon"
               :title="pageConfig.emptyTitle"
@@ -300,7 +292,7 @@ watch(
         <div v-else class="mt-3 space-y-2.5">
           <div
             v-if="loadError"
-            class="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-error/[0.08] px-3.5 py-2.5 text-xs text-error ring-1 ring-error/15"
+            class="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-error/[0.08] px-3.5 py-2.5 text-xs text-error"
             role="status"
           >
             <span>更新失败，已保留原列表。</span>
@@ -315,7 +307,7 @@ watch(
           <button
             v-for="item in items"
             :key="displayedGroupMode === 'paper' ? item.paperId : item.subjectId"
-            class="flex w-full min-w-0 items-center gap-3 rounded-2xl bg-base-100 px-3.5 py-3 text-left shadow-[0_1px_3px_rgba(15,23,42,0.03)] ring-1 ring-base-content/[0.04] transition-colors active:bg-base-100/75 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary dark:bg-base-200 dark:shadow-none dark:ring-white/[0.06] dark:active:bg-base-300/60"
+            class="flex w-full min-w-0 items-center gap-3 rounded-2xl bg-base-100 px-3.5 py-3 text-left transition-colors active:bg-base-100/75 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary dark:bg-base-200 dark:active:bg-base-300/60"
             type="button"
             :aria-label="`${displayedGroupMode === 'paper' ? item.paperName : item.subjectName}，${item.questionCount}题，开始练习`"
             @click="openPractice(item)"
