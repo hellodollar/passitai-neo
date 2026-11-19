@@ -108,7 +108,7 @@ const settingsRows = computed<SettingsRow[]>(() => [
     icon: BellRing,
     iconClass: 'bg-info/10 text-info',
     desc: notificationSettingsStore.isLoading
-      ? '加载中'
+      ? '加载中…'
       : notificationSettingsStore.settings
         ? notificationSettingsStore.settings.inAppBanner
           ? '应用内横幅已开启'
@@ -143,7 +143,7 @@ const settingsRows = computed<SettingsRow[]>(() => [
     desc:
       localPracticeRecords.value.length > 0
         ? `${localPracticeRecords.value.length} 份本地作答`
-        : '清空本地作答记录',
+        : '清除本地作答记录',
   },
 ])
 
@@ -212,9 +212,7 @@ watch(
         <h1 class="sr-only">我的</h1>
 
         <!-- 头部资料 -->
-        <div
-          class="flex flex-col items-center rounded-2xl bg-base-100 px-4 py-4.5 text-center dark:bg-base-200"
-        >
+        <div class="flex flex-col items-center px-4 py-3 text-center">
           <span
             class="flex size-13 items-center justify-center rounded-full bg-primary text-primary-content"
             aria-hidden="true"
@@ -292,7 +290,7 @@ watch(
           退出登录
         </button>
 
-        <BasePopup v-model="accountPopupOpen" title="账户安全">
+        <BasePopup v-model="accountPopupOpen" title="账户与安全">
           <div class="grid gap-2">
             <button
               class="grid w-full grid-cols-[2.25rem_minmax(0,1fr)_1.125rem] items-center gap-3 rounded-2xl bg-base-200/65 px-3.5 py-3 text-left transition-colors active:bg-base-200 dark:bg-base-300/45 dark:active:bg-base-300/70"

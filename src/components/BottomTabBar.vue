@@ -29,13 +29,15 @@ const items: Array<{ label: string; to: string; icon: typeof Home }> = [
         :class="
           isActive
             ? 'font-semibold text-primary'
-            : 'text-base-content/60 active:bg-base-200/80 hover:text-base-content'
+            : 'text-base-content/55 active:bg-base-200/60 hover:text-base-content dark:active:bg-base-300/50'
         "
         @click="navigate"
       >
         <span
           class="relative flex h-6.5 min-w-11 items-center justify-center rounded-full transition-colors"
-          :class="isActive ? 'bg-primary/12 text-primary' : 'text-base-content/75'"
+          :class="
+            isActive ? 'bg-primary/12 text-primary dark:bg-primary/18' : 'text-base-content/70'
+          "
         >
           <component :is="item.icon" :size="19" :stroke-width="isActive ? 2.2 : 1.9" />
           <span

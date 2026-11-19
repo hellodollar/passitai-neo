@@ -246,7 +246,7 @@ watch(
 
         <PagePlaceholder v-if="examPlanLoading" role="status" aria-live="polite">
           <span class="loading loading-spinner loading-md text-primary"></span>
-          <p class="text-sm font-medium text-base-content/70">正在获取考试计划…</p>
+          <p class="text-sm font-medium text-base-content/70">正在加载…</p>
         </PagePlaceholder>
 
         <PagePlaceholder v-else-if="examPlanStore.error">
@@ -287,7 +287,7 @@ watch(
           <div class="space-y-2.5">
             <div class="flex items-center justify-between gap-3 px-0.5">
               <div class="flex items-baseline gap-1.5">
-                <h2 class="text-[15px] font-semibold leading-tight tracking-tight">刷题科目</h2>
+                <h2 class="text-[15px] font-semibold leading-tight tracking-tight">练习科目</h2>
                 <span class="text-xs font-medium tabular-nums text-base-content/55">
                   {{ examPlanSubjects.length }} 科
                 </span>

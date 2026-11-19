@@ -12,13 +12,13 @@ const saveError = ref<string | null>(null)
 const rows = [
   {
     key: 'inAppBanner',
-    title: 'App 内横幅通知',
+    title: '应用内横幅',
     description: '在首页顶部展示最新未读消息提醒',
   },
   {
     key: 'contentPreview',
     title: '显示内容预览',
-    description: '在通知横幅和消息列表中显示正文摘要',
+    description: '在消息横幅和消息列表中显示正文摘要',
   },
 ] as const
 

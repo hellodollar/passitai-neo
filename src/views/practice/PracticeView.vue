@@ -707,7 +707,7 @@ watch(answerSheetOpen, (open) => {
     >
       <div class="text-center" role="status" aria-live="polite">
         <span class="loading loading-spinner loading-md text-primary"></span>
-        <p class="mt-3 text-sm font-medium text-base-content/70">正在准备题目…</p>
+        <p class="mt-3 text-sm font-medium text-base-content/70">正在加载…</p>
       </div>
     </section>
 
@@ -848,7 +848,7 @@ watch(answerSheetOpen, (open) => {
         <button
           class="flex h-9 shrink-0 items-center gap-1 rounded-xl px-2 text-xs font-medium text-base-content/70 transition-colors active:bg-base-200/60 dark:active:bg-base-300/50"
           type="button"
-          aria-label="答题设置"
+          aria-label="练习设置"
           @click="settingsPopupOpen = true"
         >
           <Settings2 :size="16" />

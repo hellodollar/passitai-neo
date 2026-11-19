@@ -33,7 +33,7 @@ function validatePassword() {
 function validateNewEmail() {
   const value = form.newEmail.trim()
   if (!value) errors.newEmail = '请输入新邮箱'
-  else if (!EMAIL_PATTERN.test(value)) errors.newEmail = '邮箱格式不正确，请检查后重试'
+  else if (!EMAIL_PATTERN.test(value)) errors.newEmail = '邮箱格式不正确'
   else if (value === (auth.user?.email ?? '')) errors.newEmail = '新邮箱与当前邮箱相同'
   else errors.newEmail = ''
   return !errors.newEmail
@@ -117,7 +117,7 @@ async function submit() {
           :error="errors.password"
           type="password"
           autocomplete="current-password"
-          placeholder="验证身份"
+          placeholder="输入当前密码"
           @blur="validatePassword"
         />
 

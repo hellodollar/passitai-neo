@@ -145,18 +145,18 @@ async function submit() {
       />
 
       <button
-        class="btn btn-primary mt-1 h-11 w-full rounded-full text-sm font-semibold"
+        class="mt-1 flex h-11 w-full items-center justify-center gap-1.5 rounded-xl bg-primary text-sm font-medium text-primary-content transition-colors active:opacity-90 disabled:opacity-50"
         :disabled="auth.isLoading"
       >
-        <span v-if="auth.isLoading" class="loading loading-spinner loading-sm"></span>
+        <span v-if="auth.isLoading" class="loading loading-spinner loading-xs"></span>
         创建账号
       </button>
     </form>
 
-    <p class="mt-4 text-center text-sm text-base-content/60">
+    <p class="mt-4 text-center text-xs text-base-content/55">
       已经有账号？
       <RouterLink
-        class="font-semibold text-primary hover:underline"
+        class="font-medium text-primary hover:underline"
         :to="{ name: 'login', query: { redirect: route.query.redirect } }"
         >去登录</RouterLink
       >

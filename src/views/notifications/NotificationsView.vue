@@ -110,12 +110,12 @@ onBeforeUnmount(() => {
 })
 </script>
 <template>
-  <section class="flex min-h-dvh w-full min-w-0 flex-col">
+  <section class="flex min-h-dvh w-full min-w-0 flex-col bg-base-200/80 dark:bg-base-100">
     <PageHeader title="消息中心" back-label="返回" @back="goBack">
       <template #right>
         <button
           v-if="notifications.unreadCount > 0"
-          class="flex min-h-11 items-center gap-1 whitespace-nowrap px-1 text-xs text-primary disabled:opacity-50"
+          class="flex min-h-11 items-center gap-1 whitespace-nowrap px-1 text-xs font-medium text-primary disabled:opacity-50"
           type="button"
           :disabled="marking"
           @click="markAll"
@@ -127,13 +127,13 @@ onBeforeUnmount(() => {
     <div
       class="flex w-full min-w-0 flex-1 flex-col px-4 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-[calc(3.75rem+env(safe-area-inset-top))]"
     >
-      <div class="flex items-center gap-1.5 pb-2">
+      <div class="flex items-center gap-1.5 pb-2.5">
         <button
-          class="ml-auto rounded-full border px-2.5 py-1 text-xs"
+          class="ml-auto rounded-full px-3 py-1 text-xs transition-colors"
           :class="
             unreadOnly
-              ? 'border-primary/40 bg-primary/10 text-primary'
-              : 'border-base-200 text-base-content/60'
+              ? 'bg-primary/12 font-semibold text-primary dark:bg-primary/18'
+              : 'bg-base-100 font-medium text-base-content/70 active:bg-base-200/60 dark:bg-base-200 dark:active:bg-base-300/50'
           "
           type="button"
           :aria-pressed="unreadOnly"
@@ -145,7 +145,7 @@ onBeforeUnmount(() => {
       <div
         v-if="error"
         role="alert"
-        class="flex items-center justify-between gap-3 rounded-xl bg-error/10 px-3.5 py-2.5 text-xs text-error"
+        class="mb-2.5 flex items-center justify-between gap-3 rounded-xl bg-error/10 px-3.5 py-2.5 text-xs text-error"
       >
         <p class="min-w-0 flex-1">{{ error }}</p>
         <button
@@ -161,64 +161,68 @@ onBeforeUnmount(() => {
         v-if="loading && !items.length"
         class="flex flex-col items-center gap-3 py-16 text-center"
       >
-        <span class="loading loading-spinner loading-sm"></span>
-        <p role="status">正在获取消息…</p>
+        <span class="loading loading-spinner loading-md text-primary"></span>
+        <p role="status" class="text-sm font-medium text-base-content/70">正在加载…</p>
       </div>
-      <EmptyState
-        v-else-if="!error && !items.length"
-        :icon="Bell"
-        :title="unreadOnly ? '没有未读消息' : '暂无消息'"
-        description="学习消息和系统公告会显示在这里"
-        embedded
-      />
-      <div v-for="group in groups" :key="group.label" class="mb-2">
-        <p class="mb-1.5 mt-3 px-1 text-xs font-semibold text-base-content/45">{{ group.label }}</p>
-        <button
-          v-for="item in group.items"
-          :key="item.id"
-          class="mb-1.5 flex w-full min-w-0 items-start gap-2.5 rounded-xl border px-3 py-2.5 text-left active:bg-base-200/50"
-          :class="
-            item.readAt ? 'border-base-200 bg-base-100' : 'border-primary/20 bg-primary/[0.03]'
-          "
-          type="button"
-          @click="router.push({ name: 'notification-detail', params: { id: item.id } })"
-        >
-          <span
-            class="relative flex size-[34px] shrink-0 items-center justify-center rounded-lg"
-            :class="
-              item.category === 'learning'
-                ? 'bg-primary/10 text-primary'
-                : 'bg-secondary/10 text-secondary'
-            "
-            ><component :is="item.category === 'learning' ? Bell : Megaphone" :size="16" /><span
-              v-if="!item.readAt"
-              class="absolute -right-0.5 -top-0.5 size-2.5 rounded-full border-2 border-base-100 bg-error"
-              aria-label="未读"
-            ></span
-          ></span>
-          <span class="min-w-0 flex-1"
-            ><span
-              class="block truncate text-[13.5px]"
-              :class="item.readAt ? 'font-medium text-base-content/75' : 'font-semibold'"
-              >{{ item.title }}</span
-            ><span
-              v-if="preferences.settings?.contentPreview"
-              class="mt-0.5 line-clamp-2 block text-xs leading-snug text-base-content/65"
-              >{{ item.contentPreview }}</span
-            ><span class="mt-1 block text-[11px] text-base-content/45">{{
-              notificationTime(item.publishedAt)
-            }}</span></span
+      <div v-else-if="!error && !items.length" class="rounded-2xl bg-base-100 dark:bg-base-200">
+        <EmptyState
+          :icon="Bell"
+          :title="unreadOnly ? '没有未读消息' : '暂无消息'"
+          description="学习消息和系统公告会显示在这里"
+          embedded
+        />
+      </div>
+      <div v-for="group in groups" :key="group.label" class="mb-3">
+        <p class="mb-2 mt-1 px-0.5 text-xs font-medium text-base-content/55">{{ group.label }}</p>
+        <div class="space-y-2">
+          <button
+            v-for="item in group.items"
+            :key="item.id"
+            class="flex w-full min-w-0 items-start gap-3 rounded-2xl bg-base-100 px-3.5 py-3 text-left transition-colors active:bg-base-200/60 dark:bg-base-200 dark:active:bg-base-300/50"
+            type="button"
+            @click="router.push({ name: 'notification-detail', params: { id: item.id } })"
           >
-        </button>
+            <span
+              class="relative flex size-9 shrink-0 items-center justify-center rounded-xl"
+              :class="
+                item.category === 'learning'
+                  ? 'bg-primary/10 text-primary'
+                  : 'bg-secondary/10 text-secondary'
+              "
+              ><component :is="item.category === 'learning' ? Bell : Megaphone" :size="16" /><span
+                v-if="!item.readAt"
+                class="absolute -right-0.5 -top-0.5 size-2.5 rounded-full border-2 border-base-100 bg-error dark:border-base-200"
+                aria-label="未读"
+              ></span
+            ></span>
+            <span class="min-w-0 flex-1"
+              ><span
+                class="block truncate text-sm leading-snug"
+                :class="
+                  item.readAt
+                    ? 'font-medium text-base-content/70'
+                    : 'font-semibold text-base-content'
+                "
+                >{{ item.title }}</span
+              ><span
+                v-if="preferences.settings?.contentPreview"
+                class="mt-0.5 line-clamp-2 block text-xs leading-snug text-base-content/55"
+                >{{ item.contentPreview }}</span
+              ><span class="mt-1 block text-[11px] text-base-content/55">{{
+                notificationTime(item.publishedAt)
+              }}</span></span
+            >
+          </button>
+        </div>
       </div>
       <button
         v-if="items.length && page * 20 < total"
-        class="btn btn-ghost btn-sm mb-4"
+        class="mt-1 flex h-10 w-full items-center justify-center rounded-2xl bg-base-100 text-xs font-medium text-base-content/70 transition-colors active:bg-base-200/60 disabled:opacity-50 dark:bg-base-200 dark:active:bg-base-300/50"
         type="button"
         :disabled="loading"
         @click="load(true)"
       >
-        {{ loading ? '正在获取…' : '加载更多' }}
+        {{ loading ? '加载中…' : '加载更多' }}
       </button>
     </div>
   </section>

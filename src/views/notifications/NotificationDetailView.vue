@@ -99,11 +99,11 @@ onBeforeUnmount(() => {
   <section class="flex min-h-dvh w-full min-w-0 flex-col">
     <PageHeader title="消息详情" back-label="返回" @back="goBack" />
     <div
-      class="flex w-full min-w-0 flex-1 flex-col px-5 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-[calc(3.75rem+env(safe-area-inset-top))]"
+      class="flex w-full min-w-0 flex-1 flex-col px-4 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-[calc(3.75rem+env(safe-area-inset-top))]"
     >
       <div v-if="loading" class="flex flex-col items-center gap-3 py-16 text-center">
-        <span class="loading loading-spinner loading-sm"></span>
-        <p role="status">正在获取消息…</p>
+        <span class="loading loading-spinner loading-md text-primary"></span>
+        <p role="status" class="text-sm font-medium text-base-content/70">正在加载…</p>
       </div>
       <div v-else-if="error" class="py-10">
         <EmptyState
@@ -119,27 +119,34 @@ onBeforeUnmount(() => {
       <template v-else-if="detail">
         <div class="mt-1 flex items-center gap-2">
           <span
-            class="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary"
+            class="rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-medium text-primary"
             >{{ detail.category === 'learning' ? '学习消息' : '系统公告' }}</span
-          ><span class="text-xs text-base-content/45">{{
+          ><span class="text-xs text-base-content/55">{{
             notificationTime(detail.publishedAt)
           }}</span>
         </div>
-        <h2 class="mt-3 break-words text-[17px] font-semibold leading-snug">{{ detail.title }}</h2>
-        <p
-          class="mt-3 whitespace-pre-wrap break-words text-sm leading-relaxed text-base-content/70"
+        <h2
+          class="mt-3 break-words text-base font-semibold leading-snug tracking-tight text-base-content"
         >
+          {{ detail.title }}
+        </h2>
+        <p class="mt-3 whitespace-pre-wrap break-words text-sm leading-[1.65] text-base-content/70">
           {{ detail.content }}
         </p>
         <p v-if="readError" class="mt-3 text-xs text-error" role="alert">
           {{ readError
-          }}<button class="ml-2 underline" :disabled="reading" type="button" @click="markRead">
+          }}<button
+            class="ml-2 font-medium underline"
+            :disabled="reading"
+            type="button"
+            @click="markRead"
+          >
             重试
           </button>
         </p>
         <button
           v-if="detail.linkPath"
-          class="btn btn-primary mt-6 h-11 min-h-11 w-full rounded-xl text-sm"
+          class="mt-6 flex h-11 w-full items-center justify-center gap-1.5 rounded-xl bg-primary text-sm font-medium text-primary-content transition-colors active:opacity-90"
           type="button"
           @click="router.push(detail.linkPath)"
         >

@@ -33,7 +33,7 @@ watch(
 </script>
 
 <template>
-  <BasePopup v-model="model" title="刷题设置">
+  <BasePopup v-model="model" title="练习设置">
     <section class="grid gap-2">
       <SettingsToggleItem
         :model-value="settings.autoNext"

@@ -50,7 +50,7 @@ watch(
 </script>
 
 <template>
-  <BasePopup v-model="model" title="数据清理">
+  <BasePopup v-model="model" title="数据管理">
     <div class="space-y-3.5">
       <section aria-label="作答记录">
         <h4 class="mb-2 px-0.5 text-xs font-medium text-base-content/55">作答记录</h4>

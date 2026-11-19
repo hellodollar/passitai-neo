@@ -99,11 +99,11 @@ const nextExamDateText = computed(() =>
       <button
         class="flex h-9 items-center justify-center gap-1.5 rounded-xl bg-base-200/65 text-xs font-medium text-base-content/70 transition-colors active:bg-base-200 dark:bg-base-300/45 dark:active:bg-base-300/70"
         type="button"
-        aria-label="刷题设置"
+        aria-label="练习设置"
         @click="emit('edit-settings')"
       >
         <Settings2 :size="14" class="text-base-content/55" />
-        刷题设置
+        练习设置
       </button>
     </div>
   </section>
