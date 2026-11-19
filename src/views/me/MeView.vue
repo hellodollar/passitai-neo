@@ -84,28 +84,29 @@ const settingsRows = computed<SettingsRow[]>(() => [
     action: 'messages',
     title: '消息中心',
     icon: Bell,
-    iconClass: 'bg-primary/10 text-primary',
+    iconClass: 'text-primary',
     desc: '学习消息、系统公告',
     badge: true,
   },
   {
-    action: 'scope',
-    title: '考试计划',
-    icon: GraduationCap,
-    iconClass: 'bg-secondary/12 text-secondary',
-    desc: examPlanStore.isLoading
-      ? '加载中…'
-      : examPlanStore.error
-        ? '加载失败'
-        : examPlanStore.plan
-          ? `${examPlanStore.plan.major.name} · ${examPlanStore.plan.subjects.length}科`
-          : '未设置',
+    action: 'appearance',
+    title: '外观',
+    icon: SunMoon,
+    iconClass: 'text-base-content/60',
+    desc: appearanceLabel.value,
+  },
+  {
+    action: 'account',
+    title: '账户与安全',
+    icon: UserRound,
+    iconClass: 'text-primary',
+    desc: '密码与邮箱',
   },
   {
     action: 'notification',
     title: '通知',
     icon: BellRing,
-    iconClass: 'bg-info/12 text-info',
+    iconClass: 'text-info',
     desc: notificationSettingsStore.isLoading
       ? '加载中'
       : notificationSettingsStore.settings
@@ -115,35 +116,34 @@ const settingsRows = computed<SettingsRow[]>(() => [
         : '',
   },
   {
+    action: 'scope',
+    title: '考试计划',
+    icon: GraduationCap,
+    iconClass: 'text-secondary',
+    desc: examPlanStore.isLoading
+      ? '加载中…'
+      : examPlanStore.error
+        ? '加载失败'
+        : examPlanStore.plan
+          ? `${examPlanStore.plan.major.name} · ${examPlanStore.plan.subjects.length}科`
+          : '未设置',
+  },
+  {
     action: 'practice',
-    title: '刷题设置',
+    title: '练习设置',
     icon: Settings2,
-    iconClass: 'bg-accent/12 text-accent',
+    iconClass: 'text-accent',
     desc: `已开 ${enabledPracticeCount.value} 项`,
   },
   {
     action: 'cleanup',
-    title: '数据清理',
+    title: '数据管理',
     icon: Eraser,
-    iconClass: 'bg-base-content/[0.06] text-base-content/60',
+    iconClass: 'text-base-content/60',
     desc:
       localPracticeRecords.value.length > 0
         ? `${localPracticeRecords.value.length} 份本地作答`
         : '清空本地作答记录',
-  },
-  {
-    action: 'account',
-    title: '账户与安全',
-    icon: UserRound,
-    iconClass: 'bg-primary/10 text-primary',
-    desc: '密码与邮箱',
-  },
-  {
-    action: 'appearance',
-    title: '外观',
-    icon: SunMoon,
-    iconClass: 'bg-base-content/[0.06] text-base-content/60',
-    desc: appearanceLabel.value,
   },
 ])
 
@@ -212,15 +212,15 @@ watch(
 
       <!-- 头部资料 -->
       <div
-        class="flex flex-col items-center rounded-2xl bg-gradient-to-br from-primary/[0.1] to-accent/[0.1] px-4 py-7 text-center dark:from-primary/[0.14] dark:to-accent/[0.14]"
+        class="flex flex-col items-center rounded-2xl bg-gradient-to-br from-primary/[0.1] to-accent/[0.1] px-4 py-4 text-center dark:from-primary/[0.14] dark:to-accent/[0.14]"
       >
         <span
-          class="flex size-18 items-center justify-center rounded-full bg-primary/15 text-primary ring-[3px] ring-base-100"
+          class="flex size-12 items-center justify-center rounded-full bg-primary/15 text-primary ring-[3px] ring-base-100"
           aria-hidden="true"
         >
-          <UserRound :size="30" />
+          <UserRound :size="21" />
         </span>
-        <span class="mt-3 truncate text-lg font-semibold capitalize leading-snug">
+        <span class="mt-2 truncate text-sm font-semibold capitalize leading-snug">
           {{ displayName }}
         </span>
         <span class="mt-0.5 w-full truncate text-xs leading-snug text-base-content/60">
@@ -228,70 +228,66 @@ watch(
         </span>
       </div>
 
-      <!-- 设置列表 -->
-      <div class="rounded-2xl bg-base-200/85 p-2.5 dark:bg-base-200/65">
-        <div class="overflow-hidden rounded-xl bg-base-100">
-          <button
-            v-for="(row, rowIndex) in settingsRows"
-            :key="row.action"
-            class="relative flex w-full min-w-0 items-center gap-2.5 px-3 py-2.5 text-left transition-colors active:bg-base-200/50"
-            type="button"
-            @click="openRowAction(row.action)"
-          >
-            <span
-              v-if="rowIndex > 0"
-              aria-hidden="true"
-              class="pointer-events-none absolute left-[3.625rem] right-0 top-0 h-px bg-base-content/[0.05]"
-            ></span>
-            <span
-              class="flex size-9 shrink-0 items-center justify-center rounded-xl"
-              :class="row.iconClass"
-              aria-hidden="true"
-            >
-              <component :is="row.icon" :size="17" />
-            </span>
-            <span class="min-w-0 flex-1">
-              <span class="block truncate text-sm font-semibold leading-snug text-base-content">
-                {{ row.title }}
-              </span>
-              <span
-                v-if="row.desc"
-                class="mt-0.5 block truncate text-xs leading-snug text-base-content/55"
-              >
-                {{ row.desc }}
-              </span>
-            </span>
-            <span v-if="row.badge" class="flex shrink-0 items-center gap-1.5">
-              <span
-                v-if="notifications.unreadCount > 0"
-                class="flex h-5 min-w-5 items-center justify-center rounded-full bg-error px-1.5 text-[11px] font-semibold tabular-nums text-error-content"
-              >
-                {{ notifications.unreadCount > 99 ? '99+' : notifications.unreadCount }}
-              </span>
-              <ChevronRight :size="16" class="text-base-content/30" aria-hidden="true" />
-            </span>
-            <ChevronRight
-              v-else
-              :size="16"
-              class="shrink-0 text-base-content/30"
-              aria-hidden="true"
-            />
-          </button>
-        </div>
-      </div>
-
-      <div class="rounded-2xl bg-base-200/85 p-2.5 dark:bg-base-200/65">
+      <!-- 设置列表：中性色块，行相连，弱分隔线 -->
+      <div class="overflow-hidden rounded-2xl bg-base-200/70 dark:bg-base-200/65">
         <button
-          class="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-base-100 text-sm font-medium text-base-content transition-colors active:bg-base-100/80 disabled:opacity-50"
+          v-for="(row, rowIndex) in settingsRows"
+          :key="row.action"
+          class="relative flex w-full min-w-0 items-center gap-2.5 px-3.5 py-2 text-left transition-colors active:bg-base-300/50 dark:active:bg-base-300/40"
           type="button"
-          :disabled="signingOut"
-          @click="logout"
+          @click="openRowAction(row.action)"
         >
-          <span v-if="signingOut" class="loading loading-spinner loading-xs"></span>
-          <LogOut v-else :size="15" class="text-base-content/60" aria-hidden="true" />
-          退出登录
+          <span
+            v-if="rowIndex > 0"
+            aria-hidden="true"
+            class="pointer-events-none absolute left-[3.625rem] right-0 top-0 h-px bg-base-content/[0.05]"
+          ></span>
+          <span
+            class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-base-100"
+            :class="row.iconClass"
+            aria-hidden="true"
+          >
+            <component :is="row.icon" :size="16" />
+          </span>
+          <span class="min-w-0 flex-1">
+            <span class="block truncate text-sm font-semibold leading-snug text-base-content">
+              {{ row.title }}
+            </span>
+            <span
+              v-if="row.desc"
+              class="mt-0.5 block truncate text-xs leading-snug text-base-content/55"
+            >
+              {{ row.desc }}
+            </span>
+          </span>
+          <span v-if="row.badge" class="flex shrink-0 items-center gap-1.5">
+            <span
+              v-if="notifications.unreadCount > 0"
+              class="flex h-5 min-w-5 items-center justify-center rounded-full bg-error px-1.5 text-[11px] font-semibold tabular-nums text-error-content"
+            >
+              {{ notifications.unreadCount > 99 ? '99+' : notifications.unreadCount }}
+            </span>
+            <ChevronRight :size="16" class="text-base-content/35" aria-hidden="true" />
+          </span>
+          <ChevronRight
+            v-else
+            :size="16"
+            class="shrink-0 text-base-content/35"
+            aria-hidden="true"
+          />
         </button>
       </div>
+
+      <button
+        class="flex min-h-10 w-full items-center justify-center gap-2 rounded-2xl bg-error/[0.07] text-sm font-medium text-error transition-colors active:bg-error/[0.13] disabled:opacity-50"
+        type="button"
+        :disabled="signingOut"
+        @click="logout"
+      >
+        <span v-if="signingOut" class="loading loading-spinner loading-xs"></span>
+        <LogOut v-else :size="15" aria-hidden="true" />
+        退出登录
+      </button>
 
       <BasePopup v-model="accountPopupOpen" title="账户安全">
         <div class="grid gap-2">

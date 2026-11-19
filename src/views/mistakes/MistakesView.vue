@@ -282,10 +282,10 @@ watch(
         />
       </PagePlaceholder>
 
-      <div v-else class="mt-2 space-y-1.5 rounded-2xl bg-base-200/85 p-2.5 dark:bg-base-200/65">
+      <div v-else class="mt-2.5 space-y-2">
         <div
           v-if="loadError"
-          class="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-error/10 px-3 py-2 text-xs text-error"
+          class="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-error/10 px-3.5 py-2.5 text-xs text-error"
           role="status"
         >
           <span>更新失败，已保留原列表。</span>
@@ -300,13 +300,13 @@ watch(
         <button
           v-for="item in items"
           :key="displayedGroupMode === 'paper' ? item.paperId : item.subjectId"
-          class="flex w-full min-w-0 items-center gap-2.5 rounded-xl bg-base-100 px-3 py-2.5 text-left transition-colors active:bg-base-100/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          class="flex w-full min-w-0 items-center gap-3 rounded-2xl bg-base-200/70 px-3.5 py-3 text-left transition-colors active:bg-base-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary dark:bg-base-200/65 dark:active:bg-base-200"
           type="button"
           :aria-label="`${displayedGroupMode === 'paper' ? item.paperName : item.subjectName}，${item.questionCount}题，开始练习`"
           @click="openPractice(item)"
         >
           <span
-            class="flex size-9 shrink-0 items-center justify-center rounded-xl bg-error/10 text-error"
+            class="flex size-9 shrink-0 items-center justify-center rounded-xl bg-base-100 text-error dark:bg-error/15"
           >
             <component :is="displayedGroupMode === 'paper' ? FileText : BookOpen" :size="17" />
           </span>
@@ -322,7 +322,7 @@ watch(
           </span>
 
           <span
-            class="shrink-0 rounded-md bg-error/[0.08] px-2 py-0.5 text-xs font-semibold tabular-nums text-error"
+            class="shrink-0 rounded-lg bg-error/[0.08] px-2 py-0.5 text-xs font-semibold tabular-nums text-error"
           >
             {{ item.questionCount }} 题
           </span>

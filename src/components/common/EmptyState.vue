@@ -39,7 +39,7 @@ const toneClasses = computed(() => {
 <template>
   <section
     class="w-full min-w-full rounded-2xl px-4 text-center"
-    :class="embedded ? 'py-7' : 'bg-base-200/80 py-9 dark:bg-base-200/60'"
+    :class="embedded ? 'py-7' : 'bg-base-200/70 py-9 dark:bg-base-200/65'"
   >
     <span class="mx-auto flex size-12 items-center justify-center rounded-2xl" :class="toneClasses">
       <component :is="icon" :size="24" />
