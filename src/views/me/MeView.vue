@@ -212,18 +212,24 @@ watch(
 
       <!-- 头部资料 -->
       <div
-        class="flex flex-col items-center rounded-2xl bg-gradient-to-br from-primary/[0.1] to-accent/[0.1] px-4 py-4 text-center dark:from-primary/[0.14] dark:to-accent/[0.14]"
+        class="relative flex flex-col items-center overflow-hidden rounded-2xl bg-base-200/70 px-4 py-5 text-center dark:bg-base-200/65"
       >
         <span
-          class="flex size-12 items-center justify-center rounded-full bg-primary/15 text-primary ring-[3px] ring-base-100"
+          aria-hidden="true"
+          class="pointer-events-none absolute -top-12 left-1/2 h-28 w-52 -translate-x-1/2 rounded-full bg-primary/[0.12] blur-2xl dark:bg-primary/[0.18]"
+        ></span>
+        <span
+          class="relative flex size-14 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/80 text-primary-content shadow-sm shadow-primary/20 ring-4 ring-base-100/90 dark:ring-base-100/25"
           aria-hidden="true"
         >
-          <UserRound :size="21" />
+          <UserRound :size="24" stroke-width="1.8" />
         </span>
-        <span class="mt-2 truncate text-sm font-semibold capitalize leading-snug">
+        <span
+          class="relative mt-2.5 max-w-full truncate text-base font-semibold capitalize leading-snug tracking-tight text-base-content"
+        >
           {{ displayName }}
         </span>
-        <span class="mt-0.5 w-full truncate text-xs leading-snug text-base-content/60">
+        <span class="relative mt-0.5 max-w-full truncate text-xs leading-snug text-base-content/55">
           {{ profileEmail }}
         </span>
       </div>
@@ -233,24 +239,24 @@ watch(
         <button
           v-for="(row, rowIndex) in settingsRows"
           :key="row.action"
-          class="relative flex w-full min-w-0 items-center gap-2.5 px-3.5 py-2 text-left transition-colors active:bg-base-300/50 dark:active:bg-base-300/40"
+          class="relative flex w-full min-w-0 items-center gap-3 px-3.5 py-2.5 text-left transition-colors active:bg-base-300/50 dark:active:bg-base-300/40"
           type="button"
           @click="openRowAction(row.action)"
         >
           <span
             v-if="rowIndex > 0"
             aria-hidden="true"
-            class="pointer-events-none absolute left-[3.625rem] right-0 top-0 h-px bg-base-content/[0.05]"
+            class="pointer-events-none absolute left-[3.625rem] right-3.5 top-0 h-px bg-base-content/[0.06] dark:bg-base-content/[0.08]"
           ></span>
           <span
-            class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-base-100"
+            class="flex size-8 shrink-0 items-center justify-center rounded-xl bg-base-100 shadow-[0_1px_2px_rgba(0,0,0,0.03)] dark:bg-base-100/75"
             :class="row.iconClass"
             aria-hidden="true"
           >
-            <component :is="row.icon" :size="16" />
+            <component :is="row.icon" :size="16" stroke-width="1.9" />
           </span>
           <span class="min-w-0 flex-1">
-            <span class="block truncate text-sm font-semibold leading-snug text-base-content">
+            <span class="block truncate text-sm font-medium leading-snug text-base-content">
               {{ row.title }}
             </span>
             <span
@@ -267,11 +273,11 @@ watch(
             >
               {{ notifications.unreadCount > 99 ? '99+' : notifications.unreadCount }}
             </span>
-            <ChevronRight :size="16" class="text-base-content/35" aria-hidden="true" />
+            <ChevronRight :size="15" class="text-base-content/35" aria-hidden="true" />
           </span>
           <ChevronRight
             v-else
-            :size="16"
+            :size="15"
             class="shrink-0 text-base-content/35"
             aria-hidden="true"
           />
@@ -279,7 +285,7 @@ watch(
       </div>
 
       <button
-        class="flex min-h-10 w-full items-center justify-center gap-2 rounded-2xl bg-error/[0.07] text-sm font-medium text-error transition-colors active:bg-error/[0.13] disabled:opacity-50"
+        class="flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl bg-error/[0.08] text-sm font-medium text-error transition-colors active:bg-error/[0.14] disabled:opacity-50 dark:bg-error/[0.12]"
         type="button"
         :disabled="signingOut"
         @click="logout"
