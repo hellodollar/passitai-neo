@@ -14,15 +14,15 @@ const latest = computed(() => notifications.summary?.latestUnread)
 <template>
   <button
     v-if="preferences.settings?.inAppBanner && latest && notifications.unreadCount > 0"
-    class="flex w-full items-center gap-3 rounded-2xl bg-primary/[0.08] px-3.5 py-2.5 text-left transition-colors active:bg-primary/[0.13]"
+    class="flex w-full items-center gap-3 rounded-2xl bg-base-100 px-3.5 py-2.5 text-left shadow-[0_1px_2px_rgba(15,23,42,0.03)] ring-1 ring-primary/15 transition-colors active:bg-base-100/80 dark:bg-base-200 dark:shadow-none dark:ring-primary/25"
     type="button"
     :aria-label="`新消息，${notifications.unreadCount} 条未读`"
     @click="router.push({ name: 'notification-detail', params: { id: latest.id } })"
   >
     <span
-      class="relative flex size-9 shrink-0 items-center justify-center rounded-xl bg-base-100 text-primary"
-      ><Bell :size="17" /><span
-        class="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-error px-1 text-[10px] font-semibold text-error-content"
+      class="relative flex size-8.5 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"
+      ><Bell :size="16" /><span
+        class="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full border-2 border-base-100 bg-error px-1 text-[10px] font-semibold text-error-content dark:border-base-200"
         >{{ notifications.unreadCount > 99 ? '99+' : notifications.unreadCount }}</span
       ></span
     >
@@ -30,9 +30,9 @@ const latest = computed(() => notifications.summary?.latestUnread)
       ><span class="block truncate text-[13px] font-semibold text-base-content">{{
         preferences.settings?.contentPreview ? latest.title : '你有新消息'
       }}</span
-      ><span class="mt-0.5 block text-[11px] text-base-content/55">{{
+      ><span class="mt-0.5 block text-[11px] text-base-content/50">{{
         notificationTime(latest.publishedAt)
       }}</span></span
-    ><ChevronRight :size="16" class="shrink-0 text-primary/50" />
+    ><ChevronRight :size="15" class="shrink-0 text-base-content/35" />
   </button>
 </template>
