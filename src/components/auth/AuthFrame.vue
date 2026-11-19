@@ -2,7 +2,7 @@
 import LogoPassitai from '@/components/common/LogoPassitai.vue'
 import { APP_NAME } from '@/constants/app'
 
-defineProps<{ title: string }>()
+withDefaults(defineProps<{ title: string; showLogo?: boolean }>(), { showLogo: true })
 
 const currentYear = new Date().getFullYear()
 </script>
@@ -13,11 +13,12 @@ const currentYear = new Date().getFullYear()
   >
     <section class="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center py-2">
       <LogoPassitai
+        v-if="showLogo"
         role="img"
         :aria-label="APP_NAME"
-        class="mx-auto mb-5 h-10 w-auto text-base-content"
+        class="mx-auto mb-3 h-10 w-auto text-base-content"
       />
-      <h1 class="mb-5 text-center text-xl font-semibold tracking-tight text-base-content">
+      <h1 class="mb-8 text-center text-xl font-semibold tracking-tight text-base-content">
         {{ title }}
       </h1>
       <slot></slot>

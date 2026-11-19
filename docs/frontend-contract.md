@@ -4,6 +4,18 @@
 
 HTTP 见 [client-api.md](client-api.md)，数据语义见 [data-model.md](data-model.md)，发布、CDN 和兼容性排查见 [client-maintenance.md](client-maintenance.md)。
 
+## 文档维护
+
+根目录的 `README.md` 负责快速开始，`AGENTS.md` 负责项目修改规则。现行实现、维护步骤和接口分别更新对应的已有文档。HTTP 契约从 API 仓库同步，实体关系以 API 的数据模型为准。
+
+| 目录           | 有内容时放什么                                           |
+| -------------- | -------------------------------------------------------- |
+| `docs/design/` | 产品设计、已交付能力与产品愿景，集中维护并明确当前状态。 |
+| `docs/todo/`   | 已确认要实施的工作。                                     |
+| `docs/issues/` | 已发现的缺陷及待核对的差异，记录证据、状态和验收条件。   |
+
+三个目录在 `docs/` 下平级，有对应内容时再创建。阶段报告和已结案复盘通过 Git 历史查阅。移动文档时更新引用，验收后更新对应的现行说明。
+
 ## SPA 路由与页面职责
 
 Vue Router 使用 `createWebHistory(import.meta.env.BASE_URL)`，CF 为深链提供 `index.html` 回退；页面地址不是独立 HTML 文件。
