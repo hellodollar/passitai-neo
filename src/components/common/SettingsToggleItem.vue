@@ -15,12 +15,14 @@ withDefaults(
 
 <template>
   <label
-    class="flex items-center justify-between gap-4 rounded-2xl bg-base-200/70 p-3"
+    class="flex items-center justify-between gap-4 rounded-2xl bg-base-200/65 p-3 dark:bg-base-300/45"
     :class="{ 'cursor-not-allowed': disabled }"
   >
     <span class="min-w-0">
-      <span class="block text-sm font-medium">{{ title }}</span>
-      <span class="block truncate text-xs text-base-content/65">{{ description }}</span>
+      <span class="block text-sm font-medium leading-snug text-base-content">{{ title }}</span>
+      <span class="mt-0.5 block truncate text-xs leading-snug text-base-content/55">{{
+        description
+      }}</span>
     </span>
     <input
       v-model="model"

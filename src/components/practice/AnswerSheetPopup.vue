@@ -60,10 +60,10 @@ function questionResultClasses(question: QuestionListItem, current: boolean) {
       content = 'bg-secondary/10 text-secondary'
       border = 'border-secondary/30'
     } else if (isAnswerCorrect(record, question)) {
-      content = 'bg-emerald-500/10 text-emerald-700 font-semibold dark:text-emerald-400'
+      content = 'bg-success/10 text-success font-semibold'
       border = 'border-transparent'
     } else {
-      content = 'bg-red-500/10 text-red-700 font-semibold dark:text-red-400'
+      content = 'bg-error/10 text-error font-semibold'
       border = 'border-transparent'
     }
   }
@@ -95,15 +95,15 @@ async function scrollToCurrentQuestion() {
   >
     <template #header>
       <div
-        class="flex min-h-12 shrink-0 items-center gap-2 border-b border-base-200/70 px-4 py-2 text-xs tabular-nums text-base-content/65"
+        class="flex min-h-12 shrink-0 items-center gap-2 border-b border-base-content/[0.06] px-4 py-2 text-xs tabular-nums text-base-content/55 dark:border-base-content/[0.08]"
       >
         <div class="flex flex-1 flex-wrap items-center gap-x-3 gap-y-1">
           <span class="flex items-center gap-1">
-            <span class="size-1.5 rounded-full bg-emerald-600" aria-hidden="true"></span>
+            <span class="size-1.5 rounded-full bg-success" aria-hidden="true"></span>
             对 {{ correctCount }}
           </span>
           <span class="flex items-center gap-1">
-            <span class="size-1.5 rounded-full bg-red-600" aria-hidden="true"></span>
+            <span class="size-1.5 rounded-full bg-error" aria-hidden="true"></span>
             错 {{ wrongCount }}
           </span>
           <span v-if="ungradedCount" class="flex items-center gap-1">
@@ -117,7 +117,7 @@ async function scrollToCurrentQuestion() {
         </div>
         <button
           v-if="showClear"
-          class="flex h-8 shrink-0 items-center gap-1 rounded-md pl-2 text-xs font-medium text-base-content/65 transition-colors hover:text-error active:text-error disabled:pointer-events-none disabled:opacity-40"
+          class="flex h-8 shrink-0 items-center gap-1 rounded-md pl-2 text-xs font-medium text-base-content/70 transition-colors hover:text-error active:text-error disabled:pointer-events-none disabled:opacity-40"
           type="button"
           aria-label="清除本地做题记录"
           :disabled="clearDisabled"
@@ -135,7 +135,7 @@ async function scrollToCurrentQuestion() {
         :class="!showSubmit ? 'pb-[calc(0.75rem+env(safe-area-inset-bottom))]' : ''"
       >
         <section v-for="group in visibleGroups" :key="group.key" :aria-label="group.label">
-          <p class="mb-1.5 text-[11px] font-medium text-base-content/65">
+          <p class="mb-1.5 text-xs font-medium text-base-content/55">
             {{ group.label }} · {{ group.questions.length }}题
           </p>
           <div
@@ -159,7 +159,7 @@ async function scrollToCurrentQuestion() {
     </template>
     <template v-if="showSubmit" #footer>
       <button
-        class="btn btn-primary h-10 min-h-10 w-full rounded-xl text-sm"
+        class="btn btn-primary h-10 min-h-10 w-full rounded-xl text-sm font-medium"
         type="button"
         :disabled="questions.length === 0"
         @click="emit('submit')"

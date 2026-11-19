@@ -30,19 +30,19 @@ function confirmClear() {
 
 <template>
   <BaseDialog v-model="model" title="清除作答记录？">
-    <p class="text-sm leading-6 text-base-content/70">
+    <p class="text-sm leading-relaxed text-base-content/70">
       将清除{{ label }}，操作不可恢复。不影响收藏、错题和交卷报告。
     </p>
     <template #footer>
       <button
-        class="btn h-10 min-h-10 flex-1 rounded-xl border-base-200 bg-base-100 text-sm"
+        class="flex h-10 flex-1 items-center justify-center rounded-xl bg-base-200/65 text-sm font-medium text-base-content/70 transition-colors active:bg-base-200 dark:bg-base-300/45 dark:active:bg-base-300/70"
         type="button"
         @click="model = false"
       >
         取消
       </button>
       <button
-        class="btn btn-error h-10 min-h-10 flex-1 rounded-xl text-sm"
+        class="btn btn-error h-10 min-h-10 flex-1 rounded-xl text-sm font-medium"
         type="button"
         @click="confirmClear"
       >

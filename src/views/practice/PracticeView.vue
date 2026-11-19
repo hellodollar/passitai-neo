@@ -1,12 +1,5 @@
 <script setup lang="ts">
-import {
-  Bookmark,
-  CircleAlert,
-  ClipboardCheck,
-  ClipboardList,
-  Grid2X2,
-  Settings2,
-} from '@lucide/vue'
+import { Bookmark, CircleAlert, ClipboardList, Grid2X2, Settings2 } from '@lucide/vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -214,7 +207,7 @@ const paperStateContent = computed(() => {
   if (paperLoadState.value === 'missing') {
     return {
       icon: ClipboardList,
-      iconClasses: 'bg-warning/15 text-warning',
+      iconClasses: 'bg-warning/10 text-warning',
       title: '练习已失效',
       description: '返回练习页重新选择即可继续。',
       primaryLabel: '返回练习',
@@ -700,7 +693,7 @@ watch(answerSheetOpen, (open) => {
   <section class="flex min-h-dvh w-full min-w-0 max-w-full flex-col overflow-x-hidden">
     <PageHeader :title="currentPaperTitle" back-label="退出练习" @back="exitPractice">
       <progress
-        class="progress progress-primary block h-0.5 w-full rounded-none bg-base-200"
+        class="progress progress-primary block h-0.5 w-full rounded-none bg-base-200/65 dark:bg-base-300/45"
         :value="currentQuestionPosition"
         :max="Math.max(1, currentQuestions.length)"
         aria-label="当前题目进度"
@@ -713,14 +706,14 @@ watch(answerSheetOpen, (open) => {
     >
       <div class="text-center" role="status" aria-live="polite">
         <span class="loading loading-spinner loading-md text-primary"></span>
-        <p class="mt-3 text-sm font-medium text-base-content/60">正在准备题目…</p>
+        <p class="mt-3 text-sm font-medium text-base-content/70">正在准备题目…</p>
       </div>
     </section>
 
     <!-- 题目舞台:上一题/当前题/下一题三栏,横滑跟手,相邻题随拖拽露出 -->
     <article
       v-else-if="currentQuestion"
-      class="flex min-w-0 flex-1 flex-col pb-[calc(5rem+env(safe-area-inset-bottom))] pt-[calc(3.35rem+env(safe-area-inset-top))]"
+      class="flex min-w-0 flex-1 flex-col pb-[calc(4rem+env(safe-area-inset-bottom))] pt-[calc(3.125rem+env(safe-area-inset-top))]"
     >
       <div
         ref="questionStage"
@@ -786,22 +779,22 @@ watch(answerSheetOpen, (open) => {
     >
       <div class="w-full max-w-sm text-center">
         <span
-          class="mx-auto flex size-14 items-center justify-center rounded-full"
+          class="mx-auto flex size-12 items-center justify-center rounded-2xl"
           :class="paperStateContent.iconClasses"
         >
           <component :is="paperStateContent.icon" :size="24" />
         </span>
 
-        <h2 class="mt-4 text-base font-semibold text-base-content">
+        <h2 class="mt-4 text-base font-semibold leading-snug tracking-tight text-base-content">
           {{ paperStateContent.title }}
         </h2>
-        <p class="mt-1.5 text-sm leading-relaxed text-base-content/55">
+        <p class="mt-1.5 text-xs leading-relaxed text-base-content/55">
           {{ paperStateContent.description }}
         </p>
 
         <div class="mx-auto mt-5 grid max-w-[15rem] gap-2.5">
           <button
-            class="btn btn-primary h-11 min-h-11 rounded-full px-6 text-sm"
+            class="btn btn-primary h-11 min-h-11 rounded-full px-6 text-sm font-medium"
             type="button"
             @click="handlePaperStateAction"
           >
@@ -809,7 +802,7 @@ watch(answerSheetOpen, (open) => {
           </button>
           <button
             v-if="paperStateContent.showSecondaryAction"
-            class="btn btn-ghost h-10 min-h-10 rounded-full text-sm text-base-content/55"
+            class="btn btn-ghost h-10 min-h-10 rounded-full text-sm font-medium text-base-content/55"
             type="button"
             @click="exitPractice"
           >
@@ -821,14 +814,16 @@ watch(answerSheetOpen, (open) => {
 
     <div
       v-if="currentQuestion"
-      class="fixed bottom-0 left-1/2 z-40 w-full max-w-[32rem] -translate-x-1/2 border-t border-base-200/80 bg-base-100/95 px-3 pb-[calc(0.65rem+env(safe-area-inset-bottom))] pt-2.5 backdrop-blur-xl"
+      class="fixed bottom-0 left-1/2 z-40 w-full max-w-[32rem] -translate-x-1/2 border-t border-base-content/[0.06] bg-base-100/92 px-2.5 pb-[calc(0.375rem+env(safe-area-inset-bottom))] pt-1.5 backdrop-blur-xl dark:border-base-content/[0.08]"
     >
-      <p v-if="favoriteError" class="mb-2 text-center text-xs text-error">{{ favoriteError }}</p>
-      <div class="grid items-center gap-1 grid-cols-4">
+      <p v-if="favoriteError" class="mb-1.5 text-center text-xs text-error">{{ favoriteError }}</p>
+      <div class="flex h-10 items-center justify-between gap-0.5">
         <button
-          class="flex h-12 min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] font-medium transition active:bg-base-200"
+          class="flex h-9 shrink-0 items-center gap-1 rounded-xl px-2 text-xs transition-colors active:bg-base-200/60 dark:active:bg-base-300/50"
           :class="[
-            currentQuestionFavorited ? 'text-primary' : 'text-base-content/70',
+            currentQuestionFavorited
+              ? 'bg-primary/10 font-semibold text-primary'
+              : 'font-medium text-base-content/70',
             currentQuestionFavoritePending ? 'opacity-50' : '',
           ]"
           type="button"
@@ -837,40 +832,45 @@ watch(answerSheetOpen, (open) => {
           @click="toggleFavorite"
         >
           <Bookmark
-            :size="19"
-            :class="currentQuestionFavorited ? 'fill-primary text-primary' : 'text-base-content/65'"
+            :size="16"
+            :class="currentQuestionFavorited ? 'fill-primary text-primary' : ''"
           />
           <span>{{ currentQuestionFavorited ? '已收藏' : '收藏' }}</span>
         </button>
 
-        <div
-          class="flex h-12 min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] font-medium tabular-nums text-base-content/70"
-          :aria-label="`答对 ${correctCount} 题，答错 ${wrongCount} 题`"
+        <button
+          class="flex h-9 shrink-0 items-center gap-2 rounded-xl px-1.5 text-xs font-medium tabular-nums transition-colors active:bg-base-200/60 dark:active:bg-base-300/50"
+          type="button"
+          :aria-label="`答对 ${correctCount} 题，答错 ${wrongCount} 题，打开答题卡`"
+          @click="answerSheetOpen = true"
         >
-          <ClipboardCheck :size="19" />
-          <span class="flex items-center gap-1">
-            <span class="text-success">对{{ correctCount }}</span>
-            <span class="text-error">错{{ wrongCount }}</span>
+          <span class="flex items-center gap-1 text-success">
+            <span class="size-1.5 rounded-full bg-success" aria-hidden="true"></span>
+            对{{ correctCount }}
           </span>
-        </div>
+          <span class="flex items-center gap-1 text-error">
+            <span class="size-1.5 rounded-full bg-error" aria-hidden="true"></span>
+            错{{ wrongCount }}
+          </span>
+        </button>
 
         <button
-          class="flex h-12 min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] font-medium tabular-nums text-base-content/70 transition active:bg-base-200"
+          class="flex h-9 shrink-0 items-center gap-1 rounded-xl px-2 text-xs font-medium tabular-nums text-base-content transition-colors active:bg-base-200/60 dark:active:bg-base-300/50"
           type="button"
           aria-label="打开答题卡"
           @click="answerSheetOpen = true"
         >
-          <Grid2X2 :size="19" />
+          <Grid2X2 :size="16" class="text-base-content/70" />
           <span>{{ currentQuestionPosition }}/{{ currentQuestions.length }}</span>
         </button>
 
         <button
-          class="flex h-12 min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] font-medium text-base-content/70 transition active:bg-base-200"
+          class="flex h-9 shrink-0 items-center gap-1 rounded-xl px-2 text-xs font-medium text-base-content/70 transition-colors active:bg-base-200/60 dark:active:bg-base-300/50"
           type="button"
           aria-label="答题设置"
           @click="settingsPopupOpen = true"
         >
-          <Settings2 :size="19" />
+          <Settings2 :size="16" />
           <span>设置</span>
         </button>
       </div>
@@ -899,18 +899,18 @@ watch(answerSheetOpen, (open) => {
       :close-on-backdrop="!submitting"
       :close-on-escape="!submitting"
     >
-      <p class="text-sm leading-6 text-base-content/70">
+      <p class="text-sm leading-relaxed text-base-content/70">
         <template v-if="unansweredCount > 0">
           还有 {{ unansweredCount }} 题未答，确定交卷？
         </template>
         <template v-else>确定交卷？</template>
       </p>
 
-      <p v-if="submitError" class="mt-3 text-sm text-error" role="alert">{{ submitError }}</p>
+      <p v-if="submitError" class="mt-3 text-xs text-error" role="alert">{{ submitError }}</p>
 
       <template #footer>
         <button
-          class="btn h-10 min-h-10 flex-1 rounded-xl border-base-200 bg-base-100 text-sm"
+          class="flex h-10 flex-1 items-center justify-center rounded-xl bg-base-200/65 text-sm font-medium text-base-content/70 transition-colors active:bg-base-200 disabled:opacity-50 dark:bg-base-300/45 dark:active:bg-base-300/70"
           type="button"
           :disabled="submitting"
           @click="submitConfirmOpen = false"
@@ -918,7 +918,7 @@ watch(answerSheetOpen, (open) => {
           取消
         </button>
         <button
-          class="btn btn-primary h-10 min-h-10 flex-1 rounded-xl text-sm"
+          class="btn btn-primary h-10 min-h-10 flex-1 rounded-xl text-sm font-medium"
           type="button"
           :disabled="submitting"
           @click="confirmSubmitPaper"

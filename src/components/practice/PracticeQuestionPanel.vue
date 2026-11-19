@@ -89,19 +89,19 @@ function optionClasses(optionValue: string) {
 
   if (!showOptionFeedback.value) {
     return selected
-      ? 'border-primary bg-primary/[0.07] text-base-content'
-      : 'border-base-200 bg-base-100 text-base-content active:border-base-300 active:bg-base-200/60'
+      ? 'border-primary/40 bg-primary/10 text-base-content dark:bg-primary/15'
+      : 'border-transparent bg-base-200/65 text-base-content active:bg-base-200 dark:bg-base-200/85 dark:active:bg-base-300/60'
   }
 
   if (optionIsCorrect(optionValue)) {
-    return 'border-emerald-600/25 bg-emerald-500/[0.06] text-base-content'
+    return 'border-success/35 bg-success/10 text-base-content dark:bg-success/15'
   }
 
   if (selected) {
-    return 'border-red-600/25 bg-red-500/[0.06] text-base-content'
+    return 'border-error/35 bg-error/10 text-base-content dark:bg-error/15'
   }
 
-  return 'border-transparent bg-base-200/30 text-base-content/65'
+  return 'border-transparent bg-base-200/40 text-base-content/55 dark:bg-base-200/45'
 }
 
 function optionMarkerClasses(optionValue: string) {
@@ -109,59 +109,61 @@ function optionMarkerClasses(optionValue: string) {
 
   if (!showOptionFeedback.value) {
     return selected
-      ? 'border-primary bg-primary text-primary-content'
-      : 'border-base-300 bg-base-100 text-base-content/55'
+      ? 'bg-primary text-primary-content'
+      : 'bg-base-100 text-base-content/70 dark:bg-base-300/70'
   }
 
   if (optionIsCorrect(optionValue)) {
-    return selected
-      ? 'border-emerald-600 bg-emerald-600 text-white'
-      : 'border-emerald-600/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+    return selected ? 'bg-success text-success-content' : 'bg-success/15 text-success'
   }
 
   if (selected) {
-    return 'border-red-600 bg-red-600 text-white'
+    return 'bg-error text-error-content'
   }
 
-  return 'border-base-300 bg-base-100 text-base-content/40'
+  return 'bg-base-100/70 text-base-content/40 dark:bg-base-300/40'
 }
 </script>
 
 <template>
-  <section class="min-w-0 px-5 pt-2">
+  <section class="min-w-0 px-4 pt-3.5">
     <div class="flex items-center justify-between gap-3">
-      <span class="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">
+      <span
+        class="rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-medium leading-tight text-primary"
+      >
         {{ typeLabel }}
       </span>
       <span
         v-if="subjectName"
-        class="min-w-0 flex-1 truncate text-right text-xs font-medium text-base-content/65"
+        class="min-w-0 flex-1 truncate text-right text-xs leading-snug text-base-content/55"
       >
         {{ subjectName }}
       </span>
     </div>
 
-    <h2 class="mt-2 whitespace-pre-line break-words text-base font-medium leading-[1.45]">
+    <h2
+      class="mt-2.5 whitespace-pre-line break-words text-base font-medium leading-[1.6] text-base-content"
+    >
       {{ displayTitle }}
     </h2>
   </section>
 
-  <section v-if="expectsChoiceQuestion" class="px-5 pt-2.5">
+  <section v-if="expectsChoiceQuestion" class="px-4 pt-3.5">
     <div
-      class="grid gap-1.5"
-      :class="question.questionType === 'judge' ? 'grid-cols-2' : 'grid-cols-1'"
+      class="grid gap-2"
+      :class="question.questionType === 'judge' ? 'grid-cols-2 gap-2.5' : 'grid-cols-1'"
     >
       <button
         v-for="option in resolvedOptions"
         :key="option.value"
-        class="group flex min-h-11 min-w-0 items-center gap-2.5 rounded-lg border px-3 py-2 text-left transition"
+        class="group flex min-h-[2.875rem] min-w-0 items-start gap-2.5 rounded-xl border px-3 py-2.5 text-left transition-colors"
         :class="[optionClasses(option.value), answerRecord ? 'cursor-default' : '']"
         type="button"
         :aria-pressed="optionSelected(option.value)"
         @click="emit('toggle-option', option.value)"
       >
         <span
-          class="flex size-6 shrink-0 items-center justify-center border text-[11px] font-bold transition"
+          class="flex size-6 shrink-0 items-center justify-center text-xs font-semibold transition-colors"
           :class="[
             isMultipleQuestion ? 'rounded-lg' : 'rounded-full',
             optionMarkerClasses(option.value),
@@ -169,13 +171,25 @@ function optionMarkerClasses(optionValue: string) {
         >
           {{ option.label }}
         </span>
-        <span class="min-w-0 flex-1 break-words text-[14px] leading-[1.4]">{{ option.text }}</span>
+        <span class="min-w-0 flex-1 break-words text-sm leading-6">{{ option.text }}</span>
+        <CircleCheck
+          v-if="showOptionFeedback && optionIsCorrect(option.value)"
+          :size="16"
+          class="mt-1 shrink-0 text-success"
+          aria-hidden="true"
+        />
+        <CircleX
+          v-else-if="showOptionFeedback && optionSelected(option.value)"
+          :size="16"
+          class="mt-1 shrink-0 text-error"
+          aria-hidden="true"
+        />
       </button>
     </div>
 
     <button
       v-if="isMultipleQuestion && !answerRecord"
-      class="btn btn-primary mt-2.5 h-10 min-h-10 w-full rounded-xl text-sm"
+      class="btn btn-primary mt-3 h-10 min-h-10 w-full rounded-xl text-sm font-medium"
       type="button"
       :disabled="!canSubmitAnswer"
       @click="emit('confirm-answer')"
@@ -184,10 +198,10 @@ function optionMarkerClasses(optionValue: string) {
     </button>
   </section>
 
-  <section v-else class="grid gap-3 px-5 pt-3">
+  <section v-else class="grid gap-2.5 px-4 pt-3.5">
     <textarea
       :value="textAnswer"
-      class="textarea min-h-[10rem] w-full resize-none rounded-xl border-base-200 bg-base-200/45 p-3.5 text-[15px] leading-relaxed focus:border-primary focus:bg-base-100 focus:outline-none"
+      class="textarea min-h-[9rem] w-full resize-none rounded-xl border border-transparent bg-base-200/65 p-3.5 text-sm leading-relaxed text-base-content placeholder:text-base-content/40 focus:border-primary/40 focus:bg-base-100 focus:outline-none dark:bg-base-200/85 dark:focus:bg-base-200"
       placeholder="在这里输入你的答案…"
       :disabled="Boolean(answerRecord)"
       @input="emit('update:textAnswer', ($event.target as HTMLTextAreaElement).value)"
@@ -195,7 +209,7 @@ function optionMarkerClasses(optionValue: string) {
 
     <button
       v-if="!answerRecord"
-      class="btn btn-primary h-10 min-h-10 w-full rounded-xl text-sm"
+      class="btn btn-primary h-10 min-h-10 w-full rounded-xl text-sm font-medium"
       type="button"
       :disabled="!canSubmitAnswer"
       @click="emit('confirm-answer')"
@@ -204,27 +218,24 @@ function optionMarkerClasses(optionValue: string) {
     </button>
   </section>
 
-  <section v-if="answerRecord" class="mx-5 mt-3 space-y-3 border-t border-base-200 pt-2.5">
+  <section
+    v-if="answerRecord"
+    class="mx-4 mt-4 space-y-3 border-t border-base-content/[0.06] pt-3.5 dark:border-base-content/[0.08]"
+  >
     <div
-      class="rounded-lg border px-3 py-2.5"
+      class="rounded-xl px-3.5 py-2.5"
       :class="
         !canGrade
-          ? 'border-base-200 bg-base-200/40'
+          ? 'bg-base-200/65 dark:bg-base-300/45'
           : answerCorrect
-            ? 'border-transparent bg-emerald-500/[0.06]'
-            : 'border-transparent bg-red-500/[0.06]'
+            ? 'bg-success/10 dark:bg-success/15'
+            : 'bg-error/10 dark:bg-error/15'
       "
       role="status"
     >
       <div
         class="flex items-center gap-1.5 text-sm font-semibold"
-        :class="
-          !canGrade
-            ? 'text-base-content/70'
-            : answerCorrect
-              ? 'text-emerald-700 dark:text-emerald-400'
-              : 'text-red-700 dark:text-red-400'
-        "
+        :class="!canGrade ? 'text-base-content/70' : answerCorrect ? 'text-success' : 'text-error'"
       >
         <ClipboardCheck v-if="!canGrade" :size="16" />
         <CircleCheck v-else-if="answerCorrect" :size="16" />
@@ -232,17 +243,17 @@ function optionMarkerClasses(optionValue: string) {
         {{ !canGrade ? '已作答' : answerCorrect ? '回答正确' : '回答错误' }}
       </div>
       <dl
-        class="mt-1.5 grid gap-x-3 gap-y-1 text-xs leading-5"
+        class="mt-1.5 grid gap-x-3 gap-y-1 text-xs leading-snug"
         :class="isChoiceMode ? 'grid-cols-2' : 'grid-cols-1'"
       >
         <div class="min-w-0">
-          <dt class="inline text-base-content/65">我的答案</dt>
+          <dt class="mr-1.5 inline text-base-content/55">我的答案</dt>
           <dd class="inline break-words font-semibold text-base-content">
             {{ userAnswerText || '—' }}
           </dd>
         </div>
         <div class="min-w-0">
-          <dt class="inline text-base-content/65">
+          <dt class="mr-1.5 inline text-base-content/55">
             {{ isChoiceMode ? '正确答案' : '参考答案' }}
           </dt>
           <dd class="inline break-words font-semibold text-base-content">
@@ -254,10 +265,13 @@ function optionMarkerClasses(optionValue: string) {
 
     <div>
       <h3 class="text-sm font-semibold text-base-content">题目解析</h3>
-      <p v-if="explanation" class="mt-1.5 break-words text-sm leading-[1.55] text-base-content/65">
+      <p
+        v-if="explanation"
+        class="mt-1.5 whitespace-pre-line break-words text-sm leading-[1.65] text-base-content/70"
+      >
         {{ explanation }}
       </p>
-      <p v-else class="mt-2 text-sm text-base-content/65">暂无解析</p>
+      <p v-else class="mt-1.5 text-xs leading-snug text-base-content/55">暂无解析</p>
     </div>
   </section>
 </template>

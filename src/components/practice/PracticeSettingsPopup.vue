@@ -60,7 +60,7 @@ watch(
         @update:model-value="saveSetting('recordWrongQuestions', $event)"
       />
       <template v-if="showMistakeSettings">
-        <h4 class="mt-2 text-[13px] font-semibold text-base-content/60">错题设置</h4>
+        <h4 class="mt-2 px-0.5 text-xs font-medium text-base-content/55">错题设置</h4>
         <SettingsToggleItem
           :model-value="settings.removeMistakeOnCorrect"
           title="答对自动移除错题"

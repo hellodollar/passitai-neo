@@ -95,6 +95,30 @@
 - 微信内置浏览器、Safari、前后台切换及多标签状态按实际验证记录；不假定它们共享存储，也不将构建通过写成真机验证通过。
 - 发布缓存与本地作答分开；不得用清空站点存储处理版本更新。更改存储结构时先考虑已有记录与账号隔离，不静默丢弃作答。
 
+### 视觉、图标、字体与颜色规范（以首页为基准）
+
+全站以首页（`HomeView`、`ExamPlanCard`、`HomePracticeResources`、`NotificationStrip`）确立的 2026 扁平清透风格（`neo` / `neo-dark` 清透鸢尾色系，见 `src/assets/styles/app.css`）作为视觉 Token 基准。**改造既有页面时保持原有布局结构与信息流，仅对齐色彩、字号、图标与深浅标尺，不强行改写页面结构或把作答/阅读页拆成多张卡片。**
+
+- **背景画布与表面层级**：
+  - 列表/聚合类页面画布：`bg-base-200/80 dark:bg-base-100`（浅色冷雾浅灰、深色石墨黑底），水平边距 `px-4`，内容块用扁平卡片 `rounded-2xl bg-base-100 dark:bg-base-200`（默认不加投影、不加 `ring` 外描边、不加背景光晕；下拉浮层和弹窗除外）。
+  - 沉浸阅读/作答类页面（如 `PracticeView`）：保留原版连续 `bg-base-100` 画布与分段排布，不强行加灰底外框。
+  - 浅底槽（次要按钮、未选模式槽、进度条轨道、输入框底、设置开关行）：`bg-base-200/65 dark:bg-base-300/45`。
+  - 卡片/列表行按压反馈：`active:bg-base-200/60 dark:active:bg-base-300/50`；弱分割线统一 `bg-base-content/[0.06] dark:bg-base-content/[0.08]`（或 `border-base-content/[0.06] dark:border-base-content/[0.08]`；列表内缩线配合 `px-3.5` + `size-9` + `gap-3` 左缩进 `left-[3.875rem] right-3.5`）。
+  - 顶部/底部固定栏：`bg-base-100/92 backdrop-blur-xl` + `border-base-content/[0.06] dark:border-base-content/[0.08]`。
+- **颜色与透明度层级**：
+  - 统一使用主题语义色（`primary` / `secondary` / `accent` / `info` / `success` / `warning` / `error` / `ai`），**禁止硬编码 Tailwind 调色板**（如 `emerald-*`、`red-*`、`blue-*`），确保浅/深色自动平衡。
+  - 文字四级深浅：主文字 `text-base-content` → 交互次文字 `text-base-content/70` → 副标题/元信息/说明 `text-base-content/55` → 装饰箭头 `text-base-content/30`。
+  - 语义浅底统一 `/10`（`bg-<tone>/10 text-<tone>`；深色强调块可用 `dark:bg-<tone>/15`；中性图标块 `bg-base-200/75 text-base-content/65 dark:bg-base-300/50`）；激活态 Tab / 分段胶囊统一 `/12`（`dark:bg-<tone>/18`）。
+- **字体大小与字重**：
+  - 主卡片/顶栏标题：`text-base font-semibold leading-snug tracking-tight`（16px）；题干沿用 `text-base font-medium`。
+  - 分区标题：`text-[15px] font-semibold leading-tight tracking-tight`（15px）。
+  - 列表项标题 / 选项文本 / 独立主按钮：`text-sm font-medium leading-snug`（14px；长解析正文使用 `leading-relaxed`）。
+  - 副标题 / 元信息 / 紧凑控件与胶囊：`text-xs leading-snug`（12px；控件 `font-medium`，激活态 `font-semibold`）。
+  - 微标签 / 未读角标 / 底部工具栏标签：`text-[11px] font-medium`（数字角标 `font-semibold tabular-nums`）。避免混用零散的 `10px`、`13px`、`17px`。
+- **图标大小与容器**：
+  - 统一使用 Lucide 默认描边宽度，不零散覆盖 `stroke-width`（底部主导航激活态除外）。
+  - 主列表行图标块 `size-9 rounded-xl` + `16px`；顶部操作/返回按钮 `size-9` + `18px`；宫格小图标 `size-7 rounded-lg` + `15px`；行内按钮/筛选图标 `14px`；列表右箭头/独立操作图标 `15px`；状态反馈图标 `16px`；底部导航/操作栏图标 `18px`–`19px`；空态图标块 `size-12 rounded-2xl` + `24px`。
+
 ## 验证与交付
 
 | 改动           | 验证要求                                                                   |

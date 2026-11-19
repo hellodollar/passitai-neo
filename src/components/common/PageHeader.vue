@@ -7,7 +7,7 @@ defineEmits<{ back: [] }>()
 
 <template>
   <header
-    class="fixed left-1/2 top-0 z-40 w-full max-w-[32rem] -translate-x-1/2 border-b border-base-200/80 bg-base-100/95 pt-[env(safe-area-inset-top)] backdrop-blur-xl"
+    class="fixed left-1/2 top-0 z-40 w-full max-w-[32rem] -translate-x-1/2 border-b border-base-content/[0.06] bg-base-100/92 pt-[env(safe-area-inset-top)] backdrop-blur-xl dark:border-base-content/[0.08]"
   >
     <div
       class="grid h-12 items-center gap-2 px-2.5"
@@ -23,9 +23,13 @@ defineEmits<{ back: [] }>()
         :aria-label="backLabel"
         @click="$emit('back')"
       >
-        <ArrowLeft :size="20" aria-hidden="true" />
+        <ArrowLeft :size="18" aria-hidden="true" />
       </button>
-      <h1 class="truncate text-center text-base font-semibold leading-tight">{{ title }}</h1>
+      <h1
+        class="truncate text-center text-base font-semibold leading-snug tracking-tight text-base-content"
+      >
+        {{ title }}
+      </h1>
       <div v-if="$slots.right" class="flex justify-end">
         <slot name="right" />
       </div>
