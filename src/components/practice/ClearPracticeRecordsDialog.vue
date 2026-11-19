@@ -35,14 +35,14 @@ function confirmClear() {
     </p>
     <template #footer>
       <button
-        class="flex h-10 flex-1 items-center justify-center rounded-xl bg-base-200/65 text-sm font-medium text-base-content/70 transition-colors active:bg-base-200 dark:bg-base-300/45 dark:active:bg-base-300/70"
+        class="flex h-10 flex-1 items-center justify-center rounded-xl bg-base-200/70 text-sm font-medium text-base-content/75 transition-colors active:bg-base-200 dark:bg-base-300/45 dark:active:bg-base-300/70"
         type="button"
         @click="model = false"
       >
         取消
       </button>
       <button
-        class="btn btn-error h-10 min-h-10 flex-1 rounded-xl text-sm font-medium"
+        class="flex h-10 flex-1 items-center justify-center rounded-xl bg-error text-sm font-medium text-error-content transition-colors active:opacity-90"
         type="button"
         @click="confirmClear"
       >

@@ -1,19 +1,23 @@
 <script setup lang="ts">
 import { Compass } from '@lucide/vue'
-import { RouterLink } from 'vue-router'
+import { useRouter } from 'vue-router'
+
+import EmptyState from '@/components/common/EmptyState.vue'
+
+const router = useRouter()
 </script>
 
 <template>
-  <main class="flex min-h-dvh items-center justify-center bg-base-200 px-4">
-    <section class="w-full max-w-sm rounded-2xl border border-base-200 bg-base-100 p-6 text-center">
-      <div class="flex flex-col items-center">
-        <Compass :size="36" class="text-primary" />
-        <h1 class="mt-4 text-xl font-semibold">页面不存在</h1>
-        <p class="text-base-content/65">当前访问地址已失效或不存在。</p>
-        <RouterLink class="btn btn-primary mt-4 h-11 rounded-full" :to="{ name: 'home' }"
-          >返回首页</RouterLink
-        >
-      </div>
-    </section>
+  <main class="flex min-h-dvh items-center justify-center bg-base-200/80 px-4 dark:bg-base-100">
+    <div class="w-full max-w-sm">
+      <h1 class="sr-only">页面不存在</h1>
+      <EmptyState
+        :icon="Compass"
+        title="页面不存在"
+        description="链接已失效或不存在"
+        action-label="返回首页"
+        @action="router.push({ name: 'home' })"
+      />
+    </div>
   </main>
 </template>

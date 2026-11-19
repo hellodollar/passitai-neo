@@ -94,9 +94,9 @@ watch(
         <EmptyState
           :icon="CircleAlert"
           tone="error"
-          title="报告加载失败"
-          description="暂时无法获取本次作答结果。"
-          action-label="重新加载"
+          title="加载失败"
+          description="请稍后重试"
+          action-label="重试"
           embedded
           @action="loadResult"
         />

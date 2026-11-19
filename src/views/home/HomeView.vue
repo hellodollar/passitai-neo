@@ -255,7 +255,7 @@ watch(
               :icon="CircleAlert"
               tone="error"
               :title="examPlanStore.error"
-              description="请重试加载考试计划。"
+              description="请稍后重试"
               action-label="重试"
               embedded
               @action="examPlanStore.load()"
@@ -268,7 +268,7 @@ watch(
             <EmptyState
               :icon="GraduationCap"
               title="暂无考试计划"
-              description="先选择报考专业与刷题科目。"
+              description="选择报考专业与科目"
               action-label="设置考试计划"
               embedded
               @action="examPlanPopupOpen = true"
@@ -352,8 +352,8 @@ watch(
             >
               <EmptyState
                 :icon="EyeOff"
-                title="所有科目已隐藏"
-                description="在科目管理中恢复需要展示的科目。"
+                title="科目已隐藏"
+                description="在科目管理中恢复展示"
                 action-label="管理科目"
                 embedded
                 @action="subjectManagerOpen = true"

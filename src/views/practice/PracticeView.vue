@@ -7,6 +7,7 @@ import { addFavorite, removeFavorite, removeFavoriteByRecord } from '@/api/favor
 import { fetchPracticeSubmission, submitPracticePaper } from '@/api/practice'
 import { fetchPracticeContent, type PracticeTarget } from '@/api/practice-content'
 import BaseDialog from '@/components/common/BaseDialog.vue'
+import EmptyState from '@/components/common/EmptyState.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
 import AnswerSheetPopup from '@/components/practice/AnswerSheetPopup.vue'
 import ClearPracticeRecordsDialog from '@/components/practice/ClearPracticeRecordsDialog.vue'
@@ -196,32 +197,32 @@ const paperStateContent = computed(() => {
   if (paperLoadState.value === 'error') {
     return {
       icon: CircleAlert,
-      iconClasses: 'bg-error/10 text-error',
+      tone: 'error' as const,
       title: '加载失败',
-      description: '网络波动或题目异常，请重试。',
-      primaryLabel: '重新加载',
-      showSecondaryAction: true,
+      description: '请稍后重试',
+      primaryLabel: '重试',
+      secondaryLabel: '返回',
     }
   }
 
   if (paperLoadState.value === 'missing') {
     return {
       icon: ClipboardList,
-      iconClasses: 'bg-warning/10 text-warning',
-      title: '练习已失效',
-      description: '返回练习页重新选择即可继续。',
-      primaryLabel: '返回练习',
-      showSecondaryAction: false,
+      tone: 'warning' as const,
+      title: '练习不可用',
+      description: '请返回重新选择',
+      primaryLabel: '返回',
+      secondaryLabel: '',
     }
   }
 
   return {
     icon: ClipboardList,
-    iconClasses: 'bg-primary/10 text-primary',
-    title: '空题集',
-    description: '换一个题集试试吧。',
-    primaryLabel: '返回练习',
-    showSecondaryAction: false,
+    tone: 'primary' as const,
+    title: '暂无题目',
+    description: '换个题集试试',
+    primaryLabel: '返回',
+    secondaryLabel: '',
   }
 })
 const questionsById = computed(
@@ -702,7 +703,7 @@ watch(answerSheetOpen, (open) => {
 
     <section
       v-if="paperLoadState === 'loading'"
-      class="flex flex-1 items-center justify-center px-6 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-[calc(4.5rem+env(safe-area-inset-top))]"
+      class="flex flex-1 items-center justify-center px-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-[calc(3.125rem+env(safe-area-inset-top))]"
     >
       <div class="text-center" role="status" aria-live="polite">
         <span class="loading loading-spinner loading-md text-primary"></span>
@@ -775,40 +776,20 @@ watch(answerSheetOpen, (open) => {
     <!-- 空态/失效/失败占位:与加载态、题目舞台互斥,v-else-if 链不可被其他节点打断 -->
     <section
       v-else-if="paperLoadState !== 'ready'"
-      class="flex flex-1 items-center justify-center px-7 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-[calc(4.5rem+env(safe-area-inset-top))]"
+      class="flex flex-1 items-center justify-center px-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-[calc(3.125rem+env(safe-area-inset-top))]"
     >
-      <div class="w-full max-w-sm text-center">
-        <span
-          class="mx-auto flex size-12 items-center justify-center rounded-2xl"
-          :class="paperStateContent.iconClasses"
-        >
-          <component :is="paperStateContent.icon" :size="24" />
-        </span>
-
-        <h2 class="mt-4 text-base font-semibold leading-snug tracking-tight text-base-content">
-          {{ paperStateContent.title }}
-        </h2>
-        <p class="mt-1.5 text-xs leading-relaxed text-base-content/55">
-          {{ paperStateContent.description }}
-        </p>
-
-        <div class="mx-auto mt-5 grid max-w-[15rem] gap-2.5">
-          <button
-            class="btn btn-primary h-11 min-h-11 rounded-full px-6 text-sm font-medium"
-            type="button"
-            @click="handlePaperStateAction"
-          >
-            {{ paperStateContent.primaryLabel }}
-          </button>
-          <button
-            v-if="paperStateContent.showSecondaryAction"
-            class="btn btn-ghost h-10 min-h-10 rounded-full text-sm font-medium text-base-content/55"
-            type="button"
-            @click="exitPractice"
-          >
-            返回练习
-          </button>
-        </div>
+      <div class="w-full max-w-sm">
+        <EmptyState
+          :icon="paperStateContent.icon"
+          :tone="paperStateContent.tone"
+          :title="paperStateContent.title"
+          :description="paperStateContent.description"
+          :action-label="paperStateContent.primaryLabel"
+          :secondary-action-label="paperStateContent.secondaryLabel"
+          embedded
+          @action="handlePaperStateAction"
+          @secondary-action="exitPractice"
+        />
       </div>
     </section>
 
@@ -910,7 +891,7 @@ watch(answerSheetOpen, (open) => {
 
       <template #footer>
         <button
-          class="flex h-10 flex-1 items-center justify-center rounded-xl bg-base-200/65 text-sm font-medium text-base-content/70 transition-colors active:bg-base-200 disabled:opacity-50 dark:bg-base-300/45 dark:active:bg-base-300/70"
+          class="flex h-10 flex-1 items-center justify-center rounded-xl bg-base-200/70 text-sm font-medium text-base-content/75 transition-colors active:bg-base-200 disabled:opacity-50 dark:bg-base-300/45 dark:active:bg-base-300/70"
           type="button"
           :disabled="submitting"
           @click="submitConfirmOpen = false"
@@ -918,7 +899,7 @@ watch(answerSheetOpen, (open) => {
           取消
         </button>
         <button
-          class="btn btn-primary h-10 min-h-10 flex-1 rounded-xl text-sm font-medium"
+          class="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-xl bg-primary text-sm font-medium text-primary-content transition-colors active:opacity-90 disabled:opacity-50"
           type="button"
           :disabled="submitting"
           @click="confirmSubmitPaper"

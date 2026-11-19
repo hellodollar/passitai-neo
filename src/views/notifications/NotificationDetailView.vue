@@ -110,7 +110,8 @@ onBeforeUnmount(() => {
           :icon="CircleAlert"
           tone="error"
           :title="error"
-          action-label="重新获取"
+          description="请稍后重试"
+          action-label="重试"
           embedded
           @action="load"
         />

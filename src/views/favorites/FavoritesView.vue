@@ -268,8 +268,8 @@ watch(
               :icon="CircleAlert"
               tone="error"
               title="加载失败"
-              description="请检查网络后重试。"
-              action-label="重新加载"
+              description="请稍后重试"
+              action-label="重试"
               embedded
               @action="loadFavorites"
             />
