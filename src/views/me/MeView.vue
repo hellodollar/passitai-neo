@@ -84,7 +84,7 @@ const settingsRows = computed<SettingsRow[]>(() => [
     action: 'messages',
     title: '消息中心',
     icon: Bell,
-    iconClass: 'text-primary',
+    iconClass: 'bg-primary/[0.09] text-primary',
     desc: '学习消息、系统公告',
     badge: true,
   },
@@ -92,21 +92,21 @@ const settingsRows = computed<SettingsRow[]>(() => [
     action: 'appearance',
     title: '外观',
     icon: SunMoon,
-    iconClass: 'text-base-content/60',
+    iconClass: 'bg-base-200/80 text-base-content/65 dark:bg-base-300/50',
     desc: appearanceLabel.value,
   },
   {
     action: 'account',
     title: '账户与安全',
     icon: UserRound,
-    iconClass: 'text-primary',
+    iconClass: 'bg-primary/[0.09] text-primary',
     desc: '密码与邮箱',
   },
   {
     action: 'notification',
     title: '通知',
     icon: BellRing,
-    iconClass: 'text-info',
+    iconClass: 'bg-info/[0.12] text-info',
     desc: notificationSettingsStore.isLoading
       ? '加载中'
       : notificationSettingsStore.settings
@@ -119,7 +119,7 @@ const settingsRows = computed<SettingsRow[]>(() => [
     action: 'scope',
     title: '考试计划',
     icon: GraduationCap,
-    iconClass: 'text-secondary',
+    iconClass: 'bg-secondary/[0.11] text-secondary',
     desc: examPlanStore.isLoading
       ? '加载中…'
       : examPlanStore.error
@@ -132,14 +132,14 @@ const settingsRows = computed<SettingsRow[]>(() => [
     action: 'practice',
     title: '练习设置',
     icon: Settings2,
-    iconClass: 'text-accent',
+    iconClass: 'bg-accent/[0.12] text-accent',
     desc: `已开 ${enabledPracticeCount.value} 项`,
   },
   {
     action: 'cleanup',
     title: '数据管理',
     icon: Eraser,
-    iconClass: 'text-base-content/60',
+    iconClass: 'bg-base-200/80 text-base-content/65 dark:bg-base-300/50',
     desc:
       localPracticeRecords.value.length > 0
         ? `${localPracticeRecords.value.length} 份本地作答`
@@ -206,146 +206,156 @@ watch(
 </script>
 
 <template>
-  <PageContainer>
-    <section class="flex flex-col gap-3 overflow-x-hidden">
-      <h1 class="sr-only">我的</h1>
+  <div class="relative min-h-dvh overflow-x-hidden bg-base-200/80 dark:bg-base-100">
+    <div
+      aria-hidden="true"
+      class="pointer-events-none absolute inset-x-0 top-0 h-44 bg-gradient-to-b from-primary/[0.06] via-primary/[0.02] to-transparent dark:from-primary/[0.12] dark:via-primary/[0.03]"
+    ></div>
+    <PageContainer class="relative">
+      <section class="flex flex-col gap-3">
+        <h1 class="sr-only">我的</h1>
 
-      <!-- 头部资料 -->
-      <div
-        class="relative flex flex-col items-center overflow-hidden rounded-2xl bg-base-200/70 px-4 py-5 text-center dark:bg-base-200/65"
-      >
-        <span
-          aria-hidden="true"
-          class="pointer-events-none absolute -top-12 left-1/2 h-28 w-52 -translate-x-1/2 rounded-full bg-primary/[0.12] blur-2xl dark:bg-primary/[0.18]"
-        ></span>
-        <span
-          class="relative flex size-14 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/80 text-primary-content shadow-sm shadow-primary/20 ring-4 ring-base-100/90 dark:ring-base-100/25"
-          aria-hidden="true"
-        >
-          <UserRound :size="24" stroke-width="1.8" />
-        </span>
-        <span
-          class="relative mt-2.5 max-w-full truncate text-base font-semibold capitalize leading-snug tracking-tight text-base-content"
-        >
-          {{ displayName }}
-        </span>
-        <span class="relative mt-0.5 max-w-full truncate text-xs leading-snug text-base-content/55">
-          {{ profileEmail }}
-        </span>
-      </div>
-
-      <!-- 设置列表：中性色块，行相连，弱分隔线 -->
-      <div class="overflow-hidden rounded-2xl bg-base-200/70 dark:bg-base-200/65">
-        <button
-          v-for="(row, rowIndex) in settingsRows"
-          :key="row.action"
-          class="relative flex w-full min-w-0 items-center gap-3 px-3.5 py-2.5 text-left transition-colors active:bg-base-300/50 dark:active:bg-base-300/40"
-          type="button"
-          @click="openRowAction(row.action)"
+        <!-- 头部资料 -->
+        <div
+          class="relative flex flex-col items-center overflow-hidden rounded-[20px] bg-base-100 px-4 py-5 text-center shadow-[0_1px_3px_rgba(15,23,42,0.03)] ring-1 ring-base-content/[0.04] dark:bg-base-200 dark:shadow-none dark:ring-white/[0.06]"
         >
           <span
-            v-if="rowIndex > 0"
             aria-hidden="true"
-            class="pointer-events-none absolute left-[3.625rem] right-3.5 top-0 h-px bg-base-content/[0.06] dark:bg-base-content/[0.08]"
+            class="pointer-events-none absolute -top-12 left-1/2 h-28 w-52 -translate-x-1/2 rounded-full bg-primary/[0.1] blur-2xl dark:bg-primary/[0.18]"
           ></span>
           <span
-            class="flex size-8 shrink-0 items-center justify-center rounded-xl bg-base-100 shadow-[0_1px_2px_rgba(0,0,0,0.03)] dark:bg-base-100/75"
-            :class="row.iconClass"
+            class="relative flex size-14 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/80 text-primary-content shadow-sm shadow-primary/20 ring-4 ring-primary/[0.08] dark:ring-base-100/25"
             aria-hidden="true"
           >
-            <component :is="row.icon" :size="16" stroke-width="1.9" />
+            <UserRound :size="24" stroke-width="1.8" />
           </span>
-          <span class="min-w-0 flex-1">
-            <span class="block truncate text-sm font-medium leading-snug text-base-content">
-              {{ row.title }}
-            </span>
-            <span
-              v-if="row.desc"
-              class="mt-0.5 block truncate text-xs leading-snug text-base-content/55"
-            >
-              {{ row.desc }}
-            </span>
+          <span
+            class="relative mt-2.5 max-w-full truncate text-base font-semibold capitalize leading-snug tracking-tight text-base-content"
+          >
+            {{ displayName }}
           </span>
-          <span v-if="row.badge" class="flex shrink-0 items-center gap-1.5">
-            <span
-              v-if="notifications.unreadCount > 0"
-              class="flex h-5 min-w-5 items-center justify-center rounded-full bg-error px-1.5 text-[11px] font-semibold tabular-nums text-error-content"
-            >
-              {{ notifications.unreadCount > 99 ? '99+' : notifications.unreadCount }}
-            </span>
-            <ChevronRight :size="15" class="text-base-content/35" aria-hidden="true" />
+          <span
+            class="relative mt-0.5 max-w-full truncate text-xs leading-snug text-base-content/50"
+          >
+            {{ profileEmail }}
           </span>
-          <ChevronRight
-            v-else
-            :size="15"
-            class="shrink-0 text-base-content/35"
-            aria-hidden="true"
-          />
-        </button>
-      </div>
+        </div>
 
-      <button
-        class="flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl bg-error/[0.08] text-sm font-medium text-error transition-colors active:bg-error/[0.14] disabled:opacity-50 dark:bg-error/[0.12]"
-        type="button"
-        :disabled="signingOut"
-        @click="logout"
-      >
-        <span v-if="signingOut" class="loading loading-spinner loading-xs"></span>
-        <LogOut v-else :size="15" aria-hidden="true" />
-        退出登录
-      </button>
-
-      <BasePopup v-model="accountPopupOpen" title="账户安全">
-        <div class="grid gap-2">
+        <!-- 设置列表：纯白一体化卡片，行相连，弱分隔线 -->
+        <div
+          class="overflow-hidden rounded-[20px] bg-base-100 py-1 shadow-[0_1px_3px_rgba(15,23,42,0.03)] ring-1 ring-base-content/[0.04] dark:bg-base-200 dark:shadow-none dark:ring-white/[0.06]"
+        >
           <button
-            class="grid w-full grid-cols-[2.25rem_minmax(0,1fr)_1.125rem] items-center gap-2.5 rounded-2xl bg-base-200/70 p-3 text-left transition-colors active:bg-base-300/70"
+            v-for="(row, rowIndex) in settingsRows"
+            :key="row.action"
+            class="relative flex w-full min-w-0 items-center gap-3 px-3.5 py-2.5 text-left transition-colors active:bg-base-200/60 dark:active:bg-base-300/40"
             type="button"
-            @click="openAccountAction('password')"
+            @click="openRowAction(row.action)"
           >
             <span
-              class="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary"
+              v-if="rowIndex > 0"
+              aria-hidden="true"
+              class="pointer-events-none absolute left-[3.625rem] right-3.5 top-0 h-px bg-base-content/[0.05] dark:bg-base-content/[0.07]"
+            ></span>
+            <span
+              class="flex size-8.5 shrink-0 items-center justify-center rounded-xl"
+              :class="row.iconClass"
+              aria-hidden="true"
             >
-              <KeyRound :size="16" />
+              <component :is="row.icon" :size="16" stroke-width="1.9" />
             </span>
-            <span class="min-w-0">
-              <span class="block text-sm font-medium">修改密码</span>
-              <span class="mt-0.5 block truncate text-xs text-base-content/60"
-                >定期更新密码更安全</span
+            <span class="min-w-0 flex-1">
+              <span class="block truncate text-sm font-medium leading-snug text-base-content">
+                {{ row.title }}
+              </span>
+              <span
+                v-if="row.desc"
+                class="mt-0.5 block truncate text-xs leading-snug text-base-content/50"
               >
+                {{ row.desc }}
+              </span>
             </span>
-            <ChevronRight :size="15" class="justify-self-end text-base-content/30" />
-          </button>
-
-          <button
-            class="grid w-full grid-cols-[2.25rem_minmax(0,1fr)_1.125rem] items-center gap-2.5 rounded-2xl bg-base-200/70 p-3 text-left transition-colors active:bg-base-300/70"
-            type="button"
-            @click="openAccountAction('email')"
-          >
-            <span
-              class="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary"
-            >
-              <Mail :size="16" />
+            <span v-if="row.badge" class="flex shrink-0 items-center gap-1.5">
+              <span
+                v-if="notifications.unreadCount > 0"
+                class="flex h-5 min-w-5 items-center justify-center rounded-full bg-error px-1.5 text-[11px] font-semibold tabular-nums text-error-content"
+              >
+                {{ notifications.unreadCount > 99 ? '99+' : notifications.unreadCount }}
+              </span>
+              <ChevronRight :size="15" class="text-base-content/30" aria-hidden="true" />
             </span>
-            <span class="min-w-0">
-              <span class="block text-sm font-medium">更换邮箱</span>
-              <span class="mt-0.5 block truncate text-xs text-base-content/60">{{
-                profileEmail
-              }}</span>
-            </span>
-            <ChevronRight :size="15" class="justify-self-end text-base-content/30" />
+            <ChevronRight
+              v-else
+              :size="15"
+              class="shrink-0 text-base-content/30"
+              aria-hidden="true"
+            />
           </button>
         </div>
-      </BasePopup>
 
-      <ChangePasswordDialog v-model="passwordDialogOpen" />
+        <button
+          class="flex min-h-11 w-full items-center justify-center gap-2 rounded-[20px] bg-base-100 text-sm font-medium text-error shadow-[0_1px_3px_rgba(15,23,42,0.03)] ring-1 ring-base-content/[0.04] transition-colors active:bg-error/[0.08] disabled:opacity-50 dark:bg-base-200 dark:shadow-none dark:ring-white/[0.06] dark:active:bg-error/[0.14]"
+          type="button"
+          :disabled="signingOut"
+          @click="logout"
+        >
+          <span v-if="signingOut" class="loading loading-spinner loading-xs"></span>
+          <LogOut v-else :size="15" aria-hidden="true" />
+          退出登录
+        </button>
 
-      <ChangeEmailDialog v-model="emailDialogOpen" />
+        <BasePopup v-model="accountPopupOpen" title="账户安全">
+          <div class="grid gap-2">
+            <button
+              class="grid w-full grid-cols-[2.25rem_minmax(0,1fr)_1.125rem] items-center gap-2.5 rounded-2xl bg-base-200/70 p-3 text-left transition-colors active:bg-base-300/70"
+              type="button"
+              @click="openAccountAction('password')"
+            >
+              <span
+                class="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary"
+              >
+                <KeyRound :size="16" />
+              </span>
+              <span class="min-w-0">
+                <span class="block text-sm font-medium">修改密码</span>
+                <span class="mt-0.5 block truncate text-xs text-base-content/60"
+                  >定期更新密码更安全</span
+                >
+              </span>
+              <ChevronRight :size="15" class="justify-self-end text-base-content/30" />
+            </button>
 
-      <ExamPlanPopup v-model="examPlanPopupOpen" />
-      <PracticeSettingsPopup v-model="practiceSettingsPopupOpen" show-mistake-settings />
-      <NotificationSettingsPopup v-model="notificationSettingsOpen" />
-      <AppearancePopup v-model="appearancePopupOpen" />
-      <DataCleanupPopup v-model="cleanupPopupOpen" />
-    </section>
-  </PageContainer>
+            <button
+              class="grid w-full grid-cols-[2.25rem_minmax(0,1fr)_1.125rem] items-center gap-2.5 rounded-2xl bg-base-200/70 p-3 text-left transition-colors active:bg-base-300/70"
+              type="button"
+              @click="openAccountAction('email')"
+            >
+              <span
+                class="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary"
+              >
+                <Mail :size="16" />
+              </span>
+              <span class="min-w-0">
+                <span class="block text-sm font-medium">更换邮箱</span>
+                <span class="mt-0.5 block truncate text-xs text-base-content/60">{{
+                  profileEmail
+                }}</span>
+              </span>
+              <ChevronRight :size="15" class="justify-self-end text-base-content/30" />
+            </button>
+          </div>
+        </BasePopup>
+
+        <ChangePasswordDialog v-model="passwordDialogOpen" />
+
+        <ChangeEmailDialog v-model="emailDialogOpen" />
+
+        <ExamPlanPopup v-model="examPlanPopupOpen" />
+        <PracticeSettingsPopup v-model="practiceSettingsPopupOpen" show-mistake-settings />
+        <NotificationSettingsPopup v-model="notificationSettingsOpen" />
+        <AppearancePopup v-model="appearancePopupOpen" />
+        <DataCleanupPopup v-model="cleanupPopupOpen" />
+      </section>
+    </PageContainer>
+  </div>
 </template>

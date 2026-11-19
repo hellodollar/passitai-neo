@@ -14,7 +14,7 @@ const id = useId()
     <g :clip-path="`url(#${id}-clip0)`">
       <path
         d="M48 0H16C7.16344 0 0 7.16344 0 16V48C0 56.8366 7.16344 64 16 64H48C56.8366 64 64 56.8366 64 48V16C64 7.16344 56.8366 0 48 0Z"
-        fill="#4F46E5"
+        fill="var(--color-primary)"
       />
       <path
         fill-rule="evenodd"
@@ -48,8 +48,8 @@ const id = useId()
         <rect width="155" height="44" fill="white" transform="translate(80 10)" />
       </clipPath>
       <linearGradient :id="`${id}-ai`" x1="0" y1="0" x2="1" y2="0">
-        <stop offset="0" stop-color="#6366F1" />
-        <stop offset="1" stop-color="#A855F7" />
+        <stop offset="0" stop-color="var(--color-primary)" />
+        <stop offset="1" stop-color="var(--color-ai)" />
       </linearGradient>
     </defs>
   </svg>

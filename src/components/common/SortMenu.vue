@@ -92,7 +92,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', handleOutsideC
   >
     <button
       ref="buttonRef"
-      class="flex h-9 items-center gap-1.5 rounded-xl bg-base-200/85 px-2.5 text-xs font-medium text-base-content/75 transition-colors hover:bg-base-200 active:bg-base-300/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary aria-disabled:cursor-wait dark:bg-base-200/70"
+      class="flex h-9 items-center gap-1.5 rounded-xl bg-base-100 px-3 text-xs font-medium text-base-content/75 shadow-[0_1px_2px_rgba(15,23,42,0.03)] ring-1 ring-base-content/[0.04] transition-colors active:bg-base-200/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary aria-disabled:cursor-wait dark:bg-base-200 dark:shadow-none dark:ring-white/[0.06] dark:active:bg-base-300/60"
       type="button"
       :aria-disabled="loading"
       :aria-label="`排序方式：${selectedLabel}`"
@@ -115,7 +115,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', handleOutsideC
       v-if="open"
       :id="menuId"
       ref="optionsRef"
-      class="absolute right-0 top-full z-20 mt-1.5 min-w-36 rounded-2xl bg-base-100 p-1.5 shadow-sm shadow-black/5 ring-1 ring-base-content/8"
+      class="absolute right-0 top-full z-20 mt-1.5 min-w-36 rounded-2xl bg-base-100 p-1.5 shadow-sm shadow-black/5 ring-1 ring-base-content/8 dark:bg-base-200 dark:ring-white/10"
       role="menu"
       aria-label="排序方式"
       @keydown="handleKeydown"

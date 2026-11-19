@@ -211,125 +211,141 @@ watch(
 </script>
 
 <template>
-  <PageContainer>
-    <section class="flex flex-col" :aria-busy="loading">
-      <h1 class="sr-only">{{ pageConfig.label }}</h1>
+  <div class="relative min-h-dvh overflow-x-hidden bg-base-200/80 dark:bg-base-100">
+    <div
+      aria-hidden="true"
+      class="pointer-events-none absolute inset-x-0 top-0 h-44 bg-gradient-to-b from-primary/[0.06] via-primary/[0.02] to-transparent dark:from-primary/[0.12] dark:via-primary/[0.03]"
+    ></div>
+    <PageContainer class="relative">
+      <section class="flex flex-col" :aria-busy="loading">
+        <h1 class="sr-only">{{ pageConfig.label }}</h1>
 
-      <!-- 分组切换 + 排序 -->
-      <div
-        v-if="loaded && items.length > 0"
-        class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1"
-      >
+        <!-- 分组切换 + 排序 -->
         <div
-          class="inline-flex justify-self-start rounded-xl bg-base-200/85 p-1 dark:bg-base-200/70"
-          role="group"
-          aria-label="分组方式"
+          v-if="loaded && items.length > 0"
+          class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1"
         >
-          <button
-            v-for="mode in [
-              { value: 'subject', label: '按科目' },
-              { value: 'paper', label: '按题集' },
-            ]"
-            :key="mode.value"
-            class="flex h-7 items-center rounded-lg px-3 text-xs transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary aria-disabled:opacity-60"
-            :class="
-              groupMode === mode.value
-                ? 'bg-base-100 font-semibold text-primary'
-                : 'font-medium text-base-content/65 hover:text-base-content'
-            "
-            type="button"
-            :aria-disabled="loading"
-            :aria-pressed="groupMode === mode.value"
-            @click="selectGroupMode(mode.value as CollectionGroupBy)"
+          <div
+            class="inline-flex justify-self-start rounded-xl bg-base-100 p-1 shadow-[0_1px_2px_rgba(15,23,42,0.03)] ring-1 ring-base-content/[0.04] dark:bg-base-200 dark:shadow-none dark:ring-white/[0.06]"
+            role="group"
+            aria-label="分组方式"
           >
-            {{ mode.label }}
-          </button>
+            <button
+              v-for="mode in [
+                { value: 'subject', label: '按科目' },
+                { value: 'paper', label: '按题集' },
+              ]"
+              :key="mode.value"
+              class="flex h-7 items-center rounded-lg px-3 text-xs transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary aria-disabled:opacity-60"
+              :class="
+                groupMode === mode.value
+                  ? 'bg-primary/[0.1] font-semibold text-primary dark:bg-primary/[0.2]'
+                  : 'font-medium text-base-content/60 hover:text-base-content'
+              "
+              type="button"
+              :aria-disabled="loading"
+              :aria-pressed="groupMode === mode.value"
+              @click="selectGroupMode(mode.value as CollectionGroupBy)"
+            >
+              {{ mode.label }}
+            </button>
+          </div>
+
+          <SortMenu
+            :model-value="`${sortField}-${sortOrder}`"
+            :options="COLLECTION_SORT_OPTIONS"
+            :loading="loading"
+            @update:model-value="selectSortOption"
+          />
         </div>
 
-        <SortMenu
-          :model-value="`${sortField}-${sortOrder}`"
-          :options="COLLECTION_SORT_OPTIONS"
-          :loading="loading"
-          @update:model-value="selectSortOption"
-        />
-      </div>
+        <p v-if="loading && items.length > 0" class="sr-only" role="status">正在加载列表</p>
 
-      <p v-if="loading && items.length > 0" class="sr-only" role="status">正在加载列表</p>
+        <PagePlaceholder v-if="loading && items.length === 0" role="status">
+          <span class="loading loading-spinner loading-md text-primary"></span>
+          <p class="text-sm font-medium text-base-content/65">正在加载…</p>
+        </PagePlaceholder>
 
-      <PagePlaceholder v-if="loading && items.length === 0" role="status">
-        <span class="loading loading-spinner loading-md text-primary"></span>
-        <p class="text-sm font-medium text-base-content/65">正在加载…</p>
-      </PagePlaceholder>
-
-      <PagePlaceholder v-else-if="loadError && items.length === 0">
-        <EmptyState
-          :icon="CircleAlert"
-          tone="error"
-          title="加载失败"
-          description="请检查网络后重试。"
-          action-label="重新加载"
-          @action="loadMistakes"
-        />
-      </PagePlaceholder>
-
-      <PagePlaceholder v-else-if="items.length === 0">
-        <EmptyState
-          :icon="pageConfig.icon"
-          :title="pageConfig.emptyTitle"
-          :description="pageConfig.emptyDescription"
-          action-label="去练习"
-          @action="router.push({ name: 'home' })"
-        />
-      </PagePlaceholder>
-
-      <div v-else class="mt-2.5 space-y-2">
-        <div
-          v-if="loadError"
-          class="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-error/10 px-3.5 py-2.5 text-xs text-error"
-          role="status"
-        >
-          <span>更新失败，已保留原列表。</span>
-          <button
-            class="min-h-7 rounded-lg bg-base-100 px-2.5 font-medium text-error"
-            type="button"
-            @click="loadMistakes"
+        <PagePlaceholder v-else-if="loadError && items.length === 0">
+          <div
+            class="w-full rounded-[20px] bg-base-100 shadow-[0_1px_3px_rgba(15,23,42,0.03)] ring-1 ring-base-content/[0.04] dark:bg-base-200 dark:shadow-none dark:ring-white/[0.06]"
           >
-            重试
+            <EmptyState
+              :icon="CircleAlert"
+              tone="error"
+              title="加载失败"
+              description="请检查网络后重试。"
+              action-label="重新加载"
+              embedded
+              @action="loadMistakes"
+            />
+          </div>
+        </PagePlaceholder>
+
+        <PagePlaceholder v-else-if="items.length === 0">
+          <div
+            class="w-full rounded-[20px] bg-base-100 shadow-[0_1px_3px_rgba(15,23,42,0.03)] ring-1 ring-base-content/[0.04] dark:bg-base-200 dark:shadow-none dark:ring-white/[0.06]"
+          >
+            <EmptyState
+              :icon="pageConfig.icon"
+              :title="pageConfig.emptyTitle"
+              :description="pageConfig.emptyDescription"
+              action-label="去练习"
+              embedded
+              @action="router.push({ name: 'home' })"
+            />
+          </div>
+        </PagePlaceholder>
+
+        <div v-else class="mt-3 space-y-2.5">
+          <div
+            v-if="loadError"
+            class="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-error/[0.08] px-3.5 py-2.5 text-xs text-error ring-1 ring-error/15"
+            role="status"
+          >
+            <span>更新失败，已保留原列表。</span>
+            <button
+              class="min-h-7 rounded-lg bg-base-100 px-2.5 font-medium text-error dark:bg-base-200"
+              type="button"
+              @click="loadMistakes"
+            >
+              重试
+            </button>
+          </div>
+          <button
+            v-for="item in items"
+            :key="displayedGroupMode === 'paper' ? item.paperId : item.subjectId"
+            class="flex w-full min-w-0 items-center gap-3 rounded-2xl bg-base-100 px-3.5 py-3 text-left shadow-[0_1px_3px_rgba(15,23,42,0.03)] ring-1 ring-base-content/[0.04] transition-colors active:bg-base-100/75 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary dark:bg-base-200 dark:shadow-none dark:ring-white/[0.06] dark:active:bg-base-300/60"
+            type="button"
+            :aria-label="`${displayedGroupMode === 'paper' ? item.paperName : item.subjectName}，${item.questionCount}题，开始练习`"
+            @click="openPractice(item)"
+          >
+            <span
+              class="flex size-9.5 shrink-0 items-center justify-center rounded-xl bg-error/[0.09] text-error"
+            >
+              <component :is="displayedGroupMode === 'paper' ? FileText : BookOpen" :size="17" />
+            </span>
+
+            <span class="min-w-0 flex-1">
+              <span class="block truncate text-sm font-semibold leading-snug text-base-content">
+                {{ displayedGroupMode === 'paper' ? item.paperName : item.subjectName }}
+              </span>
+              <span class="mt-0.5 block truncate text-xs leading-snug text-base-content/50">
+                <template v-if="displayedGroupMode === 'paper'">{{ item.subjectName }} · </template>
+                {{ formatCollectedTimeText(item.lastCollectedAt) || '已收录' }}
+              </span>
+            </span>
+
+            <span
+              class="shrink-0 rounded-lg bg-error/[0.08] px-2 py-0.5 text-xs font-semibold tabular-nums text-error"
+            >
+              {{ item.questionCount }} 题
+            </span>
+
+            <ChevronRight :size="15" class="shrink-0 text-base-content/30" />
           </button>
         </div>
-        <button
-          v-for="item in items"
-          :key="displayedGroupMode === 'paper' ? item.paperId : item.subjectId"
-          class="flex w-full min-w-0 items-center gap-3 rounded-2xl bg-base-200/70 px-3.5 py-3 text-left transition-colors active:bg-base-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary dark:bg-base-200/65 dark:active:bg-base-200"
-          type="button"
-          :aria-label="`${displayedGroupMode === 'paper' ? item.paperName : item.subjectName}，${item.questionCount}题，开始练习`"
-          @click="openPractice(item)"
-        >
-          <span
-            class="flex size-9 shrink-0 items-center justify-center rounded-xl bg-base-100 text-error dark:bg-error/15"
-          >
-            <component :is="displayedGroupMode === 'paper' ? FileText : BookOpen" :size="17" />
-          </span>
-
-          <span class="min-w-0 flex-1">
-            <span class="block truncate text-sm font-semibold leading-snug">
-              {{ displayedGroupMode === 'paper' ? item.paperName : item.subjectName }}
-            </span>
-            <span class="mt-0.5 block truncate text-xs leading-snug text-base-content/55">
-              <template v-if="displayedGroupMode === 'paper'">{{ item.subjectName }} · </template>
-              {{ formatCollectedTimeText(item.lastCollectedAt) || '已收录' }}
-            </span>
-          </span>
-
-          <span
-            class="shrink-0 rounded-lg bg-error/[0.08] px-2 py-0.5 text-xs font-semibold tabular-nums text-error"
-          >
-            {{ item.questionCount }} 题
-          </span>
-
-          <ChevronRight :size="15" class="shrink-0 text-base-content/35" />
-        </button>
-      </div>
-    </section>
-  </PageContainer>
+      </section>
+    </PageContainer>
+  </div>
 </template>

@@ -6,7 +6,7 @@
   /* AI 入口语义色:显式注册为 Tailwind 主题色。
      自定义名不在 daisyUI 内置色表内,新版 daisyUI 不会为其生成 bg-ai/text-ai/ring-ai,
      缺失时 ring/border 回退 currentcolor,表现为 AI 入口出现黑圈;深色值在 neo-dark 主题块内覆盖。 */
-  --color-ai: oklch(56% 0.24 302);
+  --color-ai: oklch(57% 0.215 294);
 }
 
 /* 只使用下方自定义的 neo / neo-dark 主题;主题切换由应用设置 data-theme 驱动 */
@@ -14,31 +14,32 @@
   themes: false;
 }
 
+/* 浅色主题（2026 清透鸢尾 · Modern Iris）：冷雾浅灰画布 + 纯白内容卡 + 低噪点清透鸢尾蓝紫 */
 @plugin "daisyui/theme" {
   name: 'neo';
   default: true;
   color-scheme: light;
   --color-base-100: oklch(100% 0 0);
-  --color-base-200: oklch(96.5% 0.007 270);
-  --color-base-300: oklch(90% 0.009 270);
-  --color-base-400: oklch(80% 0.012 270);
-  --color-base-content: oklch(20% 0.018 245);
-  --color-primary: oklch(51.1% 0.262 276.966);
+  --color-base-200: oklch(96.6% 0.008 272);
+  --color-base-300: oklch(91.5% 0.011 272);
+  --color-base-400: oklch(81% 0.015 272);
+  --color-base-content: oklch(20.5% 0.022 268);
+  --color-primary: oklch(53.5% 0.218 271);
   --color-primary-content: oklch(100% 0 0);
-  --color-secondary: oklch(55% 0.15 235);
-  --color-secondary-content: oklch(99% 0.004 155);
-  --color-accent: oklch(51.1% 0.096 186.391);
-  --color-accent-content: oklch(98% 0.01 186);
-  --color-neutral: oklch(25% 0.035 180);
-  --color-neutral-content: oklch(98% 0.005 155);
-  --color-info: oklch(62% 0.16 230);
+  --color-secondary: oklch(57% 0.16 248);
+  --color-secondary-content: oklch(100% 0 0);
+  --color-accent: oklch(61% 0.145 162);
+  --color-accent-content: oklch(100% 0 0);
+  --color-neutral: oklch(26% 0.024 270);
+  --color-neutral-content: oklch(98% 0.004 270);
+  --color-info: oklch(61% 0.155 234);
   --color-info-content: oklch(100% 0 0);
-  --color-success: oklch(58% 0.15 158);
+  --color-success: oklch(59% 0.165 150);
   --color-success-content: oklch(100% 0 0);
-  --color-warning: oklch(72% 0.17 78);
+  --color-warning: oklch(73% 0.165 76);
   /* warning 本体偏亮，用深色文字保证对比度（对齐 daisyUI 浅色主题默认） */
-  --color-warning-content: oklch(27.9% 0.061 68.6);
-  --color-error: oklch(58% 0.18 28);
+  --color-warning-content: oklch(27% 0.055 68);
+  --color-error: oklch(59% 0.215 16);
   --color-error-content: oklch(100% 0 0);
   --radius-selector: 1rem;
   --radius-field: 1rem;
@@ -48,32 +49,32 @@
   --noise: 0;
 }
 
-/* 深色主题:表面保持 270 蓝调中性拉大明度层级;品牌色相同色相提亮,*-content 反转为深字 */
+/* 深色主题：深空石墨黑底 + 抬升冷灰卡片；品牌色同色相提亮，*-content 反转为深字 */
 @plugin "daisyui/theme" {
   name: 'neo-dark';
   color-scheme: dark;
-  --color-base-100: oklch(20.5% 0.018 270);
-  --color-base-200: oklch(25% 0.02 270);
-  --color-base-300: oklch(31% 0.022 270);
-  --color-base-400: oklch(42% 0.02 270);
-  --color-base-content: oklch(93% 0.006 270);
-  --color-primary: oklch(70% 0.16 277);
-  --color-primary-content: oklch(15% 0.02 277);
-  --color-secondary: oklch(70% 0.12 235);
-  --color-secondary-content: oklch(15% 0.02 235);
-  --color-accent: oklch(72% 0.11 186);
-  --color-accent-content: oklch(15% 0.02 186);
-  --color-neutral: oklch(30% 0.02 270);
-  --color-neutral-content: oklch(93% 0.006 270);
-  --color-info: oklch(72% 0.13 230);
-  --color-info-content: oklch(15% 0.02 230);
-  --color-success: oklch(72% 0.14 158);
-  --color-success-content: oklch(15% 0.02 158);
-  --color-warning: oklch(78% 0.15 78);
-  --color-warning-content: oklch(27.9% 0.061 68.6);
-  --color-error: oklch(68% 0.17 25);
-  --color-error-content: oklch(15% 0.02 25);
-  --color-ai: oklch(75% 0.15 302);
+  --color-base-100: oklch(17.8% 0.017 272);
+  --color-base-200: oklch(22.8% 0.02 272);
+  --color-base-300: oklch(29% 0.023 272);
+  --color-base-400: oklch(40% 0.022 272);
+  --color-base-content: oklch(94.5% 0.006 272);
+  --color-primary: oklch(69% 0.165 272);
+  --color-primary-content: oklch(16% 0.024 272);
+  --color-secondary: oklch(71% 0.13 248);
+  --color-secondary-content: oklch(16% 0.02 248);
+  --color-accent: oklch(74% 0.135 164);
+  --color-accent-content: oklch(16% 0.02 164);
+  --color-neutral: oklch(29% 0.022 272);
+  --color-neutral-content: oklch(94.5% 0.006 272);
+  --color-info: oklch(73% 0.135 232);
+  --color-info-content: oklch(16% 0.02 232);
+  --color-success: oklch(74% 0.15 150);
+  --color-success-content: oklch(16% 0.02 150);
+  --color-warning: oklch(79% 0.15 76);
+  --color-warning-content: oklch(25% 0.055 68);
+  --color-error: oklch(69% 0.185 15);
+  --color-error-content: oklch(16% 0.022 15);
+  --color-ai: oklch(73% 0.155 294);
   --radius-selector: 1rem;
   --radius-field: 1rem;
   --radius-box: 1rem;
