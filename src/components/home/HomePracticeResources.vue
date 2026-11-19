@@ -19,6 +19,7 @@ const loading = ref(false)
 const error = ref(false)
 const retry = ref(0)
 
+/** 模板类型固定图标与语义色映射，约定见 docs/frontend-contract.md「首页练习资源模板」。 */
 const templateStyleMap: Record<
   PracticeTemplateType,
   {
@@ -36,19 +37,19 @@ const templateStyleMap: Record<
     activeIconClass: 'bg-base-100 text-primary dark:bg-base-200',
     progressClass: 'bg-primary',
   },
-  pastExams: {
-    icon: History,
-    tileClass: 'bg-info/10 text-info',
-    activeTabClass: 'bg-info/12 text-info dark:bg-info/18',
-    activeIconClass: 'bg-base-100 text-info dark:bg-base-200',
-    progressClass: 'bg-info',
-  },
   mockExams: {
     icon: Timer,
     tileClass: 'bg-accent/10 text-accent',
     activeTabClass: 'bg-accent/12 text-accent dark:bg-accent/18',
     activeIconClass: 'bg-base-100 text-accent dark:bg-base-200',
     progressClass: 'bg-accent',
+  },
+  pastExams: {
+    icon: History,
+    tileClass: 'bg-info/10 text-info',
+    activeTabClass: 'bg-info/12 text-info dark:bg-info/18',
+    activeIconClass: 'bg-base-100 text-info dark:bg-base-200',
+    progressClass: 'bg-info',
   },
   aiEnhance: {
     icon: Sparkles,

@@ -1,5 +1,15 @@
 import { request } from '@/api/http'
-import type { PracticePaperDetail, PracticeSubmission, SubmitPracticePaperBody } from '@/types'
+import type {
+  PaperDetail,
+  PracticePaperDetail,
+  PracticeSubmission,
+  SubmitPracticePaperBody,
+} from '@/types'
+
+/** 文档:GET /api/practice/papers/:paperId */
+export function fetchPaper(paperId: string) {
+  return request<PaperDetail>(`/practice/papers/${paperId}`)
+}
 
 /** 文档:GET /api/practice/papers/:paperId */
 export function fetchPracticePaper(paperId: string) {

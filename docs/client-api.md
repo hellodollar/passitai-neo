@@ -1,7 +1,8 @@
 # Client API
 
-本契约以 API 路由、schema 和服务实现为准。唯一源为 `passitai-api/docs/client-api.md`，
-`passitai-neo/docs/client-api.md` 是逐字节镜像，不单独编辑；源文件更新后在 API 执行 `pnpm sync`。
+本契约以 API 路由、schema 和服务实现为准。唯一源为 `passitai-api/docs/client-api.md`。
+Neo 和 Desktop 各自的 `docs/client-api.md` 都是逐字节镜像。更新源文件后，在 API 项目执行 `pnpm sync` 并检查镜像。
+各客户端的实际接入状态随各自的实现确认。
 Neo 已接入下列账户、考试计划和题库读取接口，题集预览按服务端分组和题序展示。单独同步 Neo 题集类型和布局可运行
 `node scripts/sync-domain-values.mjs --neo-catalog`。基础路径为 `/api`，仅接受客户端登录签发的
 `app` scope JWT。除注册、登录外，所有接口都需要：
@@ -215,7 +216,7 @@ interface ChangeEmailBody {
 
 | Method | Path | 说明 |
 | --- | --- | --- |
-| GET | `/api/papers/:id` | 获取题集和按分组排序的题目 |
+| GET | `/api/practice/papers/:paperId` | 获取题集和按分组排序的题目 |
 
 只返回启用且未删除的题集，以及启用、开考、同省且未删除的所属科目。
 归属只能为平台（`ownerId=NULL`）或当前用户；其他用户资源视为不存在。
@@ -229,8 +230,8 @@ interface ChangeEmailBody {
 不返回正确答案、解析、来源原文、指纹或其他用户资料。题目必须同科目、归属兼容、启用且未删除。
 存在缺题、重复题、无效分组或题型冲突时返回 409，不静默丢题。空题集不能作为启用题集读取。
 
-Neo 首页按科目加载练习模板，从模板的 `list` 获取可打开的题集。收藏和错题使用各自的列表与练习接口。已知题集 ID 可用于读取单份题集详情；`GET /api/papers` 和旧的 `/api/practice/entries` 已移除。
-旧 `/api/users/me/practice-scope`、`/api/users/me/practice-plan`、`/api/practice/plan`、`/api/practice/scope`、`GET /api/practice/papers/:paperId` 和 `/api/profile` 已移除，不提供别名。
+Neo 首页按科目加载练习模板，从模板的 `list` 获取可打开的题集。收藏和错题使用各自的列表与练习接口。已知题集 ID 可用于读取单份题集详情。
+旧 `/api/papers`、`/api/papers/:id`、`/api/practice/entries`、`/api/users/me/practice-scope`、`/api/users/me/practice-plan`、`/api/practice/plan`、`/api/practice/scope` 和 `/api/profile` 已移除，不提供别名。
 
 ## 4. 练习模块
 
@@ -246,7 +247,7 @@ Neo 首页按科目加载练习模板，从模板的 `list` 获取可打开的�
 | `GET`   | `/api/practice/resources?subjectCode=`                       | 获取指定科目的练习资源         | 可用     |
 | `GET`   | `/api/practice/settings`                                      | 获取用户刷题设置               | 可用     |
 | `PATCH` | `/api/practice/settings`                                      | 修改用户刷题设置               | 可用     |
-| `GET`   | `/api/papers/:id` | 新版题集和题目，见第3节 | 本轮已实现 |
+| `GET`   | `/api/practice/papers/:paperId` | 题集和题目，见第3节 | 本轮已实现 |
 | `POST`  | `/api/practice/papers/:paperId/submissions`                   | 交卷并创建练习记录             | 待重构   |
 | `GET`   | `/api/practice/papers/:paperId/submissions/:submissionId`    | 获取本次交卷记录               | 待重构   |
 
@@ -509,7 +510,7 @@ GET    /api/majors
 GET    /api/majors/:code
 GET    /api/subjects
 GET    /api/subjects/:code
-GET    /api/papers/:id
+GET    /api/practice/papers/:paperId
 
 GET    /api/favorites
 PUT    /api/favorites

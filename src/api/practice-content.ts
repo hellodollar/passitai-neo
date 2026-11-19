@@ -1,7 +1,7 @@
 import { fetchFavoritePractice } from '@/api/favorites'
 import { request } from '@/api/http'
 import { fetchMistakePractice } from '@/api/mistakes'
-import { fetchPaper } from '@/api/papers'
+import { fetchPaper } from '@/api/practice'
 import type { CollectionGroupBy, PracticePaperLite, PracticeSource } from '@/types'
 
 export type PracticeTarget =

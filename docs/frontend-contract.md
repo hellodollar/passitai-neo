@@ -53,6 +53,17 @@ Vue Router 使用 `createWebHistory(import.meta.env.BASE_URL)`，CF 为深链提
 - 科目显隐和顺序属于首页浏览记忆，不冒充服务端计划。科目业务码使用完整大写省份前缀。
 - `useAuthStore` 管理登录身份，退出或换账号重置考试计划及相关会话 Store。收藏、错题列表不另建 Store，临时状态留在各自页面。
 
+## 首页练习资源模板
+
+`HomePracticeResources` 从 `GET /api/practice/resources?subjectCode=<科目码>` 读取当前科目的编排题集。模板类型枚举由 `src/generated/practice-template-values.ts`（`PracticeTemplateType`）生成，前端固定按下表映射 Lucide 图标与主题语义色，不随接口顺序或文案变动：
+
+| 模板类型 (`type`) | 业务含义 | 固定图标 (`@lucide/vue`) | 主题语义色 |
+| ----------------- | -------- | ------------------------ | ---------- |
+| `baseline`        | 基准能力 | `Target`                 | `primary`  |
+| `mockExams`       | 模拟考试 | `Timer`                  | `accent`   |
+| `pastExams`       | 历年真题 | `History`                | `info`     |
+| `aiEnhance`       | AI 增强  | `Sparkles`               | `ai`       |
+
 ## 收藏、错题与共用内容读取
 
 列表分别使用 `loadFavorites → fetchFavoriteGroups`、`loadMistakes → fetchMistakeGroups`，共享排序选项在 `constants/collection.ts`，不再合回共享列表视图。

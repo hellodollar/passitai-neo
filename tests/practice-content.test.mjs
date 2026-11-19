@@ -25,7 +25,7 @@ afterEach(() => {
 test('普通题集从新版接口读取，保留真实来源，缺少答案时不伪造判分', async () => {
   respond = (url) => {
     if (url.pathname === '/api/subjects/GD-13811') return { id: 'sub-one' }
-    assert.equal(url.pathname, '/api/papers/pap-one')
+    assert.equal(url.pathname, '/api/practice/papers/pap-one')
     return {
       id: 'pap-one',
       name: '考点通练',
@@ -44,7 +44,7 @@ test('普通题集从新版接口读取，保留真实来源，缺少答案时�
   const loaded = await fetchPracticeContent({ source: 'practice', paperId: 'pap-one' })
   assert.deepEqual(
     requests.map((url) => url.pathname),
-    ['/api/papers/pap-one', '/api/subjects/GD-13811'],
+    ['/api/practice/papers/pap-one', '/api/subjects/GD-13811'],
   )
   assert.equal(loaded.canSubmit, false)
   const prepared = preparePracticePaper(loaded.paper)

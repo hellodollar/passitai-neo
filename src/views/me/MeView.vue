@@ -96,13 +96,6 @@ const settingsRows = computed<SettingsRow[]>(() => [
     desc: appearanceLabel.value,
   },
   {
-    action: 'account',
-    title: '账户与安全',
-    icon: UserRound,
-    iconClass: 'bg-primary/10 text-primary',
-    desc: '密码与邮箱',
-  },
-  {
     action: 'notification',
     title: '通知',
     icon: BellRing,
@@ -144,6 +137,13 @@ const settingsRows = computed<SettingsRow[]>(() => [
       localPracticeRecords.value.length > 0
         ? `${localPracticeRecords.value.length} 份本地作答`
         : '清除本地作答记录',
+  },
+  {
+    action: 'account',
+    title: '账户安全',
+    icon: UserRound,
+    iconClass: 'bg-primary/10 text-primary',
+    desc: '密码与邮箱',
   },
 ])
 
