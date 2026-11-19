@@ -68,27 +68,35 @@ function handleClose() {
       <!-- 内容随开合挂载/销毁,关闭即重置内部状态;dialog 本体常驻以保留原生行为 -->
       <section
         v-if="model"
-        class="modal-box mx-auto mb-0 flex max-h-[88dvh] w-full max-w-lg flex-col overflow-hidden rounded-b-none rounded-t-2xl border-t border-base-300 bg-base-100 p-0 shadow-none"
+        class="modal-box mx-auto mb-0 flex max-h-[88dvh] w-full max-w-lg flex-col overflow-hidden rounded-b-none rounded-t-2xl border-t border-base-content/[0.06] bg-base-100 p-0 shadow-none dark:border-base-content/[0.08] dark:bg-base-200"
         :class="props.boxClass"
       >
         <slot name="header">
-          <div v-if="title" class="shrink-0 border-b border-base-200 px-4 py-2.5 text-center">
-            <h3 class="text-[15px] font-semibold leading-tight">{{ title }}</h3>
+          <div
+            v-if="title"
+            class="shrink-0 border-b border-base-content/[0.06] px-4 py-3 text-center dark:border-base-content/[0.08]"
+          >
+            <h3 class="text-[15px] font-semibold leading-tight tracking-tight text-base-content">
+              {{ title }}
+            </h3>
           </div>
         </slot>
 
         <slot name="body">
-          <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
+          <div
+            class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4"
+            :class="$slots.footer ? '' : 'pb-[calc(1rem+env(safe-area-inset-bottom))]'"
+          >
             <slot></slot>
           </div>
         </slot>
 
         <div
           v-if="$slots.footer"
-          class="flex shrink-0 gap-2 border-t border-base-200"
+          class="flex shrink-0 gap-2.5 border-t border-base-content/[0.06] dark:border-base-content/[0.08]"
           :class="
             compactFooter
-              ? 'items-center justify-end px-4 py-1.5 pb-[calc(0.375rem+env(safe-area-inset-bottom))]'
+              ? 'items-center justify-end px-4 py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]'
               : 'p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]'
           "
         >

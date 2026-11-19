@@ -155,7 +155,7 @@ async function submit() {
 
     <template #footer>
       <button
-        class="btn h-10 min-h-10 flex-1 rounded-xl border-base-200 bg-base-100 text-sm"
+        class="flex h-10 flex-1 items-center justify-center rounded-xl bg-base-200/70 text-sm font-medium text-base-content/75 transition-colors active:bg-base-200 disabled:opacity-50 dark:bg-base-300/45 dark:active:bg-base-300/70"
         type="button"
         :disabled="submitting"
         @click="model = false"
@@ -163,7 +163,7 @@ async function submit() {
         取消
       </button>
       <button
-        class="btn btn-primary h-10 min-h-10 flex-1 rounded-xl text-sm"
+        class="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-xl bg-primary text-sm font-medium text-primary-content transition-colors active:opacity-90 disabled:opacity-50"
         type="submit"
         :form="formId"
         :disabled="submitting"

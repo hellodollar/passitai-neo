@@ -62,12 +62,12 @@ onBeforeUnmount(() => ++clearSequence)
     :close-on-backdrop="!clearing"
     :close-on-escape="!clearing"
   >
-    <p class="text-sm leading-6 text-base-content/70">
+    <p class="text-sm leading-relaxed text-base-content/70">
       将清空当前账号的全部{{ label }}，无法撤销。
     </p>
     <template #footer>
       <button
-        class="btn h-10 min-h-10 flex-1 rounded-xl border-base-200 bg-base-100 text-sm"
+        class="flex h-10 flex-1 items-center justify-center rounded-xl bg-base-200/70 text-sm font-medium text-base-content/75 transition-colors active:bg-base-200 disabled:opacity-50 dark:bg-base-300/45 dark:active:bg-base-300/70"
         type="button"
         :disabled="clearing"
         @click="model = false"
@@ -75,7 +75,7 @@ onBeforeUnmount(() => ++clearSequence)
         取消
       </button>
       <button
-        class="btn btn-error h-10 min-h-10 flex-1 rounded-xl text-sm"
+        class="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-xl bg-error text-sm font-medium text-error-content transition-colors active:opacity-90 disabled:opacity-50"
         type="button"
         :disabled="clearing"
         @click="confirmClear"

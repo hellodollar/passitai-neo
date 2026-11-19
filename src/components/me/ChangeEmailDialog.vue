@@ -97,11 +97,13 @@ async function submit() {
     :close-on-escape="!submitting"
   >
     <form :id="formId" class="grid gap-2" novalidate @submit.prevent="submit">
-      <div class="flex items-center gap-2.5 rounded-2xl bg-base-200/70 px-4 py-3">
-        <Mail :size="17" class="shrink-0 text-base-content/35" />
+      <div
+        class="flex items-center gap-2.5 rounded-xl bg-base-200/65 px-3.5 py-2.5 dark:bg-base-300/45"
+      >
+        <Mail :size="16" class="shrink-0 text-base-content/55" />
         <span class="min-w-0">
-          <span class="block text-xs text-base-content/50">当前邮箱</span>
-          <span class="mt-0.5 block truncate text-sm font-medium">{{
+          <span class="block text-xs leading-snug text-base-content/55">当前邮箱</span>
+          <span class="mt-0.5 block truncate text-sm font-medium leading-snug text-base-content">{{
             auth.user?.email || '—'
           }}</span>
         </span>
@@ -134,7 +136,7 @@ async function submit() {
 
     <template #footer>
       <button
-        class="btn h-10 min-h-10 flex-1 rounded-xl border-base-200 bg-base-100 text-sm"
+        class="flex h-10 flex-1 items-center justify-center rounded-xl bg-base-200/70 text-sm font-medium text-base-content/75 transition-colors active:bg-base-200 disabled:opacity-50 dark:bg-base-300/45 dark:active:bg-base-300/70"
         type="button"
         :disabled="submitting"
         @click="model = false"
@@ -142,7 +144,7 @@ async function submit() {
         取消
       </button>
       <button
-        class="btn btn-primary h-10 min-h-10 flex-1 rounded-xl text-sm"
+        class="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-xl bg-primary text-sm font-medium text-primary-content transition-colors active:opacity-90 disabled:opacity-50"
         type="submit"
         :form="formId"
         :disabled="submitting"

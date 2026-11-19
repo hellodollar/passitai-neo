@@ -41,7 +41,7 @@ function pick(value: string) {
 <template>
   <button
     v-bind="$attrs"
-    class="flex h-10 min-h-10 w-full items-center justify-between gap-2 rounded-xl border border-base-300 bg-base-100 px-3.5 text-left text-sm transition-colors disabled:opacity-50"
+    class="flex h-10 min-h-10 w-full items-center justify-between gap-2 rounded-xl border border-transparent bg-base-200/65 px-3.5 text-left text-sm transition-colors active:bg-base-200 disabled:opacity-50 dark:bg-base-300/45 dark:active:bg-base-300/70"
     :class="modelValue ? 'text-base-content' : 'text-base-content/45'"
     type="button"
     :aria-label="title"
@@ -50,22 +50,22 @@ function pick(value: string) {
     @click="open = true"
   >
     <span class="min-w-0 truncate">{{ selectedLabel || placeholder }}</span>
-    <ChevronDown :size="16" class="shrink-0 text-base-content/40" aria-hidden="true" />
+    <ChevronDown :size="15" class="shrink-0 text-base-content/30" aria-hidden="true" />
   </button>
 
   <BasePopup v-model="open" :title="title">
     <div
-      class="max-h-[52dvh] overflow-y-auto overscroll-contain"
+      class="max-h-[52dvh] divide-y divide-base-content/[0.06] overflow-y-auto overscroll-contain rounded-2xl bg-base-200/65 dark:divide-base-content/[0.08] dark:bg-base-300/45"
       role="radiogroup"
       :aria-label="title"
     >
       <button
         v-for="option in options"
         :key="option.value"
-        class="flex min-h-12 w-full items-center justify-between gap-3 rounded-xl px-3.5 text-left text-sm transition-colors active:bg-base-200/60"
+        class="flex min-h-11 w-full items-center justify-between gap-3 px-3.5 text-left text-sm transition-colors active:bg-base-200 dark:active:bg-base-300/70"
         :class="
           option.value === modelValue
-            ? 'bg-primary/5 font-medium text-primary'
+            ? 'bg-primary/10 font-medium text-primary dark:bg-primary/15'
             : 'text-base-content'
         "
         type="button"
@@ -76,7 +76,7 @@ function pick(value: string) {
         <span class="min-w-0 flex-1 truncate">{{ option.label }}</span>
         <Check
           v-if="option.value === modelValue"
-          :size="17"
+          :size="15"
           class="shrink-0 text-primary"
           aria-hidden="true"
         />

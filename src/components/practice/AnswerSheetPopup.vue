@@ -159,7 +159,7 @@ async function scrollToCurrentQuestion() {
     </template>
     <template v-if="showSubmit" #footer>
       <button
-        class="btn btn-primary h-10 min-h-10 w-full rounded-xl text-sm font-medium"
+        class="flex h-10 w-full items-center justify-center rounded-xl bg-primary text-sm font-medium text-primary-content transition-colors active:opacity-90 disabled:opacity-50"
         type="button"
         :disabled="questions.length === 0"
         @click="emit('submit')"

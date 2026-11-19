@@ -53,19 +53,27 @@ watch(model, (active) => {
         @update:model-value="save(row.key, $event)"
       />
     </div>
-    <p v-else-if="preferences.isLoading" role="status" class="py-6 text-center text-sm">
+    <p
+      v-else-if="preferences.isLoading"
+      role="status"
+      class="py-6 text-center text-sm font-medium text-base-content/70"
+    >
       正在加载…
     </p>
-    <p v-if="preferences.error || saveError" role="alert" class="mt-3 text-sm text-error">
-      {{ saveError ?? preferences.error
-      }}<button
+    <div
+      v-if="preferences.error || saveError"
+      role="alert"
+      class="mt-3 flex items-center justify-between gap-3 rounded-xl bg-error/10 px-3.5 py-2.5 text-xs text-error"
+    >
+      <p class="min-w-0 flex-1">{{ saveError ?? preferences.error }}</p>
+      <button
         v-if="!preferences.settings"
         type="button"
-        class="btn btn-ghost btn-sm ml-2"
+        class="shrink-0 rounded-lg bg-base-100 px-2.5 py-1 text-xs font-medium text-error transition-colors active:opacity-80 dark:bg-base-200"
         @click="preferences.load()"
       >
         重试
       </button>
-    </p>
+    </div>
   </BasePopup>
 </template>

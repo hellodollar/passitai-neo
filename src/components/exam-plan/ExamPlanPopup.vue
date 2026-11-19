@@ -295,17 +295,24 @@ onBeforeUnmount(invalidateRequests)
     <div>
       <div
         v-if="examPlanStore.error || majorOptionsError"
-        class="mb-4 text-center text-sm text-error"
+        role="alert"
+        class="mb-3 flex items-center justify-between gap-3 rounded-xl bg-error/10 px-3.5 py-2.5 text-xs text-error"
       >
         <p>{{ majorOptionsError ? '专业加载失败' : '考试计划加载失败' }}</p>
-        <button type="button" class="btn btn-ghost btn-sm mt-1" @click="loadDraft">重试</button>
+        <button
+          type="button"
+          class="shrink-0 rounded-lg bg-base-100 px-2.5 py-1 text-xs font-medium text-error transition-colors active:opacity-80 dark:bg-base-200"
+          @click="loadDraft"
+        >
+          重试
+        </button>
       </div>
       <fieldset :disabled="loading || saving">
         <section class="px-0.5">
-          <p class="text-sm font-medium">报考省份</p>
+          <p class="text-xs font-medium text-base-content/55">报考省份</p>
           <OptionSheet
             v-model="draftProvinceCode"
-            class="mt-2"
+            class="mt-1.5"
             title="选择报考省份"
             :placeholder="loading ? '正在加载…' : '请选择报考省份'"
             :options="PROVINCE_FIELD_OPTIONS"
@@ -314,16 +321,16 @@ onBeforeUnmount(invalidateRequests)
         </section>
 
         <section class="px-0.5 pt-3">
-          <p class="text-sm font-medium">报考学历</p>
-          <div class="mt-2 grid grid-cols-2 gap-2" role="group" aria-label="报考学历">
+          <p class="text-xs font-medium text-base-content/55">报考学历</p>
+          <div class="mt-1.5 grid grid-cols-2 gap-2" role="group" aria-label="报考学历">
             <button
               v-for="level in EDUCATION_LEVELS"
               :key="level"
-              class="h-10 rounded-xl border text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              class="h-10 rounded-xl border text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
               :class="
                 draftEducationLevel === level
-                  ? 'border-primary/50 bg-primary/5 text-primary'
-                  : 'border-base-300 text-base-content/65 active:bg-base-200/60'
+                  ? 'border-primary/40 bg-primary/10 font-semibold text-primary dark:bg-primary/15'
+                  : 'border-transparent bg-base-200/65 font-medium text-base-content/70 active:bg-base-200 dark:bg-base-300/45 dark:active:bg-base-300/70'
               "
               type="button"
               :aria-pressed="draftEducationLevel === level"
@@ -335,10 +342,10 @@ onBeforeUnmount(invalidateRequests)
         </section>
 
         <section class="px-0.5 pt-3">
-          <p class="text-sm font-medium">报考专业</p>
+          <p class="text-xs font-medium text-base-content/55">报考专业</p>
           <OptionSheet
             v-model="draftMajorCode"
-            class="mt-2"
+            class="mt-1.5"
             title="选择报考专业"
             :placeholder="
               loading || majorOptionsLoading
@@ -356,35 +363,40 @@ onBeforeUnmount(invalidateRequests)
         </section>
 
         <section class="px-0.5 pt-3">
-          <p class="text-sm font-medium">刷题科目</p>
-          <div class="mt-2 min-h-36 overflow-hidden rounded-xl border border-base-200">
+          <p class="text-xs font-medium text-base-content/55">刷题科目</p>
+          <div
+            class="mt-1.5 min-h-36 overflow-hidden rounded-2xl bg-base-200/65 dark:bg-base-300/45"
+          >
             <div
               v-if="loading || subjectOptionsLoading"
               class="flex min-h-36 items-center justify-center"
               role="status"
               aria-label="正在加载科目"
             >
-              <span class="loading loading-spinner loading-sm"></span>
+              <span class="loading loading-spinner loading-sm text-primary"></span>
             </div>
-            <div v-else-if="subjectOptionsError" class="px-5 py-8 text-center text-sm text-error">
-              <p>科目加载失败</p>
+            <div v-else-if="subjectOptionsError" class="px-5 py-8 text-center">
+              <p class="text-xs text-error">科目加载失败</p>
               <button
                 type="button"
-                class="btn btn-ghost btn-sm mt-1"
+                class="mt-2.5 inline-flex h-8 items-center justify-center rounded-lg bg-error/10 px-3.5 text-xs font-medium text-error transition-colors active:bg-error/15"
                 @click="loadSubjectOptions(draftMajorCode)"
               >
                 重试
               </button>
             </div>
-            <div v-else-if="subjectOptions.length" class="divide-y divide-base-200">
+            <div
+              v-else-if="subjectOptions.length"
+              class="divide-y divide-base-content/[0.06] dark:divide-base-content/[0.08]"
+            >
               <label
                 v-for="subject in subjectOptions"
                 :key="subject.code"
                 class="flex min-h-11 items-center gap-2.5 px-3 py-2.5 transition-colors"
                 :class="
                   isWrittenSubject(subject)
-                    ? 'cursor-pointer active:bg-base-200'
-                    : 'cursor-not-allowed bg-base-200/35 text-base-content/45'
+                    ? 'cursor-pointer active:bg-base-200/60 dark:active:bg-base-300/50'
+                    : 'cursor-not-allowed text-base-content/45'
                 "
                 :aria-disabled="!isWrittenSubject(subject)"
               >
@@ -398,14 +410,14 @@ onBeforeUnmount(invalidateRequests)
                 <span class="min-w-0 flex-1 break-words text-sm">{{ subject.name }}</span>
                 <span
                   v-if="!isWrittenSubject(subject)"
-                  class="shrink-0 rounded-full bg-base-200 px-2 py-0.5 text-[11px] font-medium text-base-content/55"
+                  class="shrink-0 rounded-full bg-base-200/80 px-2 py-0.5 text-[11px] font-medium text-base-content/55 dark:bg-base-300/60"
                 >
                   非笔试
                 </span>
                 <span
-                  class="shrink-0 text-xs"
+                  class="shrink-0 text-xs tabular-nums"
                   :class="
-                    isWrittenSubject(subject) ? 'text-base-content/65' : 'text-base-content/40'
+                    isWrittenSubject(subject) ? 'text-base-content/55' : 'text-base-content/35'
                   "
                 >
                   {{ subject.code }}
@@ -414,7 +426,7 @@ onBeforeUnmount(invalidateRequests)
             </div>
             <div
               v-else
-              class="flex min-h-36 items-center justify-center px-5 text-center text-sm text-base-content/65"
+              class="flex min-h-36 items-center justify-center px-5 text-center text-xs text-base-content/55"
             >
               {{ draftMajorCode ? '该专业暂无科目' : '请先选择报考专业' }}
             </div>
@@ -424,7 +436,7 @@ onBeforeUnmount(invalidateRequests)
     </div>
     <template #footer>
       <button
-        class="btn btn-ghost h-8 min-h-8 rounded-lg px-3 text-sm"
+        class="flex h-9 items-center justify-center rounded-xl bg-base-200/70 px-4 text-xs font-medium text-base-content/75 transition-colors active:bg-base-200 disabled:opacity-50 dark:bg-base-300/45 dark:active:bg-base-300/70"
         type="button"
         :disabled="saving"
         @click="model = false"
@@ -432,7 +444,7 @@ onBeforeUnmount(invalidateRequests)
         取消
       </button>
       <button
-        class="btn btn-primary h-8 min-h-8 rounded-lg px-4 text-sm"
+        class="flex h-9 items-center justify-center gap-1.5 rounded-xl bg-primary px-5 text-xs font-medium text-primary-content transition-colors active:opacity-90 disabled:opacity-50"
         type="button"
         :disabled="!canSave"
         @click="saveExamPlan"

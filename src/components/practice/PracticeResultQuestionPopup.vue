@@ -19,17 +19,17 @@ const detailOpen = computed({
   <BasePopup v-model="detailOpen" title="题目详情">
     <template v-if="selectedQuestion">
       <div class="flex items-center justify-between gap-3">
-        <span class="text-xs font-medium text-base-content/65">
+        <span class="text-xs leading-snug text-base-content/55">
           第 {{ selectedQuestion.index }} 题 ·
           {{ questionTypeLabels[selectedQuestion.questionType] }}
         </span>
         <span
-          class="rounded-full px-2 py-1 text-[11px] font-semibold"
+          class="rounded-full px-2.5 py-0.5 text-[11px] font-medium"
           :class="{
-            'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400':
-              selectedQuestion.status === 'correct',
-            'bg-red-500/10 text-red-700 dark:text-red-400': selectedQuestion.status === 'wrong',
-            'bg-base-200 text-base-content/45': selectedQuestion.status === 'unanswered',
+            'bg-success/10 text-success': selectedQuestion.status === 'correct',
+            'bg-error/10 text-error': selectedQuestion.status === 'wrong',
+            'bg-base-200/75 text-base-content/55 dark:bg-base-300/50':
+              selectedQuestion.status === 'unanswered',
             'bg-secondary/10 text-secondary': selectedQuestion.status === 'pending',
           }"
         >
@@ -37,35 +37,41 @@ const detailOpen = computed({
         </span>
       </div>
 
-      <h3 class="mt-3 whitespace-pre-line break-words text-sm font-medium leading-6">
+      <h3
+        class="mt-3 whitespace-pre-line break-words text-sm font-medium leading-relaxed text-base-content"
+      >
         {{ selectedQuestion.title }}
       </h3>
 
-      <dl class="mt-4 overflow-hidden rounded-xl border border-base-200 divide-y divide-base-200">
-        <div class="grid grid-cols-[5rem_minmax(0,1fr)] gap-3 px-3 py-2.5 text-sm">
-          <dt class="text-base-content/65">我的答案</dt>
+      <dl
+        class="mt-4 divide-y divide-base-content/[0.06] overflow-hidden rounded-2xl bg-base-200/65 dark:divide-base-content/[0.08] dark:bg-base-300/45"
+      >
+        <div class="grid grid-cols-[5rem_minmax(0,1fr)] items-baseline gap-3 px-3.5 py-2.5">
+          <dt class="text-xs text-base-content/55">我的答案</dt>
           <dd
-            class="min-w-0 whitespace-pre-wrap break-words"
-            :class="selectedQuestion.status === 'wrong' ? 'text-red-700 dark:text-red-400' : ''"
+            class="min-w-0 whitespace-pre-wrap break-words text-sm font-medium"
+            :class="selectedQuestion.status === 'wrong' ? 'text-error' : 'text-base-content'"
           >
             {{ selectedQuestion.userAnswer || '未作答' }}
           </dd>
         </div>
-        <div class="grid grid-cols-[5rem_minmax(0,1fr)] gap-3 px-3 py-2.5 text-sm">
-          <dt class="text-base-content/65">正确答案</dt>
-          <dd
-            class="min-w-0 whitespace-pre-wrap break-words text-emerald-700 dark:text-emerald-400"
-          >
+        <div class="grid grid-cols-[5rem_minmax(0,1fr)] items-baseline gap-3 px-3.5 py-2.5">
+          <dt class="text-xs text-base-content/55">正确答案</dt>
+          <dd class="min-w-0 whitespace-pre-wrap break-words text-sm font-medium text-success">
             {{ selectedQuestion.correctAnswer || '待批阅' }}
           </dd>
         </div>
       </dl>
 
-      <div class="mt-4 border-t border-base-200 pt-3">
-        <h4 class="text-sm font-semibold">题目解析</h4>
-        <p class="mt-1.5 whitespace-pre-line break-words text-sm leading-6 text-base-content/60">
-          {{ selectedQuestion.explanation || '暂无解析' }}
+      <div class="mt-4 border-t border-base-content/[0.06] pt-3.5 dark:border-base-content/[0.08]">
+        <h4 class="text-sm font-semibold text-base-content">题目解析</h4>
+        <p
+          v-if="selectedQuestion.explanation"
+          class="mt-1.5 whitespace-pre-line break-words text-sm leading-relaxed text-base-content/70"
+        >
+          {{ selectedQuestion.explanation }}
         </p>
+        <p v-else class="mt-1.5 text-xs leading-snug text-base-content/55">暂无解析</p>
       </div>
     </template>
   </BasePopup>

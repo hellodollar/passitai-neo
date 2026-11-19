@@ -26,11 +26,11 @@ const OPTIONS: Array<{ value: AppearancePreference; icon: typeof Sun; descriptio
       <button
         v-for="option in OPTIONS"
         :key="option.value"
-        class="flex min-h-13 w-full items-center gap-3 rounded-xl border px-3.5 py-2.5 text-left transition-colors"
+        class="flex min-h-14 w-full items-center gap-3 rounded-2xl border px-3.5 py-3 text-left transition-colors"
         :class="
           currentAppearance === option.value
-            ? 'border-primary/40 bg-primary/5'
-            : 'border-base-200 active:bg-base-200/60'
+            ? 'border-primary/40 bg-primary/10 dark:bg-primary/15'
+            : 'border-transparent bg-base-200/65 active:bg-base-200 dark:bg-base-300/45 dark:active:bg-base-300/70'
         "
         type="button"
         role="radio"
@@ -39,23 +39,22 @@ const OPTIONS: Array<{ value: AppearancePreference; icon: typeof Sun; descriptio
       >
         <component
           :is="option.icon"
-          :size="19"
-          stroke-width="1.8"
+          :size="18"
           class="shrink-0"
           :class="currentAppearance === option.value ? 'text-primary' : 'text-base-content/55'"
           aria-hidden="true"
         />
         <span class="min-w-0 flex-1">
-          <span class="block text-sm font-medium leading-5">
+          <span class="block text-sm font-medium leading-snug text-base-content">
             {{ APPEARANCE_LABELS[option.value] }}
           </span>
-          <span class="block truncate text-xs leading-4 text-base-content/50">
+          <span class="mt-0.5 block truncate text-xs leading-snug text-base-content/55">
             {{ option.description }}
           </span>
         </span>
         <Check
           v-if="currentAppearance === option.value"
-          :size="17"
+          :size="15"
           class="shrink-0 text-primary"
           aria-hidden="true"
         />

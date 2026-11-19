@@ -50,7 +50,7 @@ function handleCancel(event: Event) {
   <Teleport to="body">
     <dialog
       ref="dialogRef"
-      class="modal modal-middle px-5"
+      class="modal modal-middle px-4"
       :aria-label="title"
       @click.self="props.closeOnBackdrop && close()"
       @cancel="handleCancel"
@@ -59,13 +59,15 @@ function handleCancel(event: Event) {
       <!-- 内容随开合挂载/销毁,关闭即重置内部状态;dialog 本体常驻以保留原生行为 -->
       <div
         v-if="model"
-        class="modal-box flex max-h-[calc(100dvh-2.5rem)] w-full max-w-sm flex-col overflow-hidden rounded-2xl border border-base-200 bg-base-100 p-0 shadow-none"
+        class="modal-box flex max-h-[calc(100dvh-2.5rem)] w-full max-w-sm flex-col overflow-hidden rounded-2xl bg-base-100 p-0 shadow-none ring-1 ring-base-content/[0.06] dark:bg-base-200 dark:ring-base-content/[0.08]"
       >
         <div class="flex shrink-0 items-center justify-between gap-4 px-5 pb-2 pt-5">
-          <h3 class="text-base font-semibold leading-tight">{{ title }}</h3>
+          <h3 class="text-base font-semibold leading-snug tracking-tight text-base-content">
+            {{ title }}
+          </h3>
           <button
             v-if="showClose"
-            class="btn btn-square btn-ghost btn-sm"
+            class="flex size-8 items-center justify-center rounded-full text-base-content/55 transition-colors active:bg-base-200/60 dark:active:bg-base-300/50"
             type="button"
             aria-label="关闭"
             @click="close"
@@ -78,7 +80,10 @@ function handleCancel(event: Event) {
           <slot></slot>
         </div>
 
-        <div v-if="$slots.footer" class="flex shrink-0 gap-2 border-t border-base-200 px-4 py-3">
+        <div
+          v-if="$slots.footer"
+          class="flex shrink-0 gap-2.5 border-t border-base-content/[0.06] px-4 py-3 dark:border-base-content/[0.08]"
+        >
           <slot name="footer"></slot>
         </div>
       </div>

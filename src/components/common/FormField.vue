@@ -23,20 +23,23 @@ const id = useId()
 
 <template>
   <div>
-    <label class="mb-1 block text-sm font-medium text-base-content/70" :for="id">{{ label }}</label>
+    <label class="mb-1.5 block text-xs font-medium text-base-content/70" :for="id">{{
+      label
+    }}</label>
     <span
-      class="input h-11 w-full gap-2 rounded-xl px-3.5"
+      class="flex h-11 w-full items-center gap-2.5 rounded-xl border px-3.5 transition-colors"
       :class="
         error
-          ? 'input-error bg-error/5'
-          : 'border-base-300 focus-within:border-primary focus-within:outline-primary'
+          ? 'border-error/40 bg-error/10'
+          : 'border-transparent bg-base-200/65 focus-within:border-primary/40 focus-within:bg-base-100 dark:bg-base-300/45 dark:focus-within:bg-base-200'
       "
     >
       <component
         :is="icon"
-        :size="17"
+        :size="16"
         aria-hidden="true"
-        :class="error ? 'text-error/70' : 'text-base-content/35'"
+        class="shrink-0"
+        :class="error ? 'text-error' : 'text-base-content/40'"
       />
       <input
         :id="id"
@@ -47,7 +50,7 @@ const id = useId()
         v-model="model"
         :aria-invalid="error ? 'true' : undefined"
         :aria-describedby="error ? `${id}-error` : undefined"
-        class="min-w-0 grow bg-transparent text-sm outline-none placeholder:text-base-content/30"
+        class="min-w-0 grow bg-transparent text-sm text-base-content outline-none placeholder:text-base-content/40"
         @blur="$emit('blur')"
       />
     </span>

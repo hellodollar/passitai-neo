@@ -51,14 +51,23 @@ watch(
 
 <template>
   <BasePopup v-model="model" title="数据清理">
-    <div class="space-y-3 pb-[env(safe-area-inset-bottom)]">
+    <div class="space-y-3.5">
       <section aria-label="作答记录">
-        <h4 class="mb-1 px-3 text-xs font-medium text-base-content/55">作答记录</h4>
-        <div class="rounded-lg bg-base-200/40">
-          <div class="flex h-11 items-center justify-between gap-3 px-3">
-            <span class="text-sm">本地作答记录</span>
+        <h4 class="mb-2 px-0.5 text-xs font-medium text-base-content/55">作答记录</h4>
+        <div class="grid gap-2">
+          <div
+            class="flex items-center justify-between gap-3 rounded-2xl bg-base-200/65 px-3.5 py-2.5 dark:bg-base-300/45"
+          >
+            <span class="min-w-0">
+              <span class="block text-sm font-medium leading-snug text-base-content"
+                >本地作答记录</span
+              >
+              <span class="mt-0.5 block text-xs leading-snug text-base-content/55">
+                {{ records.length > 0 ? `当前共 ${records.length} 份` : '暂无本地作答记录' }}
+              </span>
+            </span>
             <button
-              class="flex h-11 items-center rounded-md px-2 text-xs font-normal text-base-content/60 transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary active:bg-base-300/40 disabled:opacity-35"
+              class="flex h-8 shrink-0 items-center rounded-xl bg-base-100 px-3 text-xs font-medium text-base-content/70 transition-colors active:bg-base-200/60 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary disabled:opacity-40 dark:bg-base-200 dark:active:bg-base-300/60"
               type="button"
               :disabled="records.length === 0"
               aria-label="清除全部作答记录"
@@ -70,16 +79,18 @@ watch(
         </div>
       </section>
       <section aria-label="收藏与错题">
-        <h4 class="mb-1 px-3 text-xs font-medium text-base-content/55">收藏与错题</h4>
-        <div class="rounded-lg bg-base-200/40">
+        <h4 class="mb-2 px-0.5 text-xs font-medium text-base-content/55">收藏与错题</h4>
+        <div class="grid gap-2">
           <div
             v-for="collection in collections"
             :key="collection.source"
-            class="flex h-11 items-center justify-between gap-3 px-3"
+            class="flex items-center justify-between gap-3 rounded-2xl bg-base-200/65 px-3.5 py-2.5 dark:bg-base-300/45"
           >
-            <span class="text-sm">{{ collection.label }}</span>
+            <span class="text-sm font-medium leading-snug text-base-content">{{
+              collection.label
+            }}</span>
             <button
-              class="flex h-11 items-center rounded-md px-2 text-xs font-normal text-error transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary active:bg-error/5 disabled:opacity-35"
+              class="flex h-8 shrink-0 items-center rounded-xl bg-error/10 px-3 text-xs font-medium text-error transition-colors active:bg-error/15 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary disabled:opacity-40"
               type="button"
               :aria-label="`清空全部${collection.label}`"
               @click="requestCollectionClear(collection.source)"
