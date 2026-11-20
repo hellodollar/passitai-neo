@@ -22,7 +22,6 @@
   --color-base-100: oklch(100% 0 0);
   --color-base-200: oklch(96.6% 0.008 272);
   --color-base-300: oklch(91.5% 0.011 272);
-  --color-base-400: oklch(81% 0.015 272);
   --color-base-content: oklch(20.5% 0.022 268);
   --color-primary: oklch(53.5% 0.218 271);
   --color-primary-content: oklch(100% 0 0);
@@ -56,7 +55,6 @@
   --color-base-100: oklch(17.8% 0.017 272);
   --color-base-200: oklch(22.8% 0.02 272);
   --color-base-300: oklch(29% 0.023 272);
-  --color-base-400: oklch(40% 0.022 272);
   --color-base-content: oklch(94.5% 0.006 272);
   --color-primary: oklch(69% 0.165 272);
   --color-primary-content: oklch(16% 0.024 272);
@@ -83,43 +81,55 @@
   --noise: 0;
 }
 
-html {
-  background: var(--color-base-100);
+/* 放在 @layer base / @layer components 中，避免 Tailwind v4 无层级规则反向覆盖 utility 类 */
+@layer base {
+  html {
+    background: var(--color-base-100);
+    text-size-adjust: 100%;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    min-width: 320px;
+    overflow-x: clip;
+    color: var(--color-base-content);
+    font-size: 16px;
+    line-height: 1.5;
+    font-family:
+      ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'PingFang SC',
+      'Hiragino Sans GB', 'Microsoft YaHei', 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  #app {
+    overflow-x: clip;
+  }
+
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  svg {
+    flex-shrink: 0;
+  }
 }
 
-body {
-  min-width: 320px;
-  overflow-x: hidden;
-  color: var(--color-base-content);
-  font-size: 16px;
-  line-height: 1.5;
-  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-}
+@layer components {
+  .btn {
+    letter-spacing: 0;
+  }
 
-#app {
-  overflow-x: hidden;
-}
-
-button,
-a,
-input,
-select {
-  touch-action: manipulation;
-}
-
-.btn {
-  letter-spacing: 0;
-}
-
-.input,
-.select,
-.textarea,
-.btn {
-  min-height: 2.5rem;
-}
-
-svg {
-  flex-shrink: 0;
+  .input,
+  .select,
+  .textarea,
+  .btn {
+    min-height: 2.5rem;
+  }
 }
 
 /* 横向滚动区域隐藏滚动条 */

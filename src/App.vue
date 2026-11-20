@@ -35,16 +35,16 @@ const showTabs = computed(() =>
 </script>
 
 <template>
-  <div v-if="showShell" class="min-h-dvh overflow-x-hidden bg-base-100 text-base-content">
+  <div v-if="showShell" class="min-h-dvh overflow-x-clip bg-base-100 text-base-content">
     <div
-      class="mx-auto min-h-dvh w-full max-w-[32rem] overflow-x-hidden bg-base-100 md:border-x md:border-base-300"
+      class="mx-auto min-h-dvh w-full max-w-[32rem] overflow-x-clip bg-base-100 md:border-x md:border-base-content/[0.06] dark:md:border-base-content/[0.08]"
     >
-      <main class="min-w-0 overflow-x-hidden">
+      <main class="min-w-0 overflow-x-clip">
         <RouterView />
       </main>
       <BottomTabBar
         v-if="showTabs"
-        class="fixed bottom-0 left-1/2 z-30 w-full max-w-[32rem] -translate-x-1/2 bg-base-100/92 px-2.5 pb-[calc(0.35rem+env(safe-area-inset-bottom))] pt-1 ring-1 ring-base-content/6 backdrop-blur-xl"
+        class="fixed bottom-0 left-1/2 z-30 w-full max-w-[32rem] -translate-x-1/2 border-t border-base-content/[0.06] bg-base-100/92 px-2.5 pb-[calc(0.35rem+env(safe-area-inset-bottom))] pt-1 backdrop-blur-xl dark:border-base-content/[0.08]"
       />
     </div>
   </div>
