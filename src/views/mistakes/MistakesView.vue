@@ -292,7 +292,7 @@ watch(
         <div v-else class="mt-3 space-y-2.5">
           <div
             v-if="loadError"
-            class="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-error/10 px-3.5 py-2.5 text-xs text-error"
+            class="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-error/10 px-3.5 py-2.5 text-xs text-error"
             role="status"
           >
             <span>更新失败，已保留原列表。</span>

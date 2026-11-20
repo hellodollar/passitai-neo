@@ -28,7 +28,7 @@ const emit = defineEmits<{
       <div
         v-for="(subject, index) in subjects"
         :key="subject.code"
-        class="flex min-w-0 items-center gap-2.5 rounded-2xl border px-3.5 py-3 transition-colors"
+        class="flex min-w-0 items-center gap-2.5 rounded-xl border px-3.5 py-3 transition-colors"
         :class="[
           activeSubjectCode === subject.code && !hiddenSubjectCodes.has(subject.code)
             ? 'border-primary/40 bg-primary/10 dark:bg-primary/15'
@@ -67,7 +67,7 @@ const emit = defineEmits<{
 
         <div class="flex shrink-0 items-center gap-1">
           <button
-            class="flex size-8 items-center justify-center rounded-xl text-base-content/55 transition-colors active:bg-base-200 disabled:opacity-30 dark:active:bg-base-300/70"
+            class="flex size-8 items-center justify-center rounded-lg text-base-content/55 transition-colors active:bg-base-200 disabled:opacity-30 dark:active:bg-base-300/70"
             type="button"
             aria-label="上移科目"
             :disabled="index === 0"
@@ -76,7 +76,7 @@ const emit = defineEmits<{
             <ArrowUp :size="15" />
           </button>
           <button
-            class="flex size-8 items-center justify-center rounded-xl text-base-content/55 transition-colors active:bg-base-200 disabled:opacity-30 dark:active:bg-base-300/70"
+            class="flex size-8 items-center justify-center rounded-lg text-base-content/55 transition-colors active:bg-base-200 disabled:opacity-30 dark:active:bg-base-300/70"
             type="button"
             aria-label="下移科目"
             :disabled="index === subjects.length - 1"

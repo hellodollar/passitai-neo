@@ -146,7 +146,7 @@ watch(
     <div v-else-if="error" role="alert" class="flex items-center justify-between gap-3 px-4 py-4">
       <p class="text-sm font-medium text-error">加载失败</p>
       <button
-        class="rounded-xl bg-error/10 px-3 py-1.5 text-xs font-medium text-error transition-colors active:bg-error/15"
+        class="rounded-lg bg-error/10 px-3 py-1.5 text-xs font-medium text-error transition-colors active:bg-error/15"
         type="button"
         @click="retry++"
       >

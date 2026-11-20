@@ -803,7 +803,7 @@ watch(answerSheetOpen, (open) => {
           class="flex h-9 shrink-0 items-center gap-1 rounded-xl px-2 text-xs transition-colors active:bg-base-200/60 dark:active:bg-base-300/50"
           :class="[
             currentQuestionFavorited
-              ? 'bg-primary/10 font-semibold text-primary'
+              ? 'font-semibold text-primary'
               : 'font-medium text-base-content/70',
             currentQuestionFavoritePending ? 'opacity-50' : '',
           ]"
@@ -816,7 +816,7 @@ watch(answerSheetOpen, (open) => {
             :size="16"
             :class="currentQuestionFavorited ? 'fill-primary text-primary' : ''"
           />
-          <span>{{ currentQuestionFavorited ? '已收藏' : '收藏' }}</span>
+          <span>收藏</span>
         </button>
 
         <button

@@ -5,6 +5,7 @@ import { loadSource } from './helpers/load-source.mjs'
 
 const { fetchPracticeContent } = await loadSource('api/practice-content.ts')
 const { preparePracticePaper } = await loadSource('utils/practice/paper.ts')
+const { isAnswerCorrect } = await loadSource('utils/practice/question.ts')
 const previousFetch = globalThis.fetch
 let requests, respond
 
@@ -22,7 +23,7 @@ afterEach(() => {
   globalThis.fetch = previousFetch
 })
 
-test('普通题集从新版接口读取，保留真实来源，缺少答案时不伪造判分', async () => {
+test('普通题集保留接口答案及解析，正确和错误选择均可判定', async () => {
   respond = (url) => {
     if (url.pathname === '/api/subjects/GD-13811') return { id: 'sub-one' }
     assert.equal(url.pathname, '/api/practice/papers/pap-one')
@@ -36,7 +37,17 @@ test('普通题集从新版接口读取，保留真实来源，缺少答案时�
         {
           name: '单选题',
           questionType: 'single',
-          items: [{ id: 'que-one', title: '问题', type: 'single', A: '选项一', B: '选项二' }],
+          items: [
+            {
+              id: 'que-one',
+              title: '问题',
+              type: 'single',
+              A: '选项一',
+              B: '选项二',
+              correctAnswer: 'A',
+              explanation: '选项一正确',
+            },
+          ],
         },
       ],
     }
@@ -50,8 +61,17 @@ test('普通题集从新版接口读取，保留真实来源，缺少答案时�
   const prepared = preparePracticePaper(loaded.paper)
   assert.equal(prepared.questions[0].subjectId, 'sub-one')
   assert.equal(prepared.itemsById.get('que-one').paperId, 'pap-one')
-  assert.equal(prepared.questions[0].correctAnswer, '')
-  assert.equal(prepared.questions[0].explanation, null)
+  const question = prepared.questions[0]
+  assert.equal(question.correctAnswer, 'A')
+  assert.equal(question.explanation, '选项一正确')
+  assert.equal(
+    isAnswerCorrect({ questionId: question.id, text: 'A', values: ['A'] }, question),
+    true,
+  )
+  assert.equal(
+    isAnswerCorrect({ questionId: question.id, text: 'B', values: ['B'] }, question),
+    false,
+  )
 })
 
 for (const source of ['favorites', 'mistakes']) {

@@ -26,7 +26,7 @@ const OPTIONS: Array<{ value: AppearancePreference; icon: typeof Sun; descriptio
       <button
         v-for="option in OPTIONS"
         :key="option.value"
-        class="flex min-h-14 w-full items-center gap-3 rounded-2xl border px-3.5 py-3 text-left transition-colors"
+        class="flex min-h-14 w-full items-center gap-3 rounded-xl border px-3.5 py-3 text-left transition-colors"
         :class="
           currentAppearance === option.value
             ? 'border-primary/40 bg-primary/10 dark:bg-primary/15'

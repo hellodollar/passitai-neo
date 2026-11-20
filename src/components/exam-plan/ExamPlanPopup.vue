@@ -366,7 +366,7 @@ onBeforeUnmount(invalidateRequests)
         <section class="px-0.5 pt-3">
           <p class="text-xs font-medium text-base-content/55">练习科目</p>
           <div
-            class="mt-1.5 min-h-36 overflow-hidden rounded-2xl bg-base-200/65 dark:bg-base-300/45"
+            class="mt-1.5 min-h-36 overflow-hidden rounded-xl bg-base-200/65 dark:bg-base-300/45"
           >
             <div
               v-if="loading || subjectOptionsLoading"

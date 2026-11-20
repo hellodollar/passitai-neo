@@ -29,6 +29,8 @@ export type PaperQuestion = {
   D: string | null
   E: string | null
   F: string | null
+  correctAnswer: string
+  explanation: string | null
 }
 
 export type PaperDetail = Paper & {

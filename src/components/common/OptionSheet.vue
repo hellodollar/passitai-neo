@@ -55,7 +55,7 @@ function pick(value: string) {
 
   <BasePopup v-model="open" :title="title">
     <div
-      class="max-h-[52dvh] divide-y divide-base-content/[0.06] overflow-y-auto overscroll-contain rounded-2xl bg-base-200/65 dark:divide-base-content/[0.08] dark:bg-base-300/45"
+      class="max-h-[52dvh] divide-y divide-base-content/[0.06] overflow-y-auto overscroll-contain rounded-xl bg-base-200/65 dark:divide-base-content/[0.08] dark:bg-base-300/45"
       role="radiogroup"
       :aria-label="title"
     >

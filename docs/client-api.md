@@ -226,8 +226,9 @@ interface ChangeEmailBody {
 `paperLayout` 为 `custom / exam`，与题集来源 `system / ai` 分开。
 
 详情附 `sections: [{ name, questionType?, perScore?, questionIds, items }]`。
-每个 `items` 只含 `id / subjectCode / title / type / A / B / C / D / E / F`，保持分组和题序；
-不返回正确答案、解析、来源原文、指纹或其他用户资料。题目必须同科目、归属兼容、启用且未删除。
+每个 `items` 含 `id / subjectCode / title / type / A / B / C / D / E / F / correctAnswer / explanation`，保持分组和题序。
+`correctAnswer` 为正确/参考答案字符串，`explanation` 为解析字符串或 null，用于练习确认后的即时对错反馈与解析展示；选择题沿用现有答案格式。
+不返回来源原文、指纹或其他用户资料。题目必须同科目、归属兼容、启用且未删除。
 存在缺题、重复题、无效分组或题型冲突时返回 409，不静默丢题。空题集不能作为启用题集读取。
 
 Neo 首页按科目加载练习模板，从模板的 `list` 获取可打开的题集。收藏和错题使用各自的列表与练习接口。已知题集 ID 可用于读取单份题集详情。
@@ -507,8 +508,8 @@ interface NotificationSummary {
 正文是纯文本，不作为 HTML 渲染。广播以发布时的启用普通用户为准，新注册用户不补发历史广播。
 Neo 首页铃铛、通知条、“我的”和消息页共享摘要。摘要在登录、恢复可见或窗口焦点、
 进入消息中心时按需读取，自动检查间隔至少 5 分钟。单条或全部标记已读成功后立即刷新。
-Desktop 在横幅开启时于首次加载和恢复前台按同样的 5 分钟间隔检查。
-消息列表在进入收件箱、切换未读筛选、翻页或主动重试时读取。客户端使用事件触发，账号切换清理缓存并隔离迟到响应。
+Desktop 打开消息中心时先标记全部已读，再读取列表。关闭通知横幅时只标记该条消息，成功后关闭横幅。
+启用横幅时，Desktop 在首次加载和恢复前台按同样的 5 分钟间隔检查。账号切换清理缓存并隔离迟到响应。
 通知展示设置见下文；自动提醒、Telegram 和邮件不属于站内通知。
 
 ## 9. 接口总表
@@ -565,6 +566,6 @@ PUT    /api/notifications/read-all
 开关以当前登录用户为范围，存于 `users.preferences.notifications`，原子局部合并，不覆盖并发更新的刷题设置或其他开关。
 `inAppBanner` 只控制 App 内的最新未读横幅；`contentPreview` 控制横幅标题预览及通知列表正文摘要，消息详情仍可主动查看。
 关闭开关不停止消息接收、不更改收件或已读事实，不关联系统推送、邮件和短信。
-客户端消息页的「只看未读」请求 `unread=true`；关闭时省略 `unread`。
+查询未读消息时传 `unread=true`，查询全部消息时省略 `unread`。
 账户安全继续使用 `PUT /api/users/me/password` 和 `/api/users/me/email`，请求严格拒绝未知字段。
 改密成功后旧会话失效，客户端清理会话并返回登录；改邮箱成功后使用响应邮箱同步本地会话。

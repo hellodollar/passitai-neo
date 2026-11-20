@@ -44,7 +44,7 @@ const detailOpen = computed({
       </h3>
 
       <dl
-        class="mt-4 divide-y divide-base-content/[0.06] overflow-hidden rounded-2xl bg-base-200/65 dark:divide-base-content/[0.08] dark:bg-base-300/45"
+        class="mt-4 divide-y divide-base-content/[0.06] overflow-hidden rounded-xl bg-base-200/65 dark:divide-base-content/[0.08] dark:bg-base-300/45"
       >
         <div class="grid grid-cols-[5rem_minmax(0,1fr)] items-baseline gap-3 px-3.5 py-2.5">
           <dt class="text-xs text-base-content/55">我的答案</dt>

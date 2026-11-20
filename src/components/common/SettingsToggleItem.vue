@@ -15,7 +15,7 @@ withDefaults(
 
 <template>
   <label
-    class="flex items-center justify-between gap-4 rounded-2xl bg-base-200/65 px-3.5 py-3 dark:bg-base-300/45"
+    class="flex items-center justify-between gap-4 rounded-xl bg-base-200/65 px-3.5 py-3 dark:bg-base-300/45"
     :class="{ 'cursor-not-allowed': disabled }"
   >
     <span class="min-w-0">

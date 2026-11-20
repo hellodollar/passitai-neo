@@ -42,13 +42,11 @@ export async function fetchPracticeContent(target: PracticeTarget): Promise<{
           questionType: question.type,
           subjectId: subject.id,
           paperId: paper.id,
-          correctAnswer: '',
-          explanation: null,
         })),
       })),
     },
     favoriteQuestionIds: [],
-    // 新版题集读取尚不提供判分和交卷协议。
+    // 答案用于逐题反馈，交卷协议仍待对接。
     canSubmit: false,
   }
 }

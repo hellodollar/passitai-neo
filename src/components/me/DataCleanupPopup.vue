@@ -56,7 +56,7 @@ watch(
         <h4 class="mb-2 px-0.5 text-xs font-medium text-base-content/55">作答记录</h4>
         <div class="grid gap-2">
           <div
-            class="flex items-center justify-between gap-3 rounded-2xl bg-base-200/65 px-3.5 py-2.5 dark:bg-base-300/45"
+            class="flex items-center justify-between gap-3 rounded-xl bg-base-200/65 px-3.5 py-2.5 dark:bg-base-300/45"
           >
             <span class="min-w-0">
               <span class="block text-sm font-medium leading-snug text-base-content"
@@ -67,7 +67,7 @@ watch(
               </span>
             </span>
             <button
-              class="flex h-8 shrink-0 items-center rounded-xl bg-base-100 px-3 text-xs font-medium text-base-content/70 transition-colors active:bg-base-200/60 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary disabled:opacity-40 dark:bg-base-200 dark:active:bg-base-300/60"
+              class="flex h-8 shrink-0 items-center rounded-lg bg-base-100 px-3 text-xs font-medium text-base-content/70 transition-colors active:bg-base-200/60 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary disabled:opacity-40 dark:bg-base-200 dark:active:bg-base-300/60"
               type="button"
               :disabled="records.length === 0"
               aria-label="清除全部作答记录"
@@ -84,13 +84,13 @@ watch(
           <div
             v-for="collection in collections"
             :key="collection.source"
-            class="flex items-center justify-between gap-3 rounded-2xl bg-base-200/65 px-3.5 py-2.5 dark:bg-base-300/45"
+            class="flex items-center justify-between gap-3 rounded-xl bg-base-200/65 px-3.5 py-2.5 dark:bg-base-300/45"
           >
             <span class="text-sm font-medium leading-snug text-base-content">{{
               collection.label
             }}</span>
             <button
-              class="flex h-8 shrink-0 items-center rounded-xl bg-error/10 px-3 text-xs font-medium text-error transition-colors active:bg-error/15 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary disabled:opacity-40"
+              class="flex h-8 shrink-0 items-center rounded-lg bg-error/10 px-3 text-xs font-medium text-error transition-colors active:bg-error/15 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary disabled:opacity-40"
               type="button"
               :aria-label="`清空全部${collection.label}`"
               @click="requestCollectionClear(collection.source)"

@@ -117,7 +117,7 @@ async function scrollToCurrentQuestion() {
         </div>
         <button
           v-if="showClear"
-          class="flex h-8 shrink-0 items-center gap-1 rounded-md pl-2 text-xs font-medium text-base-content/70 transition-colors hover:text-error active:text-error disabled:pointer-events-none disabled:opacity-40"
+          class="flex h-8 shrink-0 items-center gap-1 rounded-lg pl-2 text-xs font-medium text-base-content/70 transition-colors hover:text-error active:text-error disabled:pointer-events-none disabled:opacity-40"
           type="button"
           aria-label="清除本地作答记录"
           :disabled="clearDisabled"

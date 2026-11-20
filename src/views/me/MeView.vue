@@ -293,12 +293,12 @@ watch(
         <BasePopup v-model="accountPopupOpen" title="账户与安全">
           <div class="grid gap-2">
             <button
-              class="grid w-full grid-cols-[2.25rem_minmax(0,1fr)_1.125rem] items-center gap-3 rounded-2xl bg-base-200/65 px-3.5 py-3 text-left transition-colors active:bg-base-200 dark:bg-base-300/45 dark:active:bg-base-300/70"
+              class="grid w-full grid-cols-[2.25rem_minmax(0,1fr)_1.125rem] items-center gap-3 rounded-xl bg-base-200/65 px-3.5 py-3 text-left transition-colors active:bg-base-200 dark:bg-base-300/45 dark:active:bg-base-300/70"
               type="button"
               @click="openAccountAction('password')"
             >
               <span
-                class="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary"
+                class="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary"
               >
                 <KeyRound :size="16" />
               </span>
@@ -314,12 +314,12 @@ watch(
             </button>
 
             <button
-              class="grid w-full grid-cols-[2.25rem_minmax(0,1fr)_1.125rem] items-center gap-3 rounded-2xl bg-base-200/65 px-3.5 py-3 text-left transition-colors active:bg-base-200 dark:bg-base-300/45 dark:active:bg-base-300/70"
+              class="grid w-full grid-cols-[2.25rem_minmax(0,1fr)_1.125rem] items-center gap-3 rounded-xl bg-base-200/65 px-3.5 py-3 text-left transition-colors active:bg-base-200 dark:bg-base-300/45 dark:active:bg-base-300/70"
               type="button"
               @click="openAccountAction('email')"
             >
               <span
-                class="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary"
+                class="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary"
               >
                 <Mail :size="16" />
               </span>

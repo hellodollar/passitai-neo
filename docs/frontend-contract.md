@@ -75,7 +75,7 @@ Vue Router 使用 `createWebHistory(import.meta.env.BASE_URL)`，CF 为深链提
 - `api/practice-content.ts` 按来源读取内容。集合协议仍用 `subjectId`；普通题集返回 `subjectCode`，适配时查询真实科目 ID，不将业务码塞入 ID 参数。
 - 集合每题保留实际科目和来源题集，本地聚合标识不能代替真实 `paperId` 发起收藏/错题操作。`favId` 和 `mistakeId` 按接口各自使用，不混用。
 
-当前普通题集只下发题干和选项，可本机保存作答；无答案时显示已答，不伪造判分。内容适配器当前返回 `canSubmit: false`，新版交卷与报告尚未对接；已有报告路由和旧实现不代表新版闭环完成。
+普通练习题集下发 `correctAnswer`、`explanation`，适配层原样保留，供选择题确认后的对错、正确选项及解析展示使用；单选和判断选择即确认，多选点击“确认答案”后反馈。答对自动下一题及错题同步沿用现有设置。内容适配器仍返回 `canSubmit: false`，新版交卷与报告尚未对接；已有报告路由和旧实现不代表新版闭环完成。
 
 ## 浏览器存储与账号隔离
 

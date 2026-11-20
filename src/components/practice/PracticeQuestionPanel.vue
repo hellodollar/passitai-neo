@@ -165,7 +165,7 @@ function optionMarkerClasses(optionValue: string) {
         <span
           class="flex size-6 shrink-0 items-center justify-center text-xs font-semibold transition-colors"
           :class="[
-            isMultipleQuestion ? 'rounded-lg' : 'rounded-full',
+            isMultipleQuestion ? 'rounded-md' : 'rounded-full',
             optionMarkerClasses(option.value),
           ]"
         >
