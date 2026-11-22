@@ -189,7 +189,7 @@ function optionMarkerClasses(optionValue: string) {
 
     <button
       v-if="isMultipleQuestion && !answerRecord"
-      class="btn btn-primary mt-3 h-10 min-h-10 w-full rounded-xl text-sm font-medium"
+      class="mt-3 flex h-10 w-full items-center justify-center rounded-xl bg-primary text-sm font-medium text-primary-content transition-colors active:opacity-90 disabled:opacity-45"
       type="button"
       :disabled="!canSubmitAnswer"
       @click="emit('confirm-answer')"
@@ -201,7 +201,7 @@ function optionMarkerClasses(optionValue: string) {
   <section v-else class="grid gap-2.5 px-4 pt-3.5">
     <textarea
       :value="textAnswer"
-      class="textarea min-h-[9rem] w-full resize-none rounded-xl border border-transparent bg-base-200/65 p-3.5 text-sm leading-relaxed text-base-content placeholder:text-base-content/40 focus:border-primary/40 focus:bg-base-100 focus:outline-none dark:bg-base-200/85 dark:focus:bg-base-200"
+      class="min-h-[9rem] w-full resize-none rounded-xl border border-transparent bg-base-200/65 p-3.5 text-sm leading-relaxed text-base-content placeholder:text-base-content/40 transition-colors focus:border-primary/40 focus:bg-base-100 focus:outline-none disabled:opacity-70 dark:bg-base-200/85 dark:focus:bg-base-200"
       placeholder="在这里输入你的答案…"
       :disabled="Boolean(answerRecord)"
       @input="emit('update:textAnswer', ($event.target as HTMLTextAreaElement).value)"
@@ -209,7 +209,7 @@ function optionMarkerClasses(optionValue: string) {
 
     <button
       v-if="!answerRecord"
-      class="btn btn-primary h-10 min-h-10 w-full rounded-xl text-sm font-medium"
+      class="flex h-10 w-full items-center justify-center rounded-xl bg-primary text-sm font-medium text-primary-content transition-colors active:opacity-90 disabled:opacity-45"
       type="button"
       :disabled="!canSubmitAnswer"
       @click="emit('confirm-answer')"

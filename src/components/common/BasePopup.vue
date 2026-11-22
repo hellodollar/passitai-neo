@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { X } from '@lucide/vue'
 import { nextTick, ref, watch } from 'vue'
 
 defineOptions({ inheritAttrs: false })
@@ -7,13 +8,13 @@ const model = defineModel<boolean>({ default: false })
 const props = withDefaults(
   defineProps<{
     title?: string
-    compactFooter?: boolean
     closeOnBackdrop?: boolean
     closeOnEscape?: boolean
+    showClose?: boolean
     /** 追加到内容盒的类;如答题卡传入固定高度,让抽屉恒高、底部操作恒定居底 */
     boxClass?: string
   }>(),
-  { closeOnBackdrop: true, closeOnEscape: true, boxClass: '' },
+  { closeOnBackdrop: true, closeOnEscape: true, showClose: true, boxClass: '' },
 )
 const emit = defineEmits<{ opened: []; closed: [] }>()
 
@@ -74,11 +75,25 @@ function handleClose() {
         <slot name="header">
           <div
             v-if="title"
-            class="shrink-0 border-b border-base-content/[0.06] px-4 py-3 text-center dark:border-base-content/[0.08]"
+            class="grid shrink-0 grid-cols-[2rem_minmax(0,1fr)_2rem] items-center gap-2 border-b border-base-content/[0.06] px-3 py-2.5 dark:border-base-content/[0.08]"
           >
-            <h3 class="text-[15px] font-semibold leading-tight tracking-tight text-base-content">
+            <span aria-hidden="true"></span>
+            <h3
+              class="truncate text-center text-[15px] font-semibold leading-tight tracking-tight text-base-content"
+            >
               {{ title }}
             </h3>
+            <button
+              v-if="showClose"
+              class="flex size-8 items-center justify-center rounded-full text-base-content/55 transition-colors active:bg-base-200/60 disabled:opacity-40 dark:active:bg-base-300/50"
+              type="button"
+              aria-label="关闭"
+              :disabled="!closeOnEscape"
+              @click="closeOnEscape && (model = false)"
+            >
+              <X :size="16" />
+            </button>
+            <span v-else aria-hidden="true"></span>
           </div>
         </slot>
 
@@ -93,12 +108,7 @@ function handleClose() {
 
         <div
           v-if="$slots.footer"
-          class="flex shrink-0 gap-2.5 border-t border-base-content/[0.06] dark:border-base-content/[0.08]"
-          :class="
-            compactFooter
-              ? 'items-center justify-end px-4 py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]'
-              : 'p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]'
-          "
+          class="flex shrink-0 gap-2.5 border-t border-base-content/[0.06] px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] dark:border-base-content/[0.08]"
         >
           <slot name="footer"></slot>
         </div>

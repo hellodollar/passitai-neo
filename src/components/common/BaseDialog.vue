@@ -59,7 +59,7 @@ function handleCancel(event: Event) {
       <!-- 内容随开合挂载/销毁,关闭即重置内部状态;dialog 本体常驻以保留原生行为 -->
       <div
         v-if="model"
-        class="modal-box flex max-h-[calc(100dvh-2.5rem)] w-full max-w-sm flex-col overflow-hidden rounded-2xl bg-base-100 p-0 shadow-none ring-1 ring-base-content/[0.06] dark:bg-base-200 dark:ring-base-content/[0.08]"
+        class="modal-box flex max-h-[calc(100dvh-2rem)] w-full max-w-sm flex-col overflow-hidden rounded-2xl bg-base-100 p-0 shadow-none ring-1 ring-base-content/[0.06] dark:bg-base-200 dark:ring-base-content/[0.08]"
       >
         <div class="flex shrink-0 items-center justify-between gap-4 px-5 pb-2 pt-5">
           <h3 class="text-base font-semibold leading-snug tracking-tight text-base-content">
@@ -76,7 +76,7 @@ function handleCancel(event: Event) {
           </button>
         </div>
 
-        <div class="min-h-0 overflow-y-auto px-5 pb-5 pt-2">
+        <div class="min-h-0 overflow-y-auto overscroll-contain px-5 pb-5 pt-2">
           <slot></slot>
         </div>
 

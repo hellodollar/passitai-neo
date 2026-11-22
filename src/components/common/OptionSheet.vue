@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ChevronDown, Check } from '@lucide/vue'
-import { computed, ref } from 'vue'
+import { Check, ChevronDown } from '@lucide/vue'
+import { computed, nextTick, ref } from 'vue'
 
 import BasePopup from '@/components/common/BasePopup.vue'
 
@@ -28,6 +28,7 @@ const props = withDefaults(
 const emit = defineEmits<{ 'update:modelValue': [value: string] }>()
 
 const open = ref(false)
+const listRef = ref<HTMLElement | null>(null)
 const selectedLabel = computed(
   () => props.options.find((option) => option.value === props.modelValue)?.label ?? '',
 )
@@ -36,12 +37,18 @@ function pick(value: string) {
   open.value = false
   if (value !== props.modelValue) emit('update:modelValue', value)
 }
+
+async function scrollToSelected() {
+  await nextTick()
+  const active = listRef.value?.querySelector<HTMLElement>('[aria-checked="true"]')
+  active?.scrollIntoView({ block: 'center' })
+}
 </script>
 
 <template>
   <button
     v-bind="$attrs"
-    class="flex h-10 min-h-10 w-full items-center justify-between gap-2 rounded-xl border border-transparent bg-base-200/65 px-3.5 text-left text-sm transition-colors active:bg-base-200 disabled:opacity-50 dark:bg-base-300/45 dark:active:bg-base-300/70"
+    class="flex h-11 min-h-11 w-full items-center justify-between gap-2 rounded-xl border border-transparent bg-base-200/65 px-3.5 text-left text-sm transition-colors active:bg-base-200 disabled:opacity-50 dark:bg-base-300/45 dark:active:bg-base-300/70"
     :class="modelValue ? 'text-base-content' : 'text-base-content/45'"
     type="button"
     :aria-label="title"
@@ -53,8 +60,9 @@ function pick(value: string) {
     <ChevronDown :size="15" class="shrink-0 text-base-content/30" aria-hidden="true" />
   </button>
 
-  <BasePopup v-model="open" :title="title">
+  <BasePopup v-model="open" :title="title" @opened="scrollToSelected">
     <div
+      ref="listRef"
       class="max-h-[52dvh] divide-y divide-base-content/[0.06] overflow-y-auto overscroll-contain rounded-xl bg-base-200/65 dark:divide-base-content/[0.08] dark:bg-base-300/45"
       role="radiogroup"
       :aria-label="title"

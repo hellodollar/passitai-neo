@@ -18,7 +18,7 @@ defineEmits<{ back: [] }>()
       "
     >
       <button
-        class="btn btn-circle btn-ghost size-11 min-h-11 p-0"
+        class="flex size-9 items-center justify-center rounded-full text-base-content transition-colors active:bg-base-200/60 dark:active:bg-base-300/50"
         type="button"
         :aria-label="backLabel"
         @click="$emit('back')"

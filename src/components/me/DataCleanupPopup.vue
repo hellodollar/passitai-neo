@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { nextTick, ref, watch } from 'vue'
 
 import ClearCollectionDialog from '@/components/collection/ClearCollectionDialog.vue'
 import BasePopup from '@/components/common/BasePopup.vue'
@@ -22,20 +22,29 @@ const collections: Array<{ source: CollectionSource; label: string }> = [
   { source: 'mistakes', label: '错题' },
 ]
 
-function requestPracticeClear() {
+/** 先关闭底部抽屉再打开确认弹窗，避免双层遮罩叠加。 */
+async function requestPracticeClear() {
   const userId = auth.session?.user.id
+  const token = auth.session?.token
   if (!model.value || confirmOpen.value || !auth.isAuthenticated || !userId) return
   clearTarget.value = {
     kind: 'practice',
     scope: { kind: 'all', userId },
     label: '当前账号在本机保存的全部作答记录（含收藏与错题练习）',
   }
+  model.value = false
+  await nextTick()
+  if (!auth.isAuthenticated || token !== auth.session?.token) return
   confirmOpen.value = true
 }
 
-function requestCollectionClear(source: CollectionSource) {
+async function requestCollectionClear(source: CollectionSource) {
+  const token = auth.session?.token
   if (!model.value || confirmOpen.value || !auth.isAuthenticated) return
   clearTarget.value = { kind: 'collection', source }
+  model.value = false
+  await nextTick()
+  if (!auth.isAuthenticated || token !== auth.session?.token) return
   confirmOpen.value = true
 }
 

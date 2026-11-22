@@ -291,9 +291,13 @@ const clearRecordScope = computed(() =>
     : null,
 )
 
-function requestClearRecord() {
+async function requestClearRecord() {
   if (!canClearRecord.value || !hasLocalRecordProgress.value || submitting.value) return
+  const sequence = loadSequence
   clearAutoAdvance()
+  answerSheetOpen.value = false
+  await nextTick()
+  if (sequence !== loadSequence) return
   clearRecordConfirmOpen.value = true
 }
 
@@ -439,10 +443,14 @@ async function maybeAutoSubmitOnComplete(sequence: number) {
   await confirmSubmitPaper()
 }
 
-function requestSubmitPaper() {
+async function requestSubmitPaper() {
   if (!canSubmit.value) return
+  const sequence = loadSequence
   clearAutoAdvance()
   submitError.value = ''
+  answerSheetOpen.value = false
+  await nextTick()
+  if (sequence !== loadSequence) return
   submitConfirmOpen.value = true
 }
 
