@@ -12,7 +12,7 @@ Authorization: Bearer <app-token>
 ```
 
 当前题库重写范围为 `0001–0009`，覆盖用户、全国专业、省份科目、科目考期、题集、题目和练习模板。
-科目规约和科目画像目前仅完成 ORM 映射，未开放内容管理接口。练习包、交卷、练习记录、收藏、错题、通知等后续表未在本轮重写；下文保留的这些模块说明仅供后续重构核对，不能作为新版联调验收依据。
+科目画像（`0004 subject_profiles`）当前仅做后台骨架建档，暂不开放客户端画像与评分业务接口。客户端已开放重复题/相似题查询、错题错次累计、高频错题、按主考点聚合错题以及 `0015 user_practice_records` 交卷判分与历史摘要。练习包、通知等其余后续表仍按各节状态为准。
 机器人和生成相关代码完全不在本轮范围内。
 
 新资源路由尽量对应表名，表名的下划线在 URL 中写为连字符。关联专业、科目使用完整业务 `code`，内部 `id` 仅定位记录。
@@ -53,9 +53,7 @@ HTTP 2xx、`ok: true` 表示成功；HTTP 4xx/5xx、`ok: false` 表示失败，�
 `HTTP 413`、`{ ok: false, message: "请求体不能超过 1 MiB", data: null }`。
 正文大小限制不代替各接口的字段校验，也不是请求频率限制。
 
-接口结果以 **HTTP status** 判定：`2xx` 成功；`400` 参数/请求体校验失败；`401` 登录凭证错误、未登录
-或 token 失效；`403` 权限不足；`404` 资源不存在；`409` 唯一/状态冲突；`500` 服务端异常；`503`
-依赖服务不可用。不返回顶层 `code`，客户端不维护业务错误码字典。
+接口结果以 **HTTP status** 判定：`200` / `201` 成功（`201` 仅用于交卷记录创建）；`400` 参数/请求体校验失败；`401` 登录凭证错误、未登录或 token 失效；`403` 权限不足；`404` 资源或接口不存在；`409` 唯一/状态冲突；`413` 请求正文超过 1 MiB；`429` 请求限流；`500` 服务端异常；`502` / `503` / `504` 上游异常、依赖不可用或超时。所有响应携带 `X-Request-Id`，不返回顶层 `code`，客户端不维护业务错误码字典。
 `ok` 是布尔值，必须与 HTTP 状态一致，不使用 HTTP 200 包装失败。请求入口校验成功正文的
 `ok === true`，鉴权、重试和错误分类依据 HTTP 状态；`message` 只用于展示，不用于程序分支。
 答错题、空列表等业务结果不等于请求失败，接口处理成功仍返回 `ok: true`。
@@ -217,6 +215,7 @@ interface ChangeEmailBody {
 | Method | Path | 说明 |
 | --- | --- | --- |
 | GET | `/api/practice/papers/:paperId` | 获取题集和按分组排序的题目 |
+| GET | `/api/practice/questions/:questionId/similar?limit=5` | 同科目简单重复题与相似题推荐（先匹配同 `titleFingerprint` / `optionsFingerprint` 标为 `duplicate`，再匹配 `knowledgePoints` 重叠标为 `similar`，排除本题，`limit` 1–20） |
 
 只返回启用且未删除的题集，以及启用、开考、同省且未删除的所属科目。
 归属只能为平台（`ownerId=NULL`）或当前用户；其他用户资源视为不存在。
@@ -226,7 +225,8 @@ interface ChangeEmailBody {
 `paperLayout` 为 `custom / exam`，与题集来源 `system / ai` 分开。
 
 详情附 `sections: [{ name, questionType?, perScore?, questionIds, items }]`。
-每个 `items` 含 `id / subjectCode / title / type / A / B / C / D / E / F / correctAnswer / explanation`，保持分组和题序。
+每个 `items` 含 `id / subjectCode / knowledgePoints / title / type / A / B / C / D / E / F / correctAnswer / explanation`，保持分组和题序。
+相似题接口返回 `{ questionId, subjectCode, knowledgePoints, primaryPoint, items }`（每条含 `matchType: 'duplicate' | 'similar'`、`knowledgePoints` 与 `matchedPointKeys`；未打标题目也可通过指纹命中重复/同选项混淆题）；仅返回当前用户可见的启用题目，不含来源原文与指纹字段。
 `correctAnswer` 为正确/参考答案字符串，`explanation` 为解析字符串或 null，用于练习确认后的即时对错反馈与解析展示；选择题沿用现有答案格式。
 不返回来源原文、指纹或其他用户资料。题目必须同科目、归属兼容、启用且未删除。
 存在缺题、重复题、无效分组或题型冲突时返回 409，不静默丢题。空题集不能作为启用题集读取。
@@ -248,9 +248,10 @@ Neo 首页按科目加载练习模板，从模板的 `list` 获取可打开的�
 | `GET`   | `/api/practice/resources?subjectCode=`                       | 获取指定科目的练习资源         | 可用     |
 | `GET`   | `/api/practice/settings`                                      | 获取用户刷题设置               | 可用     |
 | `PATCH` | `/api/practice/settings`                                      | 修改用户刷题设置               | 可用     |
-| `GET`   | `/api/practice/papers/:paperId` | 题集和题目，见第3节 | 本轮已实现 |
-| `POST`  | `/api/practice/papers/:paperId/submissions`                   | 交卷并创建练习记录             | 待重构   |
-| `GET`   | `/api/practice/papers/:paperId/submissions/:submissionId`    | 获取本次交卷记录               | 待重构   |
+| `GET`   | `/api/practice/papers/:paperId`                               | 题集和题目，见第3节               | 可用     |
+| `POST`  | `/api/practice/papers/:paperId/submissions`                   | 交卷并即时完成客观题判分落库      | 可用     |
+| `GET`   | `/api/practice/papers/:paperId/submissions/:submissionId`    | 获取单次交卷详情（含原始作答）    | 可用     |
+| `GET`   | `/api/practice/records?subjectCode=&paperId=&page=&limit=`   | 分页获取当前用户交卷历史摘要      | 可用     |
 
 ### 考试计划
 
@@ -313,7 +314,7 @@ interface PracticeSettings {
 配置存于 `users.preferences.practice`，以数据库原子合并保存，不覆盖并发修改的其他字段或考试计划。
 未设置时返回 `autoNext: false`、`recordWrongQuestions: true`、
 `autoSubmitAfterCompletion: false`、`removeMistakeOnCorrect: false`、`shuffleQuestions: false`；默认值以
-`src/services/client/user-preference.ts` 为准。
+`src/shared/schemas/practice-settings.ts` 为准。
 乱序出题在下次进入练习时生效：保留原分组，在每组内打乱题目顺序，不打乱选项。存在本地作答记录时，客户端按记录的开始时间固定同一轮顺序，刷新或恢复时保持稳定；答案和进度仍按题目 ID 对应。API 返回题集保留原顺序，提交协议不变。
 未接入实际行为的循环练习、答后解析开关已移除；请求旧字段返回400。
 
@@ -325,33 +326,178 @@ interface PracticeSettings {
 interface SubmitPracticePaperBody {
   submissionId: string // 客户端生成 rec + 12 位十六进制；同一次交卷重试保持不变
   userAnswers: Record<string, string | string[]> // 只传已作答题目；多选为数组，其余为字符串
-  startTime?: string // ISO 时间；缺失或晚于交卷时间时使用服务端交卷时间
+  durationSeconds?: number // 本次作答耗时（秒，0–86400）
 }
 ```
 
-服务端只接受当前用户可读取的启用题集，校验每道答案对应题集内的有效题目及选项。
-每次新交卷都在 0006 `practice_records` 表创建独立记录；相同 `submissionId`、题集、
-用户及答案的重试返回同一记录，不重复写入；答案对象的字段顺序、多选答案顺序不影响重试判定。
-同 ID 对应其他作答时返回 HTTP 409。
-请求校验失败不创建记录。
-`POST` 返回 HTTP 201，`GET /api/practice/papers/:paperId/submissions/:submissionId` 返回
-当前用户、当前题集的指定已完成记录：
+服务端只接受当前用户可读取的启用题集（且所属科目启用并开考），校验每道答案对应题集内的有效题目及选项。
+每次新交卷都在 `0015 user_practice_records` 创建一条已交卷记录，即时完成**客观题（单选 / 多选 / 判断）**自动判分与统计固化，并同步重算当前用户在该科目的个人画像（`0016 user_subject_profiles`）：
+- `objectiveScore`：当所有客观题分组都配置了 `perScore` 时按题累加（支持小数分），否则为 `null`；
+- `subjectiveScore`：主观题（名词解释 / 简答 / 论述）交卷时暂不评分，为 `null`；
+- `score`：纯客观题集直接等于 `objectiveScore`；含主观题的题集未评完前为 `null`。
+
+相同 `submissionId`、题集、用户及答案的重试返回同一记录，不重复写入；答案对象的字段顺序、多选答案顺序不影响重试判定。同 ID 对应其他作答时返回 HTTP `409`。请求校验失败不创建记录。
+`POST` 返回 HTTP `201`，`GET /api/practice/papers/:paperId/submissions/:submissionId` 返回单次交卷详情：
 
 ```ts
 interface PracticeSubmission {
   id: string
+  subjectCode: string
   paperId: string
-  recordStatus: 'completed'
+  paperName: string
   userAnswers: Record<string, string | string[]>
-  score: number | null // 尚无服务端评分时为 null
-  startTime: string | null
-  endTime: string | null
+  totalQuestions: number
+  answeredCount: number
+  objectiveTotal: number
+  objectiveCorrect: number
+  objectiveScore: number | null
+  subjectiveScore: number | null
+  score: number | null
+  durationSeconds: number | null
+  createdAt: string
 }
 ```
 
-结果页必须按 `submissionId` 获取本次记录，不能用 `latestRecord` 代替。旧
-`/api/practice/answer-sheet`、`/api/practice/submit`、`/api/practice/result` 和
-`/api/practice/records/*` 均不提供，也不保留兼容。
+`GET /api/practice/records` 分页返回当前用户的历史交卷摘要（支持 `subjectCode / paperId / page / limit`，默认 `limit=20`、最大 `50`），返回 `{ items, total }`，每条为不含 `userAnswers` 的 `PracticeSubmission` 摘要字段，按交卷时间倒序排列。
+
+结果页按 `submissionId` 获取本次记录；旧 `/api/practice/answer-sheet`、`/api/practice/submit`、`/api/practice/result` 均不提供。
+
+### 个人科目画像与规则评估
+
+| Method | Path | 说明 |
+| --- | --- | --- |
+| GET | `/api/subjects/:code/profile` | 读取当前用户该科最新个人画像（`0016`）与最近一次评估摘要（无新交卷/错题/科目配置变动时按水位线直接复用，不重复重算） |
+| POST | `/api/subjects/:code/evaluate` | 触发一次纯规则估分、优劣诊断与修复推荐，写入不可变快照（`0017`）并回写 `latestEvaluationId`（HTTP `201`） |
+| GET | `/api/subjects/:code/evaluations?page=1&limit=10` | 分页读取该科历史评估快照（`limit` 默认 10、最大 50），按创建时间倒序返回 `{ total, items }`，用于提分曲线展示 |
+
+三接口均校验 `:code` 为启用、开考且未删除的科目（否则返回 HTTP `404`）。
+
+`GET /api/subjects/:code/profile` 返回结构：
+
+```ts
+interface UserSubjectProfile {
+  id: string // usp + 12 位 hex
+  subjectCode: string
+  subjectName: string
+  practiceCount: number
+  answeredQuestions: number
+  objectiveAnswered: number
+  objectiveCorrect: number
+  subjectiveAnswered: number
+  unresolvedMistakes: number
+  highFrequencyCoverage: number // 0–1，高频考点覆盖率
+  pointStats: Record<string, {
+    attempted: number
+    correct: number
+    mistakeCount: number
+    mastery: number // 0–1
+    lastAt?: string
+  }>
+  questionTypeStats: Partial<Record<QuestionType, {
+    attempted: number
+    correct: number
+    avgScoreRate: number // 0–1
+  }>>
+  trainingProgress: Partial<Record<PracticeResourceType, {
+    resourceId?: string
+    completedPapers: number
+    totalPapers: number
+    avgScore: number | null
+    met: boolean
+  }>>
+  latestEvaluationId: string | null
+  latestEvaluation: {
+    id: string // evl + 12 位 hex
+    triggerType: 'manual' | 'practice' | 'baseline'
+    estimatedScore: number
+    objectiveEstimatedScore: number | null
+    subjectiveEstimatedScore: number | null
+    readinessLevel: 'ready' | 'close' | 'building' | 'starter'
+    confidence: 'low' | 'medium' | 'high'
+    summary: string | null
+    gapCount: number
+    recommendationCount: number
+    createdAt: string
+  } | null
+  sourcePracticeAt: string | null
+  generatedAt: string | null
+  updatedAt: string | null
+  createdAt: string
+}
+```
+
+`POST /api/subjects/:code/evaluate` 请求体（严格 JSON 对象，传 `{}` 时默认 `triggerType = 'manual'`）：
+
+```ts
+interface EvaluateUserSubjectBody {
+  triggerType?: 'manual' | 'practice' | 'baseline'
+}
+```
+
+`POST /api/subjects/:code/evaluate`（及 `GET /api/subjects/:code/evaluations` 的 `items[]`）返回不可变评估快照：
+
+```ts
+interface UserSubjectEvaluation {
+  id: string // evl + 12 位 hex
+  subjectCode: string
+  triggerType: 'manual' | 'practice' | 'baseline'
+  estimatedScore: number // 0–200（按科目 examBlueprint 总分约束，默认 100 分制）
+  objectiveEstimatedScore: number | null
+  subjectiveEstimatedScore: number | null
+  readinessLevel: 'ready' | 'close' | 'building' | 'starter'
+  confidence: 'low' | 'medium' | 'high'
+  diagnosis: {
+    summary?: string
+    strengths: Array<{ code: string; title: string; detail: string; pointKeys?: string[] }>
+    gaps: Array<{
+      code:
+        | 'point_weak'
+        | 'mistake_unresolved'
+        | 'baseline_missing'
+        | 'past_exam_insufficient'
+        | 'mock_exam_missing'
+        | 'ai_enhance_missing'
+        | 'subjective_insufficient'
+      title: string
+      severity: 'high' | 'medium' | 'low'
+      current: string
+      target: string
+      pointKeys?: string[]
+    }>
+  }
+  recommendations: Array<{
+    gapCode:
+      | 'point_weak'
+      | 'mistake_unresolved'
+      | 'baseline_missing'
+      | 'past_exam_insufficient'
+      | 'mock_exam_missing'
+      | 'ai_enhance_missing'
+      | 'subjective_insufficient'
+    actionType: 'paper' | 'mistakes' | 'aiGenerate'
+    priority: number // 1–10，1 最高
+    title: string
+    reason?: string
+    paperId?: string
+    resourceType?: PracticeResourceType
+    pointKeys?: string[]
+  }>
+  evidenceSnapshot: {
+    practiceCount: number
+    answeredQuestions: number
+    objectiveAnswered: number
+    objectiveCorrect: number
+    subjectiveAnswered: number
+    unresolvedMistakes: number
+    highFrequencyCoverage: number
+    subjectProfileGeneratedAt?: string | null
+  }
+  createdAt: string
+}
+```
+
+- 估分按科目 `subject_profiles.examBlueprint` 与 `scoringRule` 执行（未建档科目自动使用默认 30/70 考纲蓝图与默认标尺）；当 `requireSubjectiveForPass = true` 且主观题样本不足时，准备度档位最高封顶 `building`，并在 `diagnosis.gaps` 返回 `subjective_insufficient`。
+- `recommendations` 按严重度输出最多 10 条可执行动作：`paper` 优先指向未完成的同槽位题集 `paperId`，`mistakes` 指向错题本清零，`aiGenerate` 携带薄弱 `pointKeys`。
 
 ## 5. 题目收藏模块
 
@@ -445,14 +591,15 @@ interface PracticeSubmission {
 | Method   | Path                                                     | 说明                                       | 状态 |
 | -------- | -------------------------------------------------------- | ------------------------------------------ | ---- |
 | `GET`    | `/api/mistakes?groupBy=&sort=&order=`             | 聚合查询错题（默认按科目）                 | 可用 |
-| `POST`   | `/api/mistakes`                                   | 记错题（幂等，更新最近错题题集上下文）     | 可用 |
+| `POST`   | `/api/mistakes`                                   | 记错题（重复记错递增 `wrongCount`、刷新 `lastWrongAt` 与最近题集上下文） | 可用 |
 | `DELETE` | `/api/mistakes/:recordId`                         | 按错题记录 ID 移除（错题训练页）           | 可用 |
 | `DELETE` | `/api/mistakes`                                   | 按三元组移除错题（答对自动移除，幂等）     | 可用 |
 | `DELETE` | `/api/mistakes/all`                               | 清空当前用户全部错题                       | 可用 |
-| `GET`    | `/api/mistakes/practice?subjectId=` / `?paperId=` | 错题练习数据（与练习题集 paper 同构）      | 可用 |
+| `GET`    | `/api/mistakes/practice?subjectId=` / `?paperId=` | 错题练习数据（与练习题集 paper 同构，附 `wrongCount / lastWrongAt / knowledgePoints`） | 可用 |
+| `GET`    | `/api/mistakes/points?subjectCode=`               | 按科目画像主考点聚合当前用户错题（返回 `mistakeCount / totalWrongCount / lastWrongAt` 与易错提示） | 可用 |
+| `GET`    | `/api/mistakes/frequent?subjectCode=&minWrongCount=2&limit=20` | 高频错题列表（按 `wrongCount` 降序、最近记错时间降序，附考点提示与完整公开题面） | 可用 |
 
-记错题请求体与收藏三元组相同，沿用题目、题集的可见性校验；重复记错保持原收录时间并更新题集上下文为最近一次发生
-错误的题集。`DELETE /api/mistakes`（body 三元组）供"答对自动移除错题"设置使用：
+记错题请求体与收藏三元组相同，沿用题目、题集的可见性校验；首次记错写入 `wrongCount = 1` 与 `lastWrongAt`，重复记错保持原收录时间，递增 `wrongCount`、更新 `lastWrongAt` 与最近一次发生错误的题集。`DELETE /api/mistakes`（body 三元组）供"答对自动移除错题"设置使用：
 练习设置 `removeMistakeOnCorrect` 开启时，客户端在判对后按答题上下文调用，幂等。
 聚合、练习、清空的行为与收藏模块一致（见第 5 章）；错题练习同样不落服务端记录。
 错题练习每道题分别返回 `mistakeId`（错题记录 ID）和 `favId`（当前用户实际收藏 ID，
@@ -532,7 +679,14 @@ GET    /api/majors
 GET    /api/majors/:code
 GET    /api/subjects
 GET    /api/subjects/:code
+GET    /api/subjects/:code/profile
+POST   /api/subjects/:code/evaluate
+GET    /api/subjects/:code/evaluations
 GET    /api/practice/papers/:paperId
+POST   /api/practice/papers/:paperId/submissions
+GET    /api/practice/papers/:paperId/submissions/:submissionId
+GET    /api/practice/records
+GET    /api/practice/questions/:questionId/similar
 
 GET    /api/favorites
 PUT    /api/favorites
@@ -547,6 +701,8 @@ DELETE /api/mistakes
 DELETE /api/mistakes/:recordId
 DELETE /api/mistakes/all
 GET    /api/mistakes/practice
+GET    /api/mistakes/points
+GET    /api/mistakes/frequent
 
 GET    /api/options/majors
 GET    /api/options/subjects
