@@ -296,6 +296,7 @@ Neo 和 Desktop 的报考省份按此顺序展示：北京（`110000`）、上�
 `type` 取 `baseline`、`mockExams`、`pastExams` 或 `aiEnhance`，供业务判断。Neo 使用 `name` 展示模板名称。
 模板下的题集沿用题集自身的分类。
 `list` 按管理端配置顺序返回仍可用的同科目公开题集，使用题集详情的基础字段（含 `questionCount`）。未编排或无可用题集时为 `[]`。
+`aiEnhance` 槽位会自动并入当前用户在该科目下的启用私有 AI 补强题集（`papers.ownerId = userId` 且 `sourceType = 'ai'`，按创建时间倒序置于列表前列）；若科目未配置公共 `aiEnhance` 槽位但用户已有私有 AI 补强卷，服务端也会自动返回 `aiEnhance` 槽位。
 接口仅返回题集列表，不返回题目答案。旧 `/api/practice/templates` 已移除。
 
 ### 刷题设置
@@ -360,6 +361,17 @@ interface PracticeSubmission {
 
 `GET /api/practice/records` 分页返回当前用户的历史交卷摘要（支持 `subjectCode / paperId / page / limit`，默认 `limit=20`、最大 `50`），返回 `{ items, total }`，每条为不含 `userAnswers` 的 `PracticeSubmission` 摘要字段，按交卷时间倒序排列。
 
+`PUT /api/practice/papers/:paperId/submissions/:submissionId/subjective-self-grade` 用于含主观题（名词解释 / 简答 / 论述）题集交卷后的**三档主观自评打分**（可幂等复评）：
+
+```ts
+interface SubjectiveSelfGradeBody {
+  ratings: Record<string, 'mastered' | 'partial' | 'missed'> // 仅允许本次交卷已作答的主观题；mastered=100% / partial=50% / missed=0%
+}
+```
+
+- 服务端按题集分组 `perScore`（无 `perScore` 的 `custom` 题集按 `100 / 总题数` 均分）严格计算 `subjectiveScore` 与总分 `score`，写回 `0015 user_practice_records` 并即时重算 `0016` 用户科目画像，返回 HTTP `200` 与更新后的 `PracticeSubmission`。
+- 纯客观题集、传入非主观题或未作答题返回 HTTP `400`；非本人记录返回 HTTP `404`。
+
 结果页按 `submissionId` 获取本次记录；旧 `/api/practice/answer-sheet`、`/api/practice/submit`、`/api/practice/result` 均不提供。
 
 ### 个人科目画像与规则评估
@@ -369,6 +381,8 @@ interface PracticeSubmission {
 | GET | `/api/subjects/:code/profile` | 读取当前用户该科最新个人画像（`0016`）与最近一次评估摘要（无新交卷/错题/科目配置变动时按水位线直接复用，不重复重算） |
 | POST | `/api/subjects/:code/evaluate` | 触发一次纯规则估分、优劣诊断与修复推荐，写入不可变快照（`0017`）并回写 `latestEvaluationId`（HTTP `201`） |
 | GET | `/api/subjects/:code/evaluations?page=1&limit=10` | 分页读取该科历史评估快照（`limit` 默认 10、最大 50），按创建时间倒序返回 `{ total, items }`，用于提分曲线展示 |
+| POST | `/api/subjects/:code/ai-enhance/generate` | 基于当前用户画像、错题与科目考纲规则生成一份私有 `aiEnhance` 补强题集（`papers.ownerId = userId, sourceType = 'ai'`，HTTP `201`），即时同步 `0016` 画像与 `GET /api/practice/resources` |
+| DELETE | `/api/subjects/:code/ai-enhance/papers/:paperId` | 软删除当前用户在该科目的私有 `aiEnhance` 补强题集（幂等），同步刷新 `0016` 画像 |
 
 三接口均校验 `:code` 为启用、开考且未删除的科目（否则返回 HTTP `404`）。
 
@@ -421,6 +435,7 @@ interface UserSubjectProfile {
       scoreCap: number // 严苛遍数解锁上限：59 (<3) / 69 (3–4) / 84 (5–6) / 100 (>=7)
       effectiveScore: number // min(rawScore, scoreCap)
       level: TrainingMasteryLevel
+      enhanceType?: AiEnhanceType // aiEnhance 槽位私有补强卷反向推导的补强类型
     }>
   }>>
   latestEvaluationId: string | null
@@ -526,6 +541,32 @@ interface UserSubjectEvaluation {
   - **`aiEnhance` 三态**：存在薄弱待修复为 `pending_fix`（按补强卷实测分，未刷为 `0`）；经补强卷达标无异常为 `verified_fixed`（数据支撑给满）；前三项无薄弱且未经补强检验为 `suspected_ok`（怀疑模式默认给 `80` 分）；
   - **主观题过关保护**：当 `requireSubjectiveForPass = true` 且主观题样本不足时，`readinessLevel` 最高封顶 `building`，并在 `diagnosis.gaps` 返回 `subjective_insufficient`。
 - `recommendations` 按严重度输出最多 10 条可执行动作：`paper` 优先指向槽位内短板题集 `paperId`，`mistakes` 指向错题本清零，`aiGenerate` 携带 `enhanceType` 与薄弱 `pointKeys`。
+
+`POST /api/subjects/:code/ai-enhance/generate` 请求体与响应（单用户单科目最多保留 10 份启用私有补强卷，超限或无可用题返回 `409`）：
+
+```ts
+interface GenerateAiEnhancePaperBody {
+  enhanceType: AiEnhanceType // pointWeak / highFrequencyWeak / errorProneWeak / pastExamWeak / comprehensive
+  questionCount?: number // 5–50，默认 20（comprehensive 按 examBlueprint 题型数量组卷）
+  pointKeys?: string[] // 可选指定薄弱考点，最多 10 个；省略时自动取 0016 画像薄弱考点
+  name?: string // 可选自定义题集名，省略时自动生成
+}
+
+interface GeneratedAiEnhancePaper {
+  id: string // pap + 12 位 hex
+  subjectCode: string
+  provinceCode: string
+  name: string
+  type: PaperType
+  paperLayout: 'custom' | 'exam'
+  enhanceType: AiEnhanceType
+  questionCount: number
+  contentPeriod: string
+  sourceType: 'ai'
+  targetPointKeys: string[]
+  createdAt: string
+}
+```
 
 ## 5. 题目收藏模块
 
@@ -710,9 +751,12 @@ GET    /api/subjects/:code
 GET    /api/subjects/:code/profile
 POST   /api/subjects/:code/evaluate
 GET    /api/subjects/:code/evaluations
+POST   /api/subjects/:code/ai-enhance/generate
+DELETE /api/subjects/:code/ai-enhance/papers/:paperId
 GET    /api/practice/papers/:paperId
 POST   /api/practice/papers/:paperId/submissions
 GET    /api/practice/papers/:paperId/submissions/:submissionId
+PUT    /api/practice/papers/:paperId/submissions/:submissionId/subjective-self-grade
 GET    /api/practice/records
 GET    /api/practice/questions/:questionId/similar
 

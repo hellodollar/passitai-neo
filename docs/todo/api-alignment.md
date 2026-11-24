@@ -22,6 +22,8 @@
 - `GET /api/subjects/:code/profile`：读取当前用户在某科目的个人画像（交卷即时重算，无新变动按水位线直接复用），含标量汇总、`pointStats`、`questionTypeStats`、`trainingProgress`（每个槽位含 `weight / score / level / met / aiEnhanceMode` 以及单卷 `papers[]` 的 `completedRounds / currentRoundCoverage / rawScore / scoreCap / effectiveScore / level`）与 `latestEvaluation` 摘要（含 `masteryLevel`）。
 - `POST /api/subjects/:code/evaluate`：传入 `{ triggerType?: 'manual' | 'practice' | 'baseline' }`（传 `{}` 默认 `manual`）触发一次规则评估，返回不可变快照（`estimatedScore` 四槽位加权综合分、`readinessLevel`、`confidence`、`diagnosis.{summary,strengths,gaps}`、`recommendations[]` 含 `enhanceType`、`evidenceSnapshot.{masteryLevel,aiEnhanceMode,slotScores,slotLevels}`）。
 - `GET /api/subjects/:code/evaluations?page=1&limit=10`：分页读取历史评估快照，用于渲染提分曲线与复盘历史。
+- `PUT /api/practice/papers/:paperId/submissions/:submissionId/subjective-self-grade`：交卷结果页支持对已作答主观题进行三档自评（`{ ratings: Record<questionId, 'mastered' | 'partial' | 'missed'> }`），服务端重算 `subjectiveScore`、`score` 并即时更新 `0016` 画像。
+- `POST /api/subjects/:code/ai-enhance/generate` & `DELETE /api/subjects/:code/ai-enhance/papers/:paperId`：支持一键生成（5 类 `enhanceType`）与清理个人私有 `aiEnhance` 补强卷，生成后自动出现在 `GET /api/practice/resources` 的 `aiEnhance` 槽位。
 - 生成字典 `src/generated/practice-resource-values.ts` 已新增导出 `trainingMasteryLevels / TrainingMasteryLevel / trainingMasteryLabels / aiEnhanceTypes / AiEnhanceType / aiEnhanceLabels / aiEnhanceModes / AiEnhanceMode`，前端直接复用，勿手写四档文案或补强枚举。
 
 **前端待对接要点**：
