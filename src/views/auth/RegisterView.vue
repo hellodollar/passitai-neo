@@ -5,13 +5,13 @@ import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 import AuthFrame from '@/components/auth/AuthFrame.vue'
 import FormField from '@/components/common/FormField.vue'
+import { EMAIL_PATTERN, PASSWORD_PATTERN } from '@/constants/auth'
 import { useAuthStore } from '@/stores/auth'
 import {
   inviteCodeError,
   normalizeInviteCode,
   registrationPayload,
 } from '@/utils/auth/registration'
-import { EMAIL_PATTERN, PASSWORD_PATTERN } from '@/utils/auth/validation'
 import { resolveLoginRedirect } from '@/utils/browse/navigation'
 
 const auth = useAuthStore()

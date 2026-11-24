@@ -34,19 +34,6 @@ export type PaperQuestion = {
   explanation: string | null
 }
 
-export type SimilarQuestionItem = PaperQuestion & {
-  matchType: 'duplicate' | 'similar'
-  matchedPointKeys: string[]
-}
-
-export type SimilarQuestionsResult = {
-  questionId: string
-  subjectCode: string
-  knowledgePoints: string[]
-  primaryPoint: string | null
-  items: SimilarQuestionItem[]
-}
-
 export type PaperDetail = Paper & {
   sections: {
     name: string

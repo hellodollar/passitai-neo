@@ -1,8 +1,8 @@
 import { defineStore } from 'pinia'
 
-import { fetchNotificationSettings, patchNotificationSettings } from '@/api/settings'
+import { fetchNotificationSettings, updateNotificationSettings } from '@/api/notifications'
 import { useRemoteSettings } from '@/composables/useRemoteSettings'
 
 export const useNotificationSettingsStore = defineStore('notification-settings', () =>
-  useRemoteSettings(fetchNotificationSettings, patchNotificationSettings, '通知设置加载失败'),
+  useRemoteSettings(fetchNotificationSettings, updateNotificationSettings, '通知设置加载失败'),
 )

@@ -1,11 +1,20 @@
 import type { DomainValue } from '@/generated/domain-values'
+import type { PracticeResourceType } from '@/generated/practice-resource-values'
 
 import type { CollectionSource } from './collection'
+import type { Paper } from './paper'
 import type { QuestionContent, QuestionType } from './question'
 
 // ---- Practice ----
 
 export type PracticeSource = 'practice' | CollectionSource
+
+export type PracticeResource = {
+  id: string
+  name: string
+  type: PracticeResourceType
+  list: Paper[]
+}
 
 /** 收藏/错题练习数据：与练习题集 paper 同构（无 type/assessmentType/latestRecord） */
 export type CollectionPracticePaper = {
@@ -40,15 +49,6 @@ export type PracticePaperItem = QuestionContent & {
   lastWrongAt?: string | null
 }
 
-export type PracticePaperSection = {
-  name: string
-  /** 缺失表示通用 Section，组内可包含不同题型。 */
-  questionType?: QuestionType
-  totalScore?: number
-  perScore?: number
-  items: PracticePaperItem[]
-}
-
 export type PracticeSubmission = {
   id: string
   subjectCode: string
@@ -65,8 +65,6 @@ export type PracticeSubmission = {
   durationSeconds: number | null
   createdAt: string
 }
-
-export type PracticeRecordSummary = Omit<PracticeSubmission, 'userAnswers'>
 
 export type SubmitPracticePaperBody = {
   submissionId: string

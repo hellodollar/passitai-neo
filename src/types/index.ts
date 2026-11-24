@@ -20,8 +20,6 @@ export type {
   CollectionSort,
   CollectionQuery,
   FavoriteMutationResult,
-  FrequentMistakeItem,
-  MistakePointSummary,
 } from './collection'
 export type { OptionItem, SubjectOptionItem } from './catalog'
 export type { ExamPlan, ExamPlanSubject, ScheduledExam, UpdateExamPlanBody } from './exam-plan'
@@ -31,23 +29,13 @@ export type {
   NotificationSettings,
   NotificationSummary,
 } from './notification'
-export type {
-  Paper,
-  PaperDetail,
-  PaperLayout,
-  PaperQuestion,
-  PaperType,
-  SimilarQuestionItem,
-  SimilarQuestionsResult,
-} from './paper'
-export type { PracticeResource } from './practice-resource'
+export type { Paper, PaperDetail, PaperLayout, PaperQuestion, PaperType } from './paper'
 export type { QuestionContent, QuestionListItem, QuestionType } from './question'
 export type {
   CollectionPracticePaper,
   PracticePaperItem,
   PracticePaperLite,
-  PracticePaperSection,
-  PracticeRecordSummary,
+  PracticeResource,
   PracticeResultQuestion,
   PracticeResultQuestionStatus,
   PracticeSettings,

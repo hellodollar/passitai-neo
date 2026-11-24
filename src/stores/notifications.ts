@@ -3,8 +3,8 @@ import { computed, onScopeDispose, ref } from 'vue'
 
 import {
   fetchNotificationSummary,
-  readAllNotifications,
-  readNotification,
+  markAllNotificationsRead,
+  markNotificationRead,
 } from '@/api/notifications'
 import type { NotificationSummary } from '@/types'
 import { currentSessionToken } from '@/utils/auth/session'
@@ -25,8 +25,9 @@ export const useNotificationsStore = defineStore('notifications', () => {
     if (!currentSessionToken()) return Promise.resolve()
     if (pending) return pending
     const now = Date.now()
-    if (!force && lastRequestedAt !== undefined && now - lastRequestedAt < AUTO_REFRESH_INTERVAL)
+    if (!force && lastRequestedAt !== undefined && now - lastRequestedAt < AUTO_REFRESH_INTERVAL) {
       return Promise.resolve()
+    }
     lastRequestedAt = now
     const isCurrent = guard.captureRead()
     const promise = fetchNotificationSummary()
@@ -44,7 +45,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
   }
   async function markRead(id: string) {
     const isCurrent = guard.captureWrite()
-    const result = await readNotification(id)
+    const result = await markNotificationRead(id)
     if (isCurrent()) {
       guard.noteWrite()
       pending = undefined
@@ -54,7 +55,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
   }
   async function markAllRead() {
     const isCurrent = guard.captureWrite()
-    await readAllNotifications()
+    await markAllNotificationsRead()
     if (isCurrent()) {
       guard.noteWrite()
       pending = undefined

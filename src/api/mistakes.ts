@@ -4,8 +4,6 @@ import type {
   CollectionContext,
   CollectionQuery,
   CollectionPracticePaper,
-  FrequentMistakeItem,
-  MistakePointSummary,
 } from '@/types'
 
 /** 文档:GET /api/mistakes?groupBy=&order=，聚合查询错题 */
@@ -37,18 +35,4 @@ export function clearMistakes() {
 /** 文档:GET /api/mistakes/practice?subjectId= 或 ?paperId= */
 export function fetchMistakePractice(params: { subjectId?: string; paperId?: string }) {
   return request<CollectionPracticePaper>('/mistakes/practice', { query: params })
-}
-
-/** 文档:GET /api/mistakes/points?subjectCode= */
-export function fetchMistakePoints(subjectCode: string) {
-  return request<{ items: MistakePointSummary[] }>('/mistakes/points', {
-    query: { subjectCode },
-  })
-}
-
-/** 文档:GET /api/mistakes/frequent?subjectCode=&minWrongCount=2&limit=20 */
-export function fetchFrequentMistakes(
-  params: { subjectCode?: string; minWrongCount?: number; limit?: number } = {},
-) {
-  return request<{ items: FrequentMistakeItem[] }>('/mistakes/frequent', { query: params })
 }

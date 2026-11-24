@@ -5,7 +5,7 @@ import { useRouter } from 'vue-router'
 
 import { useNotificationSettingsStore } from '@/stores/notification-settings'
 import { useNotificationsStore } from '@/stores/notifications'
-import { notificationTime } from '@/utils/notifications'
+import { formatShanghaiDateTime } from '@/utils/date'
 const router = useRouter(),
   notifications = useNotificationsStore()
 const preferences = useNotificationSettingsStore()
@@ -31,7 +31,7 @@ const latest = computed(() => notifications.summary?.latestUnread)
         preferences.settings?.contentPreview ? latest.title : '你有新消息'
       }}</span
       ><span class="mt-0.5 block text-xs leading-snug text-base-content/55">{{
-        notificationTime(latest.publishedAt)
+        formatShanghaiDateTime(latest.publishedAt)
       }}</span></span
     ><ChevronRight :size="15" class="shrink-0 text-base-content/30" />
   </button>

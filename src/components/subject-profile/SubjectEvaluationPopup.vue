@@ -35,6 +35,7 @@ import type {
   UserSubjectEvaluation,
   UserSubjectEvaluationRecommendation,
 } from '@/types'
+import { formatShanghaiDateTime } from '@/utils/date'
 import { showErrorToast, showSuccessToast } from '@/utils/toast'
 
 const props = withDefaults(
@@ -98,16 +99,6 @@ const slotEntries = computed(() => {
       level: evidence.slotLevels?.[type],
     }))
 })
-
-function formatDateTime(value: string) {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return ''
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  const hours = String(date.getHours()).padStart(2, '0')
-  const minutes = String(date.getMinutes()).padStart(2, '0')
-  return `${month}-${day} ${hours}:${minutes}`
-}
 
 function severityMeta(severity: EvaluationGapSeverity) {
   if (severity === 'high') {
@@ -457,7 +448,7 @@ onBeforeUnmount(cancelPendingRequests)
                     }}
                   </span>
                   <span class="text-[11px] tabular-nums text-base-content/55">
-                    {{ formatDateTime(activeEvaluation.createdAt) }}
+                    {{ formatShanghaiDateTime(activeEvaluation.createdAt) }}
                   </span>
                 </div>
 
@@ -702,7 +693,7 @@ onBeforeUnmount(cancelPendingRequests)
                     </span>
                   </div>
                   <p class="mt-1 truncate text-xs text-base-content/55">
-                    {{ formatDateTime(item.createdAt) }} ·
+                    {{ formatShanghaiDateTime(item.createdAt) }} ·
                     {{ EVALUATION_TRIGGER_LABELS[item.triggerType] }} ·
                     {{ item.diagnosis.gaps.length }} 项短板
                   </p>

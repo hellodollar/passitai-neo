@@ -5,8 +5,8 @@ import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 import AuthFrame from '@/components/auth/AuthFrame.vue'
 import FormField from '@/components/common/FormField.vue'
+import { EMAIL_PATTERN } from '@/constants/auth'
 import { useAuthStore } from '@/stores/auth'
-import { EMAIL_PATTERN } from '@/utils/auth/validation'
 import { resolveLoginRedirect } from '@/utils/browse/navigation'
 
 const auth = useAuthStore()

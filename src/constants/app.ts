@@ -8,4 +8,6 @@ export const STORAGE_KEYS = {
   authSession: 'passitai:auth-session',
   browsePrefix: 'passitai:browse:',
   practiceSettingsPrefix: 'passitai:practice-settings:',
+  practiceRecordPrefix: 'passitai:practice-record:',
+  practiceRecordClearPrefix: 'passitai:practice-record-clear:',
 } as const

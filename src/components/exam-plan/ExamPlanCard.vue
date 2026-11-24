@@ -5,7 +5,7 @@ import { computed } from 'vue'
 
 import { provinceOptions } from '@/generated/domain-values'
 import type { ExamPlan } from '@/types'
-import { formatShanghaiDate } from '@/utils/notifications'
+import { formatShanghaiDate } from '@/utils/date'
 
 const props = defineProps<{
   plan: ExamPlan

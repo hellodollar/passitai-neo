@@ -3,7 +3,7 @@ import type { LucideIcon } from '@lucide/vue'
 import { ChevronRight, History, Plus, Sparkles, Target, Timer, Trash2 } from '@lucide/vue'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
-import { fetchPracticeResources } from '@/api/practice-resources'
+import { fetchPracticeResources } from '@/api/practice'
 import { deleteAiEnhancePaper, generateAiEnhancePaper } from '@/api/subject-profile'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import BasePopup from '@/components/common/BasePopup.vue'
@@ -50,7 +50,7 @@ const resources = ref<PracticeResource[]>([])
 const selectedType = ref<PracticeResourceType>('baseline')
 const loading = ref(false)
 const error = ref(false)
-const retry = ref(0)
+const reloadTick = ref(0)
 
 const generatePopupOpen = ref(false)
 const selectedEnhanceType = ref<AiEnhanceType>('pointWeak')
@@ -166,7 +166,7 @@ async function handleGenerateAiPaper() {
     }
     generatePopupOpen.value = false
     selectedType.value = 'aiEnhance'
-    retry.value++
+    reloadTick.value++
     emit('resources-changed')
     showSuccessToast(`已生成「${paper.name}」`)
     emit('open-paper-id', paper.id)
@@ -194,7 +194,7 @@ async function confirmDeleteAiPaper() {
       return
     }
     deleteTarget.value = null
-    retry.value++
+    reloadTick.value++
     emit('resources-changed')
     showSuccessToast('已删除补强卷')
   } catch {
@@ -205,7 +205,7 @@ async function confirmDeleteAiPaper() {
 }
 
 watch(
-  [() => props.subjectCode, () => auth.session?.token, () => props.refreshKey, retry],
+  [() => props.subjectCode, () => auth.session?.token, () => props.refreshKey, reloadTick],
   async ([code, token], _, onCleanup) => {
     error.value = false
     if (!token || !code) {
@@ -293,7 +293,7 @@ onBeforeUnmount(() => {
       <button
         class="rounded-lg bg-error/10 px-3 py-1.5 text-xs font-medium text-error transition-colors active:bg-error/15"
         type="button"
-        @click="retry++"
+        @click="reloadTick++"
       >
         重试
       </button>

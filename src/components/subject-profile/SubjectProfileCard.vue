@@ -3,7 +3,7 @@ import { ChevronRight, RefreshCw, TrendingUp } from '@lucide/vue'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 import { evaluateSubject, fetchSubjectProfile } from '@/api/subject-profile'
-import SubjectEvaluationPopup from '@/components/home/SubjectEvaluationPopup.vue'
+import SubjectEvaluationPopup from '@/components/subject-profile/SubjectEvaluationPopup.vue'
 import {
   EVALUATION_READINESS_META,
   PRACTICE_RESOURCE_SLOT_FALLBACK_LABELS,
@@ -36,7 +36,7 @@ const auth = useAuthStore()
 const profile = ref<UserSubjectProfile | null>(null)
 const loading = ref(false)
 const error = ref(false)
-const retry = ref(0)
+const reloadTick = ref(0)
 const evaluating = ref(false)
 const evaluationPopupOpen = ref(false)
 const evaluationPopupTab = ref<'detail' | 'history'>('detail')
@@ -70,7 +70,7 @@ async function runQuickEvaluate() {
     popupInitialEvaluation.value = evaluation
     evaluationPopupTab.value = 'detail'
     evaluationPopupOpen.value = true
-    retry.value++
+    reloadTick.value++
   } catch {
     // 错误提示由请求层统一展示
   } finally {
@@ -86,16 +86,16 @@ function openDiagnosis(tab: 'detail' | 'history' = 'detail') {
 
 function handleEvaluated(evaluation: UserSubjectEvaluation) {
   popupInitialEvaluation.value = evaluation
-  retry.value++
+  reloadTick.value++
 }
 
 function handleAiGenerated(paper: GeneratedAiEnhancePaper) {
-  retry.value++
+  reloadTick.value++
   emit('ai-generated', paper)
 }
 
 watch(
-  [() => props.subjectCode, () => auth.session?.token, () => props.refreshKey, retry],
+  [() => props.subjectCode, () => auth.session?.token, () => props.refreshKey, reloadTick],
   async ([code, token], _, onCleanup) => {
     error.value = false
     if (!token || !code) {
@@ -177,7 +177,7 @@ onBeforeUnmount(() => {
       <button
         type="button"
         class="rounded-lg bg-error/10 px-3 py-1 text-xs font-medium text-error transition-colors active:bg-error/15"
-        @click="retry++"
+        @click="reloadTick++"
       >
         重试
       </button>

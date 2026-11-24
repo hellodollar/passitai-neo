@@ -1,13 +1,16 @@
 import { request } from '@/api/http'
 import type {
-  PaginationResult,
   PaperDetail,
-  PracticeRecordSummary,
+  PracticeResource,
   PracticeSubmission,
-  SimilarQuestionsResult,
   SubjectiveSelfGradeBody,
   SubmitPracticePaperBody,
 } from '@/types'
+
+/** 文档:GET /api/practice/resources?subjectCode= */
+export function fetchPracticeResources(subjectCode: string, signal?: AbortSignal) {
+  return request<PracticeResource[]>('/practice/resources', { query: { subjectCode }, signal })
+}
 
 /** 文档:GET /api/practice/papers/:paperId */
 export function fetchPaper(paperId: string) {
@@ -44,20 +47,5 @@ export function submitSubjectiveSelfGrade(
       method: 'PUT',
       body: payload,
     },
-  )
-}
-
-/** 文档:GET /api/practice/records?subjectCode=&paperId=&page=&limit= */
-export function fetchPracticeRecords(
-  query: { subjectCode?: string; paperId?: string; page?: number; limit?: number } = {},
-) {
-  return request<PaginationResult<PracticeRecordSummary>>('/practice/records', { query })
-}
-
-/** 文档:GET /api/practice/questions/:questionId/similar?limit=5 */
-export function fetchSimilarQuestions(questionId: string, limit = 5) {
-  return request<SimilarQuestionsResult>(
-    `/practice/questions/${encodeURIComponent(questionId)}/similar`,
-    { query: { limit } },
   )
 }

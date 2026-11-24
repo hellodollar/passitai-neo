@@ -1,4 +1,4 @@
-import { PRACTICE_RECORD_CHANGE_EVENT } from '@/constants/app'
+import { PRACTICE_RECORD_CHANGE_EVENT, STORAGE_KEYS } from '@/constants/app'
 import { PRACTICE_RECORD_VERSION } from '@/constants/practice'
 import type {
   PracticeRecord,
@@ -7,8 +7,8 @@ import type {
   PracticeRecordIdentity,
 } from '@/types'
 
-export const RECORD_PREFIX = `passitai:practice-record:v${PRACTICE_RECORD_VERSION}:`
-const CLEAR_PREFIX = `passitai:practice-record-clear:v${PRACTICE_RECORD_VERSION}:`
+export const RECORD_PREFIX = `${STORAGE_KEYS.practiceRecordPrefix}v${PRACTICE_RECORD_VERSION}:`
+const CLEAR_PREFIX = `${STORAGE_KEYS.practiceRecordClearPrefix}v${PRACTICE_RECORD_VERSION}:`
 const CHANGE_EVENT = PRACTICE_RECORD_CHANGE_EVENT
 
 export function practiceRecordKey(identity: PracticeRecordIdentity) {

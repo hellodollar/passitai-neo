@@ -11,7 +11,7 @@ import { useNotificationSettingsStore } from '@/stores/notification-settings'
 import { useNotificationsStore } from '@/stores/notifications'
 import type { NotificationItem } from '@/types'
 import { navigateBackOrReplace } from '@/utils/browse/navigation'
-import { notificationDayGroup, notificationTime } from '@/utils/notifications'
+import { formatShanghaiDateTime, getShanghaiDayGroup } from '@/utils/date'
 import { createSessionGuard } from '@/utils/session-guard'
 
 const router = useRouter()
@@ -30,7 +30,7 @@ const groups = computed(() =>
   ['今天', '昨天', '更早']
     .map((label) => ({
       label,
-      items: items.value.filter((item) => notificationDayGroup(item.publishedAt) === label),
+      items: items.value.filter((item) => getShanghaiDayGroup(item.publishedAt) === label),
     }))
     .filter((group) => group.items.length),
 )
@@ -175,7 +175,7 @@ onBeforeUnmount(() => {
                 class="mt-0.5 line-clamp-2 block text-xs leading-snug text-base-content/55"
                 >{{ item.contentPreview }}</span
               ><span class="mt-1 block text-[11px] text-base-content/55">{{
-                notificationTime(item.publishedAt)
+                formatShanghaiDateTime(item.publishedAt)
               }}</span></span
             >
           </div>

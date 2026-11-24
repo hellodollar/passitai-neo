@@ -2,8 +2,8 @@
 import { computed, onBeforeUnmount, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
-import BottomTabBar from '@/components/BottomTabBar.vue'
 import AppToast from '@/components/common/AppToast.vue'
+import BottomTabBar from '@/components/common/BottomTabBar.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useNotificationSettingsStore } from '@/stores/notification-settings'
 import { useNotificationsStore } from '@/stores/notifications'
