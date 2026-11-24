@@ -21,6 +21,7 @@ import {
   markPracticeRecordsCleared,
   notifyPracticeRecordChange,
 } from './record-control'
+import { computeDurationSeconds } from './submission'
 
 const SOURCES = ['practice', 'favorites', 'mistakes'] as const
 const SUBMISSION_ID_PATTERN = /^rec[0-9a-f]{12}$/
@@ -109,8 +110,12 @@ function parsePendingSubmission(
   if (
     !isObject(raw) ||
     raw.submissionId !== value.submissionId ||
-    typeof raw.startTime !== 'string' ||
-    !Number.isFinite(Date.parse(raw.startTime)) ||
+    'startTime' in raw ||
+    (raw.durationSeconds !== undefined &&
+      (typeof raw.durationSeconds !== 'number' ||
+        !Number.isFinite(raw.durationSeconds) ||
+        raw.durationSeconds < 0 ||
+        raw.durationSeconds > 86_400)) ||
     !isObject(raw.userAnswers)
   ) {
     return null
@@ -128,7 +133,10 @@ function parsePendingSubmission(
   return {
     submissionId: value.submissionId,
     answerRevision: revision,
-    payload: { submissionId: value.submissionId, userAnswers, startTime: raw.startTime },
+    payload:
+      raw.durationSeconds !== undefined
+        ? { submissionId: value.submissionId, userAnswers, durationSeconds: raw.durationSeconds }
+        : { submissionId: value.submissionId, userAnswers },
   }
 }
 
@@ -259,6 +267,7 @@ export function writePracticeRecord(record: PracticeRecord) {
 export function updatePracticeRecord(
   record: PracticeRecord,
   progress: PracticeRecordProgress,
+  now = Date.now(),
 ): PracticeRecord {
   const changed = !sameAnswers(record.answers, progress.answers)
   const answerRevision = record.answerRevision + (changed ? 1 : 0)
@@ -280,7 +289,7 @@ export function updatePracticeRecord(
                   Array.isArray(answer) ? [...answer] : answer,
                 ]),
               ),
-              startTime: new Date(progress.startedAt).toISOString(),
+              durationSeconds: computeDurationSeconds(progress.startedAt, now),
             },
           }
   return {
@@ -291,7 +300,7 @@ export function updatePracticeRecord(
     inputs: parseAnswers(progress.inputs),
     answerRevision,
     pendingSubmission,
-    savedAt: Date.now(),
+    savedAt: now,
   }
 }
 

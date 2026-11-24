@@ -12,12 +12,13 @@ import ExamPlanPopup from '@/components/exam-plan/ExamPlanPopup.vue'
 import ExamPlanSubjectsPopup from '@/components/exam-plan/ExamPlanSubjectsPopup.vue'
 import HomePracticeResources from '@/components/home/HomePracticeResources.vue'
 import NotificationStrip from '@/components/home/NotificationStrip.vue'
+import SubjectProfileCard from '@/components/home/SubjectProfileCard.vue'
 import PracticeSettingsPopup from '@/components/practice/PracticeSettingsPopup.vue'
 import { useBrowseScroll } from '@/composables/useBrowseScroll'
 import { useAuthStore } from '@/stores/auth'
 import { useExamPlanStore } from '@/stores/exam-plan'
 import { useNotificationsStore } from '@/stores/notifications'
-import type { ExamPlan, Paper } from '@/types'
+import type { ExamPlan, Paper, UserSubjectProfile } from '@/types'
 import { parseHomeSelection, readBrowseState, writeBrowseState } from '@/utils/browse/state'
 
 const router = useRouter()
@@ -34,6 +35,9 @@ const initialSelection = parseHomeSelection(route.query, initialBrowse)
 const settingsPopupOpen = ref(false)
 const subjectManagerOpen = ref(false)
 const examPlanPopupOpen = ref(false)
+const activeSubjectProfile = ref<UserSubjectProfile | null>(null)
+const profileRefreshKey = ref(0)
+const resourcesRefreshKey = ref(0)
 // 考试计划从共享状态读取，首次加载时显示占位。
 const examPlanStore = useExamPlanStore()
 const examPlan = computed<ExamPlan | null>(() => examPlanStore.plan)
@@ -140,13 +144,25 @@ function toggleSubjectVisibility(code: string) {
   syncSelectionQuery()
 }
 
-function openPaper(paper: Paper) {
-  if (!auth.isAuthenticated || paper.subjectCode !== activeSubject.value?.code) return
+function openPaperById(paperId: string) {
+  if (!auth.isAuthenticated || !paperId) return
   const returnTo = router.resolve({
     name: 'home',
     query: { ...route.query, ...selectionQuery() },
   }).fullPath
-  void router.push({ name: 'practice', params: { paperId: paper.id }, query: { returnTo } })
+  void router.push({
+    name: 'practice',
+    params: { paperId },
+    query: {
+      subjectName: activeSubject.value?.name || undefined,
+      returnTo,
+    },
+  })
+}
+
+function openPaper(paper: Paper) {
+  if (!auth.isAuthenticated || paper.subjectCode !== activeSubject.value?.code) return
+  openPaperById(paper.id)
 }
 
 onMounted(() => {
@@ -182,6 +198,7 @@ watch(
     const state = readBrowseState(userId ?? '', 'home')
     const selection = parseHomeSelection({}, state)
     browseScroll.reset()
+    activeSubjectProfile.value = null
     settingsPopupOpen.value = false
     subjectManagerOpen.value = false
     examPlanPopupOpen.value = false
@@ -360,12 +377,27 @@ watch(
               />
             </div>
 
-            <HomePracticeResources
-              v-else
-              :subject-code="activeSubject.code"
-              @open-paper="openPaper"
-              @loaded="browseScroll.restore()"
-            />
+            <template v-else>
+              <SubjectProfileCard
+                :subject-code="activeSubject.code"
+                :subject-name="activeSubject.name"
+                :refresh-key="profileRefreshKey"
+                @open-paper="openPaperById"
+                @open-mistakes="router.push({ name: 'mistakes' })"
+                @ai-generated="resourcesRefreshKey++"
+                @profile-loaded="activeSubjectProfile = $event"
+              />
+
+              <HomePracticeResources
+                :subject-code="activeSubject.code"
+                :refresh-key="resourcesRefreshKey"
+                :training-progress="activeSubjectProfile?.trainingProgress"
+                @open-paper="openPaper"
+                @open-paper-id="openPaperById"
+                @resources-changed="profileRefreshKey++"
+                @loaded="browseScroll.restore()"
+              />
+            </template>
           </div>
         </template>
 

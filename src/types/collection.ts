@@ -33,3 +33,32 @@ export type CollectionAggregateItem = {
   paperId?: string
   paperName?: string
 }
+
+export type MistakePointSummary = {
+  pointKey: string
+  pointName?: string
+  mistakeCount: number
+  totalWrongCount: number
+  lastWrongAt: string
+  hint?: string | null
+}
+
+export type FrequentMistakeItem = {
+  mistakeId: string
+  questionId: string
+  subjectId: string
+  paperId: string
+  wrongCount: number
+  lastWrongAt: string
+  knowledgePoints?: string[]
+  title: string
+  questionType: string
+  A: string | null
+  B: string | null
+  C: string | null
+  D: string | null
+  E: string | null
+  F: string | null
+  correctAnswer: string
+  explanation: string | null
+}

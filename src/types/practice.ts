@@ -17,10 +17,13 @@ export type PracticePaperLite = {
   id?: string
   name: string
   subjectId: string
+  subjectCode?: string
+  paperType?: DomainValue<'paperType'>
   questionCount: number
   sections: Array<{
     name: string
     questionType?: QuestionType
+    perScore?: number
     items: PracticePaperItem[]
   }>
 }
@@ -32,6 +35,9 @@ export type PracticePaperItem = QuestionContent & {
   mistakeId?: string | null
   subjectId?: string | null
   paperId?: string | null
+  /** 错题练习接口附加字段 */
+  wrongCount?: number
+  lastWrongAt?: string | null
 }
 
 export type PracticePaperSection = {
@@ -43,42 +49,36 @@ export type PracticePaperSection = {
   items: PracticePaperItem[]
 }
 
-export type PracticePaperDetail = {
-  paper: {
-    id: string
-    name: string
-    subjectId: string
-    type: DomainValue<'paperType'>
-    assessmentType: string
-    questionCount: number
-    sections: PracticePaperSection[]
-  }
-  favoriteQuestionIds: string[]
-  latestRecord: {
-    id: string
-    recordStatus: DomainValue<'recordStatus'>
-    userAnswers: Record<string, string | string[]>
-    score: number | null
-    startTime: string | null
-    endTime: string | null
-  } | null
-}
-
 export type PracticeSubmission = {
   id: string
+  subjectCode: string
   paperId: string
-  recordStatus: 'completed'
+  paperName: string
   userAnswers: Record<string, string | string[]>
+  totalQuestions: number
+  answeredCount: number
+  objectiveTotal: number
+  objectiveCorrect: number
+  objectiveScore: number | null
+  subjectiveScore: number | null
   score: number | null
-  startTime: string | null
-  endTime: string | null
+  durationSeconds: number | null
+  createdAt: string
 }
+
+export type PracticeRecordSummary = Omit<PracticeSubmission, 'userAnswers'>
 
 export type SubmitPracticePaperBody = {
   submissionId: string
   userAnswers: Record<string, string | string[]>
-  /** 选填；缺失或晚于交卷时间时由服务端使用交卷时间。 */
-  startTime?: string
+  /** 本次作答耗时（秒，0–86400） */
+  durationSeconds?: number
+}
+
+export type SubjectiveSelfGradeRating = 'mastered' | 'partial' | 'missed'
+
+export type SubjectiveSelfGradeBody = {
+  ratings: Record<string, SubjectiveSelfGradeRating>
 }
 
 export type PracticeSettings = {
@@ -105,10 +105,13 @@ export type PracticeResultQuestion = {
 
 export type PracticeSubmissionResult = {
   submissionId: string
+  subjectCode: string
   paperId: string
   paperName: string
   subjectName?: string
-  score?: number | null
+  objectiveScore: number | null
+  subjectiveScore: number | null
+  score: number | null
   totalCount: number
   answeredCount: number
   correctCount: number

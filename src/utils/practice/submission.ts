@@ -15,9 +15,16 @@ type SubmissionPlan =
       record: PracticeRecord
     }
 
+const MAX_DURATION_SECONDS = 86_400
+
 function createSubmissionId() {
   const bytes = crypto.getRandomValues(new Uint8Array(6))
   return `rec${Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')}`
+}
+
+export function computeDurationSeconds(startedAt: number, now = Date.now()) {
+  if (!Number.isFinite(startedAt) || !Number.isFinite(now)) return 0
+  return Math.min(MAX_DURATION_SECONDS, Math.max(0, Math.round((now - startedAt) / 1000)))
 }
 
 /** 同版本复用报告；失败重试使用原 ID 和快照，不读取正在编辑的输入。 */
@@ -25,6 +32,7 @@ export function preparePracticeSubmission(
   record: PracticeRecord,
   userAnswers: SubmitPracticePaperBody['userAnswers'],
   generateId = createSubmissionId,
+  now = Date.now(),
 ): SubmissionPlan {
   if (record.source !== 'practice') throw new Error('收藏和错题练习不支持交卷。')
   if (!isPracticeRecordCurrent(record)) throw new Error('本地做题记录已清除，请重新作答。')
@@ -49,13 +57,13 @@ export function preparePracticeSubmission(
                 Array.isArray(answer) ? [...answer] : answer,
               ]),
             ),
-            startTime: new Date(record.startedAt).toISOString(),
+            durationSeconds: computeDurationSeconds(record.startedAt, now),
           },
   }
   return {
     kind: 'submit',
     pending,
-    record: { ...record, pendingSubmission: pending, savedAt: Date.now() },
+    record: { ...record, pendingSubmission: pending, savedAt: now },
   }
 }
 
@@ -98,7 +106,7 @@ export function settlePracticeSubmission(
         : {
             submissionId: submission.id,
             answerRevision: pending.answerRevision,
-            submittedAt: submission.endTime ?? new Date(now).toISOString(),
+            submittedAt: submission.createdAt || new Date(now).toISOString(),
           },
     savedAt: now,
   }

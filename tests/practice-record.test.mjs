@@ -42,7 +42,7 @@ const context = {
   paperId: 'papone',
   source: 'practice',
   subjectId: 'subone',
-  paperType: 'pastExams',
+  paperType: 'realSource',
 }
 const answer = {
   questionId: 'que_one',
@@ -105,6 +105,7 @@ test('旧题集分类不恢复或转换，原始作答仍留在存储中', () =>
 })
 
 test('当前版本完整保存答案、未确认输入、位置及提交快照，刷新后直接恢复', () => {
+  const fixedNow = now + 5000
   const record = updatePracticeRecord(
     createPracticeRecord(context, now),
     progress({
@@ -112,6 +113,7 @@ test('当前版本完整保存答案、未确认输入、位置及提交快照�
       inputs: { [input.questionId]: input },
       pendingSubmissionId: submissionId,
     }),
+    fixedNow,
   )
   assert.equal(record.version, 3)
   assert.equal(writePracticeRecord(record), true)
@@ -119,7 +121,7 @@ test('当前版本完整保存答案、未确认输入、位置及提交快照�
   assert.deepEqual(record.pendingSubmission.payload, {
     submissionId,
     userAnswers: { [answer.questionId]: 'A' },
-    startTime: new Date(now).toISOString(),
+    durationSeconds: 5,
   })
 })
 

@@ -52,7 +52,7 @@ const context = {
   paperId: 'papone',
   source: 'practice',
   subjectId: 'subone',
-  paperType: 'pastExams',
+  paperType: 'realSource',
 }
 const questions = [
   { id: 'que_one', questionType: 'single', title: '' },

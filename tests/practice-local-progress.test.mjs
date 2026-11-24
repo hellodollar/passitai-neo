@@ -46,7 +46,7 @@ const context = {
   paperId: 'papone',
   subjectId: 'subone',
   source: 'practice',
-  paperType: 'pastExams',
+  paperType: 'realSource',
 }
 const answer = { questionId: 'que_one', fingerprint: 'fp1', text: '甲', values: ['A'] }
 const input = { questionId: 'que_two', fingerprint: 'fp2', text: '未确认', values: [] }
@@ -85,7 +85,7 @@ test('单题集清除答案、输入、位置及提交状态，不删除另一�
     payload: {
       submissionId: 'rec123456abcdef',
       userAnswers: { que_one: 'A' },
-      startTime: new Date(original.startedAt).toISOString(),
+      durationSeconds: 12,
     },
   }
   original.lastSubmission = {
@@ -113,14 +113,14 @@ test('分类清理跨科目覆盖全部目标题集，其他分类和收藏、�
   const contexts = [
     context,
     { ...context, paperId: 'paptwo', subjectId: 'subtwo' },
-    { ...context, paperId: 'papmock', paperType: 'examSimulation' },
+    { ...context, paperId: 'papmock', paperType: 'pointCoverage' },
     { ...context, paperId: 'collection:subject:subone', source: 'favorites', paperType: null },
     { ...context, paperId: 'collection:subject:subone', source: 'mistakes', paperType: null },
   ]
   const records = contexts.map((ctx) => makeRecord(ctx))
   records.forEach(writePracticeRecord)
   assert.equal(
-    clearPracticeRecords({ kind: 'category', userId: context.userId, paperType: 'pastExams' }),
+    clearPracticeRecords({ kind: 'category', userId: context.userId, paperType: 'realSource' }),
     true,
   )
   assert.equal(readPracticeRecord(contexts[0]), null)
@@ -187,12 +187,19 @@ test('清理后的迟到交卷响应不能登记报告，也不能复用旧提�
   const old = preparePracticeSubmission(makeRecord(), { que_one: 'A' }, () => 'rec123456abcdef')
   const response = {
     id: old.pending.submissionId,
+    subjectCode: 'GD-15043',
     paperId: context.paperId,
+    paperName: '测试题集',
     userAnswers: old.pending.payload.userAnswers,
-    startTime: old.pending.payload.startTime,
-    endTime: new Date().toISOString(),
-    recordStatus: 'completed',
+    totalQuestions: 2,
+    answeredCount: 1,
+    objectiveTotal: 2,
+    objectiveCorrect: 1,
+    objectiveScore: null,
+    subjectiveScore: null,
     score: null,
+    durationSeconds: old.pending.payload.durationSeconds ?? 0,
+    createdAt: new Date().toISOString(),
   }
   clearPracticeRecords({ kind: 'paper', identity: context })
   assert.throws(() => preparePracticeSubmission(old.record, { que_one: 'A' }))
@@ -201,9 +208,9 @@ test('清理后的迟到交卷响应不能登记报告，也不能复用旧提�
 
 test('先后清理不同分类或单题集保留独立屏障，不使之前清理的记录重新有效', () => {
   const past = makeRecord()
-  const mock = makeRecord({ ...context, paperId: 'papmock', paperType: 'examSimulation' })
-  clearPracticeRecords({ kind: 'category', userId: context.userId, paperType: 'pastExams' })
-  clearPracticeRecords({ kind: 'category', userId: context.userId, paperType: 'examSimulation' })
+  const mock = makeRecord({ ...context, paperId: 'papmock', paperType: 'pointCoverage' })
+  clearPracticeRecords({ kind: 'category', userId: context.userId, paperType: 'realSource' })
+  clearPracticeRecords({ kind: 'category', userId: context.userId, paperType: 'pointCoverage' })
   clearPracticeRecords({ kind: 'paper', identity: { ...context, paperId: 'papother' } })
   assert.equal(isPracticeRecordCurrent(past), false)
   assert.equal(isPracticeRecordCurrent(mock), false)

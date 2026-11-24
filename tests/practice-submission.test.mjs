@@ -16,19 +16,50 @@ const {
 const { toSubmissionAnswers } = await loadSource('utils/practice/submission-answers.ts')
 const { buildSubmissionResult } = await loadSource('utils/practice/result.ts')
 
-const startedAt = Date.now() - 1000
+const startedAt = Date.now() - 5000
 const context = {
   userId: 'usrone',
   paperId: 'papone',
   source: 'practice',
   subjectId: 'subone',
-  paperType: 'pastExams',
+  paperType: 'realSource',
 }
 const questions = [
   { id: 'que_one', questionType: 'single', title: '单选', A: '甲', B: '乙', correctAnswer: 'A' },
   { id: 'que_two', questionType: 'multiple', title: '多选', A: '甲', B: '乙', correctAnswer: 'AB' },
   { id: 'que_three', questionType: 'essay', title: '论述', correctAnswer: '参考答案' },
 ]
+const paperDetail = {
+  id: context.paperId,
+  subjectCode: 'GD-15043',
+  provinceCode: '440000',
+  name: '测试题集',
+  type: 'realSource',
+  paperLayout: 'exam',
+  contentPeriod: '2026-04',
+  sourceType: 'system',
+  questionCount: 3,
+  sections: [
+    {
+      name: '综合',
+      questionIds: ['que_one', 'que_two', 'que_three'],
+      items: questions.map((question) => ({
+        id: question.id,
+        subjectCode: 'GD-15043',
+        title: question.title,
+        type: question.questionType,
+        A: question.A ?? null,
+        B: question.B ?? null,
+        C: null,
+        D: null,
+        E: null,
+        F: null,
+        correctAnswer: question.correctAnswer,
+        explanation: null,
+      })),
+    },
+  ],
+}
 const fingerprints = { que_one: 'fp1', que_two: 'fp2', que_three: 'fp3' }
 const single = { questionId: 'que_one', fingerprint: 'fp1', text: '甲', values: ['A'] }
 const multiple = { questionId: 'que_two', fingerprint: 'fp2', text: '甲、乙', values: ['A', 'B'] }
@@ -46,12 +77,19 @@ const createRecord = (answers = {}, inputs = {}) =>
   })
 const response = (plan, overrides = {}) => ({
   id: plan.pending.submissionId,
+  subjectCode: 'GD-15043',
   paperId: context.paperId,
-  recordStatus: 'completed',
+  paperName: '测试题集',
   userAnswers: structuredClone(plan.pending.payload.userAnswers),
+  totalQuestions: 3,
+  answeredCount: Object.keys(plan.pending.payload.userAnswers).length,
+  objectiveTotal: 2,
+  objectiveCorrect: 0,
+  objectiveScore: null,
+  subjectiveScore: null,
   score: null,
-  startTime: plan.pending.payload.startTime,
-  endTime: new Date().toISOString(),
+  durationSeconds: plan.pending.payload.durationSeconds ?? 5,
+  createdAt: new Date().toISOString(),
   ...overrides,
 })
 const previousWindow = globalThis.window
@@ -78,7 +116,6 @@ test('交卷生成不含下划线的 rec 实体 ID，同版本重试沿用原 ID
 })
 
 test('全部已答、部分已答、零作答均可交卷并生成报告，未确认输入不算已答', () => {
-  const detail = { paper: { name: '测试题集', sections: [{ items: questions }] } }
   const textAnswer = { ...textInput, text: '已确认答案' }
   for (const [answers, expectedCount] of [
     [{ que_one: single, que_two: multiple, que_three: textAnswer }, 3],
@@ -87,12 +124,14 @@ test('全部已答、部分已答、零作答均可交卷并生成报告，未�
   ]) {
     const record = createRecord(answers, { que_three: textInput })
     const payload = toSubmissionAnswers(record.answers, questions)
-    const plan = preparePracticeSubmission(record, payload, () => id1)
+    const plan = preparePracticeSubmission(record, payload, () => id1, startedAt + 5000)
     assert.equal(plan.kind, 'submit')
     const submission = response(plan)
-    const report = buildSubmissionResult(detail, submission, context.paperId, '科目')
+    const report = buildSubmissionResult(paperDetail, submission, '科目')
     assert.equal(report.answeredCount, expectedCount)
     assert.equal(report.unansweredCount, 3 - expectedCount)
+    assert.equal(report.subjectCode, 'GD-15043')
+    assert.equal(report.elapsedSeconds, 5)
     const saved = settlePracticeSubmission(plan.record, plan.record, submission)
     assert.deepEqual(saved.answers, record.answers)
     assert.deepEqual(saved.inputs, record.inputs)
@@ -149,10 +188,10 @@ test('切题或编辑未确认输入不生成新报告；补答确认后生成�
   assert.deepEqual(first.pending.payload.userAnswers, { que_one: 'A' })
 })
 
-test('请求失败、刷新后重试固定 ID、答案和开始时间，不采用新输入重建请求', () => {
+test('请求失败、刷新后重试固定 ID、答案和耗时，不采用新输入重建请求', () => {
   const record = createRecord({ que_two: multiple })
   const payload = { que_two: ['A', 'B'] }
-  const first = preparePracticeSubmission(record, payload, () => id1)
+  const first = preparePracticeSubmission(record, payload, () => id1, startedAt + 12_000)
   payload.que_two.push('C')
   assert.equal(writePracticeRecord(first.record), true)
   const reloaded = readPracticeRecord(context)
@@ -161,7 +200,7 @@ test('请求失败、刷新后重试固定 ID、答案和开始时间，不采�
   })
   assert.deepEqual(retry.pending, first.pending)
   assert.deepEqual(retry.pending.payload.userAnswers.que_two, ['A', 'B'])
-  assert.equal(retry.pending.payload.startTime, new Date(startedAt).toISOString())
+  assert.equal(retry.pending.payload.durationSeconds, 12)
 })
 
 test('超时提交恢复成功只登记报告，不清除本地作答；下次交卷可复用结果', () => {
@@ -232,7 +271,7 @@ test('默认生成的提交 ID 满足接口格式，缺失交卷时间时使用�
   const saved = settlePracticeSubmission(
     plan.record,
     plan.record,
-    response(plan, { endTime: null }),
+    response(plan, { createdAt: '' }),
     startedAt,
   )
   assert.equal(saved.lastSubmission.submittedAt, new Date(startedAt).toISOString())

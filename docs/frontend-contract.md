@@ -55,16 +55,20 @@ Vue Router 使用 `createWebHistory(import.meta.env.BASE_URL)`，CF 为深链提
 - 科目显隐和顺序属于首页浏览记忆，不冒充服务端计划。科目业务码使用完整大写省份前缀。
 - `useAuthStore` 管理登录身份，退出或换账号重置考试计划及相关会话 Store。收藏、错题列表不另建 Store，临时状态留在各自页面。
 
-## 首页练习资源模板
+## 首页练习资源与个人科目画像
 
-`HomePracticeResources` 从 `GET /api/practice/resources?subjectCode=<科目码>` 读取当前科目的编排题集。模板类型枚举由 `src/generated/practice-template-values.ts`（`PracticeTemplateType`）生成，前端固定按下表映射 Lucide 图标与主题语义色，不随接口顺序或文案变动：
+`HomePracticeResources` 从 `GET /api/practice/resources?subjectCode=<科目码>` 读取当前科目的编排题集。资源类型枚举由 `src/generated/practice-resource-values.ts`（`PracticeResourceType`）生成，前端固定按下表映射 Lucide 图标与主题语义色，不随接口顺序或文案变动：
 
-| 模板类型 (`type`) | 业务含义 | 固定图标 (`@lucide/vue`) | 主题语义色 |
+| 资源类型 (`type`) | 业务含义 | 固定图标 (`@lucide/vue`) | 主题语义色 |
 | ----------------- | -------- | ------------------------ | ---------- |
 | `baseline`        | 基准能力 | `Target`                 | `primary`  |
 | `mockExams`       | 模拟考试 | `Timer`                  | `accent`   |
 | `pastExams`       | 历年真题 | `History`                | `info`     |
 | `aiEnhance`       | AI 增强  | `Sparkles`               | `ai`       |
+
+- `SubjectProfileCard` 随当前选中科目加载 `GET /api/subjects/:code/profile`，展示预估分、准备度档位（`ready / close / building / starter`）、四槽位有效分与掌握度四档；四档掌握度文案及 AI 补强类型文案统一复用 `src/generated/practice-resource-values.ts` 导出的 `trainingMasteryLabels` / `aiEnhanceLabels`，不手写重复映射。单卷掌握度与已刷轮次由画像 `trainingProgress` 透传至 `HomePracticeResources`，不额外重复请求。
+- `SubjectEvaluationPopup` 承接规则评估诊断（`POST /api/subjects/:code/evaluate`）与历史快照分页（`GET /api/subjects/:code/evaluations`）；推荐行动按 `actionType` 分发：`paper` 带 `returnTo` 直跳对应 `paperId` 练习，`mistakes` 跳转错题本，`aiGenerate` 携带 `enhanceType` 与薄弱 `pointKeys` 调用 `POST /api/subjects/:code/ai-enhance/generate` 生成补强卷后刷新资源与画像并进入练习。
+- `aiEnhance` 分类提供手动生成（5 类 `aiEnhanceTypes`）与删除私有补强卷（`DELETE /api/subjects/:code/ai-enhance/papers/:paperId`，需二次确认弹窗），操作成功后同步刷新资源列表与科目画像。
 
 ## 收藏、错题与共用内容读取
 
@@ -75,7 +79,7 @@ Vue Router 使用 `createWebHistory(import.meta.env.BASE_URL)`，CF 为深链提
 - `api/practice-content.ts` 按来源读取内容。集合协议仍用 `subjectId`；普通题集返回 `subjectCode`，适配时查询真实科目 ID，不将业务码塞入 ID 参数。
 - 集合每题保留实际科目和来源题集，本地聚合标识不能代替真实 `paperId` 发起收藏/错题操作。`favId` 和 `mistakeId` 按接口各自使用，不混用。
 
-普通练习题集下发 `correctAnswer`、`explanation`，适配层原样保留，供选择题确认后的对错、正确选项及解析展示使用；单选和判断选择即确认，多选点击“确认答案”后反馈。答对自动下一题及错题同步沿用现有设置。内容适配器仍返回 `canSubmit: false`，新版交卷与报告尚未对接；已有报告路由和旧实现不代表新版闭环完成。
+普通练习题集下发 `correctAnswer`、`explanation`，适配层原样保留，供选择题确认后的对错、正确选项及解析展示使用；单选和判断选择即确认，多选点击“确认答案”后反馈。答对自动下一题及错题同步沿用现有设置。普通题集已开启交卷闭环（`canSubmit: true`）：交卷请求 `POST /api/practice/papers/:paperId/submissions` 携带幂等 `submissionId`（`rec` + 12 位十六进制）、`userAnswers` 与耗时 `durationSeconds`（0–86400 秒）；报告页读取 `GET /api/practice/papers/:paperId` 与 `GET /api/practice/papers/:paperId/submissions/:submissionId` 展示客观/主观/综合得分与作答明细，存在已作答主观题时支持三档自评（`PUT .../subjective-self-grade`，`mastered=100% / partial=50% / missed=0%`）重算总分并刷新科目画像，并支持交卷后一键触发科目规则评估（`triggerType: 'practice'`）。收藏与错题集合练习保持纯刷题，不开放交卷（`canSubmit: false`）。
 
 ## 浏览器存储与账号隔离
 

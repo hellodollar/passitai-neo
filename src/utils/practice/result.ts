@@ -1,6 +1,6 @@
 import type {
-  PracticePaperDetail,
-  PracticePaperItem,
+  PaperDetail,
+  PaperQuestion,
   PracticeResultQuestionStatus,
   PracticeSubmission,
   PracticeSubmissionResult,
@@ -8,23 +8,25 @@ import type {
 
 import { isAnswerCorrect, isChoiceQuestionType } from './question'
 
-function questionStatus(item: PracticePaperItem, userAnswer: string): PracticeResultQuestionStatus {
+function questionStatus(item: PaperQuestion, userAnswer: string): PracticeResultQuestionStatus {
   if (!userAnswer) return 'unanswered'
-  if (!isChoiceQuestionType(item.questionType) || !item.correctAnswer) return 'pending'
-  return isAnswerCorrect({ questionId: item.id, text: userAnswer, values: [userAnswer] }, item)
+  if (!isChoiceQuestionType(item.type) || !item.correctAnswer) return 'pending'
+  return isAnswerCorrect(
+    { questionId: item.id, text: userAnswer, values: [userAnswer] },
+    { ...item, questionType: item.type },
+  )
     ? 'correct'
     : 'wrong'
 }
 
 /** 用本次交卷和题集快照构造页面报告，不请求或写入服务端。 */
 export function buildSubmissionResult(
-  detail: PracticePaperDetail,
+  paper: PaperDetail,
   submission: PracticeSubmission,
-  paperId: string,
   subjectName: string,
 ): PracticeSubmissionResult {
   let index = 0
-  const questions = detail.paper.sections.flatMap((group) =>
+  const questions = paper.sections.flatMap((group) =>
     group.items.map((item) => {
       index += 1
       const answer = submission.userAnswers[item.id]
@@ -33,7 +35,7 @@ export function buildSubmissionResult(
         id: item.id,
         index,
         title: item.title,
-        questionType: item.questionType,
+        questionType: item.type,
         userAnswer,
         correctAnswer: item.correctAnswer,
         explanation: item.explanation ?? undefined,
@@ -50,9 +52,12 @@ export function buildSubmissionResult(
 
   return {
     submissionId: submission.id,
-    paperId,
-    paperName: detail.paper.name,
+    subjectCode: submission.subjectCode || paper.subjectCode,
+    paperId: paper.id,
+    paperName: submission.paperName || paper.name,
     subjectName,
+    objectiveScore: submission.objectiveScore,
+    subjectiveScore: submission.subjectiveScore,
     score: submission.score,
     totalCount,
     answeredCount: totalCount - unansweredCount,
@@ -60,14 +65,8 @@ export function buildSubmissionResult(
     wrongCount,
     unansweredCount,
     accuracy: gradedCount > 0 ? Math.round((correctCount / gradedCount) * 100) : 0,
-    elapsedSeconds:
-      submission.startTime && submission.endTime
-        ? Math.max(
-            0,
-            Math.round((Date.parse(submission.endTime) - Date.parse(submission.startTime)) / 1000),
-          )
-        : undefined,
-    submittedAt: submission.endTime ?? undefined,
+    elapsedSeconds: submission.durationSeconds ?? undefined,
+    submittedAt: submission.createdAt || undefined,
     questions,
   }
 }

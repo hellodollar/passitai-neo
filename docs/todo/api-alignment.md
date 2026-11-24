@@ -1,7 +1,7 @@
 # [P0] 后端生成常量命名对齐 TODO
 
 - **优先级**：`P0`（最高）
-- **状态**：待处理
+- **状态**：代码与单测已完成，待联调验收后删除
 - **来源**：`passitai-api` 练习资源领域常量命名对齐（对应最新镜像 [docs/client-api.md](../client-api.md)）
 
 ## 1. 领域常量生成文件替换
@@ -27,6 +27,7 @@
 - 生成字典 `src/generated/practice-resource-values.ts` 已新增导出 `trainingMasteryLevels / TrainingMasteryLevel / trainingMasteryLabels / aiEnhanceTypes / AiEnhanceType / aiEnhanceLabels / aiEnhanceModes / AiEnhanceMode`，前端直接复用，勿手写四档文案或补强枚举。
 
 **前端待对接要点**：
+
 - 在 `src/types/` 与 `src/api/` 补齐上述 3 个接口的类型与请求方法；
 - 在首页或科目学习概览区接入 `GET /api/subjects/:code/profile`（展示 4 槽位进度、预估分与准备度档位）；
 - 提供“立即评估 / 交卷后评估”触发 `POST /api/subjects/:code/evaluate`，将 `recommendations` 中 `actionType: 'paper'` 直接跳对应 `paperId` 练习、`'mistakes'` 跳错题本、`'aiGenerate'` 预留或引导薄弱考点强化；
@@ -34,8 +35,8 @@
 
 ## 验收条件
 
-- [ ] 类型检查与构建通过，代码库无残留 `practice-template-values` / `PracticeTemplateType` 引用
-- [ ] 已删除 `src/generated/practice-template-values.ts`
-- [ ] 首页训练资源模块渲染与切换正常
-- [ ] 个人科目画像展示、手动/交卷触发评估、推荐跳转与历史评估列表联调通过
+- [x] 类型检查与构建通过，代码库无残留 `practice-template-values` / `PracticeTemplateType` 引用
+- [x] 已删除 `src/generated/practice-template-values.ts`
+- [ ] 首页训练资源模块渲染与切换正常（待接实网后端真机/浏览器联调确认）
+- [ ] 个人科目画像展示、手动/交卷触发评估、推荐跳转与历史评估列表联调通过（待接实网后端联调确认）
 - [ ] 验收完成后删除本 TODO 文档

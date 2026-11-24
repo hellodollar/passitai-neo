@@ -637,7 +637,7 @@ async function loadPaperData() {
       paperId: paperIdParam,
       source,
       subjectId: paper.subjectId,
-      paperType: null,
+      paperType: paper.paperType ?? null,
     }
     const hasSavedRecord = loadSavedRecord(context, fingerprints)
     if (sequence !== loadSequence) return

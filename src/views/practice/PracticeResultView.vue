@@ -1,22 +1,42 @@
 <script setup lang="ts">
-import { CircleAlert, Clock3 } from '@lucide/vue'
+import { CircleAlert, ClipboardCheck, Clock3, TrendingUp } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import { evaluateSubject } from '@/api/subject-profile'
 import EmptyState from '@/components/common/EmptyState.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
+import SubjectEvaluationPopup from '@/components/home/SubjectEvaluationPopup.vue'
 import PracticeResultQuestionPopup from '@/components/practice/PracticeResultQuestionPopup.vue'
 import { usePracticeResult } from '@/composables/usePracticeResult'
-import { RESULT_STATUS_LABELS } from '@/constants/practice'
+import { RESULT_STATUS_LABELS, SUBJECTIVE_SELF_GRADE_OPTIONS } from '@/constants/practice'
 import { questionTypeLabels } from '@/generated/domain-values'
-import type { PracticeResultQuestion, PracticeResultQuestionStatus, QuestionType } from '@/types'
+import { useAuthStore } from '@/stores/auth'
+import type {
+  PracticeResultQuestion,
+  PracticeResultQuestionStatus,
+  QuestionType,
+  SubjectiveSelfGradeRating,
+  UserSubjectEvaluation,
+} from '@/types'
 import { resolvePracticeReturn, returnToPracticeList } from '@/utils/browse/navigation'
+import { isChoiceQuestionType } from '@/utils/practice/question'
+import { showSuccessToast } from '@/utils/toast'
 
 const props = defineProps<{ paperId: string; submissionId: string }>()
 
 const router = useRouter()
 const route = useRoute()
-const { result, loading, loadError, loadResult } = usePracticeResult({
+const auth = useAuthStore()
+const {
+  result,
+  loading,
+  loadError,
+  submittingSelfGrade,
+  selfGradeError,
+  loadResult,
+  submitSelfGrade,
+} = usePracticeResult({
   paperId: () => props.paperId,
   submissionId: () => props.submissionId,
   subjectName: () => (typeof route.query.subjectName === 'string' ? route.query.subjectName : ''),
@@ -24,8 +44,27 @@ const { result, loading, loadError, loadResult } = usePracticeResult({
 
 const selectedQuestion = ref<PracticeResultQuestion | null>(null)
 const resultFilter = ref<'all' | 'review'>('all')
+const selfGradeRatings = ref<Record<string, SubjectiveSelfGradeRating>>({})
+const evaluationPopupOpen = ref(false)
+const latestEvaluation = ref<UserSubjectEvaluation | null>(null)
+const evaluatingSubject = ref(false)
+
 const hasGradedQuestions = computed(() =>
   Boolean(result.value && result.value.correctCount + result.value.wrongCount > 0),
+)
+
+/** 本次交卷已作答的主观题，可提交三档自评 */
+const answeredSubjectiveQuestions = computed(() =>
+  (result.value?.questions ?? []).filter(
+    (question) => !isChoiceQuestionType(question.questionType) && Boolean(question.userAnswer),
+  ),
+)
+
+const ratedSubjectiveCount = computed(
+  () =>
+    answeredSubjectiveQuestions.value.filter((question) =>
+      Boolean(selfGradeRatings.value[question.id]),
+    ).length,
 )
 
 const filteredQuestions = computed(() => {
@@ -52,6 +91,21 @@ const elapsedText = computed(() => {
   return minutes > 0 ? `${minutes}分${restSeconds}秒` : `${restSeconds}秒`
 })
 
+const scoreHeadline = computed(() => {
+  const current = result.value
+  if (!current) return null
+  if (current.score !== null) {
+    return { value: `${current.score}`, unit: '分', label: '综合得分' }
+  }
+  if (current.objectiveScore !== null) {
+    return { value: `${current.objectiveScore}`, unit: '分', label: '客观题得分' }
+  }
+  if (hasGradedQuestions.value) {
+    return { value: `${current.accuracy}`, unit: '%', label: '客观正确率' }
+  }
+  return null
+})
+
 function questionStatusClasses(status: PracticeResultQuestionStatus) {
   const map = {
     correct: 'border-transparent bg-success/10 text-success',
@@ -62,15 +116,63 @@ function questionStatusClasses(status: PracticeResultQuestionStatus) {
   return map[status]
 }
 
+function setRating(questionId: string, rating: SubjectiveSelfGradeRating) {
+  selfGradeRatings.value = { ...selfGradeRatings.value, [questionId]: rating }
+}
+
+async function handleSubmitSelfGrade() {
+  const ratings: Record<string, SubjectiveSelfGradeRating> = {}
+  for (const question of answeredSubjectiveQuestions.value) {
+    const value = selfGradeRatings.value[question.id]
+    if (value) ratings[question.id] = value
+  }
+  if (Object.keys(ratings).length === 0) return
+  const ok = await submitSelfGrade(ratings)
+  if (ok) showSuccessToast('主观题自评已提交，得分与科目画像已更新')
+}
+
+async function evaluateAfterPractice() {
+  const subjectCode = result.value?.subjectCode
+  if (!subjectCode || evaluatingSubject.value) return
+  const token = auth.session?.token
+  const submissionId = props.submissionId
+  evaluatingSubject.value = true
+  try {
+    const evaluation = await evaluateSubject(subjectCode, { triggerType: 'practice' })
+    if (token !== auth.session?.token || submissionId !== props.submissionId) return
+    latestEvaluation.value = evaluation
+    evaluationPopupOpen.value = true
+  } catch {
+    // 错误提示由请求层统一展示
+  } finally {
+    evaluatingSubject.value = false
+  }
+}
+
+function openRecommendedPaper(paperId: string) {
+  const returnTo = resolvePracticeReturn(route.query, 'practice')
+  void router.push({
+    name: 'practice',
+    params: { paperId },
+    query: {
+      subjectName: result.value?.subjectName || undefined,
+      returnTo,
+    },
+  })
+}
+
 function returnToPractice() {
   returnToPracticeList(router, resolvePracticeReturn(route.query, 'practice'))
 }
 
 watch(
-  result,
+  [() => props.paperId, () => props.submissionId],
   () => {
     selectedQuestion.value = null
     resultFilter.value = 'all'
+    selfGradeRatings.value = {}
+    evaluationPopupOpen.value = false
+    latestEvaluation.value = null
   },
   { flush: 'sync' },
 )
@@ -120,17 +222,36 @@ watch(
               >
                 {{ result.subjectName }}
               </p>
+              <p
+                v-if="result.objectiveScore !== null || result.subjectiveScore !== null"
+                class="mt-1.5 text-xs tabular-nums text-base-content/55"
+              >
+                <template v-if="result.objectiveScore !== null">
+                  客观 {{ result.objectiveScore }} 分
+                </template>
+                <template v-if="result.objectiveScore !== null && result.subjectiveScore !== null">
+                  ·
+                </template>
+                <template v-if="result.subjectiveScore !== null">
+                  主观 {{ result.subjectiveScore }} 分
+                </template>
+              </p>
             </div>
 
             <div
-              v-if="hasGradedQuestions"
+              v-if="scoreHeadline"
               class="shrink-0 text-right"
-              :aria-label="`客观题正确率 ${result.accuracy}%`"
+              :aria-label="`${scoreHeadline.label} ${scoreHeadline.value}${scoreHeadline.unit}`"
             >
               <p class="text-2xl font-semibold leading-none tabular-nums text-primary">
-                {{ result.accuracy }}%
+                {{ scoreHeadline.value
+                }}<span class="ml-0.5 text-xs font-medium text-primary/80">{{
+                  scoreHeadline.unit
+                }}</span>
               </p>
-              <p class="mt-1 text-[11px] font-medium text-base-content/55">正确率</p>
+              <p class="mt-1 text-[11px] font-medium text-base-content/55">
+                {{ scoreHeadline.label }}
+              </p>
             </div>
           </div>
 
@@ -170,6 +291,112 @@ watch(
             <Clock3 :size="14" />
             本次用时 {{ elapsedText }}
           </div>
+        </section>
+
+        <!-- 主观题三档自评 -->
+        <section
+          v-if="answeredSubjectiveQuestions.length > 0"
+          class="mt-3.5 overflow-hidden rounded-2xl bg-base-100 p-4 dark:bg-base-200"
+        >
+          <div class="flex items-center justify-between gap-2">
+            <div>
+              <h2
+                class="flex items-center gap-1.5 text-[15px] font-semibold leading-tight tracking-tight"
+              >
+                <ClipboardCheck :size="16" class="text-secondary" aria-hidden="true" />
+                主观题自评
+              </h2>
+              <p class="mt-0.5 text-xs leading-snug text-base-content/55">
+                对照参考答案评分，提交后自动计算总分并更新科目画像
+              </p>
+            </div>
+            <span class="shrink-0 text-xs font-medium tabular-nums text-base-content/55">
+              {{ ratedSubjectiveCount }}/{{ answeredSubjectiveQuestions.length }}
+            </span>
+          </div>
+
+          <div class="mt-3 space-y-3">
+            <article
+              v-for="question in answeredSubjectiveQuestions"
+              :key="question.id"
+              class="rounded-xl bg-base-200/65 p-3 dark:bg-base-300/45"
+            >
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-xs font-medium text-base-content/55">
+                  第 {{ question.index }} 题 · {{ questionTypeLabels[question.questionType] }}
+                </span>
+                <button
+                  type="button"
+                  class="text-xs font-medium text-primary active:opacity-75"
+                  @click="selectedQuestion = question"
+                >
+                  看解析
+                </button>
+              </div>
+              <p class="mt-1.5 line-clamp-2 text-sm font-medium leading-snug text-base-content">
+                {{ question.title }}
+              </p>
+              <div
+                class="mt-2 space-y-1 rounded-lg bg-base-100/80 px-2.5 py-2 text-xs leading-relaxed dark:bg-base-200/80"
+              >
+                <p class="text-base-content/75">
+                  <span class="font-medium text-base-content/55">我的答案：</span
+                  >{{ question.userAnswer }}
+                </p>
+                <p class="text-success">
+                  <span class="font-medium text-base-content/55">参考答案：</span
+                  >{{ question.correctAnswer || '暂无参考答案' }}
+                </p>
+              </div>
+              <div
+                class="mt-2.5 grid grid-cols-3 gap-1.5"
+                role="radiogroup"
+                :aria-label="`第 ${question.index} 题自评`"
+              >
+                <button
+                  v-for="option in SUBJECTIVE_SELF_GRADE_OPTIONS"
+                  :key="option.value"
+                  type="button"
+                  role="radio"
+                  :aria-checked="selfGradeRatings[question.id] === option.value"
+                  class="flex h-8 items-center justify-center gap-1 rounded-lg border text-xs transition-colors"
+                  :class="
+                    selfGradeRatings[question.id] === option.value
+                      ? option.activeClass
+                      : 'border-transparent bg-base-100 font-medium text-base-content/70 active:bg-base-200 dark:bg-base-200'
+                  "
+                  @click="setRating(question.id, option.value)"
+                >
+                  <span>{{ option.label }}</span>
+                  <span class="text-[11px] opacity-70">{{ option.ratio }}</span>
+                </button>
+              </div>
+            </article>
+          </div>
+
+          <p v-if="selfGradeError" role="alert" class="mt-2.5 text-xs text-error">
+            {{ selfGradeError }}
+          </p>
+
+          <button
+            type="button"
+            class="mt-3 flex h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-primary text-sm font-medium text-primary-content transition-colors active:opacity-90 disabled:opacity-50"
+            :disabled="submittingSelfGrade || ratedSubjectiveCount === 0"
+            @click="handleSubmitSelfGrade"
+          >
+            <span
+              v-if="submittingSelfGrade"
+              class="loading loading-spinner loading-xs"
+              aria-hidden="true"
+            ></span>
+            {{
+              submittingSelfGrade
+                ? '提交中…'
+                : result.subjectiveScore !== null
+                  ? '更新主观题自评'
+                  : '提交主观题自评'
+            }}
+          </button>
         </section>
 
         <section class="mt-3.5 overflow-hidden rounded-2xl bg-base-100 dark:bg-base-200">
@@ -225,7 +452,7 @@ watch(
               <span class="size-1.5 rounded-full border border-base-300 bg-base-100"></span>未答
             </span>
             <span class="flex items-center gap-1.5 text-base-content/55">
-              <span class="size-1.5 rounded-full bg-secondary"></span>待批阅
+              <span class="size-1.5 rounded-full bg-secondary"></span>待自评
             </span>
           </div>
 
@@ -257,16 +484,42 @@ watch(
           </div>
         </section>
 
-        <button
-          class="mt-3.5 flex min-h-11 w-full items-center justify-center rounded-2xl bg-base-100 text-sm font-medium text-base-content/70 transition-colors active:bg-base-200/60 dark:bg-base-200 dark:active:bg-base-300/50"
-          type="button"
-          @click="returnToPractice"
-        >
-          返回练习
-        </button>
+        <div class="mt-3.5 grid grid-cols-2 gap-2.5">
+          <button
+            class="flex min-h-11 items-center justify-center rounded-2xl bg-base-100 text-sm font-medium text-base-content/70 transition-colors active:bg-base-200/60 dark:bg-base-200 dark:active:bg-base-300/50"
+            type="button"
+            @click="returnToPractice"
+          >
+            返回练习
+          </button>
+          <button
+            v-if="result.subjectCode"
+            class="flex min-h-11 items-center justify-center gap-1.5 rounded-2xl bg-primary text-sm font-medium text-primary-content transition-colors active:opacity-90 disabled:opacity-50"
+            type="button"
+            :disabled="evaluatingSubject"
+            @click="evaluateAfterPractice"
+          >
+            <span
+              v-if="evaluatingSubject"
+              class="loading loading-spinner loading-xs"
+              aria-hidden="true"
+            ></span>
+            <TrendingUp v-else :size="15" aria-hidden="true" />
+            {{ evaluatingSubject ? '评估中…' : '立即评估科目' }}
+          </button>
+        </div>
       </template>
     </div>
 
     <PracticeResultQuestionPopup v-model="selectedQuestion" />
+    <SubjectEvaluationPopup
+      v-if="result?.subjectCode"
+      v-model="evaluationPopupOpen"
+      :subject-code="result.subjectCode"
+      :subject-name="result.subjectName"
+      :initial-evaluation="latestEvaluation"
+      @open-paper="openRecommendedPaper"
+      @open-mistakes="router.push({ name: 'mistakes' })"
+    />
   </section>
 </template>

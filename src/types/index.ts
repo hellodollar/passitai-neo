@@ -20,6 +20,8 @@ export type {
   CollectionSort,
   CollectionQuery,
   FavoriteMutationResult,
+  FrequentMistakeItem,
+  MistakePointSummary,
 } from './collection'
 export type { OptionItem, SubjectOptionItem } from './catalog'
 export type { ExamPlan, ExamPlanSubject, ScheduledExam, UpdateExamPlanBody } from './exam-plan'
@@ -29,21 +31,31 @@ export type {
   NotificationSettings,
   NotificationSummary,
 } from './notification'
-export type { Paper, PaperDetail, PaperLayout, PaperQuestion, PaperType } from './paper'
+export type {
+  Paper,
+  PaperDetail,
+  PaperLayout,
+  PaperQuestion,
+  PaperType,
+  SimilarQuestionItem,
+  SimilarQuestionsResult,
+} from './paper'
 export type { PracticeResource } from './practice-resource'
 export type { QuestionContent, QuestionListItem, QuestionType } from './question'
 export type {
   CollectionPracticePaper,
-  PracticePaperDetail,
   PracticePaperItem,
   PracticePaperLite,
   PracticePaperSection,
+  PracticeRecordSummary,
   PracticeResultQuestion,
   PracticeResultQuestionStatus,
   PracticeSettings,
   PracticeSource,
   PracticeSubmission,
   PracticeSubmissionResult,
+  SubjectiveSelfGradeBody,
+  SubjectiveSelfGradeRating,
   SubmitPracticePaperBody,
 } from './practice'
 export type {
@@ -57,3 +69,25 @@ export type {
   PracticeRecordIdentity,
   PracticeRecordProgress,
 } from './practice-record'
+export type {
+  EvaluateUserSubjectBody,
+  EvaluationActionType,
+  EvaluationConfidence,
+  EvaluationGapCode,
+  EvaluationGapSeverity,
+  EvaluationReadinessLevel,
+  EvaluationTriggerType,
+  GenerateAiEnhancePaperBody,
+  GeneratedAiEnhancePaper,
+  UserSubjectEvaluation,
+  UserSubjectEvaluationEvidence,
+  UserSubjectEvaluationGap,
+  UserSubjectEvaluationRecommendation,
+  UserSubjectEvaluationStrength,
+  UserSubjectProfile,
+  UserSubjectProfileLatestEvaluation,
+  UserSubjectProfilePaperProgress,
+  UserSubjectProfilePointStat,
+  UserSubjectProfileQuestionTypeStat,
+  UserSubjectProfileSlotProgress,
+} from './subject-profile'

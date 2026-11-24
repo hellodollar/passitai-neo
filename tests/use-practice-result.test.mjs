@@ -33,45 +33,78 @@ const deferred = () => {
   return { promise, resolve }
 }
 const paper = (id) => ({
-  paper: {
-    id,
-    name: '隔离测试题集',
-    subjectId: 'subfixture',
-    type: 'specialTraining',
-    assessmentType: 'overall',
-    questionCount: 1,
-    sections: [
-      {
-        name: '单选',
-        items: [
-          {
-            id: 'qstfixture',
-            title: '测试题目',
-            questionType: 'single',
-            A: '甲',
-            B: '乙',
-            C: null,
-            D: null,
-            E: null,
-            F: null,
-            correctAnswer: 'A',
-            explanation: '测试解析',
-          },
-        ],
-      },
-    ],
-  },
-  favoriteQuestionIds: [],
-  latestRecord: null,
-})
-const submission = (id, answer = 'A') => ({
   id,
+  subjectCode: 'GD-15043',
+  provinceCode: '440000',
+  name: '隔离测试题集',
+  type: 'pointCoverage',
+  paperLayout: 'exam',
+  contentPeriod: '2026-04',
+  sourceType: 'system',
+  questionCount: 2,
+  sections: [
+    {
+      name: '单选',
+      questionType: 'single',
+      perScore: 50,
+      questionIds: ['qstfixture'],
+      items: [
+        {
+          id: 'qstfixture',
+          subjectCode: 'GD-15043',
+          title: '测试题目',
+          type: 'single',
+          A: '甲',
+          B: '乙',
+          C: null,
+          D: null,
+          E: null,
+          F: null,
+          correctAnswer: 'A',
+          explanation: '测试解析',
+        },
+      ],
+    },
+    {
+      name: '简答',
+      questionType: 'shortAnswer',
+      perScore: 50,
+      questionIds: ['qstsubj'],
+      items: [
+        {
+          id: 'qstsubj',
+          subjectCode: 'GD-15043',
+          title: '简答测试',
+          type: 'shortAnswer',
+          A: null,
+          B: null,
+          C: null,
+          D: null,
+          E: null,
+          F: null,
+          correctAnswer: '参考要点',
+          explanation: '简答解析',
+        },
+      ],
+    },
+  ],
+})
+const submission = (id, answer = 'A', overrides = {}) => ({
+  id,
+  subjectCode: 'GD-15043',
   paperId: 'papfixture',
-  recordStatus: 'completed',
-  userAnswers: { qstfixture: answer },
+  paperName: '隔离测试题集',
+  userAnswers: { qstfixture: answer, qstsubj: '我的作答' },
+  totalQuestions: 2,
+  answeredCount: 2,
+  objectiveTotal: 1,
+  objectiveCorrect: answer === 'A' ? 1 : 0,
+  objectiveScore: answer === 'A' ? 50 : 0,
+  subjectiveScore: null,
   score: null,
-  startTime: null,
-  endTime: null,
+  durationSeconds: 36,
+  createdAt: '2026-11-24T10:00:00Z',
+  ...overrides,
 })
 
 function signIn(id = 'first') {
@@ -127,8 +160,10 @@ beforeEach(() => {
   globalThis.fetch = async (input, options) => {
     const url = String(input)
     const token = new Headers(options?.headers).get('Authorization')
-    calls.push({ url, token })
-    return handler(url, token)
+    const method = options?.method ?? 'GET'
+    const body = options?.body ? JSON.parse(String(options.body)) : undefined
+    calls.push({ url, token, method, body })
+    return handler(url, token, method, body)
   }
   signIn()
 })
@@ -224,4 +259,39 @@ test('失败提供重试状态，缺失路由参数与退出登录不发报告�
   await nextTick()
   assert.equal(model.result.value, null)
   assert.equal(calls.length, before)
+})
+
+test('主观题三档自评调用 PUT 接口并刷新得分，账号切换后忽略迟到自评响应', async () => {
+  const { model } = setup()
+  await flush()
+  assert.equal(model.result.value.score, null)
+  assert.equal(model.result.value.objectiveScore, 50)
+
+  handler = (url, _token, method, body) => {
+    assert.equal(method, 'PUT')
+    assert.ok(
+      url.endsWith('/api/practice/papers/papfixture/submissions/recfirst/subjective-self-grade'),
+    )
+    assert.deepEqual(body, { ratings: { qstsubj: 'mastered' } })
+    return response(submission('recfirst', 'A', { subjectiveScore: 50, score: 100 }))
+  }
+  const ok = await model.submitSelfGrade({ qstsubj: 'mastered' })
+  assert.equal(ok, true)
+  assert.equal(model.result.value.subjectiveScore, 50)
+  assert.equal(model.result.value.score, 100)
+
+  const pendingGrade = deferred()
+  handler = (url, _token, method) => {
+    if (method === 'PUT') return pendingGrade.promise
+    return response(
+      url.includes('/submissions/') ? submission('recfirst', 'B') : paper('papfixture'),
+    )
+  }
+  const stalePromise = model.submitSelfGrade({ qstsubj: 'missed' })
+  signIn('second')
+  await nextTick()
+  await flush()
+  pendingGrade.resolve(response(submission('recfirst', 'A', { subjectiveScore: 0, score: 50 })))
+  assert.equal(await stalePromise, false)
+  assert.equal(model.result.value.questions[0].userAnswer, 'B')
 })

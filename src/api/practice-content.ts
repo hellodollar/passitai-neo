@@ -33,10 +33,13 @@ export async function fetchPracticeContent(target: PracticeTarget): Promise<{
       id: paper.id,
       name: paper.name,
       subjectId: subject.id,
+      subjectCode: paper.subjectCode,
+      paperType: paper.type,
       questionCount: paper.questionCount,
       sections: paper.sections.map((section) => ({
         name: section.name,
         questionType: section.questionType,
+        perScore: section.perScore,
         items: section.items.map((question) => ({
           ...question,
           questionType: question.type,
@@ -46,7 +49,6 @@ export async function fetchPracticeContent(target: PracticeTarget): Promise<{
       })),
     },
     favoriteQuestionIds: [],
-    // 答案用于逐题反馈，交卷协议仍待对接。
-    canSubmit: false,
+    canSubmit: true,
   }
 }

@@ -19,6 +19,7 @@ export function toQuestionListItem(item: PracticePaperItem, subjectId: string): 
     subjectId,
     title: item.title,
     questionType: item.questionType,
+    knowledgePoints: item.knowledgePoints,
     A: item.A,
     B: item.B,
     C: item.C,

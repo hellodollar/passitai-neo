@@ -208,7 +208,7 @@ interface ChangeEmailBody {
 只返回启用、开考且未删除记录；传专业时还要求该专业可用。
 科目字段为 `id / code / originCode / provinceCode / majorCodes / name / credit / examType`。
 详情另返回 `nextExam: { period, examDate } | null`，按该科目和省份读取最近未来考期。
-例如广东 `GD-15043` 与湖南 `HN-15043` 是不同科目，不以同名或 `originCode` 合并。
+科目 `code` 按 `<ISO 3166-2:CN 两位大写字母前缀>-<originCode>` 生成（如广东 `440000` → `GD-15043`，湖南 `430000` → `HN-15043`）；跨省同源课程为不同科目，不以同名或 `originCode` 合并。
 
 ### 题集与题目
 

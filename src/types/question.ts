@@ -7,6 +7,7 @@ export type QuestionContent = {
   id: string
   title: string
   questionType: QuestionType
+  knowledgePoints?: string[]
   A: string | null
   B: string | null
   C: string | null
