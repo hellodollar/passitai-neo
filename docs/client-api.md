@@ -296,7 +296,7 @@ Neo 和 Desktop 的报考省份按此顺序展示：北京（`110000`）、上�
 `type` 取 `baseline`、`mockExams`、`pastExams` 或 `aiEnhance`，供业务判断。Neo 使用 `name` 展示模板名称。
 模板下的题集沿用题集自身的分类。
 `list` 按管理端配置顺序返回仍可用的同科目公开题集，使用题集详情的基础字段（含 `questionCount`）。未编排或无可用题集时为 `[]`。
-接口仅返回题集列表，不返回模板占比、题集占比或题目答案。旧 `/api/practice/templates` 已移除。
+接口仅返回题集列表，不返回题目答案。旧 `/api/practice/templates` 已移除。
 
 ### 刷题设置
 
@@ -400,10 +400,28 @@ interface UserSubjectProfile {
   }>>
   trainingProgress: Partial<Record<PracticeResourceType, {
     resourceId?: string
-    completedPapers: number
+    weight: number // 科目槽位权重：baseline 0.50 / pastExams 0.20 / mockExams 0.15 / aiEnhance 0.15
+    completedPapers: number // 至少刷满 1 遍的题集数
     totalPapers: number
     avgScore: number | null
-    met: boolean
+    score: number // 槽位有效评估分（0–100）
+    level: TrainingMasteryLevel // 木桶短板等级：weak / aware / familiar / mastered
+    met: boolean // 槽位全部题集达 mastered
+    aiEnhanceMode?: AiEnhanceMode // 仅 aiEnhance：pending_fix / verified_fixed / suspected_ok
+    papers: Array<{
+      paperId: string
+      paperName: string
+      paperType: string
+      paperLayout: 'custom' | 'exam'
+      totalQuestions: number
+      coveredQuestions: number
+      completedRounds: number // 全卷每题累计有效作答次数最小值
+      currentRoundCoverage: number // 下一轮当前已刷比例（0–1）
+      rawScore: number | null // 百分制实得分（custom 均分 100 / exam 按 examBlueprint 构建 100）
+      scoreCap: number // 严苛遍数解锁上限：59 (<3) / 69 (3–4) / 84 (5–6) / 100 (>=7)
+      effectiveScore: number // min(rawScore, scoreCap)
+      level: TrainingMasteryLevel
+    }>
   }>>
   latestEvaluationId: string | null
   latestEvaluation: {
@@ -414,6 +432,7 @@ interface UserSubjectProfile {
     subjectiveEstimatedScore: number | null
     readinessLevel: 'ready' | 'close' | 'building' | 'starter'
     confidence: 'low' | 'medium' | 'high'
+    masteryLevel: TrainingMasteryLevel
     summary: string | null
     gapCount: number
     recommendationCount: number
@@ -480,6 +499,7 @@ interface UserSubjectEvaluation {
     reason?: string
     paperId?: string
     resourceType?: PracticeResourceType
+    enhanceType?: AiEnhanceType // aiGenerate 时标明补强类型：pointWeak / highFrequencyWeak / errorProneWeak / pastExamWeak / comprehensive
     pointKeys?: string[]
   }>
   evidenceSnapshot: {
@@ -490,14 +510,22 @@ interface UserSubjectEvaluation {
     subjectiveAnswered: number
     unresolvedMistakes: number
     highFrequencyCoverage: number
+    masteryLevel?: TrainingMasteryLevel
+    aiEnhanceMode?: AiEnhanceMode
+    slotScores?: Partial<Record<PracticeResourceType, number>>
+    slotLevels?: Partial<Record<PracticeResourceType, TrainingMasteryLevel>>
     subjectProfileGeneratedAt?: string | null
   }
   createdAt: string
 }
 ```
 
-- 估分按科目 `subject_profiles.examBlueprint` 与 `scoringRule` 执行（未建档科目自动使用默认 30/70 考纲蓝图与默认标尺）；当 `requireSubjectiveForPass = true` 且主观题样本不足时，准备度档位最高封顶 `building`，并在 `diagnosis.gaps` 返回 `subjective_insufficient`。
-- `recommendations` 按严重度输出最多 10 条可执行动作：`paper` 优先指向未完成的同槽位题集 `paperId`，`mistakes` 指向错题本清零，`aiGenerate` 携带薄弱 `pointKeys`。
+- 核心评估口径详见 [练习资源、用户画像与科目评估核心业务设计（v1）](design/practice-training-and-evaluation.md)：
+  - **统一单卷公式**：`effectiveScore = min(rawScore, scoreCap)`（严苛版遍数上限 `<3 -> 59 / 3–4 -> 69 / 5–6 -> 84 / >=7 -> 100`），映射四档 `weak (0–59) / aware (60–69) / familiar (70–84) / mastered (85–100)`；
+  - **双轨汇总**：综合分按四槽位权重加权（`baseline 0.50` 内含 `pointCoverage 0.50 / highFrequency 0.30 / errorTarget 0.20`，`pastExams 0.20`，`mockExams 0.15`，`aiEnhance 0.15`）；槽位与科目能力等级严格走**木桶短板**；
+  - **`aiEnhance` 三态**：存在薄弱待修复为 `pending_fix`（按补强卷实测分，未刷为 `0`）；经补强卷达标无异常为 `verified_fixed`（数据支撑给满）；前三项无薄弱且未经补强检验为 `suspected_ok`（怀疑模式默认给 `80` 分）；
+  - **主观题过关保护**：当 `requireSubjectiveForPass = true` 且主观题样本不足时，`readinessLevel` 最高封顶 `building`，并在 `diagnosis.gaps` 返回 `subjective_insufficient`。
+- `recommendations` 按严重度输出最多 10 条可执行动作：`paper` 优先指向槽位内短板题集 `paperId`，`mistakes` 指向错题本清零，`aiGenerate` 携带 `enhanceType` 与薄弱 `pointKeys`。
 
 ## 5. 题目收藏模块
 

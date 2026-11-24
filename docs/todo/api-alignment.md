@@ -19,9 +19,10 @@
 
 后端已开放纯规则个人科目画像与估分诊断闭环（完整字段见最新镜像 [docs/client-api.md](../client-api.md#个人科目画像与规则评估)）：
 
-- `GET /api/subjects/:code/profile`：读取当前用户在某科目的个人画像（交卷即时重算，无新变动按水位线直接复用），含 `practiceCount / answeredQuestions / objectiveAnswered / objectiveCorrect / subjectiveAnswered / unresolvedMistakes / highFrequencyCoverage`、`pointStats`、`questionTypeStats`、`trainingProgress`（4 训练槽位完成度）与 `latestEvaluation` 摘要。
-- `POST /api/subjects/:code/evaluate`：传入 `{ triggerType?: 'manual' | 'practice' | 'baseline' }`（传 `{}` 默认 `manual`）触发一次规则估分，返回不可变快照（`estimatedScore`、`objectiveEstimatedScore`、`subjectiveEstimatedScore`、`readinessLevel`、`confidence`、`diagnosis.{summary,strengths,gaps}`、`recommendations[]`）。
+- `GET /api/subjects/:code/profile`：读取当前用户在某科目的个人画像（交卷即时重算，无新变动按水位线直接复用），含标量汇总、`pointStats`、`questionTypeStats`、`trainingProgress`（每个槽位含 `weight / score / level / met / aiEnhanceMode` 以及单卷 `papers[]` 的 `completedRounds / currentRoundCoverage / rawScore / scoreCap / effectiveScore / level`）与 `latestEvaluation` 摘要（含 `masteryLevel`）。
+- `POST /api/subjects/:code/evaluate`：传入 `{ triggerType?: 'manual' | 'practice' | 'baseline' }`（传 `{}` 默认 `manual`）触发一次规则评估，返回不可变快照（`estimatedScore` 四槽位加权综合分、`readinessLevel`、`confidence`、`diagnosis.{summary,strengths,gaps}`、`recommendations[]` 含 `enhanceType`、`evidenceSnapshot.{masteryLevel,aiEnhanceMode,slotScores,slotLevels}`）。
 - `GET /api/subjects/:code/evaluations?page=1&limit=10`：分页读取历史评估快照，用于渲染提分曲线与复盘历史。
+- 生成字典 `src/generated/practice-resource-values.ts` 已新增导出 `trainingMasteryLevels / TrainingMasteryLevel / trainingMasteryLabels / aiEnhanceTypes / AiEnhanceType / aiEnhanceLabels / aiEnhanceModes / AiEnhanceMode`，前端直接复用，勿手写四档文案或补强枚举。
 
 **前端待对接要点**：
 - 在 `src/types/` 与 `src/api/` 补齐上述 3 个接口的类型与请求方法；
