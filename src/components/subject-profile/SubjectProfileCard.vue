@@ -209,7 +209,7 @@ onBeforeUnmount(() => {
             </div>
             <div v-else class="flex items-center gap-1.5">
               <TrendingUp :size="16" class="shrink-0 text-primary" aria-hidden="true" />
-              <span class="text-sm font-semibold text-base-content">科目能力画像</span>
+              <span class="text-sm font-semibold text-base-content">PassIt 画像</span>
               <span
                 class="rounded-full bg-base-200/80 px-2 py-0.5 text-[11px] font-medium text-base-content/55 dark:bg-base-300/50"
               >

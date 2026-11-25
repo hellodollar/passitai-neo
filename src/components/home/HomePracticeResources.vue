@@ -68,7 +68,6 @@ const resourceStyleMap: Record<
     tileClass: string
     activeTabClass: string
     activeIconClass: string
-    progressClass: string
   }
 > = {
   baseline: {
@@ -76,28 +75,24 @@ const resourceStyleMap: Record<
     tileClass: 'bg-primary/10 text-primary',
     activeTabClass: 'bg-primary/12 text-primary dark:bg-primary/18',
     activeIconClass: 'bg-base-100 text-primary dark:bg-base-200',
-    progressClass: 'bg-primary',
   },
   mockExams: {
     icon: Timer,
     tileClass: 'bg-accent/10 text-accent',
     activeTabClass: 'bg-accent/12 text-accent dark:bg-accent/18',
     activeIconClass: 'bg-base-100 text-accent dark:bg-base-200',
-    progressClass: 'bg-accent',
   },
   pastExams: {
     icon: History,
     tileClass: 'bg-info/10 text-info',
     activeTabClass: 'bg-info/12 text-info dark:bg-info/18',
     activeIconClass: 'bg-base-100 text-info dark:bg-base-200',
-    progressClass: 'bg-info',
   },
   aiEnhance: {
     icon: Sparkles,
     tileClass: 'bg-ai/10 text-ai',
     activeTabClass: 'bg-ai/12 text-ai dark:bg-ai/18',
     activeIconClass: 'bg-base-100 text-ai dark:bg-base-200',
-    progressClass: 'bg-ai',
   },
 }
 
@@ -138,11 +133,6 @@ const deleteDialogOpen = computed({
 function getAnsweredCount(paper: Paper) {
   const count = answeredCountByPaperId.value.get(paper.id) ?? 0
   return Math.min(paper.questionCount, count)
-}
-
-function getProgressPercent(paper: Paper) {
-  if (paper.questionCount <= 0) return 0
-  return Math.min(100, Math.round((getAnsweredCount(paper) / paper.questionCount) * 100))
 }
 
 function getPaperProgress(paperId: string) {
@@ -272,12 +262,12 @@ onBeforeUnmount(() => {
           <span
             class="size-9 shrink-0 animate-pulse rounded-xl bg-base-200/80 dark:bg-base-300/60"
           ></span>
-          <div class="min-w-0 flex-1 space-y-2">
+          <div class="min-w-0 flex-1 space-y-1.5">
             <span
-              class="block h-3.5 w-32 animate-pulse rounded bg-base-200/80 dark:bg-base-300/60"
+              class="block h-3.5 w-40 animate-pulse rounded bg-base-200/80 dark:bg-base-300/60"
             ></span>
             <span
-              class="block h-1.5 w-full animate-pulse rounded-full bg-base-200/65 dark:bg-base-300/45"
+              class="block h-3 w-20 animate-pulse rounded bg-base-200/65 dark:bg-base-300/45"
             ></span>
           </div>
         </div>
@@ -392,53 +382,29 @@ onBeforeUnmount(() => {
               </span>
 
               <span class="min-w-0 flex-1">
-                <span class="flex min-w-0 items-center justify-between gap-2">
-                  <span class="flex min-w-0 items-center gap-1.5">
-                    <span class="truncate text-sm font-medium leading-snug text-base-content">
-                      {{ paper.name }}
-                    </span>
-                    <span
-                      v-if="getPaperProgress(paper.id)"
-                      class="shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-medium leading-none"
-                      :class="TRAINING_MASTERY_BADGE_CLASSES[getPaperProgress(paper.id)!.level]"
-                    >
-                      {{ trainingMasteryLabels[getPaperProgress(paper.id)!.level] }}
-                    </span>
-                  </span>
-                  <span class="shrink-0 text-xs leading-snug tabular-nums text-base-content/55">
-                    <span
-                      :class="
-                        getAnsweredCount(paper) > 0
-                          ? 'font-semibold text-base-content'
-                          : 'font-medium'
-                      "
-                      >{{ getAnsweredCount(paper) }}</span
-                    >/{{ paper.questionCount }}
-                  </span>
+                <span class="block truncate text-sm font-medium leading-snug text-base-content">
+                  {{ paper.name }}
                 </span>
 
-                <span class="mt-2 flex items-center gap-2">
+                <span class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs leading-snug">
                   <span
-                    class="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-base-200/65 dark:bg-base-300/45"
-                    aria-hidden="true"
+                    v-if="getPaperProgress(paper.id)"
+                    class="shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-medium leading-none"
+                    :class="TRAINING_MASTERY_BADGE_CLASSES[getPaperProgress(paper.id)!.level]"
                   >
+                    {{ trainingMasteryLabels[getPaperProgress(paper.id)!.level] }}
+                  </span>
+                  <span class="tabular-nums text-base-content/55">
                     <span
-                      class="block h-full rounded-full transition-all duration-300"
-                      :class="resourceStyleMap[activeResource.type].progressClass"
-                      :style="{ width: `${getProgressPercent(paper)}%` }"
-                    ></span>
+                      :class="getAnsweredCount(paper) > 0 ? 'font-medium text-base-content' : ''"
+                      >{{ getAnsweredCount(paper) }}</span
+                    >/{{ paper.questionCount }} 题
                   </span>
                   <span
                     v-if="getPaperProgress(paper.id)?.completedRounds"
-                    class="shrink-0 text-[11px] leading-none tabular-nums text-base-content/55"
+                    class="tabular-nums text-base-content/55"
                   >
-                    已刷 {{ getPaperProgress(paper.id)!.completedRounds }} 遍
-                  </span>
-                  <span
-                    v-else-if="paper.contentPeriod && paper.contentPeriod !== paper.name"
-                    class="shrink-0 text-[11px] leading-none text-base-content/55"
-                  >
-                    {{ paper.contentPeriod }}
+                    · 已刷 {{ getPaperProgress(paper.id)!.completedRounds }} 遍
                   </span>
                 </span>
               </span>

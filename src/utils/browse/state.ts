@@ -1,14 +1,20 @@
-import { formatDistanceToNow } from 'date-fns'
-import { zhCN } from 'date-fns/locale'
-
 import { STORAGE_KEYS } from '@/constants/app'
+import { formatShanghaiDate } from '@/utils/date'
 
-/** 时间距离文案：如“3小时前收录”。 */
-export function formatCollectedTimeText(lastCollectedAt: string) {
+/** 收录时间文案：按 刚刚（1 小时内）、今天、昨天、近 7 天、更早分档展示。 */
+export function formatCollectedTimeText(lastCollectedAt: string, now = new Date()) {
   const collectedAt = new Date(lastCollectedAt)
   if (Number.isNaN(collectedAt.getTime())) return ''
-  const distance = formatDistanceToNow(collectedAt, { locale: zhCN })
-  return `${distance.replace(/^大约\s*/, '').replace(/\s+/g, '')}前收录`
+  if (now.getTime() - collectedAt.getTime() < 3_600_000) return '刚刚'
+
+  const dayDiff = Math.round(
+    (Date.parse(formatShanghaiDate(now)) - Date.parse(formatShanghaiDate(collectedAt))) /
+      86_400_000,
+  )
+  if (dayDiff <= 0) return '今天'
+  if (dayDiff === 1) return '昨天'
+  if (dayDiff < 7) return '近 7 天'
+  return '更早'
 }
 
 export type BrowsePage = 'home' | 'favorites' | 'mistakes'

@@ -220,11 +220,12 @@ interface ChangeEmailBody {
 只返回启用且未删除的题集，以及启用、开考、同省且未删除的所属科目。
 归属只能为平台（`ownerId=NULL`）或当前用户；其他用户资源视为不存在。
 
-题集详情基础字段：`id / subjectCode / provinceCode / name / type / paperLayout / contentPeriod / sourceType / questionCount`。
+题集详情基础字段：`id / subjectCode / provinceCode / name / type / paperMode / contentPeriod / sourceType / questionCount`。
 `type` 必填，值为 `pointCoverage / highFrequency / errorTarget / realSource`，其中 `realSource` 表示真题。
-`paperLayout` 为 `custom / exam`，与题集来源 `system / ai` 分开。
+`paperMode` 为 `bank / exam`（题库模式 / 套卷模式），与题集来源 `system / ai` 分开。
+（注：实践考核科目 `examType = 'practical'` 仅作展示，`GET /api/practice/resources` 固定返回空数组 `[]`。）
 
-详情附 `sections: [{ name, questionType?, perScore?, questionIds, items }]`。
+详情附 `sections: [{ name, questionType?, perScore?, answerCount?, questionIds, items }]`（存在选答题如论述 3 选 2 时返回 `answerCount < questionIds.length`，主观自评与估分按该分组最高 `answerCount` 题得分汇总封顶）。
 每个 `items` 含 `id / subjectCode / knowledgePoints / title / type / A / B / C / D / E / F / correctAnswer / explanation`，保持分组和题序。
 相似题接口返回 `{ questionId, subjectCode, knowledgePoints, primaryPoint, items }`（每条含 `matchType: 'duplicate' | 'similar'`、`knowledgePoints` 与 `matchedPointKeys`；未打标题目也可通过指纹命中重复/同选项混淆题）；仅返回当前用户可见的启用题目，不含来源原文与指纹字段。
 `correctAnswer` 为正确/参考答案字符串，`explanation` 为解析字符串或 null，用于练习确认后的即时对错反馈与解析展示；选择题沿用现有答案格式。
@@ -426,12 +427,12 @@ interface UserSubjectProfile {
       paperId: string
       paperName: string
       paperType: string
-      paperLayout: 'custom' | 'exam'
+      paperMode: 'bank' | 'exam'
       totalQuestions: number
       coveredQuestions: number
       completedRounds: number // 全卷每题累计有效作答次数最小值
       currentRoundCoverage: number // 下一轮当前已刷比例（0–1）
-      rawScore: number | null // 百分制实得分（custom 均分 100 / exam 按 examBlueprint 构建 100）
+      rawScore: number | null // 百分制实得分（bank 均分 100 / exam 按 examBlueprint 构建 100）
       scoreCap: number // 严苛遍数解锁上限：59 (<3) / 69 (3–4) / 84 (5–6) / 100 (>=7)
       effectiveScore: number // min(rawScore, scoreCap)
       level: TrainingMasteryLevel
@@ -558,7 +559,7 @@ interface GeneratedAiEnhancePaper {
   provinceCode: string
   name: string
   type: PaperType
-  paperLayout: 'custom' | 'exam'
+  paperMode: 'bank' | 'exam'
   enhanceType: AiEnhanceType
   questionCount: number
   contentPeriod: string
@@ -616,8 +617,7 @@ interface GeneratedAiEnhancePaper {
 { items: Array<{ paperId: string; paperName: string; subjectId: string; subjectName: string; questionCount: number; lastCollectedAt: string }>, totalQuestionCount: number }
 ```
 
-按题集分组的 `paperName` 和题集练习的 `paper.name` 与普通练习一致：
-`pointCoverage` 显示 `考点通练`，其他题集显示存储名称；按科目使用科目名。
+按题集分组的 `paperName` 和题集练习的 `paper.name` 与普通练习及管理后台一致，统一展示题集存储名称 `papers.name`；按科目使用科目名。
 名称变化不改变收录上下文、题目 ID 或实际 paperId，也不合并名称相同的分组。
 
 练习接口 `subjectId` 与 `paperId` 二选一：按科目取该科目全部收藏题；按题集只取收录记录的
@@ -633,7 +633,7 @@ interface GeneratedAiEnhancePaper {
 {
   paper: {
     id?: string // 仅按题集返回真实 paperId；按科目不返回此字段
-    name: string // 按科目=科目名；按题集=客户端展示名（综合专项训练为考点通练）
+    name: string // 按科目=科目名；按题集=题集存储名称（papers.name）
     subjectId: string
     questionCount: number
     sections: Array<{

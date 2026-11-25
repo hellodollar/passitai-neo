@@ -4,6 +4,7 @@ import test from 'node:test'
 import { loadSource } from './helpers/load-source.mjs'
 
 const {
+  formatCollectedTimeText,
   parseCollectionFilters,
   parseHomeSelection,
   readBrowseState,
@@ -122,4 +123,21 @@ test('账号隔离，登出只清除当前账号的页面记忆，不碰作答�
   assert.equal(store.getItem('passitai:browse:account-a:favorites'), null)
   assert.equal(readBrowseState('account-b', 'favorites').sort, 'count')
   assert.equal(store.getItem('other-data'), 'keep')
+})
+
+test('收藏与错题时间按刚刚、今天、昨天、近 7 天、更早分档', () => {
+  const now = new Date('2026-11-25T17:00:00+08:00')
+  assert.equal(formatCollectedTimeText('2026-11-25T16:59:30+08:00', now), '刚刚')
+  assert.equal(formatCollectedTimeText('2026-11-25T16:00:01+08:00', now), '刚刚')
+  assert.equal(formatCollectedTimeText('2026-11-25T16:00:00+08:00', now), '今天')
+  assert.equal(formatCollectedTimeText('2026-11-25T00:05:00+08:00', now), '今天')
+  assert.equal(formatCollectedTimeText('2026-11-24T23:50:00+08:00', now), '昨天')
+  assert.equal(formatCollectedTimeText('2026-11-20T12:00:00+08:00', now), '近 7 天')
+  assert.equal(formatCollectedTimeText('2026-11-19T00:00:00+08:00', now), '近 7 天')
+  assert.equal(formatCollectedTimeText('2026-11-18T23:59:59+08:00', now), '更早')
+  assert.equal(formatCollectedTimeText('invalid-date', now), '')
+
+  // 跨午夜但在 1 小时内仍展示“刚刚”
+  const justAfterMidnight = new Date('2026-11-25T00:20:00+08:00')
+  assert.equal(formatCollectedTimeText('2026-11-24T23:40:00+08:00', justAfterMidnight), '刚刚')
 })
