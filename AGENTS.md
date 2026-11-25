@@ -12,7 +12,7 @@
 ## 先读什么
 
 - [client-api.md](docs/client-api.md)：后端接口契约，字段、权限、错误与枚举的依据；不为迁就前端直接改写镜像。
-- `docs/todo/`（存在时优先）：后端接口或生成常量变更下沉到本仓库的对齐事项优先级为 **P0（最高）**，优先处理并在验收完成后删除。
+- `docs/todo/`（存在时优先）：`docs/todo/` 与 `docs/issues/` 统一按 `P0 / P1 / P2 / P3` 分级并采用 `p<0-3>-<kebab-case>.md` 命名，完整定义与排期规则见[frontend-contract.md · 任务优先级约定](docs/frontend-contract.md#任务优先级约定)；后端接口或生成常量变更下沉的对齐事项固定为 **P0（最高）**，优先处理并在验收完成后删除。
 - [frontend-contract.md](docs/frontend-contract.md)：已确认的路由、页面职责、跳转、Store 和浏览器状态。
 - [data-model.md](docs/data-model.md)：实体、数据 ID、业务码与约束；完整结构以后端 migrations 为准。
 - [client-maintenance.md](docs/client-maintenance.md)：H5 构建、环境、部署、缓存及兼容性排查。
