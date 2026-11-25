@@ -4,7 +4,7 @@ import { computed, nextTick, ref } from 'vue'
 
 import BasePopup from '@/components/common/BasePopup.vue'
 import type { PracticeAnswerRecord, QuestionListItem } from '@/types'
-import type { AnswerSheetGroup } from '@/utils/practice/paper'
+import { isSelectiveGroup, type AnswerSheetGroup } from '@/utils/practice/paper'
 import {
   getReferenceAnswer,
   isAnswerCorrect,
@@ -69,6 +69,20 @@ function questionResultClasses(question: QuestionListItem, current: boolean) {
   }
   // 当前题直接替换圆圈自身边框，不在外侧再叠一圈。
   return `${content} ${current ? 'border-primary' : border}`
+}
+
+function groupAnsweredCount(group: AnswerSheetGroup) {
+  return group.questions.filter((question) => Boolean(props.answerRecords[question.id])).length
+}
+
+function groupHeaderText(group: AnswerSheetGroup) {
+  if (!isSelectiveGroup(group)) return `${group.label} · ${group.questions.length}题`
+  const answered = groupAnsweredCount(group)
+  const scorePart =
+    typeof group.perScore === 'number' && group.perScore > 0
+      ? ` · 满分${Math.round(group.answerCount! * group.perScore * 100) / 100}分`
+      : ''
+  return `${group.label} · 任选${group.answerCount}题（共${group.questions.length}题${scorePart}）· 已答${answered}/${group.answerCount}`
 }
 
 async function scrollToCurrentQuestion() {
@@ -136,7 +150,7 @@ async function scrollToCurrentQuestion() {
       >
         <section v-for="group in visibleGroups" :key="group.key" :aria-label="group.label">
           <p class="mb-1.5 text-xs font-medium text-base-content/55">
-            {{ group.label }} · {{ group.questions.length }}题
+            {{ groupHeaderText(group) }}
           </p>
           <div
             class="grid grid-cols-[repeat(auto-fill,minmax(1.75rem,1fr))] justify-items-center gap-x-1 gap-y-1.5"

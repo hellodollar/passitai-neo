@@ -9,6 +9,7 @@ import BaseDialog from '@/components/common/BaseDialog.vue'
 import BasePopup from '@/components/common/BasePopup.vue'
 import { useLocalPracticeRecords } from '@/composables/useLocalPracticeRecords'
 import { TRAINING_MASTERY_BADGE_CLASSES } from '@/constants/practice'
+import type { DomainValue } from '@/generated/domain-values'
 import {
   aiEnhanceLabels,
   aiEnhanceTypes,
@@ -28,10 +29,12 @@ import { showSuccessToast } from '@/utils/toast'
 const props = withDefaults(
   defineProps<{
     subjectCode: string
+    examType?: DomainValue<'examType'>
     refreshKey?: number
     trainingProgress?: UserSubjectProfile['trainingProgress'] | null
   }>(),
   {
+    examType: 'written',
     refreshKey: 0,
     trainingProgress: null,
   },
@@ -195,12 +198,19 @@ async function confirmDeleteAiPaper() {
 }
 
 watch(
-  [() => props.subjectCode, () => auth.session?.token, () => props.refreshKey, reloadTick],
-  async ([code, token], _, onCleanup) => {
+  [
+    () => props.subjectCode,
+    () => props.examType,
+    () => auth.session?.token,
+    () => props.refreshKey,
+    reloadTick,
+  ],
+  async ([code, examType, token], _, onCleanup) => {
     error.value = false
-    if (!token || !code) {
+    if (!token || !code || examType === 'practical') {
       resources.value = []
       loading.value = false
+      if (token && code && examType === 'practical') emit('loaded')
       return
     }
     const controller = new AbortController()
@@ -290,7 +300,7 @@ onBeforeUnmount(() => {
     </div>
 
     <div v-else-if="!resources.length" class="px-4 py-10 text-center text-xs text-base-content/55">
-      暂无练习内容
+      {{ examType === 'practical' ? '实践考核科目，暂不开放线上练习' : '暂无练习内容' }}
     </div>
 
     <template v-else>

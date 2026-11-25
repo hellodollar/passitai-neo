@@ -29,7 +29,7 @@ export type {
   NotificationSettings,
   NotificationSummary,
 } from './notification'
-export type { Paper, PaperDetail, PaperLayout, PaperQuestion, PaperType } from './paper'
+export type { Paper, PaperDetail, PaperMode, PaperQuestion, PaperType } from './paper'
 export type { QuestionContent, QuestionListItem, QuestionType } from './question'
 export type {
   CollectionPracticePaper,
@@ -38,6 +38,7 @@ export type {
   PracticeResource,
   PracticeResultQuestion,
   PracticeResultQuestionStatus,
+  PracticeResultSection,
   PracticeSettings,
   PracticeSource,
   PracticeSubmission,

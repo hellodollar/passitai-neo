@@ -21,6 +21,7 @@ import type {
 } from '@/types'
 import { resolvePracticeReturn, returnToPracticeList } from '@/utils/browse/navigation'
 import { isChoiceQuestionType } from '@/utils/practice/question'
+import { estimateSubjectiveSelfGrade } from '@/utils/practice/result'
 import { showSuccessToast } from '@/utils/toast'
 
 const props = defineProps<{ paperId: string; submissionId: string }>()
@@ -67,6 +68,37 @@ const ratedSubjectiveCount = computed(
     ).length,
 )
 
+const selectiveSubjectiveNotices = computed(() => {
+  const sections = result.value?.sections ?? []
+  const questionById = new Map((result.value?.questions ?? []).map((q) => [q.id, q]))
+  return sections.flatMap((section) => {
+    if (
+      typeof section.answerCount !== 'number' ||
+      section.answerCount <= 0 ||
+      section.answerCount >= section.questionIds.length
+    ) {
+      return []
+    }
+    const hasSubjective = section.questionIds.some((id) => {
+      const q = questionById.get(id)
+      return q && !isChoiceQuestionType(q.questionType)
+    })
+    if (!hasSubjective) return []
+    const scoreNote =
+      typeof section.perScore === 'number' && section.perScore > 0
+        ? `，满分 ${Math.round(section.answerCount * section.perScore * 100) / 100} 分`
+        : ''
+    return [
+      `「${section.name}」任选 ${section.answerCount} 题作答（共 ${section.questionIds.length} 题，按最高 ${section.answerCount} 题封顶计分${scoreNote}）`,
+    ]
+  })
+})
+
+const subjectiveScorePreview = computed(() => {
+  if (!result.value || ratedSubjectiveCount.value === 0) return null
+  return estimateSubjectiveSelfGrade(result.value, selfGradeRatings.value)
+})
+
 const filteredQuestions = computed(() => {
   const questions = result.value?.questions ?? []
   if (resultFilter.value === 'all') return questions
@@ -107,11 +139,12 @@ const scoreHeadline = computed(() => {
 })
 
 function questionStatusClasses(status: PracticeResultQuestionStatus) {
-  const map = {
+  const map: Record<PracticeResultQuestionStatus, string> = {
     correct: 'border-transparent bg-success/10 text-success',
     wrong: 'border-transparent bg-error/10 text-error',
     unanswered: 'border-base-300 bg-base-100 text-base-content/55 dark:bg-base-200',
     pending: 'border-secondary/30 bg-secondary/10 text-secondary',
+    graded: 'border-primary/25 bg-primary/10 text-primary',
   }
   return map[status]
 }
@@ -315,6 +348,13 @@ watch(
             </span>
           </div>
 
+          <ul
+            v-if="selectiveSubjectiveNotices.length > 0"
+            class="mt-2.5 space-y-1 rounded-xl bg-info/10 px-3 py-2 text-xs leading-snug text-info dark:bg-info/15"
+          >
+            <li v-for="notice in selectiveSubjectiveNotices" :key="notice">{{ notice }}</li>
+          </ul>
+
           <div class="mt-3 space-y-3">
             <article
               v-for="question in answeredSubjectiveQuestions"
@@ -373,6 +413,19 @@ watch(
               </div>
             </article>
           </div>
+
+          <p
+            v-if="subjectiveScorePreview"
+            class="mt-2.5 flex items-center justify-between text-xs tabular-nums text-base-content/65"
+          >
+            <span>预计主观得分 {{ subjectiveScorePreview.subjectiveScore }} 分</span>
+            <span
+              v-if="subjectiveScorePreview.totalScore !== null"
+              class="font-medium text-primary"
+            >
+              预计总分 {{ subjectiveScorePreview.totalScore }} 分
+            </span>
+          </p>
 
           <p v-if="selfGradeError" role="alert" class="mt-2.5 text-xs text-error">
             {{ selfGradeError }}
@@ -453,6 +506,12 @@ watch(
             </span>
             <span class="flex items-center gap-1.5 text-base-content/55">
               <span class="size-1.5 rounded-full bg-secondary"></span>待自评
+            </span>
+            <span
+              v-if="result.subjectiveScore !== null"
+              class="flex items-center gap-1.5 text-base-content/55"
+            >
+              <span class="size-1.5 rounded-full bg-primary"></span>已自评
             </span>
           </div>
 

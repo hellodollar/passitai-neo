@@ -379,6 +379,7 @@ watch(
 
             <template v-else>
               <SubjectProfileCard
+                v-if="activeSubject.examType !== 'practical'"
                 :subject-code="activeSubject.code"
                 :subject-name="activeSubject.name"
                 :refresh-key="profileRefreshKey"
@@ -390,8 +391,13 @@ watch(
 
               <HomePracticeResources
                 :subject-code="activeSubject.code"
+                :exam-type="activeSubject.examType"
                 :refresh-key="resourcesRefreshKey"
-                :training-progress="activeSubjectProfile?.trainingProgress"
+                :training-progress="
+                  activeSubject.examType === 'practical'
+                    ? null
+                    : activeSubjectProfile?.trainingProgress
+                "
                 @open-paper="openPaper"
                 @open-paper-id="openPaperById"
                 @resources-changed="profileRefreshKey++"

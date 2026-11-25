@@ -35,7 +35,7 @@ const paperDetail = {
   provinceCode: '440000',
   name: '测试题集',
   type: 'realSource',
-  paperLayout: 'exam',
+  paperMode: 'exam',
   contentPeriod: '2026-04',
   sourceType: 'system',
   questionCount: 3,

@@ -62,6 +62,7 @@ async function scrollToSelected() {
 
   <BasePopup v-model="open" :title="title" @opened="scrollToSelected">
     <div
+      v-if="options.length > 0"
       ref="listRef"
       class="max-h-[52dvh] divide-y divide-base-content/[0.06] overflow-y-auto overscroll-contain rounded-xl bg-base-200/65 dark:divide-base-content/[0.08] dark:bg-base-300/45"
       role="radiogroup"
@@ -90,5 +91,6 @@ async function scrollToSelected() {
         />
       </button>
     </div>
+    <p v-else class="py-10 text-center text-xs text-base-content/55">暂无可选项</p>
   </BasePopup>
 </template>

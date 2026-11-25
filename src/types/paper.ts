@@ -1,10 +1,10 @@
 import type { DomainValue, ProvinceCode } from '@/generated/domain-values'
-import type { catalogPaperTypes, catalogPaperLayouts } from '@/generated/paper-catalog-values'
+import type { catalogPaperModes, catalogPaperTypes } from '@/generated/paper-catalog-values'
 
 import type { QuestionType } from './question'
 
 export type PaperType = (typeof catalogPaperTypes)[number]
-export type PaperLayout = (typeof catalogPaperLayouts)[number]
+export type PaperMode = (typeof catalogPaperModes)[number]
 
 export type Paper = {
   id: string
@@ -12,7 +12,7 @@ export type Paper = {
   provinceCode: ProvinceCode
   name: string
   type: PaperType
-  paperLayout: PaperLayout
+  paperMode: PaperMode
   contentPeriod: string
   sourceType: DomainValue<'paperSourceType'>
   questionCount: number
@@ -39,6 +39,7 @@ export type PaperDetail = Paper & {
     name: string
     questionType?: QuestionType
     perScore?: number
+    answerCount?: number
     questionIds: string[]
     items: PaperQuestion[]
   }[]

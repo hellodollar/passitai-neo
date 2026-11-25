@@ -6,7 +6,7 @@ import type {
   TrainingMasteryLevel,
 } from '@/generated/practice-resource-values'
 
-import type { PaperLayout, PaperType } from './paper'
+import type { PaperMode, PaperType } from './paper'
 import type { QuestionType } from './question'
 
 export type EvaluationTriggerType = 'manual' | 'practice' | 'baseline'
@@ -41,7 +41,7 @@ export type UserSubjectProfilePaperProgress = {
   paperId: string
   paperName: string
   paperType: string
-  paperLayout: PaperLayout
+  paperMode: PaperMode
   totalQuestions: number
   coveredQuestions: number
   completedRounds: number
@@ -182,7 +182,7 @@ export type GeneratedAiEnhancePaper = {
   provinceCode: ProvinceCode
   name: string
   type: PaperType
-  paperLayout: PaperLayout
+  paperMode: PaperMode
   enhanceType: AiEnhanceType
   questionCount: number
   contentPeriod: string

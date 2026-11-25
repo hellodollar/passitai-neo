@@ -6,7 +6,9 @@ import { loadSource } from './helpers/load-source.mjs'
 const { getCorrectOptionValues, getQuestionOptions, isAnswerCorrect } = await loadSource(
   'utils/practice/question.ts',
 )
-const { buildSubmissionResult } = await loadSource('utils/practice/result.ts')
+const { buildSubmissionResult, estimateSubjectiveSelfGrade } = await loadSource(
+  'utils/practice/result.ts',
+)
 
 const question = {
   id: 'qst000000000001',
@@ -84,7 +86,7 @@ test('作答判分与交卷报告共用同一套答案解析规则（支持判�
       provinceCode: '440000',
       name: '测试卷',
       type: 'pointCoverage',
-      paperLayout: 'exam',
+      paperMode: 'exam',
       contentPeriod: '2026-04',
       sourceType: 'system',
       questionCount: 3,
@@ -121,5 +123,83 @@ test('作答判分与交卷报告共用同一套答案解析规则（支持判�
   assert.deepEqual(
     report.questions.map((item) => item.status),
     ['correct', 'correct', 'pending'],
+  )
+})
+
+test('选答题自评预计得分按最高 answerCount 题汇总封顶，已自评后题目状态更新为 graded', () => {
+  const toEssay = (id) => ({
+    id,
+    subjectCode: 'GD-15043',
+    title: `论述 ${id}`,
+    type: 'essay',
+    A: null,
+    B: null,
+    C: null,
+    D: null,
+    E: null,
+    F: null,
+    correctAnswer: '要点',
+    explanation: null,
+  })
+  const paper = {
+    id: 'pap-sel',
+    subjectCode: 'GD-15043',
+    provinceCode: '440000',
+    name: '选答模拟卷',
+    type: 'pointCoverage',
+    paperMode: 'exam',
+    contentPeriod: '2027-01',
+    sourceType: 'system',
+    questionCount: 3,
+    sections: [
+      {
+        name: '论述题',
+        questionType: 'essay',
+        perScore: 10,
+        answerCount: 2,
+        questionIds: ['e1', 'e2', 'e3'],
+        items: [toEssay('e1'), toEssay('e2'), toEssay('e3')],
+      },
+    ],
+  }
+  const submission = {
+    id: 'rec000000000002',
+    subjectCode: 'GD-15043',
+    paperId: 'pap-sel',
+    paperName: '选答模拟卷',
+    userAnswers: { e1: '答1', e2: '答2', e3: '答3' },
+    totalQuestions: 3,
+    answeredCount: 3,
+    objectiveTotal: 0,
+    objectiveCorrect: 0,
+    objectiveScore: 80,
+    subjectiveScore: null,
+    score: null,
+    durationSeconds: 120,
+    createdAt: '2026-11-25T10:00:00Z',
+  }
+
+  const pendingReport = buildSubmissionResult(paper, submission, '科目一')
+  assert.deepEqual(
+    pendingReport.questions.map((q) => q.status),
+    ['pending', 'pending', 'pending'],
+  )
+  // 3 题全部自评为 mastered(10分/题) 或 partial/mastered，总分按最高 2 题封顶（20 分），不会加出 110 分
+  const preview = estimateSubjectiveSelfGrade(pendingReport, {
+    e1: 'partial',
+    e2: 'mastered',
+    e3: 'mastered',
+  })
+  assert.equal(preview.subjectiveScore, 20)
+  assert.equal(preview.totalScore, 100)
+
+  const gradedReport = buildSubmissionResult(
+    paper,
+    { ...submission, subjectiveScore: 20, score: 100 },
+    '科目一',
+  )
+  assert.deepEqual(
+    gradedReport.questions.map((q) => q.status),
+    ['graded', 'graded', 'graded'],
   )
 })

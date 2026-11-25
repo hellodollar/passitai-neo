@@ -3,7 +3,13 @@ import test from 'node:test'
 
 import { loadSource } from './helpers/load-source.mjs'
 
-const { preparePracticePaper, orderPracticePaper } = await loadSource('utils/practice/paper.ts')
+const {
+  formatSectionSelectionNotice,
+  isSelectiveGroup,
+  orderPracticePaper,
+  preparePracticePaper,
+  summarizePracticeCompletion,
+} = await loadSource('utils/practice/paper.ts')
 
 function paperWithSections(counts) {
   let index = 0
@@ -165,4 +171,120 @@ test('乱序后的作答与草稿按题目 ID 恢复，不串到其他题目', a
   assert.deepEqual(restored.answers[current.id].values, ['A'])
   assert.deepEqual(restored.inputs[draft.id].values, ['B'])
   assert.equal(Object.keys(restored.answers).length, 1)
+})
+
+test('选答题分组（answerCount < 题目总数）提示规则与必答完成统计正确', () => {
+  const { groups, questions } = preparePracticePaper({
+    id: 'pap-selective',
+    name: '模拟考试',
+    subjectId: 'sub-1',
+    questionCount: 5,
+    sections: [
+      {
+        name: '单选题',
+        questionType: 'single',
+        perScore: 2,
+        items: [
+          {
+            id: 'q1',
+            title: '单选1',
+            questionType: 'single',
+            A: 'A',
+            B: 'B',
+            C: null,
+            D: null,
+            E: null,
+            F: null,
+            correctAnswer: 'A',
+            explanation: null,
+          },
+          {
+            id: 'q2',
+            title: '单选2',
+            questionType: 'single',
+            A: 'A',
+            B: 'B',
+            C: null,
+            D: null,
+            E: null,
+            F: null,
+            correctAnswer: 'A',
+            explanation: null,
+          },
+        ],
+      },
+      {
+        name: '论述题',
+        questionType: 'essay',
+        perScore: 10,
+        answerCount: 2,
+        items: [
+          {
+            id: 'q3',
+            title: '论述1',
+            questionType: 'essay',
+            A: null,
+            B: null,
+            C: null,
+            D: null,
+            E: null,
+            F: null,
+            correctAnswer: '要点',
+            explanation: null,
+          },
+          {
+            id: 'q4',
+            title: '论述2',
+            questionType: 'essay',
+            A: null,
+            B: null,
+            C: null,
+            D: null,
+            E: null,
+            F: null,
+            correctAnswer: '要点',
+            explanation: null,
+          },
+          {
+            id: 'q5',
+            title: '论述3',
+            questionType: 'essay',
+            A: null,
+            B: null,
+            C: null,
+            D: null,
+            E: null,
+            F: null,
+            correctAnswer: '要点',
+            explanation: null,
+          },
+        ],
+      },
+    ],
+  })
+
+  assert.equal(questions.length, 5)
+  assert.equal(isSelectiveGroup(groups[0]), false)
+  assert.equal(isSelectiveGroup(groups[1]), true)
+  assert.equal(formatSectionSelectionNotice(groups[0]), '')
+  assert.equal(
+    formatSectionSelectionNotice(groups[1]),
+    '本大题任选 2 题作答（共 3 题，每题 10 分，满分 20 分）',
+  )
+
+  const summaryPartial = summarizePracticeCompletion(groups, { q1: {}, q2: {}, q3: {} })
+  assert.equal(summaryPartial.requiredCount, 4)
+  assert.equal(summaryPartial.answeredRequiredCount, 3)
+  assert.equal(summaryPartial.remainingRequiredCount, 1)
+
+  const summaryFullSelective = summarizePracticeCompletion(groups, {
+    q1: {},
+    q2: {},
+    q3: {},
+    q5: {},
+  })
+  assert.equal(summaryFullSelective.remainingRequiredCount, 0)
+  assert.deepEqual(summaryFullSelective.selectiveGroups, [
+    { label: '论述题', required: 2, total: 3, answered: 2 },
+  ])
 })

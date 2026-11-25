@@ -18,6 +18,7 @@ import {
 const props = defineProps<{
   question: QuestionListItem
   subjectName: string
+  sectionNotice?: string
   selectedValues: Set<string>
   textAnswer: string
   /** 已确认的作答记录；未作答时为 undefined */
@@ -140,6 +141,13 @@ function optionMarkerClasses(optionValue: string) {
         {{ subjectName }}
       </span>
     </div>
+
+    <p
+      v-if="sectionNotice"
+      class="mt-2.5 rounded-xl bg-info/10 px-3 py-2 text-xs leading-snug text-info dark:bg-info/15"
+    >
+      {{ sectionNotice }}
+    </p>
 
     <h2
       class="mt-2.5 whitespace-pre-line break-words text-base font-medium leading-[1.6] text-base-content"

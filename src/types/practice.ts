@@ -33,6 +33,7 @@ export type PracticePaperLite = {
     name: string
     questionType?: QuestionType
     perScore?: number
+    answerCount?: number
     items: PracticePaperItem[]
   }>
 }
@@ -88,17 +89,26 @@ export type PracticeSettings = {
   removeMistakeOnCorrect: boolean
 }
 
-export type PracticeResultQuestionStatus = 'correct' | 'wrong' | 'unanswered' | 'pending'
+export type PracticeResultQuestionStatus = 'correct' | 'wrong' | 'unanswered' | 'pending' | 'graded'
 
 export type PracticeResultQuestion = {
   id: string
   index: number
   title: string
   questionType: QuestionType
+  sectionIndex?: number
   userAnswer: string
   correctAnswer: string
   explanation?: string
   status: PracticeResultQuestionStatus
+}
+
+export type PracticeResultSection = {
+  name: string
+  questionType?: QuestionType
+  perScore?: number
+  answerCount?: number
+  questionIds: string[]
 }
 
 export type PracticeSubmissionResult = {
@@ -118,5 +128,6 @@ export type PracticeSubmissionResult = {
   accuracy: number
   elapsedSeconds?: number
   submittedAt?: string
+  sections?: PracticeResultSection[]
   questions: PracticeResultQuestion[]
 }

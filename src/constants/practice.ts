@@ -15,6 +15,7 @@ export const RESULT_STATUS_LABELS: Record<PracticeResultQuestionStatus, string> 
   wrong: '回答错误',
   unanswered: '未作答',
   pending: '待自评',
+  graded: '已自评',
 }
 
 /** 本地做题记录存储结构版本；存储约定见 docs/frontend-contract.md。 */

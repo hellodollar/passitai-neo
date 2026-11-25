@@ -38,7 +38,7 @@ const paper = (id) => ({
   provinceCode: '440000',
   name: '隔离测试题集',
   type: 'pointCoverage',
-  paperLayout: 'exam',
+  paperMode: 'exam',
   contentPeriod: '2026-04',
   sourceType: 'system',
   questionCount: 2,

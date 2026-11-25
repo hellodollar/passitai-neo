@@ -51,7 +51,7 @@ Vue Router 使用 `createWebHistory(import.meta.env.BASE_URL)`，CF 为深链提
 
 - `useExamPlanStore.plan` 保存计划；`load()` 复用已加载结果及进行中的请求，失败可重试；`save()` 成功更新共享状态；`reset()` 清理会话并使旧请求失效。
 - `components/exam-plan/ExamPlanPopup.vue` 管理选择和草稿，`ExamPlanCard.vue` 展示摘要，`ExamPlanSubjectsPopup.vue` 发出科目选择、显隐及移动事件，首页管理浏览状态。
-- 计划使用 `provinceCode`、`majorCode`、`subjectCodes`。省份或学历变化清空专业及科目，专业变化重新选择科目；仅 `examType === 'written'` 的笔试科目可勾选，非笔试科目在列表中禁用展示；保存失败保留草稿。弹层关闭或换账号后，旧选项与保存响应不能更新当前界面。
+- 计划使用 `provinceCode`、`majorCode`、`subjectCodes`。省份或学历变化清空专业及科目，专业变化重新选择科目；仅 `examType === 'written'` 的笔试科目可勾选，非笔试科目在列表中禁用展示；保存失败保留草稿。弹层关闭或换账号后，旧选项与保存响应不能更新当前界面。实践考核科目（`examType === 'practical'`）仅作科目展示，不开放线上练习与 PassIt 画像评估，首页 `HomePracticeResources` 直接展示实践课提示。
 - 科目显隐和顺序属于首页浏览记忆，不冒充服务端计划。科目业务码使用完整大写省份前缀。
 - `useAuthStore` 管理登录身份，退出或换账号重置考试计划及相关会话 Store。收藏、错题列表不另建 Store，临时状态留在各自页面。
 
@@ -66,9 +66,10 @@ Vue Router 使用 `createWebHistory(import.meta.env.BASE_URL)`，CF 为深链提
 | `pastExams`       | 历年真题 | `History`                | `info`     |
 | `aiEnhance`       | AI 增强  | `Sparkles`               | `ai`       |
 
-- `SubjectProfileCard` 随当前选中科目加载 `GET /api/subjects/:code/profile`，展示预估分、准备度档位（`ready / close / building / starter`）、四槽位有效分与掌握度四档；四档掌握度文案及 AI 补强类型文案统一复用 `src/generated/practice-resource-values.ts` 导出的 `trainingMasteryLabels` / `aiEnhanceLabels`，不手写重复映射。单卷掌握度与已刷轮次由画像 `trainingProgress` 透传至 `HomePracticeResources`，不额外重复请求。
+- `SubjectProfileCard` 随当前选中笔试科目加载 `GET /api/subjects/:code/profile`，展示「PassIt 画像」与规则预估分、准备度档位（`ready / close / building / starter`）、四槽位有效分与掌握度四档；四档掌握度文案及 AI 补强类型文案统一复用 `src/generated/practice-resource-values.ts` 导出的 `trainingMasteryLabels` / `aiEnhanceLabels`，不手写重复映射。单卷掌握度与已刷轮次由画像 `trainingProgress` 透传至 `HomePracticeResources`，不额外重复请求。
 - `SubjectEvaluationPopup` 承接规则评估诊断（`POST /api/subjects/:code/evaluate`）与历史快照分页（`GET /api/subjects/:code/evaluations`）；推荐行动按 `actionType` 分发：`paper` 带 `returnTo` 直跳对应 `paperId` 练习，`mistakes` 跳转错题本，`aiGenerate` 携带 `enhanceType` 与薄弱 `pointKeys` 调用 `POST /api/subjects/:code/ai-enhance/generate` 生成补强卷后刷新资源与画像并进入练习。
 - `aiEnhance` 分类提供手动生成（5 类 `aiEnhanceTypes`）与删除私有补强卷（`DELETE /api/subjects/:code/ai-enhance/papers/:paperId`，需二次确认弹窗），操作成功后同步刷新资源列表与科目画像。
+- 题集形式字段统一使用 `paperMode: 'bank' | 'exam'`（对应 `src/generated/paper-catalog-values.ts` 的 `PaperMode`）；`mockExams` 与 `pastExams` 列表展示直接透传服务端 `name`，不按 `type` 过滤。
 
 ## 收藏、错题与共用内容读取
 
@@ -79,7 +80,7 @@ Vue Router 使用 `createWebHistory(import.meta.env.BASE_URL)`，CF 为深链提
 - `api/practice-content.ts` 按来源读取内容。集合协议仍用 `subjectId`；普通题集返回 `subjectCode`，适配时查询真实科目 ID，不将业务码塞入 ID 参数。
 - 集合每题保留实际科目和来源题集，本地聚合标识不能代替真实 `paperId` 发起收藏/错题操作。`favId` 和 `mistakeId` 按接口各自使用，不混用。
 
-普通练习题集下发 `correctAnswer`、`explanation`，适配层原样保留，供选择题确认后的对错、正确选项及解析展示使用；单选和判断选择即确认，多选点击“确认答案”后反馈。答对自动下一题及错题同步沿用现有设置。普通题集已开启交卷闭环（`canSubmit: true`）：交卷请求 `POST /api/practice/papers/:paperId/submissions` 携带幂等 `submissionId`（`rec` + 12 位十六进制）、`userAnswers` 与耗时 `durationSeconds`（0–86400 秒）；报告页读取 `GET /api/practice/papers/:paperId` 与 `GET /api/practice/papers/:paperId/submissions/:submissionId` 展示客观/主观/综合得分与作答明细，存在已作答主观题时支持三档自评（`PUT .../subjective-self-grade`，`mastered=100% / partial=50% / missed=0%`）重算总分并刷新科目画像，并支持交卷后一键触发科目规则评估（`triggerType: 'practice'`）。收藏与错题集合练习保持纯刷题，不开放交卷（`canSubmit: false`）。
+普通练习题集下发 `correctAnswer`、`explanation`，适配层原样保留，供选择题确认后的对错、正确选项及解析展示使用；单选和判断选择即确认，多选点击“确认答案”后反馈。答对自动下一题及错题同步沿用现有设置。普通题集已开启交卷闭环（`canSubmit: true`）：交卷请求 `POST /api/practice/papers/:paperId/submissions` 携带幂等 `submissionId`（`rec` + 12 位十六进制）、`userAnswers` 与耗时 `durationSeconds`（0–86400 秒）；当题集分组存在选答题（`sections[].answerCount < items.length`）时，作答面板与答题卡明示选答规则、交卷确认按各组 `answerCount` 统计必答未答题数，主观自评预计分值按分组最高 `answerCount` 题汇总封顶。报告页读取 `GET /api/practice/papers/:paperId` 与 `GET /api/practice/papers/:paperId/submissions/:submissionId` 展示客观/主观/综合得分与作答明细，存在已作答主观题时支持三档自评（`PUT .../subjective-self-grade`，`mastered=100% / partial=50% / missed=0%`）重算总分并刷新科目画像（已自评后题号状态更新为 `已自评`），并支持交卷后一键触发科目规则评估（`triggerType: 'practice'`）。收藏与错题集合练习保持纯刷题，不开放交卷（`canSubmit: false`）。
 
 ## 浏览器存储与账号隔离
 

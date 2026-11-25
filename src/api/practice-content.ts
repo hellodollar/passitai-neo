@@ -40,6 +40,7 @@ export async function fetchPracticeContent(target: PracticeTarget): Promise<{
         name: section.name,
         questionType: section.questionType,
         perScore: section.perScore,
+        answerCount: section.answerCount,
         items: section.items.map((question) => ({
           ...question,
           questionType: question.type,

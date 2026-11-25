@@ -33,8 +33,10 @@ import type {
 } from '@/types'
 import { resolvePracticeReturn, returnToPracticeList } from '@/utils/browse/navigation'
 import {
+  formatSectionSelectionNotice,
   preparePracticePaper,
   orderPracticePaper,
+  summarizePracticeCompletion,
   type AnswerSheetGroup,
 } from '@/utils/practice/paper'
 import {
@@ -171,9 +173,21 @@ const currentAnswerRecord = computed(() =>
   currentQuestion.value ? answerRecords.value[currentQuestion.value.id] : undefined,
 )
 const answeredCount = computed(() => Object.keys(answerRecords.value).length)
-const unansweredCount = computed(() =>
-  Math.max(0, currentQuestions.value.length - answeredCount.value),
+const completionSummary = computed(() =>
+  summarizePracticeCompletion(answerSheetGroups.value, answerRecords.value),
 )
+const remainingRequiredCount = computed(() => completionSummary.value.remainingRequiredCount)
+const sectionNoticeByQuestionId = computed(() => {
+  const map = new Map<string, string>()
+  for (const group of answerSheetGroups.value) {
+    const notice = formatSectionSelectionNotice(group)
+    if (!notice) continue
+    for (const question of group.questions) {
+      map.set(question.id, notice)
+    }
+  }
+  return map
+})
 const currentQuestionPosition = computed(() =>
   currentQuestions.value.length === 0 ? 0 : currentIndex.value + 1,
 )
@@ -429,14 +443,14 @@ async function submitCurrentAnswer() {
   }
 }
 
-/** 答完最后一题时按设置自动交卷;仅真实题集,收藏/错题纯刷题无交卷概念。 */
+/** 答完必答题时按设置自动交卷;仅真实题集,收藏/错题纯刷题无交卷概念。 */
 async function maybeAutoSubmitOnComplete(sequence: number) {
   if (!canSubmit.value || submitting.value || submitConfirmOpen.value) return
   if (
     !practiceSettingsStore.settings.autoSubmitAfterCompletion ||
     sequence !== loadSequence ||
     currentQuestions.value.length === 0 ||
-    answeredCount.value !== currentQuestions.value.length
+    remainingRequiredCount.value > 0
   ) {
     return
   }
@@ -747,6 +761,7 @@ watch(answerSheetOpen, (open) => {
               v-if="prevQuestion"
               :question="prevQuestion"
               :subject-name="paperSubjectName"
+              :section-notice="sectionNoticeByQuestionId.get(prevQuestion.id)"
               v-bind="neighborPanelState(prevQuestion)"
             />
           </div>
@@ -756,6 +771,7 @@ watch(answerSheetOpen, (open) => {
               :key="currentQuestion.id"
               :question="currentQuestion"
               :subject-name="paperSubjectName"
+              :section-notice="sectionNoticeByQuestionId.get(currentQuestion.id)"
               :selected-values="selectedOptionValues"
               :text-answer="textAnswer"
               :answer-record="currentAnswerRecord"
@@ -774,6 +790,7 @@ watch(answerSheetOpen, (open) => {
               v-if="nextQuestion"
               :question="nextQuestion"
               :subject-name="paperSubjectName"
+              :section-notice="sectionNoticeByQuestionId.get(nextQuestion.id)"
               v-bind="neighborPanelState(nextQuestion)"
             />
           </div>
@@ -889,11 +906,22 @@ watch(answerSheetOpen, (open) => {
       :close-on-escape="!submitting"
     >
       <p class="text-sm leading-relaxed text-base-content/70">
-        <template v-if="unansweredCount > 0">
-          还有 {{ unansweredCount }} 题未答，确定交卷？
+        <template v-if="remainingRequiredCount > 0">
+          还有 {{ remainingRequiredCount }} 题未答，确定交卷？
         </template>
         <template v-else>确定交卷？</template>
       </p>
+      <ul
+        v-if="completionSummary.selectiveGroups.length > 0"
+        class="mt-2 space-y-1 text-xs leading-snug text-base-content/55"
+      >
+        <li v-for="group in completionSummary.selectiveGroups" :key="group.label">
+          {{ group.label }}任选 {{ group.required }} 题（已答 {{ group.answered }}/{{
+            group.total
+          }}
+          题{{ group.answered > group.required ? `，按最高 ${group.required} 题计分` : '' }}）
+        </li>
+      </ul>
 
       <p v-if="submitError" class="mt-3 text-xs text-error" role="alert">{{ submitError }}</p>
 

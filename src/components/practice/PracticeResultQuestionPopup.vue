@@ -31,6 +31,7 @@ const detailOpen = computed({
             'bg-base-200/75 text-base-content/55 dark:bg-base-300/50':
               selectedQuestion.status === 'unanswered',
             'bg-secondary/10 text-secondary': selectedQuestion.status === 'pending',
+            'bg-primary/10 text-primary': selectedQuestion.status === 'graded',
           }"
         >
           {{ RESULT_STATUS_LABELS[selectedQuestion.status] }}
