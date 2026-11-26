@@ -58,7 +58,6 @@ test('普通题集保留接口答案及解析，正确和错误选择均可判�
     ['/api/practice/papers/pap-one', '/api/subjects/GD-13811'],
   )
   assert.equal(loaded.canSubmit, true)
-  assert.equal(loaded.paper.paperType, 'pointCoverage')
   assert.equal(loaded.paper.subjectCode, 'GD-13811')
   const prepared = preparePracticePaper(loaded.paper)
   assert.equal(prepared.questions[0].subjectId, 'sub-one')

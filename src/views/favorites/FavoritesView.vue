@@ -1,28 +1,16 @@
 <script setup lang="ts">
 import { BookMarked, BookOpen, ChevronRight, CircleAlert, FileText } from '@lucide/vue'
-import { onBeforeUnmount, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 
 import { fetchFavoriteGroups } from '@/api/favorites'
 import EmptyState from '@/components/common/EmptyState.vue'
 import PageContainer from '@/components/common/PageContainer.vue'
 import PagePlaceholder from '@/components/common/PagePlaceholder.vue'
 import SortMenu from '@/components/common/SortMenu.vue'
-import { useBrowseScroll } from '@/composables/useBrowseScroll'
+import { useCollectionGroups } from '@/composables/useCollectionGroups'
 import { COLLECTION_SORT_OPTIONS } from '@/constants/collection'
-import { useAuthStore } from '@/stores/auth'
-import type {
-  CollectionAggregateItem,
-  CollectionGroupBy,
-  CollectionOrder,
-  CollectionSort,
-} from '@/types'
-import {
-  formatCollectedTimeText,
-  parseCollectionFilters,
-  readBrowseState,
-  writeBrowseState,
-} from '@/utils/browse/state'
+import type { CollectionGroupBy } from '@/types'
+import { formatCollectedTimeText } from '@/utils/browse/state'
 
 const pageConfig = {
   label: '收藏夹',
@@ -32,182 +20,23 @@ const pageConfig = {
 }
 
 const router = useRouter()
-const route = useRoute()
-const auth = useAuthStore()
-const browseScroll = useBrowseScroll(
-  () => auth.session?.user.id ?? '',
-  () => 'favorites',
-)
-let loadedToken: string | undefined
-
-const items = ref<CollectionAggregateItem[]>([])
-const loading = ref(true)
-const loaded = ref(false)
-const loadError = ref(false)
-let loadSequence = 0
-
-const groupMode = ref<CollectionGroupBy>('subject')
-const sortField = ref<CollectionSort>('recent')
-const sortOrder = ref<CollectionOrder>('desc')
-// 刷新期间保留上次成功结果及其分组，避免旧列表按新分组解释。
-const displayedGroupMode = ref<CollectionGroupBy>('subject')
-const displayedSortField = ref<CollectionSort>('recent')
-const displayedSortOrder = ref<CollectionOrder>('desc')
-
-async function loadFavorites() {
-  const sequence = ++loadSequence
-  const userId = auth.session?.user.id ?? ''
-  const token = auth.session?.token
-  const isCurrent = () =>
-    sequence === loadSequence && token === auth.session?.token && auth.isAuthenticated
-  const requestedGroup = groupMode.value
-  const requestedField = sortField.value
-  const requestedOrder = sortOrder.value
-  loadError.value = false
-  if (!userId || !auth.isAuthenticated) {
-    items.value = []
-    loading.value = false
-    loaded.value = false
-    return
-  }
-  loading.value = true
-  try {
-    const result = await fetchFavoriteGroups({
-      groupBy: requestedGroup,
-      sort: requestedField,
-      order: requestedOrder,
-    })
-    if (!isCurrent()) return
-    items.value = result.items
-    displayedGroupMode.value = requestedGroup
-    displayedSortField.value = requestedField
-    displayedSortOrder.value = requestedOrder
-    writeBrowseState(userId, 'favorites', {
-      groupBy: requestedGroup,
-      sort: requestedField,
-      order: requestedOrder,
-    })
-    if (
-      route.query.groupBy !== requestedGroup ||
-      route.query.sort !== requestedField ||
-      route.query.order !== requestedOrder
-    ) {
-      void router.replace({
-        query: {
-          ...route.query,
-          groupBy: requestedGroup,
-          sort: requestedField,
-          order: requestedOrder,
-        },
-      })
-    }
-  } catch {
-    if (!isCurrent()) return
-    // 切换失败不清空已有列表，也不让控件显示未生效的排序或分组。
-    groupMode.value = displayedGroupMode.value
-    sortField.value = displayedSortField.value
-    sortOrder.value = displayedSortOrder.value
-    if (loaded.value) {
-      void router.replace({
-        query: {
-          ...route.query,
-          groupBy: displayedGroupMode.value,
-          sort: displayedSortField.value,
-          order: displayedSortOrder.value,
-        },
-      })
-    }
-    loadError.value = true
-  } finally {
-    if (isCurrent()) {
-      loading.value = false
-      loaded.value = true
-      // 首次请求失败时不拿空白页的位置覆盖原列表；重试成功后再恢复。
-      if (!loadError.value || items.value.length > 0) void browseScroll.restore()
-    }
-  }
-}
-
-function selectGroupMode(mode: CollectionGroupBy) {
-  if (loading.value || groupMode.value === mode) return
-  groupMode.value = mode
-  void loadFavorites()
-}
-
-function selectSortOption(value: string) {
-  const option = COLLECTION_SORT_OPTIONS.find((item) => item.value === value)
-  if (
-    !option ||
-    loading.value ||
-    (sortField.value === option.field && sortOrder.value === option.order)
-  ) {
-    return
-  }
-  sortField.value = option.field
-  sortOrder.value = option.order
-  void loadFavorites()
-}
-
-onBeforeUnmount(() => {
-  ++loadSequence
+const {
+  items,
+  loading,
+  loaded,
+  loadError,
+  groupMode,
+  sortField,
+  sortOrder,
+  displayedGroupMode,
+  loadGroups: loadFavorites,
+  selectGroupMode,
+  selectSortOption,
+  openPractice,
+} = useCollectionGroups({
+  source: 'favorites',
+  fetchGroups: fetchFavoriteGroups,
 })
-
-/** 按当前分组进入集合练习，返回时保留筛选条件。 */
-function openPractice(item: CollectionAggregateItem) {
-  if (!auth.isAuthenticated || loading.value) return
-  const originId = displayedGroupMode.value === 'paper' ? item.paperId : item.subjectId
-  if (!originId) return
-  const returnTo = router.resolve({
-    path: route.path,
-    query: {
-      ...route.query,
-      groupBy: displayedGroupMode.value,
-      sort: displayedSortField.value,
-      order: displayedSortOrder.value,
-    },
-  }).fullPath
-  void router.push({
-    name: 'favorites-practice',
-    params: { groupBy: displayedGroupMode.value, groupId: originId },
-    query: { subjectName: item.subjectName, returnTo },
-  })
-}
-
-watch(
-  [
-    () => auth.session?.token,
-    () => route.query.groupBy,
-    () => route.query.sort,
-    () => route.query.order,
-  ],
-  () => {
-    const userId = auth.session?.user.id ?? ''
-    const token = auth.session?.token ?? ''
-    const filters = parseCollectionFilters(route.query, readBrowseState(userId, 'favorites'))
-    if (
-      token === loadedToken &&
-      filters.groupBy === groupMode.value &&
-      filters.sort === sortField.value &&
-      filters.order === sortOrder.value
-    ) {
-      return
-    }
-    if (token !== loadedToken) {
-      loaded.value = false
-      items.value = []
-      browseScroll.reset()
-      displayedGroupMode.value = filters.groupBy
-      displayedSortField.value = filters.sort
-      displayedSortOrder.value = filters.order
-    }
-    loadedToken = token
-    groupMode.value = filters.groupBy
-    sortField.value = filters.sort
-    sortOrder.value = filters.order
-    void loadFavorites()
-  },
-  { immediate: true },
-)
 </script>
 
 <template>

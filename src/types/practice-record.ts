@@ -1,6 +1,3 @@
-import type { PRACTICE_RECORD_VERSION } from '@/constants/practice'
-import type { DomainValue } from '@/generated/domain-values'
-
 import type { PracticeSource, SubmitPracticePaperBody } from './practice'
 
 export type PracticeRecordIdentity = {
@@ -11,8 +8,6 @@ export type PracticeRecordIdentity = {
 
 export type PracticeRecordContext = PracticeRecordIdentity & {
   subjectId: string
-  /** 收藏、错题聚合训练不属于某一种题集分类。 */
-  paperType: DomainValue<'paperType'> | null
 }
 
 /** 单题运行时作答；不含指纹，指纹在写入本地记录时按题目内容补充。 */
@@ -42,7 +37,6 @@ export type PracticeLastSubmission = {
 
 /** 本地做题记录与服务端交卷记录独立；交卷状态不能作为答案是否存在的依据。 */
 export type PracticeRecord = PracticeRecordContext & {
-  version: typeof PRACTICE_RECORD_VERSION
   /** 清理代际；已清理的内存记录不能回写。 */
   clearToken: string
   startedAt: number
@@ -58,7 +52,6 @@ export type PracticeRecord = PracticeRecordContext & {
 
 export type PracticeRecordClearScope =
   | { kind: 'paper'; identity: PracticeRecordIdentity }
-  | { kind: 'category'; userId: string; paperType: NonNullable<PracticeRecordContext['paperType']> }
   | { kind: 'all'; userId: string }
 
 export type PracticeRecordProgress = {

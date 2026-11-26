@@ -47,12 +47,8 @@ function fetchGroups(source, query) {
   return new Promise((resolve, reject) => requests.push({ source, resolve, reject }))
 }
 
-function loadView(source, name) {
-  const { descriptor } = parse(
-    readFileSync(new URL(`../src/views/${source}/${name}View.vue`, import.meta.url), 'utf8'),
-  )
-  const script = compileScript(descriptor, { id: `${source}-view-test` })
-  const { outputText } = ts.transpileModule(script.content, {
+function execModule(code) {
+  const { outputText } = ts.transpileModule(code, {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   })
   const module = { exports: {} }
@@ -64,7 +60,19 @@ function loadView(source, name) {
     module,
     module.exports,
   )
-  return { ...module.exports.default, render: () => null }
+  return module.exports
+}
+
+dependencies['@/composables/useCollectionGroups'] = execModule(
+  readFileSync(new URL('../src/composables/useCollectionGroups.ts', import.meta.url), 'utf8'),
+)
+
+function loadView(source, name) {
+  const { descriptor } = parse(
+    readFileSync(new URL(`../src/views/${source}/${name}View.vue`, import.meta.url), 'utf8'),
+  )
+  const script = compileScript(descriptor, { id: `${source}-view-test` })
+  return { ...execModule(script.content).default, render: () => null }
 }
 const views = {
   favorites: loadView('favorites', 'Favorites'),

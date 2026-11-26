@@ -22,7 +22,6 @@ const context = {
   paperId: 'papone',
   source: 'practice',
   subjectId: 'subone',
-  paperType: 'realSource',
 }
 const questions = [
   { id: 'que_one', questionType: 'single', title: '单选', A: '甲', B: '乙', correctAnswer: 'A' },

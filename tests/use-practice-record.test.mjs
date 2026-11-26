@@ -52,7 +52,6 @@ const context = {
   paperId: 'papone',
   source: 'practice',
   subjectId: 'subone',
-  paperType: 'realSource',
 }
 const questions = [
   { id: 'que_one', questionType: 'single', title: '' },
@@ -72,7 +71,7 @@ const input = {
   values: [],
 }
 const recordKey = (identity = context) =>
-  `passitai:practice-record:v3:${encodeURIComponent(identity.userId)}:${identity.source}:${encodeURIComponent(identity.paperId)}`
+  `passitai:practice-record:${encodeURIComponent(identity.userId)}:${identity.source}:${encodeURIComponent(identity.paperId)}`
 const storedRecord = () => {
   const raw = window.localStorage.getItem(recordKey())
   return raw ? JSON.parse(raw) : null
@@ -324,10 +323,7 @@ test('账号切换后拒绝把旧账号记录回写到新账号或旧记录键',
 
   assert.equal(storedRecord().answers.que_one.text, '甲')
   assert.equal(storedRecord().inputs.que_two.text, '未确认')
-  assert.equal(
-    window.localStorage.getItem('passitai:practice-record:v3:usrtwo:practice:papone'),
-    null,
-  )
+  assert.equal(window.localStorage.getItem('passitai:practice-record:usrtwo:practice:papone'), null)
   unmount()
 })
 

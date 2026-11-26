@@ -34,7 +34,6 @@ export async function fetchPracticeContent(target: PracticeTarget): Promise<{
       name: paper.name,
       subjectId: subject.id,
       subjectCode: paper.subjectCode,
-      paperType: paper.type,
       questionCount: paper.questionCount,
       sections: paper.sections.map((section) => ({
         name: section.name,

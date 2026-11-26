@@ -20,14 +20,15 @@ HTTP 见 [client-api.md](client-api.md)，数据语义见 [data-model.md](data-m
 
 `docs/todo/` 与 `docs/issues/` 统一采用全系 4 级优先级，用于跨端对齐与排期判断：
 
-| 等级 | 定位 | 适用范围 | 执行与排期规则 |
-| --- | --- | --- | --- |
-| **P0** | 阻断 / 立即对齐 | 后端接口、路由、字段或生成常量变更下沉的对齐 TODO；安全/权限缺陷；登录、刷题、交卷等核心主流程不可用或数据错乱。 | 最高优先级；进入本仓库工作时**先于新需求**核对处理，验收后立即删除，不得带 P0 上线。 |
-| **P1** | 高优先级 / 核心业务 | 当前迭代已确认的核心业务能力、显著影响高频学习操作的缺陷或关键交互阻断。 | 当前迭代内按序优先安排完成。 |
-| **P2** | 中优先级 / 常规改进 | 非阻断的体验完善、次要字段展示增强、常规组件整理或结构优化。 | 常规排期，可在触碰相关模块时顺手合并处理。 |
-| **P3** | 低优先级 / 锦上添花 | 非核心视觉/交互打磨、低频操作收纳、文案微调、无紧迫性的探索性优化。 | 暂不主动排期，闲时或迭代对应页面时按需处理。 |
+| 等级   | 定位                | 适用范围                                                                                                         | 执行与排期规则                                                                       |
+| ------ | ------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| **P0** | 阻断 / 立即对齐     | 后端接口、路由、字段或生成常量变更下沉的对齐 TODO；安全/权限缺陷；登录、刷题、交卷等核心主流程不可用或数据错乱。 | 最高优先级；进入本仓库工作时**先于新需求**核对处理，验收后立即删除，不得带 P0 上线。 |
+| **P1** | 高优先级 / 核心业务 | 当前迭代已确认的核心业务能力、显著影响高频学习操作的缺陷或关键交互阻断。                                         | 当前迭代内按序优先安排完成。                                                         |
+| **P2** | 中优先级 / 常规改进 | 非阻断的体验完善、次要字段展示增强、常规组件整理或结构优化。                                                     | 常规排期，可在触碰相关模块时顺手合并处理。                                           |
+| **P3** | 低优先级 / 锦上添花 | 非核心视觉/交互打磨、低频操作收纳、文案微调、无紧迫性的探索性优化。                                              | 暂不主动排期，闲时或迭代对应页面时按需处理。                                         |
 
 **文件命名与生命周期**：
+
 - `docs/todo/` 与 `docs/issues/` 新增文件统一命名为 `p<0-3>-<kebab-case>.md`（如 `p0-client-api-sync.md`、`p3-ui-polish.md`），文档须明确写出**优先级、现状问题、拟议方案与验收标准**。
 - 验收完成后同步更新现行文档并直接删除对应文件；目录清空后不保留占位文件。
 
@@ -82,13 +83,13 @@ Vue Router 使用 `createWebHistory(import.meta.env.BASE_URL)`，CF 为深链提
 | `aiEnhance`       | AI 增强  | `Sparkles`               | `ai`       |
 
 - `SubjectProfileCard` 随当前选中笔试科目加载 `GET /api/subjects/:code/profile`，展示「PassIt 画像」与规则预估分、准备度档位（`ready / close / building / starter`）、四槽位有效分与掌握度四档；四档掌握度文案及 AI 补强类型文案统一复用 `src/generated/practice-resource-values.ts` 导出的 `trainingMasteryLabels` / `aiEnhanceLabels`，不手写重复映射。单卷掌握度与已刷轮次由画像 `trainingProgress` 透传至 `HomePracticeResources`，不额外重复请求。
-- `SubjectEvaluationPopup` 承接规则评估诊断（`POST /api/subjects/:code/evaluate`）与历史快照分页（`GET /api/subjects/:code/evaluations`）；推荐行动按 `actionType` 分发：`paper` 带 `returnTo` 直跳对应 `paperId` 练习，`mistakes` 跳转错题本，`aiGenerate` 携带 `enhanceType` 与薄弱 `pointKeys` 调用 `POST /api/subjects/:code/ai-enhance/generate` 生成补强卷后刷新资源与画像并进入练习。
+- `SubjectEvaluationPopup` 承接 5+5 双层评估诊断（`POST /api/subjects/:code/evaluate`）与历史快照分页（`GET /api/subjects/:code/evaluations`）：展示校准预估分与机械分对照、综合可信度、挤出水分、`examBoost` 实战补偿、`subjectivePassCapped` 封顶提示、`examStabilityWarning` 整卷波动提醒，以及 5 维微观基准线、5 维宏观可信度与逐维 `waterAttribution` 水分归因（新字段按可选安全渲染）；推荐行动按 `actionType` 分发：`paper` 带 `returnTo` 直跳对应 `paperId` 练习，`mistakes` 跳转错题本，`aiGenerate` 携带 `enhanceType` 与薄弱 `pointKeys` 调用 `POST /api/subjects/:code/ai-enhance/generate` 生成补强卷后刷新资源与画像并进入练习。
 - `aiEnhance` 分类提供手动生成（5 类 `aiEnhanceTypes`）与删除私有补强卷（`DELETE /api/subjects/:code/ai-enhance/papers/:paperId`，需二次确认弹窗），操作成功后同步刷新资源列表与科目画像。
 - 题集形式字段统一使用 `paperMode: 'bank' | 'exam'`（对应 `src/generated/paper-catalog-values.ts` 的 `PaperMode`）；`mockExams` 与 `pastExams` 列表展示直接透传服务端 `name`，不按 `type` 过滤。
 
 ## 收藏、错题与共用内容读取
 
-列表分别使用 `loadFavorites → fetchFavoriteGroups`、`loadMistakes → fetchMistakeGroups`，共享排序选项在 `constants/collection.ts`，不再合回共享列表视图。
+收藏与错题保持独立路由页面（`FavoritesView` / `MistakesView`），不合回共享列表视图；两页共用的筛选、排序、竞态保护与浏览状态同步收敛在 `composables/useCollectionGroups.ts`，请求仍分别通过 `fetchFavoriteGroups` / `fetchMistakeGroups` 传入，共享排序选项在 `constants/collection.ts`。
 
 - 列表 query 为 `groupBy`、`sort`、`order`，默认按科目、最近收录倒序；query 优先于浏览记忆。失败保留上次成功列表及对应筛选，不能用新分组解释旧列表。
 - `openPractice` 按已展示分组取 `subjectId` 或 `paperId`，传入 `groupId` 和 `returnTo`。
@@ -99,14 +100,14 @@ Vue Router 使用 `createWebHistory(import.meta.env.BASE_URL)`，CF 为深链提
 
 ## 浏览器存储与账号隔离
 
-| 状态     | 载体与键                                                                                | 隔离及失效                                                    |
-| -------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| 会话     | localStorage：`passitai:auth-session`                                                   | 当前 origin 一份会话，同源标签页同步账号变化                  |
-| 外观偏好 | localStorage：`passitai:appearance`                                                     | 设备全局，支持 `system / light / dark`，登出不清理            |
-| 刷题设置 | localStorage：`passitai:practice-settings:<userId>`                                     | 按账号隔离，纯本地持久化，登出不清理，重新登录同账号直接恢复  |
-| 浏览记忆 | sessionStorage：`passitai:browse:<userId>:<page>`，另有内存兜底                         | 按账号与 `home/favorites/mistakes` 隔离，不保存接口列表和答案 |
-| 本地作答 | localStorage：`passitai:practice-record:v3:<userId>:<source>:<paperId>`，ID 经 URL 编码 | 按账号、来源和资源隔离；指纹与清理代际控制恢复/回写           |
-| 考试计划 | 当前会话 Store + 服务端计划                                                             | 读取缓存、保存更新、换账号 reset，不另写持久化副本            |
+| 状态     | 载体与键                                                                             | 隔离及失效                                                     |
+| -------- | ------------------------------------------------------------------------------------ | -------------------------------------------------------------- |
+| 会话     | localStorage：`passitai:auth-session`                                                | 当前 origin 一份会话，同源标签页同步账号变化                   |
+| 外观偏好 | localStorage：`passitai:appearance`                                                  | 设备全局，支持 `system / light / dark`，登出不清理             |
+| 刷题设置 | localStorage：`passitai:practice-settings:<userId>`                                  | 按账号隔离，纯本地持久化，登出不清理，重新登录同账号直接恢复   |
+| 浏览记忆 | sessionStorage：`passitai:browse:<userId>:<page>`，另有内存兜底                      | 按账号与 `home/favorites/mistakes` 隔离，不保存接口列表和答案  |
+| 本地作答 | localStorage：`passitai:practice-record:<userId>:<source>:<paperId>`，ID 经 URL 编码 | 按账号、来源和资源隔离；指纹与账号/单题集清理代际控制恢复/回写 |
+| 考试计划 | 当前会话 Store + 服务端计划                                                          | 读取缓存、保存更新、换账号 reset，不另写持久化副本             |
 
 集合本地资源标识为 `collection:<groupBy>:<groupId>`，不是题集 ID。普通题集、收藏、错题即使涉及同题，也不共用答案键。
 

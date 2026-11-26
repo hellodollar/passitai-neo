@@ -42,7 +42,6 @@ const context = {
   paperId: 'papone',
   source: 'practice',
   subjectId: 'subone',
-  paperType: 'realSource',
 }
 const answer = {
   questionId: 'que_one',
@@ -57,22 +56,8 @@ const input = {
   values: [],
 }
 const submissionId = 'rec123456abcdef'
-const legacyKey = (record = context) =>
-  `passitai:practice-draft:v1:${record.userId}:${record.paperId}`
 const recordKey = (record = context) =>
-  `passitai:practice-record:v3:${encodeURIComponent(record.userId)}:${record.source}:${encodeURIComponent(record.paperId)}`
-const legacyDraft = (overrides = {}) => ({
-  version: 1,
-  userId: context.userId,
-  paperId: context.paperId,
-  startedAt: now,
-  currentQuestionId: input.questionId,
-  answers: { [answer.questionId]: answer },
-  inputs: { [input.questionId]: input },
-  pendingSubmissionId: submissionId,
-  savedAt: now,
-  ...overrides,
-})
+  `passitai:practice-record:${encodeURIComponent(record.userId)}:${record.source}:${encodeURIComponent(record.paperId)}`
 const progress = (overrides = {}) => ({
   startedAt: now,
   currentQuestionId: answer.questionId,
@@ -94,17 +79,7 @@ afterEach(() => {
   else globalThis.window = previousWindow
 })
 
-test('旧题集分类不恢复或转换，原始作答仍留在存储中', () => {
-  const record = createPracticeRecord(context, now)
-  for (const paperType of ['baseline', 'mock', 'pastExam']) {
-    const raw = JSON.stringify({ ...record, paperType })
-    storage.setItem(recordKey(), raw)
-    assert.equal(readPracticeRecord(context), null)
-    assert.equal(storage.getItem(recordKey()), raw)
-  }
-})
-
-test('当前版本完整保存答案、未确认输入、位置及提交快照，刷新后直接恢复', () => {
+test('完整保存答案、未确认输入、位置及提交快照，刷新后直接恢复', () => {
   const fixedNow = now + 5000
   const record = updatePracticeRecord(
     createPracticeRecord(context, now),
@@ -115,7 +90,6 @@ test('当前版本完整保存答案、未确认输入、位置及提交快照�
     }),
     fixedNow,
   )
-  assert.equal(record.version, 3)
   assert.equal(writePracticeRecord(record), true)
   assert.deepEqual(readPracticeRecord(context), record)
   assert.deepEqual(record.pendingSubmission.payload, {
@@ -125,48 +99,30 @@ test('当前版本完整保存答案、未确认输入、位置及提交快照�
   })
 })
 
-test('v1 草稿和 v2 记录不会被读取、迁移或删除', () => {
-  const oldDraft = JSON.stringify(legacyDraft())
-  const oldRecordKey = recordKey().replace(':v3:', ':v2:')
-  const oldRecord = JSON.stringify({ ...createPracticeRecord(context, now), version: 2 })
-  storage.setItem(legacyKey(), oldDraft)
-  storage.setItem(oldRecordKey, oldRecord)
-  assert.equal(readPracticeRecord(context), null)
-  assert.equal(storage.getItem(recordKey()), null)
-  assert.equal(storage.getItem(legacyKey()), oldDraft)
-  assert.equal(storage.getItem(oldRecordKey), oldRecord)
-})
-
-test('当前键中的错误版本、缺失清理代际或身份不符的记录不能恢复', () => {
+test('缺失清理代际、格式损坏或身份不符的记录不能恢复', () => {
   const valid = createPracticeRecord(context, now)
   for (const invalid of [
-    { ...valid, version: 2 },
     { ...valid, clearToken: undefined },
     { ...valid, userId: 'usrother' },
   ]) {
     storage.setItem(recordKey(), JSON.stringify(invalid))
     assert.equal(readPracticeRecord(context), null)
   }
-})
-
-test('当前记录损坏时不回退读取旧草稿', () => {
   storage.setItem(recordKey(), '{invalid')
-  storage.setItem(legacyKey(), JSON.stringify(legacyDraft()))
   assert.equal(readPracticeRecord(context), null)
   assert.equal(storage.getItem(recordKey()), '{invalid')
 })
 
 test('新记录按用户、题集和练习来源隔离，包括相同集合标识', () => {
   const identities = [
-    { ...context, source: 'favorites', paperId: 'collection:subject:subone', paperType: null },
-    { ...context, source: 'mistakes', paperId: 'collection:subject:subone', paperType: null },
-    { ...context, source: 'favorites', paperId: 'collection:paper:papone', paperType: null },
+    { ...context, source: 'favorites', paperId: 'collection:subject:subone' },
+    { ...context, source: 'mistakes', paperId: 'collection:subject:subone' },
+    { ...context, source: 'favorites', paperId: 'collection:paper:papone' },
     {
       ...context,
       userId: 'usrother',
       source: 'favorites',
       paperId: 'collection:subject:subone',
-      paperType: null,
     },
   ]
   for (const [index, identity] of identities.entries()) {

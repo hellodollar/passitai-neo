@@ -4,6 +4,8 @@ import type {
 } from '@/generated/practice-resource-values'
 import type {
   EvaluationConfidence,
+  EvaluationMacroDimensionKey,
+  EvaluationMicroDimensionKey,
   EvaluationReadinessLevel,
   EvaluationTriggerType,
   PracticeResultQuestionStatus,
@@ -17,9 +19,6 @@ export const RESULT_STATUS_LABELS: Record<PracticeResultQuestionStatus, string> 
   pending: '待自评',
   graded: '已自评',
 }
-
-/** 本地做题记录存储结构版本；存储约定见 docs/frontend-contract.md。 */
-export const PRACTICE_RECORD_VERSION = 3
 
 export const SUBJECTIVE_SELF_GRADE_OPTIONS: ReadonlyArray<{
   value: SubjectiveSelfGradeRating
@@ -86,3 +85,25 @@ export const PRACTICE_RESOURCE_SLOT_FALLBACK_LABELS: Record<PracticeResourceType
   pastExams: '历年真题',
   aiEnhance: 'AI 增强',
 }
+
+export const EVALUATION_MICRO_DIMENSIONS: ReadonlyArray<{
+  key: EvaluationMicroDimensionKey
+  label: string
+}> = [
+  { key: 'baseMastery', label: '基础掌握' },
+  { key: 'discrimination', label: '辨析能力' },
+  { key: 'examExecution', label: '套卷实战' },
+  { key: 'errorRecovery', label: '错题修复' },
+  { key: 'subjectiveQuality', label: '主观作答' },
+]
+
+export const EVALUATION_MACRO_DIMENSIONS: ReadonlyArray<{
+  key: EvaluationMacroDimensionKey
+  label: string
+}> = [
+  { key: 'trainingDepth', label: '训练扎实度' },
+  { key: 'antiMemoReliability', label: '抗背题可信度' },
+  { key: 'syllabusCoverage', label: '考纲完整度' },
+  { key: 'memoryStability', label: '记忆稳定性' },
+  { key: 'passStructure', label: '过关结构达标' },
+]

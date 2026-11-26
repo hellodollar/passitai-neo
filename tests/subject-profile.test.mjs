@@ -12,6 +12,7 @@ const {
   deleteAiEnhancePaper,
 } = await loadSource('api/subject-profile.ts')
 const resourceValues = await loadSource('generated/practice-resource-values.ts')
+const practiceConstants = await loadSource('constants/practice.ts')
 
 const previousFetch = globalThis.fetch
 let calls = []
@@ -92,4 +93,110 @@ test('个人科目画像、规则评估、历史分页与 AI 补强卷接口路�
   await deleteAiEnhancePaper('GD-15043', 'pap1234567890ab')
   assert.equal(calls[4].pathname, '/api/subjects/GD-15043/ai-enhance/papers/pap1234567890ab')
   assert.equal(calls[4].method, 'DELETE')
+})
+
+test('双层评估快照 5+5 维度常量与接口字段完整透传', async () => {
+  assert.deepEqual(
+    practiceConstants.EVALUATION_MICRO_DIMENSIONS.map((item) => item.key),
+    ['baseMastery', 'discrimination', 'examExecution', 'errorRecovery', 'subjectiveQuality'],
+  )
+  assert.deepEqual(
+    practiceConstants.EVALUATION_MACRO_DIMENSIONS.map((item) => item.key),
+    [
+      'trainingDepth',
+      'antiMemoReliability',
+      'syllabusCoverage',
+      'memoryStability',
+      'passStructure',
+    ],
+  )
+
+  responseData = {
+    id: 'evl999999999999',
+    subjectCode: 'GD-15043',
+    triggerType: 'manual',
+    estimatedScore: 68.5,
+    objectiveEstimatedScore: 74,
+    subjectiveEstimatedScore: 58,
+    readinessLevel: 'building',
+    confidence: 'medium',
+    diagnosis: { summary: '需巩固薄弱考点', strengths: [], gaps: [] },
+    recommendations: [],
+    evidenceSnapshot: {
+      practiceCount: 6,
+      answeredQuestions: 120,
+      objectiveAnswered: 100,
+      objectiveCorrect: 76,
+      subjectiveAnswered: 20,
+      unresolvedMistakes: 8,
+      highFrequencyCoverage: 0.72,
+      rawScore: 76,
+      credibility: 0.82,
+      multiplier: 0.9,
+      totalWater: 7.5,
+      subjectivePassCapped: false,
+      examBoost: {
+        enabled: true,
+        applied: true,
+        points: 2.5,
+        examAttemptedPapers: 3,
+        firstAttemptQuestions: 80,
+        examScore: 81,
+        gapOverRaw: 5,
+        reason: '整卷实战持续高于训练机械分',
+      },
+      micro: {
+        dimensions: {
+          baseMastery: 78,
+          discrimination: 70,
+          examExecution: 81,
+          errorRecovery: null,
+          subjectiveQuality: 60,
+        },
+        slotRawScores: { baseline: 78, pastExams: 81 },
+      },
+      macro: {
+        dimensions: {
+          trainingDepth: 80,
+          antiMemoReliability: 75,
+          syllabusCoverage: 72,
+          memoryStability: 68,
+          passStructure: 85,
+        },
+        waterAttribution: [
+          {
+            key: 'memoryStability',
+            label: '记忆稳定性',
+            score: 68,
+            weight: 0.2,
+            deduction: 3.5,
+          },
+        ],
+      },
+      examStabilityWarning: {
+        triggered: true,
+        examCount: 3,
+        meanScore: 76,
+        stdDev: 9.2,
+        message: '近期整卷分数波动较大',
+      },
+      signals: {
+        firstAttemptQuestions: 80,
+        firstAttemptRate: 0.74,
+        repeatAttemptQuestions: 40,
+        repeatAttemptRate: 0.85,
+        stubbornRepeatedMistakes: 2,
+        examAttemptedPaperCount: 3,
+      },
+    },
+    createdAt: '2026-11-26T12:00:00Z',
+  }
+
+  const evaluation = await evaluateSubject('GD-15043', { triggerType: 'manual' })
+  assert.equal(evaluation.evidenceSnapshot.rawScore, 76)
+  assert.equal(evaluation.evidenceSnapshot.totalWater, 7.5)
+  assert.equal(evaluation.evidenceSnapshot.examBoost?.applied, true)
+  assert.equal(evaluation.evidenceSnapshot.micro?.dimensions.errorRecovery, null)
+  assert.equal(evaluation.evidenceSnapshot.macro?.waterAttribution[0].deduction, 3.5)
+  assert.equal(evaluation.evidenceSnapshot.examStabilityWarning?.triggered, true)
 })

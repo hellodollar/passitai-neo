@@ -22,6 +22,18 @@ export type EvaluationGapCode =
   | 'subjective_insufficient'
 export type EvaluationGapSeverity = 'high' | 'medium' | 'low'
 export type EvaluationActionType = 'paper' | 'mistakes' | 'aiGenerate'
+export type EvaluationMicroDimensionKey =
+  | 'baseMastery'
+  | 'discrimination'
+  | 'examExecution'
+  | 'errorRecovery'
+  | 'subjectiveQuality'
+export type EvaluationMacroDimensionKey =
+  | 'trainingDepth'
+  | 'antiMemoReliability'
+  | 'syllabusCoverage'
+  | 'memoryStability'
+  | 'passStructure'
 
 export type UserSubjectProfilePointStat = {
   attempted: number
@@ -135,6 +147,58 @@ export type UserSubjectEvaluationRecommendation = {
   pointKeys?: string[]
 }
 
+export type UserSubjectEvaluationExamBoost = {
+  enabled: boolean
+  applied: boolean
+  points: number
+  examAttemptedPapers: number
+  firstAttemptQuestions: number
+  examScore: number
+  gapOverRaw: number
+  reason: string
+}
+
+export type UserSubjectEvaluationMicro = {
+  dimensions: {
+    baseMastery: number
+    discrimination: number | null
+    examExecution: number
+    errorRecovery: number | null
+    subjectiveQuality: number | null
+  }
+  slotRawScores: Partial<Record<PracticeResourceType, number>>
+}
+
+export type UserSubjectEvaluationWaterAttribution = {
+  key: EvaluationMacroDimensionKey
+  label: string
+  score: number
+  weight: number
+  deduction: number
+}
+
+export type UserSubjectEvaluationMacro = {
+  dimensions: Record<EvaluationMacroDimensionKey, number>
+  waterAttribution: UserSubjectEvaluationWaterAttribution[]
+}
+
+export type UserSubjectEvaluationStabilityWarning = {
+  triggered: boolean
+  examCount: number
+  meanScore: number | null
+  stdDev: number | null
+  message: string | null
+}
+
+export type UserSubjectEvaluationSignals = {
+  firstAttemptQuestions: number
+  firstAttemptRate: number | null
+  repeatAttemptQuestions: number
+  repeatAttemptRate: number | null
+  stubbornRepeatedMistakes: number
+  examAttemptedPaperCount: number
+}
+
 export type UserSubjectEvaluationEvidence = {
   practiceCount: number
   answeredQuestions: number
@@ -148,6 +212,16 @@ export type UserSubjectEvaluationEvidence = {
   slotScores?: Partial<Record<PracticeResourceType, number>>
   slotLevels?: Partial<Record<PracticeResourceType, TrainingMasteryLevel>>
   subjectProfileGeneratedAt?: string | null
+  rawScore?: number
+  credibility?: number
+  multiplier?: number
+  totalWater?: number
+  subjectivePassCapped?: boolean
+  examBoost?: UserSubjectEvaluationExamBoost
+  micro?: UserSubjectEvaluationMicro
+  macro?: UserSubjectEvaluationMacro
+  examStabilityWarning?: UserSubjectEvaluationStabilityWarning
+  signals?: UserSubjectEvaluationSignals
 }
 
 export type UserSubjectEvaluation = {

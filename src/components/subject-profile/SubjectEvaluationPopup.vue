@@ -18,6 +18,8 @@ import {
 import BasePopup from '@/components/common/BasePopup.vue'
 import {
   EVALUATION_CONFIDENCE_LABELS,
+  EVALUATION_MACRO_DIMENSIONS,
+  EVALUATION_MICRO_DIMENSIONS,
   EVALUATION_READINESS_META,
   EVALUATION_TRIGGER_LABELS,
   PRACTICE_RESOURCE_SLOT_FALLBACK_LABELS,
@@ -84,21 +86,78 @@ const sortedRecommendations = computed(() => {
   return [...list].sort((a, b) => a.priority - b.priority)
 })
 
+const evidence = computed(() => activeEvaluation.value?.evidenceSnapshot)
+
+const hasDualLayerSummary = computed(() => {
+  const snapshot = evidence.value
+  if (!snapshot) return false
+  return (
+    snapshot.rawScore !== undefined ||
+    snapshot.credibility !== undefined ||
+    (snapshot.totalWater !== undefined && snapshot.totalWater > 0) ||
+    Boolean(snapshot.examBoost?.applied) ||
+    Boolean(snapshot.subjectivePassCapped)
+  )
+})
+
 const slotEntries = computed(() => {
-  const evidence = activeEvaluation.value?.evidenceSnapshot
-  if (!evidence?.slotScores && !evidence?.slotLevels) return []
+  const snapshot = evidence.value
+  if (!snapshot?.slotScores && !snapshot?.slotLevels) return []
   return practiceResourceTypes
     .filter(
       (type) =>
-        evidence.slotScores?.[type] !== undefined || evidence.slotLevels?.[type] !== undefined,
+        snapshot.slotScores?.[type] !== undefined || snapshot.slotLevels?.[type] !== undefined,
     )
     .map((type) => ({
       type,
       label: PRACTICE_RESOURCE_SLOT_FALLBACK_LABELS[type],
-      score: evidence.slotScores?.[type],
-      level: evidence.slotLevels?.[type],
+      score: snapshot.slotScores?.[type],
+      level: snapshot.slotLevels?.[type],
     }))
 })
+
+const microDimensionItems = computed(() => {
+  const dimensions = evidence.value?.micro?.dimensions
+  if (!dimensions) return []
+  return EVALUATION_MICRO_DIMENSIONS.map(({ key, label }) => ({
+    key,
+    label,
+    score: dimensions[key],
+  }))
+})
+
+const macroDimensionItems = computed(() => {
+  const macro = evidence.value?.macro
+  if (!macro?.dimensions) return []
+  const attributionByKey = new Map(macro.waterAttribution?.map((item) => [item.key, item]) ?? [])
+  return EVALUATION_MACRO_DIMENSIONS.map(({ key, label }) => {
+    const attribution = attributionByKey.get(key)
+    return {
+      key,
+      label: attribution?.label || label,
+      score: macro.dimensions[key],
+      deduction: attribution?.deduction ?? 0,
+    }
+  })
+})
+
+function formatMetricScore(value: number) {
+  const rounded = Math.round(value * 10) / 10
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1)
+}
+
+function clampPercent(value: number | null) {
+  if (value === null) return 0
+  return Math.max(0, Math.min(100, Math.round(value)))
+}
+
+function scoreBarClass(score: number | null) {
+  if (score === null) return 'bg-base-content/20'
+  if (score >= 80) return 'bg-success'
+  if (score >= 60) return 'bg-info'
+  if (score >= 40) return 'bg-warning'
+  return 'bg-error'
+}
 
 function severityMeta(severity: EvaluationGapSeverity) {
   if (severity === 'high') {
@@ -395,7 +454,11 @@ onBeforeUnmount(cancelPendingRequests)
                       <span class="text-3xl font-semibold leading-none tabular-nums text-primary">
                         {{ activeEvaluation.estimatedScore }}
                       </span>
-                      <span class="text-xs font-medium text-base-content/55">分（规则估分）</span>
+                      <span class="text-xs font-medium text-base-content/55">
+                        {{
+                          evidence?.rawScore !== undefined ? '分（校准预估分）' : '分（规则估分）'
+                        }}
+                      </span>
                     </div>
                     <p
                       v-if="
@@ -452,12 +515,175 @@ onBeforeUnmount(cancelPendingRequests)
                   </span>
                 </div>
 
+                <div
+                  v-if="hasDualLayerSummary && evidence"
+                  class="mt-2.5 flex flex-wrap items-center gap-1.5"
+                >
+                  <span
+                    v-if="evidence.rawScore !== undefined"
+                    class="rounded-full bg-base-100 px-2 py-0.5 text-[11px] font-medium tabular-nums text-base-content/70 dark:bg-base-200"
+                  >
+                    机械分 {{ formatMetricScore(evidence.rawScore) }}
+                  </span>
+                  <span
+                    v-if="evidence.credibility !== undefined"
+                    class="rounded-full bg-info/10 px-2 py-0.5 text-[11px] font-medium tabular-nums text-info dark:bg-info/15"
+                  >
+                    可信度 {{ Math.round(evidence.credibility * 100) }}%
+                  </span>
+                  <span
+                    v-if="evidence.totalWater !== undefined && evidence.totalWater > 0"
+                    class="rounded-full bg-warning/10 px-2 py-0.5 text-[11px] font-medium tabular-nums text-warning dark:bg-warning/15"
+                  >
+                    挤出水分 -{{ formatMetricScore(evidence.totalWater) }}
+                  </span>
+                  <span
+                    v-if="evidence.examBoost?.applied && evidence.examBoost.points > 0"
+                    class="rounded-full bg-success/10 px-2 py-0.5 text-[11px] font-medium tabular-nums text-success dark:bg-success/15"
+                  >
+                    实战补偿 +{{ formatMetricScore(evidence.examBoost.points) }}
+                  </span>
+                  <span
+                    v-if="evidence.subjectivePassCapped"
+                    class="rounded-full bg-warning/10 px-2 py-0.5 text-[11px] font-medium text-warning dark:bg-warning/15"
+                  >
+                    主观题样本不足封顶
+                  </span>
+                </div>
+
+                <p
+                  v-if="evidence?.examBoost?.applied && evidence.examBoost.reason"
+                  class="mt-2 text-xs leading-snug text-success"
+                >
+                  {{ evidence.examBoost.reason }}
+                </p>
+
                 <p
                   v-if="activeEvaluation.diagnosis.summary"
                   class="mt-2.5 border-t border-base-content/[0.06] pt-2.5 text-xs leading-relaxed text-base-content/75 dark:border-base-content/[0.08]"
                 >
                   {{ activeEvaluation.diagnosis.summary }}
                 </p>
+              </section>
+
+              <!-- 整卷稳定性提醒 -->
+              <section
+                v-if="
+                  evidence?.examStabilityWarning?.triggered && evidence.examStabilityWarning.message
+                "
+                class="flex items-start gap-2 rounded-xl bg-warning/10 px-3.5 py-2.5 text-xs text-warning dark:bg-warning/15"
+                role="status"
+              >
+                <AlertTriangle :size="15" class="mt-0.5 shrink-0" aria-hidden="true" />
+                <div class="min-w-0 flex-1">
+                  <p class="font-medium leading-snug">
+                    {{ evidence.examStabilityWarning.message }}
+                  </p>
+                  <p
+                    v-if="
+                      evidence.examStabilityWarning.meanScore !== null &&
+                      evidence.examStabilityWarning.stdDev !== null
+                    "
+                    class="mt-0.5 text-[11px] tabular-nums text-warning/80"
+                  >
+                    已测 {{ evidence.examStabilityWarning.examCount }} 套整卷 · 均值
+                    {{ formatMetricScore(evidence.examStabilityWarning.meanScore) }} · 波动 ±{{
+                      formatMetricScore(evidence.examStabilityWarning.stdDev)
+                    }}
+                  </p>
+                </div>
+              </section>
+
+              <!-- 5 维微观基准线 -->
+              <section v-if="microDimensionItems.length > 0">
+                <h4 class="mb-2 text-xs font-medium text-base-content/55">微观 5 维基准线</h4>
+                <div class="space-y-2.5 rounded-xl bg-base-200/65 p-3.5 dark:bg-base-300/45">
+                  <div v-for="item in microDimensionItems" :key="item.key" class="space-y-1">
+                    <div class="flex items-center justify-between gap-2 text-xs">
+                      <span class="font-medium text-base-content/80">{{ item.label }}</span>
+                      <span
+                        class="tabular-nums"
+                        :class="
+                          item.score === null
+                            ? 'text-base-content/45'
+                            : 'font-semibold text-base-content'
+                        "
+                      >
+                        {{
+                          item.score === null ? '暂无样本' : `${formatMetricScore(item.score)} 分`
+                        }}
+                      </span>
+                    </div>
+                    <div
+                      class="h-1.5 w-full overflow-hidden rounded-full bg-base-100 dark:bg-base-200"
+                    >
+                      <div
+                        class="h-full rounded-full transition-all"
+                        :class="scoreBarClass(item.score)"
+                        :style="{ width: `${clampPercent(item.score)}%` }"
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <!-- 5 维宏观校准与水分归因 -->
+              <section v-if="macroDimensionItems.length > 0">
+                <div class="mb-2 flex items-center justify-between gap-2">
+                  <h4 class="text-xs font-medium text-base-content/55">
+                    宏观 5 维可信度与水分归因
+                  </h4>
+                  <span
+                    v-if="evidence?.multiplier !== undefined"
+                    class="text-[11px] tabular-nums text-base-content/55"
+                  >
+                    校准系数 {{ evidence.multiplier.toFixed(2) }}
+                  </span>
+                </div>
+                <div class="space-y-2.5 rounded-xl bg-base-200/65 p-3.5 dark:bg-base-300/45">
+                  <div v-for="item in macroDimensionItems" :key="item.key" class="space-y-1">
+                    <div class="flex items-center justify-between gap-2 text-xs">
+                      <span class="font-medium text-base-content/80">{{ item.label }}</span>
+                      <div class="flex shrink-0 items-center gap-1.5">
+                        <span
+                          v-if="item.deduction > 0"
+                          class="rounded-full bg-warning/10 px-1.5 py-0.5 text-[11px] font-medium leading-none tabular-nums text-warning dark:bg-warning/15"
+                        >
+                          -{{ formatMetricScore(item.deduction) }} 分
+                        </span>
+                        <span class="font-semibold tabular-nums text-base-content">
+                          {{ formatMetricScore(item.score) }}
+                        </span>
+                      </div>
+                    </div>
+                    <div
+                      class="h-1.5 w-full overflow-hidden rounded-full bg-base-100 dark:bg-base-200"
+                    >
+                      <div
+                        class="h-full rounded-full transition-all"
+                        :class="scoreBarClass(item.score)"
+                        :style="{ width: `${clampPercent(item.score)}%` }"
+                      ></div>
+                    </div>
+                  </div>
+
+                  <p
+                    v-if="evidence?.signals"
+                    class="border-t border-base-content/[0.06] pt-2 text-[11px] leading-relaxed tabular-nums text-base-content/55 dark:border-base-content/[0.08]"
+                  >
+                    首做 {{ evidence.signals.firstAttemptQuestions }} 题<template
+                      v-if="evidence.signals.firstAttemptRate !== null"
+                    >
+                      （正确率
+                      {{ Math.round(evidence.signals.firstAttemptRate * 100) }}%）</template
+                    >
+                    · 复刷 {{ evidence.signals.repeatAttemptQuestions }} 题<template
+                      v-if="evidence.signals.stubbornRepeatedMistakes > 0"
+                    >
+                      · 顽固复错 {{ evidence.signals.stubbornRepeatedMistakes }} 题</template
+                    >
+                  </p>
+                </div>
               </section>
 
               <!-- 四槽位得分 -->

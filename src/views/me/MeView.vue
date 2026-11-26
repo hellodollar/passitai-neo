@@ -53,7 +53,7 @@ const appearancePopupOpen = ref(false)
 
 type RowAction =
   | 'messages'
-  | 'scope'
+  | 'exam-plan'
   | 'practice'
   | 'notification'
   | 'appearance'
@@ -109,7 +109,7 @@ const settingsRows = computed<SettingsRow[]>(() => [
         : '',
   },
   {
-    action: 'scope',
+    action: 'exam-plan',
     title: '考试计划',
     icon: GraduationCap,
     iconClass: 'bg-secondary/10 text-secondary',
@@ -158,7 +158,7 @@ function openRowAction(action: RowAction) {
     appearancePopupOpen.value = true
   } else if (action === 'account') {
     accountPopupOpen.value = true
-  } else if (action === 'scope') {
+  } else if (action === 'exam-plan') {
     if (examPlanStore.error) void examPlanStore.load()
     examPlanPopupOpen.value = true
   } else if (action === 'practice') {

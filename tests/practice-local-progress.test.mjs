@@ -46,13 +46,11 @@ const context = {
   paperId: 'papone',
   subjectId: 'subone',
   source: 'practice',
-  paperType: 'realSource',
 }
 const answer = { questionId: 'que_one', fingerprint: 'fp1', text: '甲', values: ['A'] }
 const input = { questionId: 'que_two', fingerprint: 'fp2', text: '未确认', values: [] }
 const recordKey = (ctx = context) =>
-  `passitai:practice-record:v3:${encodeURIComponent(ctx.userId)}:${ctx.source}:${encodeURIComponent(ctx.paperId)}`
-const legacyKey = (ctx = context) => `passitai:practice-draft:v1:${ctx.userId}:${ctx.paperId}`
+  `passitai:practice-record:${encodeURIComponent(ctx.userId)}:${ctx.source}:${encodeURIComponent(ctx.paperId)}`
 const makeRecord = (ctx = context) =>
   updatePracticeRecord(createPracticeRecord(ctx), {
     startedAt: Date.now(),
@@ -94,7 +92,7 @@ test('单题集清除答案、输入、位置及提交状态，不删除另一�
     submittedAt: new Date().toISOString(),
   }
   writePracticeRecord(original)
-  const otherSource = { ...context, source: 'favorites', paperType: null }
+  const otherSource = { ...context, source: 'favorites' }
   const otherUser = { ...context, userId: 'usrother' }
   writePracticeRecord(makeRecord(otherSource))
   writePracticeRecord(makeRecord(otherUser))
@@ -109,42 +107,12 @@ test('单题集清除答案、输入、位置及提交状态，不删除另一�
   assert.equal(writePracticeRecord(makeRecord(context)), true)
 })
 
-test('分类清理跨科目覆盖全部目标题集，其他分类和收藏、错题均不受影响', () => {
-  const contexts = [
-    context,
-    { ...context, paperId: 'paptwo', subjectId: 'subtwo' },
-    { ...context, paperId: 'papmock', paperType: 'pointCoverage' },
-    { ...context, paperId: 'collection:subject:subone', source: 'favorites', paperType: null },
-    { ...context, paperId: 'collection:subject:subone', source: 'mistakes', paperType: null },
-  ]
-  const records = contexts.map((ctx) => makeRecord(ctx))
-  records.forEach(writePracticeRecord)
-  assert.equal(
-    clearPracticeRecords({ kind: 'category', userId: context.userId, paperType: 'realSource' }),
-    true,
-  )
-  assert.equal(readPracticeRecord(contexts[0]), null)
-  assert.equal(readPracticeRecord(contexts[1]), null)
-  contexts.slice(2).forEach((ctx) => assert.ok(readPracticeRecord(ctx)))
-  assert.equal(listPracticeRecords(context.userId).length, 3)
-  assert.equal(writePracticeRecord(records[0]), false)
-  assert.equal(writePracticeRecord(records[1]), false)
-})
-
 test('缺失 clearToken 的记录不会被解释为当前代际', () => {
   const invalid = makeRecord()
   delete invalid.clearToken
   storage.setItem(recordKey(), JSON.stringify(invalid))
   assert.equal(readPracticeRecord(context), null)
   assert.deepEqual(listPracticeRecords(context.userId), [])
-})
-
-test('列表只包含当前版本，旧草稿与旧记录不会进入进度统计', () => {
-  const oldRecord = { ...makeRecord(), version: 2 }
-  storage.setItem(recordKey().replace(':v3:', ':v2:'), JSON.stringify(oldRecord))
-  storage.setItem(legacyKey(), JSON.stringify({ ...oldRecord, version: 1 }))
-  assert.deepEqual(listPracticeRecords(context.userId), [])
-  assert.equal(readPracticeRecord(context), null)
 })
 
 test('清除全部含收藏和错题本地作答，不碰其他用户、登录和刷题设置', () => {
@@ -206,14 +174,14 @@ test('清理后的迟到交卷响应不能登记报告，也不能复用旧提�
   assert.throws(() => settlePracticeSubmission(makeRecord(), old.record, response))
 })
 
-test('先后清理不同分类或单题集保留独立屏障，不使之前清理的记录重新有效', () => {
-  const past = makeRecord()
-  const mock = makeRecord({ ...context, paperId: 'papmock', paperType: 'pointCoverage' })
-  clearPracticeRecords({ kind: 'category', userId: context.userId, paperType: 'realSource' })
-  clearPracticeRecords({ kind: 'category', userId: context.userId, paperType: 'pointCoverage' })
+test('先后清理不同单题集与全量作用域保留独立屏障，不使之前清理的记录重新有效', () => {
+  const first = makeRecord()
+  const second = makeRecord({ ...context, paperId: 'papmock' })
+  clearPracticeRecords({ kind: 'paper', identity: context })
+  clearPracticeRecords({ kind: 'paper', identity: { ...context, paperId: 'papmock' } })
   clearPracticeRecords({ kind: 'paper', identity: { ...context, paperId: 'papother' } })
-  assert.equal(isPracticeRecordCurrent(past), false)
-  assert.equal(isPracticeRecordCurrent(mock), false)
+  assert.equal(isPracticeRecordCurrent(first), false)
+  assert.equal(isPracticeRecordCurrent(second), false)
 })
 
 test('清理扫描后新一轮已写入的同键记录不会被删除', () => {

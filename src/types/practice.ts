@@ -1,4 +1,3 @@
-import type { DomainValue } from '@/generated/domain-values'
 import type { PracticeResourceType } from '@/generated/practice-resource-values'
 
 import type { CollectionSource } from './collection'
@@ -27,7 +26,6 @@ export type PracticePaperLite = {
   name: string
   subjectId: string
   subjectCode?: string
-  paperType?: DomainValue<'paperType'>
   questionCount: number
   sections: Array<{
     name: string

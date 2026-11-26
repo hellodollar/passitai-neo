@@ -1,5 +1,3 @@
-import { PRACTICE_RECORD_VERSION } from '@/constants/practice'
-import { domainValues } from '@/generated/domain-values'
 import type {
   PracticeAnswerRecord,
   PracticePaperItem,
@@ -42,10 +40,6 @@ function isStartedAt(value: unknown): value is number {
 
 function isSubmissionId(value: unknown): value is string {
   return typeof value === 'string' && SUBMISSION_ID_PATTERN.test(value)
-}
-
-function isPaperType(value: unknown): value is PracticeRecord['paperType'] {
-  return value === null || domainValues.paperType.some((type) => type === value)
 }
 
 function parseAnswers(value: unknown): Record<string, PracticeRecordAnswer> {
@@ -110,7 +104,6 @@ function parsePendingSubmission(
   if (
     !isObject(raw) ||
     raw.submissionId !== value.submissionId ||
-    'startTime' in raw ||
     (raw.durationSeconds !== undefined &&
       (typeof raw.durationSeconds !== 'number' ||
         !Number.isFinite(raw.durationSeconds) ||
@@ -143,14 +136,12 @@ function parsePendingSubmission(
 function parseRecord(value: unknown, identity: PracticeRecordIdentity): PracticeRecord | null {
   if (
     !isObject(value) ||
-    value.version !== PRACTICE_RECORD_VERSION ||
     value.userId !== identity.userId ||
     value.paperId !== identity.paperId ||
     value.source !== identity.source ||
     !SOURCES.includes(identity.source) ||
     typeof value.clearToken !== 'string' ||
     typeof value.subjectId !== 'string' ||
-    !isPaperType(value.paperType) ||
     !isStartedAt(value.startedAt) ||
     !isRevision(value.answerRevision)
   ) {
@@ -177,10 +168,8 @@ function parseRecord(value: unknown, identity: PracticeRecordIdentity): Practice
     !isObject(value.answers) || Object.keys(answers).length !== Object.keys(value.answers).length
   return {
     ...identity,
-    version: PRACTICE_RECORD_VERSION,
     clearToken: value.clearToken,
     subjectId: value.subjectId,
-    paperType: value.paperType,
     startedAt: value.startedAt,
     currentQuestionId: typeof value.currentQuestionId === 'string' ? value.currentQuestionId : '',
     answers,
@@ -216,7 +205,6 @@ export function createPracticeRecord(
   }
   return {
     ...context,
-    version: PRACTICE_RECORD_VERSION,
     clearToken,
     startedAt: now,
     currentQuestionId: '',
@@ -229,7 +217,7 @@ export function createPracticeRecord(
   }
 }
 
-/** 只读取当前版本记录，按最新题集上下文核对清理代际。 */
+/** 读取本地作答记录，按最新题集上下文核对清理代际。 */
 export function readPracticeRecord(context: PracticeRecordContext): PracticeRecord | null {
   try {
     const record = parseStoredRecord(window.localStorage.getItem(recordKey(context)), context)
@@ -237,7 +225,6 @@ export function readPracticeRecord(context: PracticeRecordContext): PracticeReco
     const contextualRecord = {
       ...record,
       subjectId: context.subjectId,
-      paperType: context.paperType,
     }
     return isPracticeRecordCurrent(contextualRecord) ? contextualRecord : null
   } catch {
@@ -251,13 +238,12 @@ export function writePracticeRecord(record: PracticeRecord) {
     const key = recordKey(record)
     const value = JSON.stringify(record)
     window.localStorage.setItem(key, value)
-    const saved = window.localStorage.getItem(key) === value
     if (!isPracticeRecordCurrent(record)) {
       if (window.localStorage.getItem(key) === value) window.localStorage.removeItem(key)
       return false
     }
-    if (saved) notifyPracticeRecordChange()
-    return saved
+    notifyPracticeRecordChange()
+    return true
   } catch {
     return false
   }
@@ -420,7 +406,7 @@ function storedUserKeys(userId: string) {
   )
 }
 
-/** 只读取当前用户当前版本的有效记录。 */
+/** 读取当前用户的有效本地记录。 */
 export function listPracticeRecords(userId: string): PracticeRecord[] {
   try {
     return storedUserKeys(userId).flatMap((key) => {
@@ -456,21 +442,7 @@ export function clearPracticeRecords(scope: PracticeRecordClearScope) {
     const storage = window.localStorage
     const userId = scope.kind === 'paper' ? scope.identity.userId : scope.userId
     const targets = storedUserKeys(userId)
-      .filter((key) => {
-        if (scope.kind === 'all') return true
-        if (scope.kind === 'paper') return key === recordKey(scope.identity)
-        try {
-          const raw: unknown = JSON.parse(storage.getItem(key) ?? '')
-          return (
-            isObject(raw) &&
-            raw.userId === userId &&
-            raw.source === 'practice' &&
-            raw.paperType === scope.paperType
-          )
-        } catch {
-          return false
-        }
-      })
+      .filter((key) => scope.kind === 'all' || key === recordKey(scope.identity))
       .map((key) => ({ key, value: storage.getItem(key) }))
     if (!markPracticeRecordsCleared(scope)) return false
     for (const { key, value } of targets) {

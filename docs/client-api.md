@@ -531,16 +531,72 @@ interface UserSubjectEvaluation {
     slotScores?: Partial<Record<PracticeResourceType, number>>
     slotLevels?: Partial<Record<PracticeResourceType, TrainingMasteryLevel>>
     subjectProfileGeneratedAt?: string | null
+    rawScore?: number // 左雷达机械原始总分（0–100）
+    credibility?: number // 右雷达综合可信度（0–1）
+    multiplier?: number // 向下挤水分校准系数 K（minMultiplier–1）
+    totalWater?: number // 总挤出水分（rawScore - estimatedScore，≥ 0）
+    subjectivePassCapped?: boolean // 是否因主观题样本不足触发过关准备度封顶
+    examBoost?: {
+      enabled: boolean
+      applied: boolean
+      points: number
+      examAttemptedPapers: number
+      firstAttemptQuestions: number
+      examScore: number
+      gapOverRaw: number
+      reason: string
+    }
+    micro?: {
+      dimensions: {
+        baseMastery: number
+        discrimination: number | null
+        examExecution: number
+        errorRecovery: number | null
+        subjectiveQuality: number | null
+      }
+      slotRawScores: Partial<Record<PracticeResourceType, number>>
+    }
+    macro?: {
+      dimensions: {
+        trainingDepth: number
+        antiMemoReliability: number
+        syllabusCoverage: number
+        memoryStability: number
+        passStructure: number
+      }
+      waterAttribution: Array<{
+        key: 'trainingDepth' | 'antiMemoReliability' | 'syllabusCoverage' | 'memoryStability' | 'passStructure'
+        label: string
+        score: number
+        weight: number
+        deduction: number
+      }>
+    }
+    examStabilityWarning?: {
+      triggered: boolean
+      examCount: number
+      meanScore: number | null
+      stdDev: number | null
+      message: string | null
+    }
+    signals?: {
+      firstAttemptQuestions: number
+      firstAttemptRate: number | null
+      repeatAttemptQuestions: number
+      repeatAttemptRate: number | null
+      stubbornRepeatedMistakes: number
+      examAttemptedPaperCount: number
+    }
   }
   createdAt: string
 }
 ```
 
-- 核心评估口径详见 [练习资源、用户画像与科目评估核心业务设计（v1）](design/practice-training-and-evaluation.md)：
-  - **统一单卷公式**：`effectiveScore = min(rawScore, scoreCap)`（严苛版遍数上限 `<3 -> 59 / 3–4 -> 69 / 5–6 -> 84 / >=7 -> 100`），映射四档 `weak (0–59) / aware (60–69) / familiar (70–84) / mastered (85–100)`；
-  - **双轨汇总**：综合分按四槽位权重加权（`baseline 0.50` 内含 `pointCoverage 0.50 / highFrequency 0.30 / errorTarget 0.20`，`pastExams 0.20`，`mockExams 0.15`，`aiEnhance 0.15`）；槽位与科目能力等级严格走**木桶短板**；
-  - **`aiEnhance` 三态**：存在薄弱待修复为 `pending_fix`（按补强卷实测分，未刷为 `0`）；经补强卷达标无异常为 `verified_fixed`（数据支撑给满）；前三项无薄弱且未经补强检验为 `suspected_ok`（怀疑模式默认给 `80` 分）；
-  - **主观题过关保护**：当 `requireSubjectiveForPass = true` 且主观题样本不足时，`readinessLevel` 最高封顶 `building`，并在 `diagnosis.gaps` 返回 `subjective_insufficient`。
+- 核心评估口径详见 [练习资源、用户画像与科目评估核心业务设计](design/practice-training-and-evaluation.md)：
+  - **5 维微观基准线（左雷达）**：按四槽位权重（默认 `baseline 0.50 / pastExams 0.20 / mockExams 0.15 / aiEnhance 0.15`）汇总各槽位原始分得到机械分 `rawScore`，并拆解基础掌握、辨析能力、套卷实战、可核实错题修复力（依据 `0015` 历史先错后对记录，防止手动清错题刷分）与主观作答 5 项指标；
+  - **5 维宏观校准与双向护栏（右雷达）**：按训练扎实度、抗背题可信度、考纲完整度、记忆稳定性、过关结构达标算出综合可信度 `credibility` 与系数 `multiplier`，向下挤出水分并精确归因到 5 维 `waterAttribution`；对多套整卷实战稳定高分的隐形学霸触发有界向上补偿 `examBoost`；
+  - **`aiEnhance` 三态**：存在薄弱待修复为 `pending_fix`（按补强卷实测分，未刷为 `0`）；经补强卷达标无异常为 `verified_fixed`（数据支撑给满）；前三项无薄弱且未经补强检验为 `suspected_ok`（怀疑模式默认 `80` 分）；
+  - **主观题过关保护**：当全局 `evaluation-model.passRule.requireSubjectiveForPass = true` 且科目含主观题但样本不足时，`readinessLevel` 最高封顶 `building`，并在 `diagnosis.gaps` 返回 `subjective_insufficient`（纯客观题科目自动豁免）。
 - `recommendations` 按严重度输出最多 10 条可执行动作：`paper` 优先指向槽位内短板题集 `paperId`，`mistakes` 指向错题本清零，`aiGenerate` 携带 `enhanceType` 与薄弱 `pointKeys`。
 
 `POST /api/subjects/:code/ai-enhance/generate` 请求体与响应（单用户单科目最多保留 10 份启用私有补强卷，超限或无可用题返回 `409`）：

@@ -137,7 +137,6 @@ test('乱序后的作答与草稿按题目 ID 恢复，不串到其他题目', a
         paperId: 'papUX',
         source: 'practice',
         subjectId: 'subUX',
-        paperType: 'pastExams',
       },
       startedAt,
     ),

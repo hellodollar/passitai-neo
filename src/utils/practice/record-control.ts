@@ -1,5 +1,4 @@
 import { PRACTICE_RECORD_CHANGE_EVENT, STORAGE_KEYS } from '@/constants/app'
-import { PRACTICE_RECORD_VERSION } from '@/constants/practice'
 import type {
   PracticeRecord,
   PracticeRecordClearScope,
@@ -7,8 +6,8 @@ import type {
   PracticeRecordIdentity,
 } from '@/types'
 
-export const RECORD_PREFIX = `${STORAGE_KEYS.practiceRecordPrefix}v${PRACTICE_RECORD_VERSION}:`
-const CLEAR_PREFIX = `${STORAGE_KEYS.practiceRecordClearPrefix}v${PRACTICE_RECORD_VERSION}:`
+export const RECORD_PREFIX = STORAGE_KEYS.practiceRecordPrefix
+const CLEAR_PREFIX = STORAGE_KEYS.practiceRecordClearPrefix
 const CHANGE_EVENT = PRACTICE_RECORD_CHANGE_EVENT
 
 export function practiceRecordKey(identity: PracticeRecordIdentity) {
@@ -19,21 +18,15 @@ function clearKey(scope: PracticeRecordClearScope) {
   const userId = scope.kind === 'paper' ? scope.identity.userId : scope.userId
   const prefix = `${CLEAR_PREFIX}${encodeURIComponent(userId)}:`
   if (scope.kind === 'all') return `${prefix}all`
-  if (scope.kind === 'category') return `${prefix}category:${scope.paperType}`
   return `${prefix}paper:${scope.identity.source}:${encodeURIComponent(scope.identity.paperId)}`
 }
 
-/** 各作用域独立存储，避免两个标签页分别清理不同分类时覆盖对方的标记。 */
+/** 账号级与单题集级清理标记独立存储，避免跨标签相互覆盖。 */
 export function currentPracticeClearToken(context: PracticeRecordContext) {
   const storage = window.localStorage
   const tokens = [
     storage.getItem(clearKey({ kind: 'all', userId: context.userId })) ?? '',
     storage.getItem(clearKey({ kind: 'paper', identity: context })) ?? '',
-    context.source === 'practice' && context.paperType
-      ? (storage.getItem(
-          clearKey({ kind: 'category', userId: context.userId, paperType: context.paperType }),
-        ) ?? '')
-      : '',
   ]
   return tokens.some(Boolean) ? JSON.stringify(tokens) : ''
 }
