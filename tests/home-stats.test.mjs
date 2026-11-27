@@ -3,20 +3,13 @@ import test from 'node:test'
 
 import { loadSource } from './helpers/load-source.mjs'
 
-const {
-  formatProfileScore,
-  getPassItScoreColorClass,
-  summarizeRecentPracticeVolume,
-  summarizeResourceTotals,
-} = await loadSource('utils/practice/home-stats.ts')
+const { formatProfileScore, summarizeRecentPracticeVolume, summarizeResourceTotals } =
+  await loadSource('utils/practice/home-stats.ts')
 const { fetchPracticeRecords } = await loadSource('api/practice.ts')
 
-test('PassIt 四档分数对应柔和语义色，未评估与薄弱保持中性灰调', () => {
-  assert.equal(getPassItScoreColorClass(null), 'text-base-content/35')
-  assert.equal(getPassItScoreColorClass({ masteryLevel: 'weak' }), 'text-base-content/55')
-  assert.equal(getPassItScoreColorClass({ masteryLevel: 'aware' }), 'text-info')
-  assert.equal(getPassItScoreColorClass({ masteryLevel: 'familiar' }), 'text-primary')
-  assert.equal(getPassItScoreColorClass({ masteryLevel: 'mastered' }), 'text-success')
+test('分数展示保留零分和满分，小数统一保留一位', () => {
+  assert.equal(formatProfileScore(0), '0')
+  assert.equal(formatProfileScore(100), '100')
   assert.equal(formatProfileScore(88), '88')
   assert.equal(formatProfileScore(88.24), '88.2')
 })

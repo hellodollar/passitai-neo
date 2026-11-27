@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ChevronRight } from '@lucide/vue'
+import { BookOpen, CalendarDays, ChevronRight, Layers, ListChecks, Sparkles } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 
 import { fetchPracticeRecords } from '@/api/practice'
@@ -16,7 +16,6 @@ import type {
 import { formatShanghaiDate } from '@/utils/date'
 import {
   formatProfileScore,
-  getPassItScoreColorClass,
   summarizeRecentPracticeVolume,
   summarizeResourceTotals,
 } from '@/utils/practice/home-stats'
@@ -59,8 +58,6 @@ const MAX_RECORDS_PAGES = 5
 const RECORDS_PAGE_LIMIT = 50
 
 const resourceTotals = computed(() => summarizeResourceTotals(props.resources))
-
-const scoreColorClass = computed(() => getPassItScoreColorClass(profile.value?.latestEvaluation))
 
 async function loadRecentVolume(subjectCode: string, signal: AbortSignal) {
   const collected: PracticeSubmissionSummary[] = []
@@ -153,20 +150,17 @@ watch(
 </script>
 
 <template>
-  <section
-    aria-label="PassIt 评分与练习概览"
-    class="rounded-2xl bg-base-100 p-3.5 dark:bg-base-200"
-  >
+  <section aria-label="PassIt 评分与练习概览" class="rounded-2xl bg-base-100 p-3 dark:bg-base-200">
     <div v-if="loading && !profile" role="status" aria-label="正在加载…" class="space-y-3">
       <div class="flex items-center justify-between gap-3">
-        <span class="h-7 w-28 animate-pulse rounded bg-base-200 dark:bg-base-300/70"></span>
+        <span class="h-12 w-36 animate-pulse rounded-xl bg-primary/5 dark:bg-primary/10"></span>
         <span class="h-4 w-16 animate-pulse rounded bg-base-200/80 dark:bg-base-300/60"></span>
       </div>
-      <div class="grid grid-cols-2 gap-2">
+      <div class="grid grid-cols-2 gap-1.5">
         <span
           v-for="index in 4"
           :key="index"
-          class="h-10 animate-pulse rounded-xl bg-base-200/65 dark:bg-base-300/45"
+          class="h-8 animate-pulse rounded-lg bg-base-200/65 dark:bg-base-300/45"
         ></span>
       </div>
     </div>
@@ -187,18 +181,20 @@ watch(
     </div>
 
     <template v-else-if="profile">
-      <!-- 顶部一行：PassIt 评分（4 档 4 色）+ 查看详情 -->
-      <div class="flex items-baseline justify-between gap-3">
-        <div class="flex min-w-0 items-baseline gap-1.5">
-          <span class="text-sm font-semibold tracking-tight text-base-content">PassIt</span>
+      <!-- 与详情统一品牌分数区，未评估保留中性占位。 -->
+      <div
+        class="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 rounded-xl bg-primary/5 px-3 py-2.5 dark:bg-primary/10"
+      >
+        <div class="flex min-w-0 items-center gap-1.5">
+          <Sparkles :size="14" class="text-primary" aria-hidden="true" />
+          <span class="text-sm font-semibold tracking-tight text-primary">PassIt</span>
           <template v-if="profile.latestEvaluation">
             <span
-              class="text-[1.75rem] font-bold leading-none tracking-tight tabular-nums"
-              :class="scoreColorClass"
+              class="ml-1 bg-linear-to-br from-primary to-ai bg-clip-text text-4xl font-semibold leading-none tracking-tighter text-transparent tabular-nums"
             >
               {{ formatProfileScore(profile.latestEvaluation.estimatedScore) }}
             </span>
-            <span class="text-xs font-medium text-base-content/50">分</span>
+            <span class="self-end pb-0.5 text-xs text-base-content/55">分</span>
           </template>
           <template v-else>
             <span class="text-xl font-semibold leading-none tabular-nums text-base-content/30">
@@ -211,47 +207,68 @@ watch(
         <button
           type="button"
           class="inline-flex shrink-0 items-center gap-0.5 text-xs font-medium text-primary transition-opacity active:opacity-70"
+          aria-label="查看评估详情"
           @click="openDetails"
         >
-          查看详情
+          详情
           <ChevronRight :size="14" aria-hidden="true" />
         </button>
       </div>
 
       <!-- 2×2 块状统计：题集 / 题量 / 今日练习 / 月累计 -->
-      <div class="mt-3 grid grid-cols-2 gap-2">
+      <div class="mt-2 grid grid-cols-2 gap-1.5">
         <div
-          class="flex items-baseline justify-between gap-2 rounded-xl bg-base-200/65 px-3 py-2.5 dark:bg-base-300/45"
+          class="flex min-w-0 items-center justify-between gap-1.5 rounded-lg bg-base-200/65 px-2.5 py-2 dark:bg-base-300/45"
         >
-          <span class="text-xs text-base-content/55">题集</span>
-          <span class="text-sm font-semibold leading-none tabular-nums text-base-content">
+          <span
+            class="flex min-w-0 items-center gap-1 text-[11px] leading-snug text-base-content/55"
+            ><Layers :size="12" class="text-base-content/40" aria-hidden="true" />题集</span
+          >
+          <span
+            class="shrink-0 text-base font-semibold leading-none tabular-nums text-base-content"
+          >
             {{ resourceTotals.paperCount }}
           </span>
         </div>
 
         <div
-          class="flex items-baseline justify-between gap-2 rounded-xl bg-base-200/65 px-3 py-2.5 dark:bg-base-300/45"
+          class="flex min-w-0 items-center justify-between gap-1.5 rounded-lg bg-base-200/65 px-2.5 py-2 dark:bg-base-300/45"
         >
-          <span class="text-xs text-base-content/55">题量</span>
-          <span class="text-sm font-semibold leading-none tabular-nums text-base-content">
+          <span
+            class="flex min-w-0 items-center gap-1 text-[11px] leading-snug text-base-content/55"
+            ><ListChecks :size="12" class="text-base-content/40" aria-hidden="true" />题量</span
+          >
+          <span
+            class="shrink-0 text-base font-semibold leading-none tabular-nums text-base-content"
+          >
             {{ resourceTotals.questionCount }}
           </span>
         </div>
 
         <div
-          class="flex items-baseline justify-between gap-2 rounded-xl bg-base-200/65 px-3 py-2.5 dark:bg-base-300/45"
+          class="flex min-w-0 items-center justify-between gap-1.5 rounded-lg bg-base-200/65 px-2.5 py-2 dark:bg-base-300/45"
         >
-          <span class="text-xs text-base-content/55">今日练习</span>
-          <span class="text-sm font-semibold leading-none tabular-nums text-base-content">
+          <span
+            class="flex min-w-0 items-center gap-1 text-[11px] leading-snug text-base-content/55"
+            ><BookOpen :size="12" class="text-base-content/40" aria-hidden="true" />今日练习</span
+          >
+          <span
+            class="shrink-0 text-base font-semibold leading-none tabular-nums text-base-content"
+          >
             {{ recentVolume !== null ? recentVolume.todayAnswered : '—' }}
           </span>
         </div>
 
         <div
-          class="flex items-baseline justify-between gap-2 rounded-xl bg-base-200/65 px-3 py-2.5 dark:bg-base-300/45"
+          class="flex min-w-0 items-center justify-between gap-1.5 rounded-lg bg-base-200/65 px-2.5 py-2 dark:bg-base-300/45"
         >
-          <span class="text-xs text-base-content/55">月累计</span>
-          <span class="text-sm font-semibold leading-none tabular-nums text-base-content">
+          <span
+            class="flex min-w-0 items-center gap-1 text-[11px] leading-snug text-base-content/55"
+            ><CalendarDays :size="12" class="text-base-content/40" aria-hidden="true" />月累计</span
+          >
+          <span
+            class="shrink-0 text-base font-semibold leading-none tabular-nums text-base-content"
+          >
             {{ recentVolume !== null ? recentVolume.monthlyAnswered : '—' }}
           </span>
         </div>

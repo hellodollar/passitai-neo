@@ -1,6 +1,19 @@
 <script setup lang="ts">
 import {
   AlertTriangle,
+  BookOpen,
+  CircleCheck,
+  CircleX,
+  ClipboardCheck,
+  Crosshair,
+  FileClock,
+  Gauge,
+  Layers,
+  ListChecks,
+  RotateCcw,
+  ScanSearch,
+  Target,
+  TrendingUp,
   ChevronLeft,
   ChevronRight,
   Clock,
@@ -34,7 +47,7 @@ import type {
   UserSubjectProfile,
 } from '@/types'
 import { formatShanghaiDateTime } from '@/utils/date'
-import { formatProfileScore, getPassItScoreColorClass } from '@/utils/practice/home-stats'
+import { formatProfileScore } from '@/utils/practice/home-stats'
 import { showErrorToast, showSuccessToast } from '@/utils/toast'
 
 const props = withDefaults(
@@ -83,11 +96,13 @@ const HISTORY_LIMIT = 10
 const TRAINING_ABILITY_SLOTS: ReadonlyArray<{
   key: PracticeResourceType
   label: string
+  icon: typeof BookOpen
+  tone: string
 }> = [
-  { key: 'baseline', label: '基准水平' },
-  { key: 'pastExams', label: '真题水平' },
-  { key: 'mockExams', label: '模拟考试水平' },
-  { key: 'aiEnhance', label: '查漏补缺水平' },
+  { key: 'baseline', label: '基础', icon: BookOpen, tone: 'text-primary/70' },
+  { key: 'pastExams', label: '真题', icon: FileClock, tone: 'text-secondary/70' },
+  { key: 'mockExams', label: '模拟', icon: ClipboardCheck, tone: 'text-info/70' },
+  { key: 'aiEnhance', label: '补强', icon: ScanSearch, tone: 'text-ai/70' },
 ]
 
 const canClose = computed(() => !evaluating.value && generatingIndex.value === null)
@@ -106,12 +121,6 @@ const sortedRecommendations = computed(() => {
 
 const evidence = computed(() => activeEvaluation.value?.evidenceSnapshot)
 
-const scoreColorClass = computed(() =>
-  getPassItScoreColorClass(
-    evidence.value?.masteryLevel ? { masteryLevel: evidence.value.masteryLevel } : null,
-  ),
-)
-
 const summaryStats = computed(() => {
   const snapshot = evidence.value
   const accuracy =
@@ -120,20 +129,24 @@ const summaryStats = computed(() => {
       : '—'
   return [
     {
-      label: '近 7 日刷题',
+      label: '7日练习',
+      icon: BookOpen,
       value: props.weeklyAnswered !== null ? String(props.weeklyAnswered) : '—',
     },
-    // 接口暂未下发近 7 日错题量，先以中性占位符展示
+    // 接口暂未下发7日错题量，先以中性占位符展示
     {
-      label: '近 7 日错题',
+      label: '7日错题',
+      icon: CircleX,
       value: '—',
     },
     {
-      label: '待清错题',
+      label: '待纠错',
+      icon: RotateCcw,
       value: snapshot ? String(snapshot.unresolvedMistakes) : '—',
     },
     {
       label: '正确率',
+      icon: Crosshair,
       value: accuracy,
     },
   ]
@@ -152,21 +165,25 @@ const trainingAbilityItems = computed(() => {
     key: string
     label: string
     level: TrainingMasteryLevel
+    icon: typeof BookOpen
+    tone: string
   }> = []
 
-  for (const { key, label } of TRAINING_ABILITY_SLOTS) {
+  for (const { key, label, icon, tone } of TRAINING_ABILITY_SLOTS) {
     const score = qs?.[key] ?? snapshot.slotScores?.[key]
     const level =
       snapshot.slotLevels?.[key] ?? (score !== undefined ? scoreToMasteryLevel(score) : undefined)
     if (level !== undefined) {
-      items.push({ key, label, level })
+      items.push({ key, label, level, icon, tone })
     }
   }
 
   if (qs && qs.paperStructure !== undefined) {
     items.push({
       key: 'paperStructure',
-      label: '题型结构水平',
+      label: '题型',
+      icon: Layers,
+      tone: 'text-accent/70',
       level: scoreToMasteryLevel(qs.paperStructure),
     })
   }
@@ -205,10 +222,10 @@ function formatCompactTime(iso: string) {
   return full.startsWith(currentYear) ? full.slice(currentYear.length) : full
 }
 
-function severityDotClass(severity: EvaluationGapSeverity) {
-  if (severity === 'high') return 'bg-primary/70'
-  if (severity === 'medium') return 'bg-info/70'
-  return 'bg-base-content/30'
+function severityIconClass(severity: EvaluationGapSeverity) {
+  if (severity === 'high') return 'bg-primary/10 text-primary'
+  if (severity === 'medium') return 'bg-info/10 text-info'
+  return 'bg-base-200/65 text-base-content/55 dark:bg-base-300/45'
 }
 
 function getPointWrongCount(pointKey: string) {
@@ -473,7 +490,7 @@ onBeforeUnmount(cancelPendingRequests)
 
     <template #body>
       <div
-        class="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-base-200/70 px-4 py-3.5 dark:bg-base-100"
+        class="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-base-200/70 px-4 py-3 dark:bg-base-100"
       >
         <!-- 诊断详情 -->
         <template v-if="activeTab === 'detail'">
@@ -505,40 +522,57 @@ onBeforeUnmount(cancelPendingRequests)
             v-else-if="!activeEvaluation"
             class="flex min-h-52 flex-col items-center justify-center gap-1.5 text-center"
           >
-            <p class="text-sm font-medium text-base-content">还没有评估记录</p>
-            <p class="text-xs text-base-content/55">点击下方按钮测一下当前水平</p>
+            <p class="text-sm font-medium text-base-content">暂无评估</p>
+            <p class="text-xs text-base-content/55">开始评估，了解当前水平</p>
           </div>
 
-          <div v-else class="space-y-3.5">
-            <!-- 第一层：核心评分卡 -->
-            <section class="rounded-2xl bg-base-100 p-4 dark:bg-base-200">
-              <div class="flex items-baseline justify-between gap-3">
-                <div class="flex min-w-0 items-baseline gap-1.5">
-                  <span class="text-sm font-semibold tracking-tight text-base-content">PassIt</span>
+          <div v-else class="space-y-2.5">
+            <!-- 第一层：分数使用品牌色强调；掌握度含义仍由下方等级标签表达。 -->
+            <section
+              class="overflow-hidden rounded-2xl bg-base-100 p-3 dark:bg-base-200"
+              aria-label="PassIt 综合评分"
+            >
+              <div
+                class="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 rounded-xl bg-primary/5 px-3 py-2.5 dark:bg-primary/10"
+              >
+                <div class="flex items-center gap-1.5">
+                  <Sparkles :size="14" class="text-primary" aria-hidden="true" />
+                  <span class="text-sm font-semibold tracking-tight text-primary">PassIt</span>
                   <span
-                    class="text-[2rem] font-bold leading-none tracking-tight tabular-nums"
-                    :class="scoreColorClass"
+                    class="ml-1 bg-linear-to-br from-primary to-ai bg-clip-text text-4xl font-semibold leading-none tracking-tighter text-transparent tabular-nums"
                   >
                     {{ formatProfileScore(activeEvaluation.estimatedScore) }}
                   </span>
-                  <span class="text-xs font-medium text-base-content/50">分</span>
+                  <span class="self-end pb-0.5 text-xs text-base-content/55">分</span>
                 </div>
-                <span class="shrink-0 text-[11px] tabular-nums text-base-content/45">
+                <span
+                  class="inline-flex items-center gap-1 text-[11px] tabular-nums text-base-content/55"
+                >
+                  <Clock :size="12" aria-hidden="true" />
                   {{ formatCompactTime(activeEvaluation.createdAt) }}
                 </span>
               </div>
-
-              <!-- PassIt 评分下方核心量：近 7 日刷题 / 近 7 日错题（占位） / 待清错题 / 正确率 -->
-              <div class="mt-3.5 grid grid-cols-2 gap-2">
+              <div class="mt-2 grid grid-cols-2 gap-1.5">
                 <div
                   v-for="stat in summaryStats"
                   :key="stat.label"
-                  class="flex items-baseline justify-between gap-2 rounded-xl bg-base-200/60 px-3 py-2.5 dark:bg-base-300/40"
+                  class="flex min-w-0 items-center justify-between gap-1.5 rounded-lg bg-base-200/65 px-2.5 py-2 dark:bg-base-300/45"
                 >
-                  <span class="text-xs text-base-content/55">{{ stat.label }}</span>
-                  <span class="text-sm font-semibold leading-none tabular-nums text-base-content">
-                    {{ stat.value }}
+                  <span
+                    class="flex min-w-0 items-center gap-1 text-[11px] leading-snug text-base-content/55"
+                  >
+                    <component
+                      :is="stat.icon"
+                      :size="12"
+                      class="text-base-content/40"
+                      aria-hidden="true"
+                    />
+                    {{ stat.label }}
                   </span>
+                  <span
+                    class="shrink-0 text-base font-semibold leading-none tabular-nums text-base-content"
+                    >{{ stat.value }}</span
+                  >
                 </div>
               </div>
 
@@ -551,38 +585,53 @@ onBeforeUnmount(cancelPendingRequests)
                   class="flex items-center gap-1.5 text-xs leading-snug text-base-content/55"
                 >
                   <Clock :size="13" class="shrink-0" aria-hidden="true" />
-                  <span>部分考点久未复习，复盘即可拉回分数</span>
+                  <span>部分考点待复习</span>
                 </p>
                 <p
                   v-if="evidence?.subjectivePassCapped"
                   class="flex items-center gap-1.5 text-xs leading-snug text-base-content/55"
                 >
                   <AlertTriangle :size="13" class="shrink-0" aria-hidden="true" />
-                  <span>主观题练得较少，补练后估分更准</span>
+                  <span>主观题样本偏少，建议补练</span>
                 </p>
               </div>
             </section>
 
-            <!-- 第二层：科目训练能力（显眼直出、不折叠、纯档位） -->
+            <!-- 第二层：训练能力（显眼直出、不折叠、纯档位） -->
             <section
               v-if="trainingAbilityItems.length > 0"
-              class="rounded-2xl bg-base-100 px-4 py-3.5 dark:bg-base-200"
+              class="rounded-2xl bg-base-100 px-3 py-2.5 dark:bg-base-200"
             >
-              <h4 class="mb-2 text-sm font-semibold tracking-tight text-base-content">
-                科目训练能力
+              <h4
+                class="mb-2 flex items-center gap-2 text-[15px] font-semibold leading-tight tracking-tight text-base-content"
+              >
+                <span
+                  class="flex size-7 items-center justify-center rounded-lg bg-primary/10 text-primary"
+                  aria-hidden="true"
+                  ><Gauge :size="15"
+                /></span>
+                训练能力
               </h4>
 
               <div class="divide-y divide-base-content/[0.06] dark:divide-base-content/[0.08]">
                 <div
                   v-for="item in trainingAbilityItems"
                   :key="item.key"
-                  class="flex items-center justify-between gap-3 py-2.5 first:pt-1 last:pb-0.5"
+                  class="flex items-center justify-between gap-2 py-1.5 first:pt-0.5 last:pb-0.5"
                 >
-                  <span class="text-sm font-medium text-base-content/85">
-                    {{ item.label }}
-                  </span>
+                  <div class="flex min-w-0 items-center gap-2">
+                    <span
+                      class="flex size-5 shrink-0 items-center justify-center"
+                      :class="item.tone"
+                      aria-hidden="true"
+                      ><component :is="item.icon" :size="15"
+                    /></span>
+                    <span class="text-sm font-medium leading-snug text-base-content">{{
+                      item.label
+                    }}</span>
+                  </div>
                   <span
-                    class="rounded-full px-2.5 py-0.5 text-xs font-medium"
+                    class="shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold"
                     :class="TRAINING_MASTERY_BADGE_CLASSES[item.level]"
                   >
                     {{ trainingMasteryLabels[item.level] }}
@@ -591,10 +640,19 @@ onBeforeUnmount(cancelPendingRequests)
               </div>
             </section>
 
-            <!-- 第三层：诊断症状（所有薄弱表现集中置于下方） -->
+            <!-- 第三层：待提升（所有薄弱表现集中置于下方） -->
             <section v-if="hasSymptoms">
-              <h4 class="mb-2 px-1 text-xs font-medium text-base-content/55">诊断症状</h4>
-              <div class="rounded-2xl bg-base-100 p-4 dark:bg-base-200">
+              <h4
+                class="mb-2 flex items-center gap-1.5 px-1 text-[15px] font-semibold leading-tight tracking-tight text-base-content"
+              >
+                <span
+                  class="flex size-7 items-center justify-center rounded-lg bg-secondary/10 text-secondary"
+                  aria-hidden="true"
+                  ><ScanSearch :size="15"
+                /></span>
+                待提升
+              </h4>
+              <div class="rounded-2xl bg-base-100 p-3 dark:bg-base-200">
                 <!-- 具体问题列表 -->
                 <div v-if="activeEvaluation.diagnosis.gaps.length > 0" class="space-y-2.5">
                   <div
@@ -603,10 +661,11 @@ onBeforeUnmount(cancelPendingRequests)
                     class="flex items-start gap-2.5"
                   >
                     <span
-                      class="mt-1.5 size-1.5 shrink-0 rounded-full"
-                      :class="severityDotClass(gap.severity)"
+                      class="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-md"
+                      :class="severityIconClass(gap.severity)"
                       aria-hidden="true"
-                    ></span>
+                      ><Target :size="12"
+                    /></span>
                     <div class="min-w-0 flex-1">
                       <p class="text-sm font-medium leading-snug text-base-content">
                         {{ gap.title }}
@@ -717,27 +776,60 @@ onBeforeUnmount(cancelPendingRequests)
               </div>
             </section>
 
-            <!-- 第四层：提分建议（对应症状的直接行动） -->
+            <!-- 第四层：下一步（对应症状的直接行动） -->
             <section v-if="sortedRecommendations.length > 0">
-              <h4 class="mb-2 px-1 text-xs font-medium text-base-content/55">提分建议</h4>
+              <h4
+                class="mb-2 flex items-center gap-1.5 px-1 text-[15px] font-semibold leading-tight tracking-tight text-base-content"
+              >
+                <span
+                  class="flex size-7 items-center justify-center rounded-lg bg-ai/10 text-ai"
+                  aria-hidden="true"
+                  ><TrendingUp :size="15"
+                /></span>
+                下一步
+              </h4>
               <div
                 class="divide-y divide-base-content/[0.06] overflow-hidden rounded-2xl bg-base-100 dark:divide-base-content/[0.08] dark:bg-base-200"
               >
                 <div
                   v-for="(rec, index) in sortedRecommendations"
                   :key="`${rec.gapCode}-${rec.actionType}-${rec.paperId ?? index}`"
-                  class="flex items-center justify-between gap-3 px-4 py-3"
+                  class="flex flex-wrap items-center gap-x-2.5 gap-y-2 px-3 py-2.5"
                 >
-                  <div class="min-w-0 flex-1">
-                    <p class="text-sm font-medium leading-snug text-base-content">
-                      {{ rec.title }}
-                    </p>
-                    <p
-                      v-if="formatRecommendationSubtitle(rec)"
-                      class="mt-0.5 text-xs leading-snug text-base-content/55"
+                  <div class="flex min-w-0 flex-[1_1_9rem] items-start gap-2">
+                    <span
+                      class="mt-0.5 flex size-5 shrink-0 items-center justify-center"
+                      :class="
+                        rec.actionType === 'aiGenerate'
+                          ? 'text-ai/70'
+                          : rec.actionType === 'mistakes'
+                            ? 'text-secondary/70'
+                            : 'text-primary/70'
+                      "
+                      aria-hidden="true"
                     >
-                      {{ formatRecommendationSubtitle(rec) }}
-                    </p>
+                      <component
+                        :is="
+                          rec.actionType === 'aiGenerate'
+                            ? Sparkles
+                            : rec.actionType === 'mistakes'
+                              ? RotateCcw
+                              : ListChecks
+                        "
+                        :size="14"
+                      />
+                    </span>
+                    <div class="min-w-0 flex-1">
+                      <p class="text-sm font-medium leading-snug text-base-content">
+                        {{ rec.title }}
+                      </p>
+                      <p
+                        v-if="formatRecommendationSubtitle(rec)"
+                        class="mt-1 text-xs leading-relaxed text-base-content/55"
+                      >
+                        {{ formatRecommendationSubtitle(rec) }}
+                      </p>
+                    </div>
                   </div>
                   <button
                     v-if="
@@ -746,7 +838,7 @@ onBeforeUnmount(cancelPendingRequests)
                       rec.actionType === 'aiGenerate'
                     "
                     type="button"
-                    class="flex h-8 shrink-0 items-center gap-1 rounded-lg px-3 text-xs font-medium transition-colors disabled:opacity-50"
+                    class="ml-auto flex h-8 shrink-0 items-center gap-1 rounded-lg px-3 text-xs font-medium transition-colors disabled:opacity-50"
                     :class="
                       rec.actionType === 'aiGenerate'
                         ? 'bg-ai/10 text-ai active:bg-ai/15 dark:bg-ai/15'
@@ -760,20 +852,15 @@ onBeforeUnmount(cancelPendingRequests)
                       class="loading loading-spinner loading-xs"
                       aria-hidden="true"
                     ></span>
-                    <Sparkles
-                      v-else-if="rec.actionType === 'aiGenerate'"
-                      :size="13"
-                      aria-hidden="true"
-                    />
                     <span>
                       {{
                         rec.actionType === 'paper'
-                          ? '去刷题'
+                          ? '练习'
                           : rec.actionType === 'mistakes'
-                            ? '去纠错'
+                            ? '纠错'
                             : generatingIndex === index
                               ? '生成中'
-                              : '去补强'
+                              : '补强'
                       }}
                     </span>
                   </button>
@@ -783,17 +870,27 @@ onBeforeUnmount(cancelPendingRequests)
 
             <!-- 第五层：已掌握优势 -->
             <section v-if="activeEvaluation.diagnosis.strengths.length > 0">
-              <h4 class="mb-2 px-1 text-xs font-medium text-base-content/55">已掌握</h4>
-              <div class="space-y-2.5 rounded-2xl bg-base-100 p-4 dark:bg-base-200">
+              <h4
+                class="mb-2 flex items-center gap-1.5 px-1 text-[15px] font-semibold leading-tight tracking-tight text-base-content"
+              >
+                <span
+                  class="flex size-7 items-center justify-center rounded-lg bg-success/10 text-success"
+                  aria-hidden="true"
+                  ><CircleCheck :size="15"
+                /></span>
+                已掌握
+              </h4>
+              <div class="space-y-2 rounded-2xl bg-base-100 p-3 dark:bg-base-200">
                 <div
                   v-for="(strength, index) in activeEvaluation.diagnosis.strengths"
                   :key="`${strength.code}-${index}`"
                   class="flex items-start gap-2.5"
                 >
                   <span
-                    class="mt-1.5 size-1.5 shrink-0 rounded-full bg-success"
+                    class="mt-0.5 flex size-5 shrink-0 items-center justify-center text-success/70"
                     aria-hidden="true"
-                  ></span>
+                    ><CircleCheck :size="14"
+                  /></span>
                   <div class="min-w-0 flex-1">
                     <p class="text-sm font-medium leading-snug text-base-content">
                       {{ strength.title }}
@@ -839,7 +936,7 @@ onBeforeUnmount(cancelPendingRequests)
             class="flex min-h-52 flex-col items-center justify-center gap-1.5 text-center"
           >
             <p class="text-sm font-medium text-base-content">暂无评估记录</p>
-            <p class="text-xs text-base-content/55">每次评估结果都会自动保存在这里</p>
+            <p class="text-xs text-base-content/55">评估结果自动保存</p>
           </div>
 
           <div v-else class="space-y-3">

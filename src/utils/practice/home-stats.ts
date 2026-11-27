@@ -1,26 +1,9 @@
-import type { TrainingMasteryLevel } from '@/generated/practice-resource-values'
-import type { PracticeResource, UserSubjectProfileLatestEvaluation } from '@/types'
+import type { PracticeResource } from '@/types'
 import { formatShanghaiDate } from '@/utils/date'
-
-/** 柔和四档语义色（去警告红/黄）：weak 柔灰 / aware 清蓝 / familiar 鸢尾主色 / mastered 清绿。 */
-const MASTERY_SCORE_TEXT_CLASSES: Record<TrainingMasteryLevel, string> = {
-  weak: 'text-base-content/55',
-  aware: 'text-info',
-  familiar: 'text-primary',
-  mastered: 'text-success',
-}
 
 export function formatProfileScore(value: number) {
   const rounded = Math.round(value * 10) / 10
   return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1)
-}
-
-/** PassIt 四档分数语义色：默认起步柔灰，随掌握度渐进清蓝 / 鸢尾 / 清绿。 */
-export function getPassItScoreColorClass(
-  evaluation: Pick<UserSubjectProfileLatestEvaluation, 'masteryLevel'> | null | undefined,
-): string {
-  if (!evaluation) return 'text-base-content/35'
-  return MASTERY_SCORE_TEXT_CLASSES[evaluation.masteryLevel] ?? 'text-base-content/55'
 }
 
 /** 统计当前科目全部去重题集数与总题量。 */
