@@ -43,6 +43,7 @@ const props = withDefaults(
 const emit = defineEmits<{
   'open-paper': [paper: Paper]
   'open-paper-id': [paperId: string]
+  'resources-loaded': [resources: PracticeResource[]]
   'resources-changed': []
   loaded: []
 }>()
@@ -142,6 +143,11 @@ function getPaperProgress(paperId: string) {
   return paperProgressById.value.get(paperId) ?? null
 }
 
+function hasServerPractice(progress: UserSubjectProfilePaperProgress | null) {
+  if (!progress) return false
+  return progress.completedRounds > 0 || progress.coveredQuestions > 0 || progress.rawScore !== null
+}
+
 async function handleGenerateAiPaper() {
   if (!props.subjectCode || !auth.session?.token || generating.value) return
   const sequence = ++mutationSequence
@@ -210,6 +216,7 @@ watch(
     if (!token || !code || examType === 'practical') {
       resources.value = []
       loading.value = false
+      emit('resources-loaded', [])
       if (token && code && examType === 'practical') emit('loaded')
       return
     }
@@ -221,6 +228,7 @@ watch(
     if (!isSameSubject) {
       resources.value = []
       loading.value = true
+      emit('resources-loaded', [])
     }
     try {
       const result = await fetchPracticeResources(code, controller.signal)
@@ -229,6 +237,7 @@ watch(
       if (result.length && !result.some((item) => item.type === selectedType.value)) {
         selectedType.value = result[0]!.type
       }
+      emit('resources-loaded', result)
       emit('loaded')
     } catch {
       if (!controller.signal.aborted) error.value = true
@@ -259,7 +268,7 @@ onBeforeUnmount(() => {
         <div
           v-for="index in 4"
           :key="index"
-          class="flex h-[4.5rem] flex-col items-center justify-center gap-1.5 rounded-xl bg-base-200/65 p-2 dark:bg-base-300/45"
+          class="flex h-16 flex-col items-center justify-center gap-1.5 rounded-xl bg-base-200/65 p-2 dark:bg-base-300/45"
         >
           <span class="size-7 animate-pulse rounded-lg bg-base-200 dark:bg-base-300/70"></span>
           <span class="h-3 w-11 animate-pulse rounded bg-base-200 dark:bg-base-300/70"></span>
@@ -337,9 +346,6 @@ onBeforeUnmount(() => {
             >
               {{ resource.name }}
             </span>
-            <span class="mt-0.5 block text-[11px] leading-tight opacity-70 tabular-nums">
-              {{ resource.list.length ? `${resource.list.length} 套` : '暂无' }}
-            </span>
           </button>
         </div>
       </div>
@@ -398,7 +404,7 @@ onBeforeUnmount(() => {
 
                 <span class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs leading-snug">
                   <span
-                    v-if="getPaperProgress(paper.id)"
+                    v-if="hasServerPractice(getPaperProgress(paper.id))"
                     class="shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-medium leading-none"
                     :class="TRAINING_MASTERY_BADGE_CLASSES[getPaperProgress(paper.id)!.level]"
                   >

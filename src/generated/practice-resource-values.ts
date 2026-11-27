@@ -18,5 +18,3 @@ export const aiEnhanceLabels = {
   "pastExamWeak": "真题薄弱补强",
   "comprehensive": "综合能力补强"
 } as const
-export const aiEnhanceModes = ["pending_fix","verified_fixed","suspected_ok"] as const
-export type AiEnhanceMode = (typeof aiEnhanceModes)[number]

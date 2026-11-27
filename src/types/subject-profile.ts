@@ -1,6 +1,5 @@
 import type { ProvinceCode } from '@/generated/domain-values'
 import type {
-  AiEnhanceMode,
   AiEnhanceType,
   PracticeResourceType,
   TrainingMasteryLevel,
@@ -14,7 +13,9 @@ export type EvaluationReadinessLevel = 'ready' | 'close' | 'building' | 'starter
 export type EvaluationConfidence = 'low' | 'medium' | 'high'
 export type EvaluationGapCode =
   | 'point_weak'
+  | 'question_type_weak'
   | 'mistake_unresolved'
+  | 'review_overdue'
   | 'baseline_missing'
   | 'past_exam_insufficient'
   | 'mock_exam_missing'
@@ -22,22 +23,11 @@ export type EvaluationGapCode =
   | 'subjective_insufficient'
 export type EvaluationGapSeverity = 'high' | 'medium' | 'low'
 export type EvaluationActionType = 'paper' | 'mistakes' | 'aiGenerate'
-export type EvaluationMicroDimensionKey =
-  | 'baseMastery'
-  | 'discrimination'
-  | 'examExecution'
-  | 'errorRecovery'
-  | 'subjectiveQuality'
-export type EvaluationMacroDimensionKey =
-  | 'trainingDepth'
-  | 'antiMemoReliability'
-  | 'syllabusCoverage'
-  | 'memoryStability'
-  | 'passStructure'
 
 export type UserSubjectProfilePointStat = {
   attempted: number
   correct: number
+  wrongCount: number
   mistakeCount: number
   mastery: number
   lastAt?: string
@@ -46,6 +36,8 @@ export type UserSubjectProfilePointStat = {
 export type UserSubjectProfileQuestionTypeStat = {
   attempted: number
   correct: number
+  wrongCount: number
+  unresolvedMistakes: number
   avgScoreRate: number
 }
 
@@ -59,9 +51,8 @@ export type UserSubjectProfilePaperProgress = {
   completedRounds: number
   currentRoundCoverage: number
   rawScore: number | null
-  scoreCap: number
-  effectiveScore: number
   level: TrainingMasteryLevel
+  lastPracticedAt?: string
   enhanceType?: AiEnhanceType
 }
 
@@ -74,7 +65,6 @@ export type UserSubjectProfileSlotProgress = {
   score: number
   level: TrainingMasteryLevel
   met: boolean
-  aiEnhanceMode?: AiEnhanceMode
   papers: UserSubjectProfilePaperProgress[]
 }
 
@@ -145,58 +135,25 @@ export type UserSubjectEvaluationRecommendation = {
   resourceType?: PracticeResourceType
   enhanceType?: AiEnhanceType
   pointKeys?: string[]
+  questionTypes?: QuestionType[]
 }
 
-export type UserSubjectEvaluationExamBoost = {
-  enabled: boolean
-  applied: boolean
-  points: number
-  examAttemptedPapers: number
-  firstAttemptQuestions: number
-  examScore: number
-  gapOverRaw: number
-  reason: string
+export type UserSubjectEvaluationQuickScore = {
+  baseline: number
+  pastExams: number
+  mockExams: number
+  aiEnhance: number
+  paperStructure: number
+  objectiveRate: number | null
+  subjectiveRate: number | null
 }
 
-export type UserSubjectEvaluationMicro = {
-  dimensions: {
-    baseMastery: number
-    discrimination: number | null
-    examExecution: number
-    errorRecovery: number | null
-    subjectiveQuality: number | null
-  }
-  slotRawScores: Partial<Record<PracticeResourceType, number>>
-}
-
-export type UserSubjectEvaluationWaterAttribution = {
-  key: EvaluationMacroDimensionKey
-  label: string
-  score: number
-  weight: number
-  deduction: number
-}
-
-export type UserSubjectEvaluationMacro = {
-  dimensions: Record<EvaluationMacroDimensionKey, number>
-  waterAttribution: UserSubjectEvaluationWaterAttribution[]
-}
-
-export type UserSubjectEvaluationStabilityWarning = {
-  triggered: boolean
-  examCount: number
-  meanScore: number | null
-  stdDev: number | null
-  message: string | null
-}
-
-export type UserSubjectEvaluationSignals = {
-  firstAttemptQuestions: number
-  firstAttemptRate: number | null
-  repeatAttemptQuestions: number
-  repeatAttemptRate: number | null
-  stubbornRepeatedMistakes: number
-  examAttemptedPaperCount: number
+export type UserSubjectEvaluationWeaknessProfile = {
+  weakPointKeys: string[]
+  stalePointKeys: string[]
+  weakQuestionTypes: QuestionType[]
+  stubbornMistakeCount: number
+  confusionMistakeCount: number
 }
 
 export type UserSubjectEvaluationEvidence = {
@@ -208,20 +165,14 @@ export type UserSubjectEvaluationEvidence = {
   unresolvedMistakes: number
   highFrequencyCoverage: number
   masteryLevel?: TrainingMasteryLevel
-  aiEnhanceMode?: AiEnhanceMode
   slotScores?: Partial<Record<PracticeResourceType, number>>
   slotLevels?: Partial<Record<PracticeResourceType, TrainingMasteryLevel>>
   subjectProfileGeneratedAt?: string | null
   rawScore?: number
-  credibility?: number
-  multiplier?: number
-  totalWater?: number
+  memoryRetention?: number
   subjectivePassCapped?: boolean
-  examBoost?: UserSubjectEvaluationExamBoost
-  micro?: UserSubjectEvaluationMicro
-  macro?: UserSubjectEvaluationMacro
-  examStabilityWarning?: UserSubjectEvaluationStabilityWarning
-  signals?: UserSubjectEvaluationSignals
+  quickScore?: UserSubjectEvaluationQuickScore
+  weaknessProfile?: UserSubjectEvaluationWeaknessProfile
 }
 
 export type UserSubjectEvaluation = {
@@ -247,6 +198,7 @@ export type GenerateAiEnhancePaperBody = {
   enhanceType: AiEnhanceType
   questionCount?: number
   pointKeys?: string[]
+  questionTypes?: QuestionType[]
   name?: string
 }
 
@@ -262,5 +214,6 @@ export type GeneratedAiEnhancePaper = {
   contentPeriod: string
   sourceType: 'ai'
   targetPointKeys: string[]
+  targetQuestionTypes: QuestionType[]
   createdAt: string
 }

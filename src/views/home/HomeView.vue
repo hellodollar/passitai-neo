@@ -17,7 +17,7 @@ import { useBrowseScroll } from '@/composables/useBrowseScroll'
 import { useAuthStore } from '@/stores/auth'
 import { useExamPlanStore } from '@/stores/exam-plan'
 import { useNotificationsStore } from '@/stores/notifications'
-import type { ExamPlan, Paper, UserSubjectProfile } from '@/types'
+import type { ExamPlan, Paper, PracticeResource, UserSubjectProfile } from '@/types'
 import { parseHomeSelection, readBrowseState, writeBrowseState } from '@/utils/browse/state'
 
 const router = useRouter()
@@ -34,6 +34,7 @@ const initialSelection = parseHomeSelection(route.query, initialBrowse)
 const subjectManagerOpen = ref(false)
 const examPlanPopupOpen = ref(false)
 const activeSubjectProfile = ref<UserSubjectProfile | null>(null)
+const activeResources = ref<PracticeResource[]>([])
 const profileRefreshKey = ref(0)
 const resourcesRefreshKey = ref(0)
 // 考试计划从共享状态读取，首次加载时显示占位。
@@ -197,6 +198,7 @@ watch(
     const selection = parseHomeSelection({}, state)
     browseScroll.reset()
     activeSubjectProfile.value = null
+    activeResources.value = []
     subjectManagerOpen.value = false
     examPlanPopupOpen.value = false
     subjectOrder.value = state.subjectOrder
@@ -231,7 +233,9 @@ watch(
 </script>
 
 <template>
-  <div class="min-h-dvh overflow-x-hidden bg-base-200/80 dark:bg-base-100">
+  <div
+    class="min-h-dvh overflow-x-hidden bg-base-200/80 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-primary)_7%,transparent)_0%,transparent_14rem)] dark:bg-base-100 dark:bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-primary)_10%,transparent)_0%,transparent_14rem)]"
+  >
     <PageContainer>
       <section class="flex w-full min-w-0 max-w-full flex-col gap-3.5">
         <h1 class="sr-only">练习首页</h1>
@@ -380,6 +384,7 @@ watch(
                 :subject-code="activeSubject.code"
                 :subject-name="activeSubject.name"
                 :refresh-key="profileRefreshKey"
+                :resources="activeResources"
                 @open-paper="openPaperById"
                 @open-mistakes="router.push({ name: 'mistakes' })"
                 @ai-generated="resourcesRefreshKey++"
@@ -397,6 +402,7 @@ watch(
                 "
                 @open-paper="openPaper"
                 @open-paper-id="openPaperById"
+                @resources-loaded="activeResources = $event"
                 @resources-changed="profileRefreshKey++"
                 @loaded="browseScroll.restore()"
               />

@@ -404,25 +404,27 @@ interface UserSubjectProfile {
   pointStats: Record<string, {
     attempted: number
     correct: number
-    mistakeCount: number
+    wrongCount: number // 历史累计错次（基于 0015 统计，清错题本不丢失）
+    mistakeCount: number // 当前未清错题数
     mastery: number // 0–1
     lastAt?: string
   }>
   questionTypeStats: Partial<Record<QuestionType, {
     attempted: number
     correct: number
+    wrongCount: number // 累计错次
+    unresolvedMistakes: number // 当前未清错题数
     avgScoreRate: number // 0–1
   }>>
   trainingProgress: Partial<Record<PracticeResourceType, {
     resourceId?: string
-    weight: number // 科目槽位权重：baseline 0.50 / pastExams 0.20 / mockExams 0.15 / aiEnhance 0.15
+    weight: number // Quick Score 槽位权重：baseline 0.40 / pastExams 0.20 / mockExams 0.15 / aiEnhance 0.15
     completedPapers: number // 至少刷满 1 遍的题集数
     totalPapers: number
     avgScore: number | null
-    score: number // 槽位有效评估分（0–100）
-    level: TrainingMasteryLevel // 木桶短板等级：weak / aware / familiar / mastered
-    met: boolean // 槽位全部题集达 mastered
-    aiEnhanceMode?: AiEnhanceMode // 仅 aiEnhance：pending_fix / verified_fixed / suspected_ok
+    score: number // 槽位实测卷面均分（0–100）
+    level: TrainingMasteryLevel // 分数文字档位：weak / aware / familiar / mastered
+    met: boolean // 槽位已全部至少完成 1 遍且均分 ≥ 85
     papers: Array<{
       paperId: string
       paperName: string
@@ -432,10 +434,9 @@ interface UserSubjectProfile {
       coveredQuestions: number
       completedRounds: number // 全卷每题累计有效作答次数最小值
       currentRoundCoverage: number // 下一轮当前已刷比例（0–1）
-      rawScore: number | null // 百分制实得分（bank 均分 100 / exam 按 examBlueprint 构建 100）
-      scoreCap: number // 严苛遍数解锁上限：59 (<3) / 69 (3–4) / 84 (5–6) / 100 (>=7)
-      effectiveScore: number // min(rawScore, scoreCap)
+      rawScore: number | null // 百分制实得分（bank 均分 100 / exam 按 examBlueprint 构建 100，无遍数封顶）
       level: TrainingMasteryLevel
+      lastPracticedAt?: string
       enhanceType?: AiEnhanceType // aiEnhance 槽位私有补强卷反向推导的补强类型
     }>
   }>>
@@ -487,7 +488,9 @@ interface UserSubjectEvaluation {
     gaps: Array<{
       code:
         | 'point_weak'
+        | 'question_type_weak'
         | 'mistake_unresolved'
+        | 'review_overdue'
         | 'baseline_missing'
         | 'past_exam_insufficient'
         | 'mock_exam_missing'
@@ -503,7 +506,9 @@ interface UserSubjectEvaluation {
   recommendations: Array<{
     gapCode:
       | 'point_weak'
+      | 'question_type_weak'
       | 'mistake_unresolved'
+      | 'review_overdue'
       | 'baseline_missing'
       | 'past_exam_insufficient'
       | 'mock_exam_missing'
@@ -517,6 +522,7 @@ interface UserSubjectEvaluation {
     resourceType?: PracticeResourceType
     enhanceType?: AiEnhanceType // aiGenerate 时标明补强类型：pointWeak / highFrequencyWeak / errorProneWeak / pastExamWeak / comprehensive
     pointKeys?: string[]
+    questionTypes?: QuestionType[] // aiGenerate 时可指明薄弱题型（如多选 / 主观专项）
   }>
   evidenceSnapshot: {
     practiceCount: number
@@ -527,77 +533,37 @@ interface UserSubjectEvaluation {
     unresolvedMistakes: number
     highFrequencyCoverage: number
     masteryLevel?: TrainingMasteryLevel
-    aiEnhanceMode?: AiEnhanceMode
     slotScores?: Partial<Record<PracticeResourceType, number>>
     slotLevels?: Partial<Record<PracticeResourceType, TrainingMasteryLevel>>
     subjectProfileGeneratedAt?: string | null
-    rawScore?: number // 左雷达机械原始总分（0–100）
-    credibility?: number // 右雷达综合可信度（0–1）
-    multiplier?: number // 向下挤水分校准系数 K（minMultiplier–1）
-    totalWater?: number // 总挤出水分（rawScore - estimatedScore，≥ 0）
-    subjectivePassCapped?: boolean // 是否因主观题样本不足触发过关准备度封顶
-    examBoost?: {
-      enabled: boolean
-      applied: boolean
-      points: number
-      examAttemptedPapers: number
-      firstAttemptQuestions: number
-      examScore: number
-      gapOverRaw: number
-      reason: string
+    rawScore?: number // Quick Score 5 项卷面机械分（0–100）
+    memoryRetention?: number // 艾宾浩斯按考点平均记忆保鲜系数 R（默认 0.75–1.00）
+    subjectivePassCapped?: boolean // 是否因主观题样本不足触发准备度文字档位封顶
+    quickScore?: {
+      baseline: number
+      pastExams: number
+      mockExams: number
+      aiEnhance: number
+      paperStructure: number
+      objectiveRate: number | null
+      subjectiveRate: number | null
     }
-    micro?: {
-      dimensions: {
-        baseMastery: number
-        discrimination: number | null
-        examExecution: number
-        errorRecovery: number | null
-        subjectiveQuality: number | null
-      }
-      slotRawScores: Partial<Record<PracticeResourceType, number>>
-    }
-    macro?: {
-      dimensions: {
-        trainingDepth: number
-        antiMemoReliability: number
-        syllabusCoverage: number
-        memoryStability: number
-        passStructure: number
-      }
-      waterAttribution: Array<{
-        key: 'trainingDepth' | 'antiMemoReliability' | 'syllabusCoverage' | 'memoryStability' | 'passStructure'
-        label: string
-        score: number
-        weight: number
-        deduction: number
-      }>
-    }
-    examStabilityWarning?: {
-      triggered: boolean
-      examCount: number
-      meanScore: number | null
-      stdDev: number | null
-      message: string | null
-    }
-    signals?: {
-      firstAttemptQuestions: number
-      firstAttemptRate: number | null
-      repeatAttemptQuestions: number
-      repeatAttemptRate: number | null
-      stubbornRepeatedMistakes: number
-      examAttemptedPaperCount: number
+    weaknessProfile?: {
+      weakPointKeys: string[] // 按历史错次与掌握度排序的薄弱考点
+      stalePointKeys: string[] // 超过 recentDays（默认 14 天）未复习的已练考点
+      weakQuestionTypes: QuestionType[] // 丢分重灾区题型（如多选 / 简答 / 论述）
+      stubbornMistakeCount: number // 反复错 ≥2 次的顽固未清错题数
+      confusionMistakeCount: number // 关联同题干/同选项混淆指纹的未清错题数
     }
   }
   createdAt: string
 }
 ```
 
-- 核心评估口径详见 [练习资源、用户画像与科目评估核心业务设计](design/practice-training-and-evaluation.md)：
-  - **5 维微观基准线（左雷达）**：按四槽位权重（默认 `baseline 0.50 / pastExams 0.20 / mockExams 0.15 / aiEnhance 0.15`）汇总各槽位原始分得到机械分 `rawScore`，并拆解基础掌握、辨析能力、套卷实战、可核实错题修复力（依据 `0015` 历史先错后对记录，防止手动清错题刷分）与主观作答 5 项指标；
-  - **5 维宏观校准与双向护栏（右雷达）**：按训练扎实度、抗背题可信度、考纲完整度、记忆稳定性、过关结构达标算出综合可信度 `credibility` 与系数 `multiplier`，向下挤出水分并精确归因到 5 维 `waterAttribution`；对多套整卷实战稳定高分的隐形学霸触发有界向上补偿 `examBoost`；
-  - **`aiEnhance` 三态**：存在薄弱待修复为 `pending_fix`（按补强卷实测分，未刷为 `0`）；经补强卷达标无异常为 `verified_fixed`（数据支撑给满）；前三项无薄弱且未经补强检验为 `suspected_ok`（怀疑模式默认 `80` 分）；
-  - **主观题过关保护**：当全局 `evaluation-model.passRule.requireSubjectiveForPass = true` 且科目含主观题但样本不足时，`readinessLevel` 最高封顶 `building`，并在 `diagnosis.gaps` 返回 `subjective_insufficient`（纯客观题科目自动豁免）。
-- `recommendations` 按严重度输出最多 10 条可执行动作：`paper` 优先指向槽位内短板题集 `paperId`，`mistakes` 指向错题本清零，`aiGenerate` 携带 `enhanceType` 与薄弱 `pointKeys`。
+- 核心评估口径详见 [练习资源、用户画像与科目评估核心业务设计](design/practice-training-and-evaluation.md)（接口仅返回结构化得分与错题薄弱特征，不绑定特定前端可视化形态）：
+  - **Quick Score 唯一评价模型**：按 5 项默认权重（`baseline 0.40 / pastExams 0.20 / mockExams 0.15 / aiEnhance 0.15 / paperStructure 0.10`，后台未配置公共槽位自动归一化，已配置未练计 `0`）汇总卷面机械分 `rawScore`，再乘以按每个已练考点 `lastAt` 距今天数平均的 4 档记忆保鲜系数 `memoryRetention`（默认 `≤7天 1.00 / 8–14天 0.95 / 15–30天 0.85 / >30天 0.75`），一步产出 PassIt 最终得分 `estimatedScore = round1(rawScore × memoryRetention)`；
+  - **主观题底线保护**：当全局 `evaluation-model.passRule.requireSubjectiveForPass = true` 且科目含主观题但样本不足时，`readinessLevel` 最高封顶 `building`，并在 `diagnosis.gaps` 返回 `subjective_insufficient`（纯客观题科目自动豁免）；
+  - **错题特征画像驱动千人千练**：`weaknessProfile` 与 `recommendations` 聚焦用户最关心的「薄弱知识点、历史错次、丢分题型（多选/主观）、顽固与混淆错题、超期未复习考点」，直接输出可执行动作（`paper`、`mistakes` 或携带 `enhanceType / pointKeys / questionTypes` 的 `aiGenerate`）。
 
 `POST /api/subjects/:code/ai-enhance/generate` 请求体与响应（单用户单科目最多保留 10 份启用私有补强卷，超限或无可用题返回 `409`）：
 
@@ -605,7 +571,8 @@ interface UserSubjectEvaluation {
 interface GenerateAiEnhancePaperBody {
   enhanceType: AiEnhanceType // pointWeak / highFrequencyWeak / errorProneWeak / pastExamWeak / comprehensive
   questionCount?: number // 5–50，默认 20（comprehensive 按 examBlueprint 题型数量组卷）
-  pointKeys?: string[] // 可选指定薄弱考点，最多 10 个；省略时自动取 0016 画像薄弱考点
+  pointKeys?: string[] // 可选指定薄弱考点，最多 10 个；省略时自动取 0016 画像薄弱/超期考点
+  questionTypes?: QuestionType[] // 可选指定专攻题型（如 ['multiple'] 或 ['shortAnswer', 'essay']），最多 6 个
   name?: string // 可选自定义题集名，省略时自动生成
 }
 
@@ -621,6 +588,7 @@ interface GeneratedAiEnhancePaper {
   contentPeriod: string
   sourceType: 'ai'
   targetPointKeys: string[]
+  targetQuestionTypes: QuestionType[]
   createdAt: string
 }
 ```

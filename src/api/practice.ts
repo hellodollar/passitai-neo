@@ -1,8 +1,10 @@
 import { request } from '@/api/http'
 import type {
+  PaginationResult,
   PaperDetail,
   PracticeResource,
   PracticeSubmission,
+  PracticeSubmissionSummary,
   SubjectiveSelfGradeBody,
   SubmitPracticePaperBody,
 } from '@/types'
@@ -33,6 +35,17 @@ export function fetchPracticeSubmission(paperId: string, submissionId: string) {
   return request<PracticeSubmission>(
     `/practice/papers/${encodeURIComponent(paperId)}/submissions/${encodeURIComponent(submissionId)}`,
   )
+}
+
+/** 文档:GET /api/practice/records?subjectCode=&paperId=&page=&limit= */
+export function fetchPracticeRecords(
+  query: { subjectCode?: string; paperId?: string; page?: number; limit?: number } = {},
+  signal?: AbortSignal,
+) {
+  return request<PaginationResult<PracticeSubmissionSummary>>('/practice/records', {
+    query,
+    signal,
+  })
 }
 
 /** 文档:PUT /api/practice/papers/:paperId/submissions/:submissionId/subjective-self-grade */

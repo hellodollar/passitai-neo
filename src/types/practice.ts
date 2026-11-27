@@ -65,6 +65,8 @@ export type PracticeSubmission = {
   createdAt: string
 }
 
+export type PracticeSubmissionSummary = Omit<PracticeSubmission, 'userAnswers'>
+
 export type SubmitPracticePaperBody = {
   submissionId: string
   userAnswers: Record<string, string | string[]>

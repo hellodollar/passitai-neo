@@ -1,16 +1,5 @@
-import type {
-  PracticeResourceType,
-  TrainingMasteryLevel,
-} from '@/generated/practice-resource-values'
-import type {
-  EvaluationConfidence,
-  EvaluationMacroDimensionKey,
-  EvaluationMicroDimensionKey,
-  EvaluationReadinessLevel,
-  EvaluationTriggerType,
-  PracticeResultQuestionStatus,
-  SubjectiveSelfGradeRating,
-} from '@/types'
+import type { TrainingMasteryLevel } from '@/generated/practice-resource-values'
+import type { PracticeResultQuestionStatus, SubjectiveSelfGradeRating } from '@/types'
 
 export const RESULT_STATUS_LABELS: Record<PracticeResultQuestionStatus, string> = {
   correct: '回答正确',
@@ -46,64 +35,10 @@ export const SUBJECTIVE_SELF_GRADE_OPTIONS: ReadonlyArray<{
   },
 ]
 
-export const EVALUATION_READINESS_META: Record<
-  EvaluationReadinessLevel,
-  { label: string; badgeClass: string }
-> = {
-  ready: { label: '可上考场', badgeClass: 'bg-success/10 text-success dark:bg-success/15' },
-  close: { label: '接近过线', badgeClass: 'bg-info/10 text-info dark:bg-info/15' },
-  building: { label: '巩固提升', badgeClass: 'bg-warning/10 text-warning dark:bg-warning/15' },
-  starter: {
-    label: '起步阶段',
-    badgeClass: 'bg-base-200/80 text-base-content/70 dark:bg-base-300/50',
-  },
-}
-
-export const EVALUATION_CONFIDENCE_LABELS: Record<EvaluationConfidence, string> = {
-  high: '高置信',
-  medium: '中置信',
-  low: '低置信',
-}
-
-export const EVALUATION_TRIGGER_LABELS: Record<EvaluationTriggerType, string> = {
-  manual: '手动评估',
-  practice: '交卷评估',
-  baseline: '基准评估',
-}
-
-/** 四档掌握度语义色；文案统一来自 src/generated/practice-resource-values.ts。 */
+/** 四档掌握度柔和语义色（weak 默认柔灰）；文案统一来自 src/generated/practice-resource-values.ts。 */
 export const TRAINING_MASTERY_BADGE_CLASSES: Record<TrainingMasteryLevel, string> = {
-  weak: 'bg-error/10 text-error dark:bg-error/15',
-  aware: 'bg-warning/10 text-warning dark:bg-warning/15',
-  familiar: 'bg-info/10 text-info dark:bg-info/15',
+  weak: 'bg-base-200/80 text-base-content/55 dark:bg-base-300/50',
+  aware: 'bg-info/10 text-info dark:bg-info/15',
+  familiar: 'bg-primary/10 text-primary dark:bg-primary/15',
   mastered: 'bg-success/10 text-success dark:bg-success/15',
 }
-
-export const PRACTICE_RESOURCE_SLOT_FALLBACK_LABELS: Record<PracticeResourceType, string> = {
-  baseline: '基准能力',
-  mockExams: '模拟考试',
-  pastExams: '历年真题',
-  aiEnhance: 'AI 增强',
-}
-
-export const EVALUATION_MICRO_DIMENSIONS: ReadonlyArray<{
-  key: EvaluationMicroDimensionKey
-  label: string
-}> = [
-  { key: 'baseMastery', label: '基础掌握' },
-  { key: 'discrimination', label: '辨析能力' },
-  { key: 'examExecution', label: '套卷实战' },
-  { key: 'errorRecovery', label: '错题修复' },
-  { key: 'subjectiveQuality', label: '主观作答' },
-]
-
-export const EVALUATION_MACRO_DIMENSIONS: ReadonlyArray<{
-  key: EvaluationMacroDimensionKey
-  label: string
-}> = [
-  { key: 'trainingDepth', label: '训练扎实度' },
-  { key: 'antiMemoReliability', label: '抗背题可信度' },
-  { key: 'syllabusCoverage', label: '考纲完整度' },
-  { key: 'memoryStability', label: '记忆稳定性' },
-  { key: 'passStructure', label: '过关结构达标' },
-]

@@ -40,7 +40,7 @@ afterEach(() => {
   globalThis.fetch = previousFetch
 })
 
-test('领域常量生成文件已切换为 practice-resource-values 且删除旧文件', () => {
+test('领域常量生成文件已切换为 practice-resource-values 且移除已废弃常量', () => {
   assert.equal(
     existsSync(new URL('../src/generated/practice-template-values.ts', import.meta.url)),
     false,
@@ -54,14 +54,60 @@ test('领域常量生成文件已切换为 practice-resource-values 且删除旧
   assert.deepEqual(resourceValues.trainingMasteryLevels, ['weak', 'aware', 'familiar', 'mastered'])
   assert.equal(resourceValues.trainingMasteryLabels.mastered, '掌握')
   assert.equal(resourceValues.aiEnhanceLabels.pointWeak, '考点薄弱补强')
-  assert.deepEqual(resourceValues.aiEnhanceModes, ['pending_fix', 'verified_fixed', 'suspected_ok'])
+  assert.equal('aiEnhanceModes' in resourceValues, false)
+  assert.equal('EVALUATION_MICRO_DIMENSIONS' in practiceConstants, false)
+  assert.equal('EVALUATION_MACRO_DIMENSIONS' in practiceConstants, false)
 })
 
 test('个人科目画像、规则评估、历史分页与 AI 补强卷接口路径与协议对齐', async () => {
   const controller = new AbortController()
-  responseData = { id: 'usp1234567890ab', subjectCode: 'GD-15043' }
+  responseData = {
+    id: 'usp1234567890ab',
+    subjectCode: 'GD-15043',
+    pointStats: {
+      绩效指标设计: { attempted: 6, correct: 3, wrongCount: 4, mistakeCount: 2, mastery: 0.5 },
+    },
+    questionTypeStats: {
+      multiple: {
+        attempted: 10,
+        correct: 5,
+        wrongCount: 6,
+        unresolvedMistakes: 3,
+        avgScoreRate: 0.5,
+      },
+    },
+    trainingProgress: {
+      baseline: {
+        weight: 0.4,
+        completedPapers: 1,
+        totalPapers: 1,
+        avgScore: 82,
+        score: 82,
+        level: 'familiar',
+        met: false,
+        papers: [
+          {
+            paperId: 'pap001',
+            paperName: '基准卷',
+            paperType: 'pointCoverage',
+            paperMode: 'bank',
+            totalQuestions: 20,
+            coveredQuestions: 20,
+            completedRounds: 1,
+            currentRoundCoverage: 0,
+            rawScore: 82,
+            level: 'familiar',
+            lastPracticedAt: '2026-11-27T10:00:00Z',
+          },
+        ],
+      },
+    },
+  }
   const profile = await fetchSubjectProfile('GD-15043', controller.signal)
   assert.equal(profile.id, 'usp1234567890ab')
+  assert.equal(profile.pointStats['绩效指标设计'].wrongCount, 4)
+  assert.equal(profile.questionTypeStats.multiple.unresolvedMistakes, 3)
+  assert.equal(profile.trainingProgress.baseline.papers[0].lastPracticedAt, '2026-11-27T10:00:00Z')
   assert.equal(calls[0].pathname, '/api/subjects/GD-15043/profile')
   assert.equal(calls[0].method, 'GET')
   assert.equal(calls[0].signal, controller.signal)
@@ -79,15 +125,27 @@ test('个人科目画像、规则评估、历史分页与 AI 补强卷接口路�
   assert.equal(calls[2].pathname, '/api/subjects/GD-15043/evaluations')
   assert.equal(calls[2].search, '?page=2&limit=10')
 
-  responseData = { id: 'pap1234567890ab', enhanceType: 'pointWeak', sourceType: 'ai' }
+  responseData = {
+    id: 'pap1234567890ab',
+    enhanceType: 'pointWeak',
+    sourceType: 'ai',
+    targetPointKeys: ['p1'],
+    targetQuestionTypes: ['multiple', 'shortAnswer'],
+  }
   const generated = await generateAiEnhancePaper('GD-15043', {
     enhanceType: 'pointWeak',
     pointKeys: ['p1'],
+    questionTypes: ['multiple', 'shortAnswer'],
   })
   assert.equal(generated.id, 'pap1234567890ab')
+  assert.deepEqual(generated.targetQuestionTypes, ['multiple', 'shortAnswer'])
   assert.equal(calls[3].pathname, '/api/subjects/GD-15043/ai-enhance/generate')
   assert.equal(calls[3].method, 'POST')
-  assert.deepEqual(calls[3].body, { enhanceType: 'pointWeak', pointKeys: ['p1'] })
+  assert.deepEqual(calls[3].body, {
+    enhanceType: 'pointWeak',
+    pointKeys: ['p1'],
+    questionTypes: ['multiple', 'shortAnswer'],
+  })
 
   responseData = null
   await deleteAiEnhancePaper('GD-15043', 'pap1234567890ab')
@@ -95,22 +153,7 @@ test('个人科目画像、规则评估、历史分页与 AI 补强卷接口路�
   assert.equal(calls[4].method, 'DELETE')
 })
 
-test('双层评估快照 5+5 维度常量与接口字段完整透传', async () => {
-  assert.deepEqual(
-    practiceConstants.EVALUATION_MICRO_DIMENSIONS.map((item) => item.key),
-    ['baseMastery', 'discrimination', 'examExecution', 'errorRecovery', 'subjectiveQuality'],
-  )
-  assert.deepEqual(
-    practiceConstants.EVALUATION_MACRO_DIMENSIONS.map((item) => item.key),
-    [
-      'trainingDepth',
-      'antiMemoReliability',
-      'syllabusCoverage',
-      'memoryStability',
-      'passStructure',
-    ],
-  )
-
+test('Quick Score 评估快照与错题特征画像字段完整透传', async () => {
   responseData = {
     id: 'evl999999999999',
     subjectCode: 'GD-15043',
@@ -120,8 +163,39 @@ test('双层评估快照 5+5 维度常量与接口字段完整透传', async () 
     subjectiveEstimatedScore: 58,
     readinessLevel: 'building',
     confidence: 'medium',
-    diagnosis: { summary: '需巩固薄弱考点', strengths: [], gaps: [] },
-    recommendations: [],
+    diagnosis: {
+      summary: '多选题与超期考点仍需巩固',
+      strengths: [{ code: 'baseline_good', title: '基础题表现稳定', detail: '单选与判断掌握较好' }],
+      gaps: [
+        {
+          code: 'question_type_weak',
+          title: '多选题丢分偏高',
+          severity: 'high',
+          current: '得分率 52%',
+          target: '≥ 75%',
+        },
+        {
+          code: 'review_overdue',
+          title: '部分考点超期未复习',
+          severity: 'medium',
+          current: '3 个考点超 14 天未练',
+          target: '近 14 天内复盘',
+          pointKeys: ['绩效指标设计'],
+        },
+      ],
+    },
+    recommendations: [
+      {
+        gapCode: 'question_type_weak',
+        actionType: 'aiGenerate',
+        priority: 1,
+        title: '专攻多选题与薄弱考点',
+        reason: '定向补强高频失分题型',
+        enhanceType: 'pointWeak',
+        pointKeys: ['绩效指标设计'],
+        questionTypes: ['multiple'],
+      },
+    ],
     evidenceSnapshot: {
       practiceCount: 6,
       answeredQuestions: 120,
@@ -130,73 +204,48 @@ test('双层评估快照 5+5 维度常量与接口字段完整透传', async () 
       subjectiveAnswered: 20,
       unresolvedMistakes: 8,
       highFrequencyCoverage: 0.72,
-      rawScore: 76,
-      credibility: 0.82,
-      multiplier: 0.9,
-      totalWater: 7.5,
+      masteryLevel: 'familiar',
+      slotScores: { baseline: 80, pastExams: 72, mockExams: 68, aiEnhance: 60 },
+      slotLevels: {
+        baseline: 'familiar',
+        pastExams: 'familiar',
+        mockExams: 'aware',
+        aiEnhance: 'aware',
+      },
+      rawScore: 76.1,
+      memoryRetention: 0.9,
       subjectivePassCapped: false,
-      examBoost: {
-        enabled: true,
-        applied: true,
-        points: 2.5,
-        examAttemptedPapers: 3,
-        firstAttemptQuestions: 80,
-        examScore: 81,
-        gapOverRaw: 5,
-        reason: '整卷实战持续高于训练机械分',
+      quickScore: {
+        baseline: 80,
+        pastExams: 72,
+        mockExams: 68,
+        aiEnhance: 60,
+        paperStructure: 74,
+        objectiveRate: 0.76,
+        subjectiveRate: 0.58,
       },
-      micro: {
-        dimensions: {
-          baseMastery: 78,
-          discrimination: 70,
-          examExecution: 81,
-          errorRecovery: null,
-          subjectiveQuality: 60,
-        },
-        slotRawScores: { baseline: 78, pastExams: 81 },
-      },
-      macro: {
-        dimensions: {
-          trainingDepth: 80,
-          antiMemoReliability: 75,
-          syllabusCoverage: 72,
-          memoryStability: 68,
-          passStructure: 85,
-        },
-        waterAttribution: [
-          {
-            key: 'memoryStability',
-            label: '记忆稳定性',
-            score: 68,
-            weight: 0.2,
-            deduction: 3.5,
-          },
-        ],
-      },
-      examStabilityWarning: {
-        triggered: true,
-        examCount: 3,
-        meanScore: 76,
-        stdDev: 9.2,
-        message: '近期整卷分数波动较大',
-      },
-      signals: {
-        firstAttemptQuestions: 80,
-        firstAttemptRate: 0.74,
-        repeatAttemptQuestions: 40,
-        repeatAttemptRate: 0.85,
-        stubbornRepeatedMistakes: 2,
-        examAttemptedPaperCount: 3,
+      weaknessProfile: {
+        weakPointKeys: ['绩效指标设计'],
+        stalePointKeys: ['目标管理'],
+        weakQuestionTypes: ['multiple', 'shortAnswer'],
+        stubbornMistakeCount: 2,
+        confusionMistakeCount: 1,
       },
     },
-    createdAt: '2026-11-26T12:00:00Z',
+    createdAt: '2026-11-27T12:00:00Z',
   }
 
   const evaluation = await evaluateSubject('GD-15043', { triggerType: 'manual' })
-  assert.equal(evaluation.evidenceSnapshot.rawScore, 76)
-  assert.equal(evaluation.evidenceSnapshot.totalWater, 7.5)
-  assert.equal(evaluation.evidenceSnapshot.examBoost?.applied, true)
-  assert.equal(evaluation.evidenceSnapshot.micro?.dimensions.errorRecovery, null)
-  assert.equal(evaluation.evidenceSnapshot.macro?.waterAttribution[0].deduction, 3.5)
-  assert.equal(evaluation.evidenceSnapshot.examStabilityWarning?.triggered, true)
+  assert.equal(evaluation.evidenceSnapshot.rawScore, 76.1)
+  assert.equal(evaluation.evidenceSnapshot.memoryRetention, 0.9)
+  assert.equal(evaluation.evidenceSnapshot.quickScore?.paperStructure, 74)
+  assert.equal(evaluation.evidenceSnapshot.quickScore?.objectiveRate, 0.76)
+  assert.deepEqual(evaluation.evidenceSnapshot.weaknessProfile?.weakQuestionTypes, [
+    'multiple',
+    'shortAnswer',
+  ])
+  assert.equal(evaluation.evidenceSnapshot.weaknessProfile?.stubbornMistakeCount, 2)
+  assert.deepEqual(evaluation.recommendations[0].questionTypes, ['multiple'])
+  assert.equal(evaluation.diagnosis.gaps[0].code, 'question_type_weak')
+  assert.equal(evaluation.diagnosis.gaps[1].code, 'review_overdue')
 })
