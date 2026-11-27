@@ -1,110 +1,111 @@
 <script setup lang="ts">
 import { GraduationCap, Settings2 } from '@lucide/vue'
-import { differenceInCalendarDays, format, parseISO } from 'date-fns'
+import { differenceInCalendarDays, parseISO } from 'date-fns'
 import { computed } from 'vue'
 
 import { provinceOptions } from '@/generated/domain-values'
-import type { ExamPlan } from '@/types'
+import type { ExamPlan, ExamPlanSubject } from '@/types'
 import { formatShanghaiDate } from '@/utils/date'
 
-const props = defineProps<{
-  plan: ExamPlan
-}>()
+const props = withDefaults(
+  defineProps<{
+    plan: ExamPlan
+    activeSubject?: ExamPlanSubject | null
+  }>(),
+  {
+    activeSubject: null,
+  },
+)
 
 const emit = defineEmits<{
   'edit-exam-plan': []
-  'edit-settings': []
 }>()
 
 const provinceName = computed(
   () => provinceOptions.find((province) => province.code === props.plan.provinceCode)?.name ?? '',
 )
+
+const majorMetaText = computed(() =>
+  [provinceName.value, props.plan.major.educationLevel, props.plan.majorCode]
+    .filter(Boolean)
+    .join(' · '),
+)
+
+const activeNextExam = computed(() => props.activeSubject?.nextExam ?? props.plan.nextExam ?? null)
+
 const nextExamDate = computed(() => {
-  const dateValue = props.plan.nextExam?.examDate
+  const dateValue = activeNextExam.value?.examDate
   if (!dateValue) return null
   const parsedDate = parseISO(dateValue)
   return Number.isNaN(parsedDate.getTime()) ? null : parsedDate
 })
+
 const daysUntilExam = computed(() => {
   if (!nextExamDate.value) return null
   return Math.max(0, differenceInCalendarDays(nextExamDate.value, parseISO(formatShanghaiDate())))
 })
-const nextExamDateText = computed(() =>
-  nextExamDate.value ? format(nextExamDate.value, 'yyyy年M月d日') : '',
+
+const countdownText = computed(() => {
+  const days = daysUntilExam.value
+  if (days === null) return '无安排'
+  return days === 0 ? '今天开考' : days === 1 ? '明天开考' : `距考 ${days} 天`
+})
+
+// 次级文字直接展示接口返回的 YYYY-MM-DD 考试日期。
+const examDateText = computed(() =>
+  nextExamDate.value ? (activeNextExam.value?.examDate ?? '') : '',
 )
 </script>
 
 <template>
-  <section class="rounded-2xl bg-base-100 p-3.5 dark:bg-base-200">
-    <div class="flex min-w-0 items-center justify-between gap-3">
-      <div class="min-w-0 flex-1">
-        <div class="flex min-w-0 items-center gap-2">
-          <h2 class="truncate text-base font-semibold leading-snug tracking-tight">
-            {{ plan.major.name }}
-          </h2>
-          <span
-            v-if="plan.major.educationLevel"
-            class="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary"
-          >
-            {{ plan.major.educationLevel }}
-          </span>
-        </div>
-        <p
-          v-if="provinceName || plan.majorCode || nextExamDateText"
-          class="mt-1 truncate text-xs leading-snug text-base-content/55"
-        >
-          <template v-if="provinceName">{{ provinceName }}</template>
-          <template v-if="provinceName && plan.majorCode"> · </template>
-          <template v-if="plan.majorCode">代码 {{ plan.majorCode }}</template>
-          <template v-if="(provinceName || plan.majorCode) && nextExamDateText"> · </template>
-          <template v-if="nextExamDateText">{{ nextExamDateText }}</template>
-        </p>
-      </div>
+  <section
+    aria-label="报考专业与考试时间"
+    class="rounded-2xl bg-base-100 px-3.5 py-3 dark:bg-base-200"
+  >
+    <!-- 左：专业信息；右：倒计时在上、日期在下。两列逐行基线对齐 -->
+    <div class="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-3 gap-y-0.5">
+      <h2
+        class="col-start-1 row-start-1 truncate text-base font-semibold leading-snug tracking-tight"
+      >
+        <GraduationCap
+          :size="18"
+          class="mr-1.5 inline-block align-[-0.1875em] text-primary"
+          aria-hidden="true"
+        />{{ plan.major.name }}
+      </h2>
+      <!-- 无考期时只是占位说明，用小字弱色，不与专业名抢视线 -->
+      <p
+        class="col-start-2 row-start-1 text-right leading-snug tabular-nums"
+        :class="
+          daysUntilExam === null
+            ? 'text-xs text-base-content/45'
+            : 'text-sm font-semibold text-primary'
+        "
+      >
+        {{ countdownText }}
+      </p>
 
-      <div
-        v-if="nextExamDate"
-        class="shrink-0 rounded-xl bg-primary/10 px-3 py-1.5 text-right dark:bg-primary/15"
+      <p
+        v-if="majorMetaText"
+        class="col-start-1 row-start-2 truncate text-xs leading-snug tabular-nums text-base-content/50"
       >
-        <p
-          class="flex items-center justify-end gap-1 text-[11px] font-medium leading-none text-primary/75"
-        >
-          <span class="size-1.5 rounded-full bg-primary"></span>
-          距离考试
-        </p>
-        <p class="mt-1 leading-none">
-          <strong class="text-xl font-bold leading-none tracking-tight text-primary tabular-nums">
-            {{ daysUntilExam }}
-          </strong>
-          <span class="ml-0.5 text-[11px] font-medium text-primary/75">天</span>
-        </p>
-      </div>
-      <span
-        v-else
-        class="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"
+        {{ majorMetaText }}
+      </p>
+      <p
+        v-if="examDateText"
+        class="col-start-2 row-start-2 text-right text-xs leading-snug tabular-nums text-base-content/55"
       >
-        <GraduationCap :size="18" />
-      </span>
+        {{ examDateText }}
+      </p>
     </div>
 
-    <div class="mt-3 grid grid-cols-2 gap-2">
-      <button
-        class="flex h-9 items-center justify-center gap-1.5 rounded-xl bg-base-200/65 text-xs font-medium text-base-content/70 transition-colors active:bg-base-200 dark:bg-base-300/45 dark:active:bg-base-300/70"
-        type="button"
-        aria-label="考试计划"
-        @click="emit('edit-exam-plan')"
-      >
-        <GraduationCap :size="14" class="text-primary" />
-        考试计划
-      </button>
-      <button
-        class="flex h-9 items-center justify-center gap-1.5 rounded-xl bg-base-200/65 text-xs font-medium text-base-content/70 transition-colors active:bg-base-200 dark:bg-base-300/45 dark:active:bg-base-300/70"
-        type="button"
-        aria-label="练习设置"
-        @click="emit('edit-settings')"
-      >
-        <Settings2 :size="14" class="text-base-content/55" />
-        练习设置
-      </button>
-    </div>
+    <button
+      class="mt-3 flex h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-primary/10 text-sm font-medium text-primary transition-colors active:bg-primary/15 dark:bg-primary/15 dark:active:bg-primary/20"
+      type="button"
+      @click="emit('edit-exam-plan')"
+    >
+      <Settings2 :size="16" />
+      考试计划
+    </button>
   </section>
 </template>

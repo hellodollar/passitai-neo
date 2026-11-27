@@ -12,7 +12,6 @@ import ExamPlanPopup from '@/components/exam-plan/ExamPlanPopup.vue'
 import ExamPlanSubjectsPopup from '@/components/exam-plan/ExamPlanSubjectsPopup.vue'
 import HomePracticeResources from '@/components/home/HomePracticeResources.vue'
 import NotificationStrip from '@/components/home/NotificationStrip.vue'
-import PracticeSettingsPopup from '@/components/practice/PracticeSettingsPopup.vue'
 import SubjectProfileCard from '@/components/subject-profile/SubjectProfileCard.vue'
 import { useBrowseScroll } from '@/composables/useBrowseScroll'
 import { useAuthStore } from '@/stores/auth'
@@ -32,7 +31,6 @@ const browseScroll = useBrowseScroll(
 const initialBrowse = readBrowseState(auth.session?.user.id ?? '', 'home')
 const initialSelection = parseHomeSelection(route.query, initialBrowse)
 
-const settingsPopupOpen = ref(false)
 const subjectManagerOpen = ref(false)
 const examPlanPopupOpen = ref(false)
 const activeSubjectProfile = ref<UserSubjectProfile | null>(null)
@@ -199,7 +197,6 @@ watch(
     const selection = parseHomeSelection({}, state)
     browseScroll.reset()
     activeSubjectProfile.value = null
-    settingsPopupOpen.value = false
     subjectManagerOpen.value = false
     examPlanPopupOpen.value = false
     subjectOrder.value = state.subjectOrder
@@ -297,8 +294,8 @@ watch(
           <ExamPlanCard
             v-if="examPlan"
             :plan="examPlan"
+            :active-subject="activeSubject"
             @edit-exam-plan="examPlanPopupOpen = true"
-            @edit-settings="settingsPopupOpen = true"
           />
 
           <div class="space-y-2.5">
@@ -416,8 +413,6 @@ watch(
           @toggle-visibility="toggleSubjectVisibility"
           @move="moveSubject"
         />
-
-        <PracticeSettingsPopup v-model="settingsPopupOpen" />
 
         <ExamPlanPopup v-model="examPlanPopupOpen" />
       </section>
